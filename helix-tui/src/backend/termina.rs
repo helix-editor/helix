@@ -149,13 +149,15 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}\x1b[> q{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
             ))),
             // Mode 2031 theme updates. Query the current theme.
             Csi::Mode(csi::Mode::QueryTheme),
+            // Kitty multi-cursor protocol support query
+            Csi::Cursor(csi::Cursor::QueryCursorShape),
             // True color and while we're at it, extended underlines:
             // <https://github.com/termstandard/colors?tab=readme-ov-file#querying-the-terminal>
             Csi::Sgr(csi::Sgr::Background(TEST_COLOR.into())),
@@ -199,15 +201,17 @@ impl TerminaBackend {
                         capabilities.extended_underlines =
                             sgrs.contains(&csi::Sgr::UnderlineColor(TEST_COLOR.into()));
                     }
+                    Event::Csi(Csi::Cursor(csi::Cursor::QueryCursorShape)) => {
+                        // Empty response to the query still means the protocol is supported
+                        capabilities.kitty_multi_cursor = true;
+                        log::debug!("Detected kitty multi-cursor support via protocol query");
+                    }
                     Event::Csi(Csi::Cursor(csi::Cursor::CursorShapeQueryResponse(shapes))) => {
-                        // Any numbers in the response means the protocol is supported
-                        if !shapes.is_empty() {
-                            capabilities.kitty_multi_cursor = true;
-                            log::debug!(
-                                "Detected kitty multi-cursor support via protocol query. Supported shapes: {:?}",
-                                shapes
-                            );
-                        }
+                        capabilities.kitty_multi_cursor = true;
+                        log::debug!(
+                            "Detected kitty multi-cursor support via protocol query. Supported shapes: {:?}",
+                            shapes
+                        );
                     }
                     event => {
                         log::trace!("Unhandled capability detection event: {event:?}");
@@ -569,18 +573,18 @@ impl Backend for TerminaBackend {
         )?;
 
         if !cursors.is_empty() {
-            // Convert to 1-indexed positions (helix uses 0-indexed)
-            let positions: Vec<(u16, u16)> = cursors
-                .iter()
-                .map(|(x, y)| (y + 1, x + 1)) // (line, col) both 1-indexed
-                .collect();
-
             write!(
                 self.terminal,
                 "{}",
                 Csi::Cursor(csi::Cursor::SetMultipleCursors {
-                    shape: 29, // Follow main cursor shape
-                    positions,
+                    shape: csi::MultiCursorShape::FollowMainCursor,
+                    positions: cursors
+                        .iter()
+                        .map(|(x, y)| (
+                            OneBased::from_zero_based(*y),
+                            OneBased::from_zero_based(*x),
+                        ))
+                        .collect(),
                 })
             )?;
         }
