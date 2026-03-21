@@ -30,6 +30,20 @@ All shortcuts/keymaps can be found [in the documentation on the website](https:/
 
 [Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
 
+## Fork Changes (`patch/kitty-multi-cursor`)
+
+This fork emits cursor positions using the [kitty multiple cursors protocol](https://sw.kovidgoyal.net/kitty/multiple-cursors-protocol/)
+so terminals with custom shader support can render visual effects at cursor
+locations. Emits all selection cursors in multi-selection mode and the primary
+cursor in normal mode (when the terminal cursor is hidden via DECTCEM).
+Auto-detects terminal support at startup via the protocol's query mechanism,
+with per-frame deduplication to avoid redundant writes.
+
+```toml
+# config.toml -- defaults to "auto" (probe terminal on startup)
+kitty-multi-cursor = "auto"  # auto | enabled | disabled
+```
+
 # Features
 
 - Vim-like modal editing
