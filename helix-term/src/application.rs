@@ -1216,9 +1216,16 @@ impl Application {
         // If `Uri` gets another variant other than `Path` this may not be valid.
         let path = uri.as_path().expect("URIs are valid paths");
 
-        let action = match take_focus {
-            Some(true) => helix_view::editor::Action::Replace,
-            _ => helix_view::editor::Action::VerticalSplit,
+        // Determine the focus strategy based on the current UI state and LSP request:
+        // 1. If there is no pop-up overlay, jump directly (Replace).
+        // 2. If there is a pop-up overlay, unless the LSP forces take_focus, only load in the background (Load) to prevent interruption of input.
+        let action = if self.compositor.layer_count() == 1 {
+            helix_view::editor::Action::Replace
+        } else {
+            match take_focus {
+                Some(true) => helix_view::editor::Action::Replace,
+                _ => helix_view::editor::Action::Load,
+            }
         };
 
         let doc_id = match self.editor.open(path, action) {
