@@ -10,7 +10,7 @@ use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
-    editor::{ConfigEvent, EditorEvent},
+    editor::{ConfigEvent, EditorEvent, KittyMultiCursorConfig},
     graphics::Rect,
     theme,
     tree::Layout,
@@ -296,6 +296,71 @@ impl Application {
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
+
+        // Emit kitty multi-cursor protocol when enabled.
+        // Note: when a UI overlay is active (file picker, command palette), cursor
+        // positions are still read from the underlying document. This means shader
+        // cursor effects may render beneath the overlay -- acceptable since the
+        // overlay fully covers them visually.
+        if self.editor.config().kitty_multi_cursor != KittyMultiCursorConfig::Disabled {
+            // When collect returns empty (single-cursor insert mode), emit_extra_cursors
+            // sends a clear sequence. This is redundant per-frame but avoids needing
+            // state tracking for the some→none transition. The overhead is trivial
+            // (8 bytes on an already-flushing write path).
+            let extra = self.collect_extra_cursor_positions(kind);
+            if let Err(e) = self.terminal.backend_mut().emit_extra_cursors(&extra) {
+                debug!("Failed to emit extra cursors: {}", e);
+            }
+            if let Err(e) = self.terminal.backend_mut().flush() {
+                debug!("Failed to flush extra cursors: {}", e);
+            }
+        }
+    }
+
+    /// Collect cursor positions for kitty multi-cursor protocol.
+    ///
+    /// When cursor hidden (normal mode): emit primary even for single selection,
+    /// since the terminal cursor position is unreliable when DECTCEM is off.
+    /// When cursor visible + single selection: return empty (native cursor handles it).
+    /// When multi-selection (any mode): emit ALL cursors including primary.
+    fn collect_extra_cursor_positions(
+        &self,
+        cursor_kind: helix_view::graphics::CursorKind,
+    ) -> Vec<(u16, u16)> {
+        let editor = &self.editor;
+        let (view, doc) = current_ref!(editor);
+        let selection = doc.selection(view.id);
+        let cursor_hidden =
+            matches!(cursor_kind, helix_view::graphics::CursorKind::Hidden);
+
+        // Single selection with visible cursor: native terminal cursor handles it.
+        if !cursor_hidden && selection.len() <= 1 {
+            return Vec::new();
+        }
+
+        // Emit cursors via protocol when:
+        // - Cursor hidden (normal mode): terminal cursor unreliable, shader needs position
+        // - Multi-selection: all cursors including primary go through protocol
+        let text = doc.text().slice(..);
+        let inner = view.inner_area(doc);
+
+        let mut cursors = Vec::with_capacity(selection.len());
+        for range in selection.ranges() {
+            let cursor_pos = range.cursor(text);
+            if let Some(pos) = view.screen_coords_at_pos(doc, text, cursor_pos) {
+                if pos.row < inner.height as usize && pos.col < inner.width as usize {
+                    cursors.push((
+                        pos.row as u16 + inner.y,
+                        pos.col as u16 + inner.x,
+                    ));
+                }
+            }
+        }
+        if cursors.len() > 64 {
+            debug!("Truncating {} multi-cursors to protocol max of 64", cursors.len());
+            cursors.truncate(64);
+        }
+        cursors
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)

@@ -14,6 +14,7 @@ use crossterm::{
     terminal::{self, Clear, ClearType},
     Command,
 };
+use helix_view::editor::KittyMultiCursorConfig;
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
 use once_cell::sync::OnceCell;
 use std::{
@@ -205,6 +206,10 @@ where
     }
 
     fn restore(&mut self) -> io::Result<()> {
+        // Clear kitty multi-cursor protocol state (harmless on unsupported terminals).
+        if self.config.kitty_multi_cursor != KittyMultiCursorConfig::Disabled {
+            self.write_raw(b"\x1b[>0;4 q")?;
+        }
         // reset cursor shape
         self.buffer
             .write_all(self.capabilities.reset_cursor_command.as_bytes())?;
@@ -333,6 +338,17 @@ where
 
     fn set_background_color(&mut self, _color: Option<helix_view::theme::Color>) -> io::Result<()> {
         Ok(())
+    }
+
+    fn write_raw(&mut self, bytes: &[u8]) -> io::Result<()> {
+        self.buffer.write_all(bytes)
+    }
+
+    fn emit_extra_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        if self.config.kitty_multi_cursor == KittyMultiCursorConfig::Disabled {
+            return Ok(());
+        }
+        self.write_raw(&super::build_multi_cursor_sequence(cursors))
     }
 }
 

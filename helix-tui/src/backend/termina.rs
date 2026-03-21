@@ -1,7 +1,7 @@
 use std::io::{self, Write as _};
 
 use helix_view::{
-    editor::KittyKeyboardProtocolConfig,
+    editor::{KittyKeyboardProtocolConfig, KittyMultiCursorConfig},
     graphics::{CursorKind, Rect, UnderlineStyle},
     theme::{self, Color, Modifier},
 };
@@ -50,6 +50,7 @@ fn vte_version() -> Option<usize> {
 #[derive(Debug, Default, Clone, Copy)]
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
+    kitty_multi_cursor: bool,
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
@@ -142,6 +143,11 @@ impl TerminaBackend {
                 write!(terminal, "{}", Csi::Keyboard(csi::Keyboard::QueryFlags))?;
                 KittyKeyboardSupport::None
             }
+        };
+
+        capabilities.kitty_multi_cursor = match config.kitty_multi_cursor {
+            KittyMultiCursorConfig::Disabled => false,
+            KittyMultiCursorConfig::Enabled => true,
         };
 
         // Many terminal extensions can be detected by querying the terminal for the state of the
@@ -346,6 +352,10 @@ impl TerminaBackend {
             )?;
         }
 
+        if self.capabilities.kitty_multi_cursor {
+            self.write_raw(b"\x1b[>0;4 q")?;
+        }
+
         if self.capabilities.theme_mode.is_some() {
             // Mode 2031 theme notifications.
             write!(self.terminal, "{}", decreset!(Theme))?;
@@ -408,10 +418,13 @@ impl Backend for TerminaBackend {
             }
         }
         self.capabilities.extended_underlines |= self.config.force_enable_extended_underlines;
+        self.capabilities.kitty_multi_cursor =
+            self.config.kitty_multi_cursor == KittyMultiCursorConfig::Enabled;
         Ok(())
     }
 
     fn restore(&mut self) -> io::Result<()> {
+        // Multi-cursor clear is handled by disable_extensions().
         self.disable_extensions()?;
         self.disable_mouse_capture()?;
         write!(
@@ -586,6 +599,17 @@ impl Backend for TerminaBackend {
                 _ => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
             }
         )
+    }
+
+    fn write_raw(&mut self, bytes: &[u8]) -> io::Result<()> {
+        self.terminal.write_all(bytes)
+    }
+
+    fn emit_extra_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        if !self.capabilities.kitty_multi_cursor {
+            return Ok(());
+        }
+        self.write_raw(&super::build_multi_cursor_sequence(cursors))
     }
 }
 

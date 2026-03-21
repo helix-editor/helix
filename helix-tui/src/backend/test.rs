@@ -168,4 +168,8 @@ impl Backend for TestBackend {
     fn set_background_color(&mut self, _color: Option<helix_view::theme::Color>) -> io::Result<()> {
         Ok(())
     }
+
+    fn write_raw(&mut self, _bytes: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
 }

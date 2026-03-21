@@ -1,6 +1,7 @@
 //! Provides interface for controlling the terminal
 
 use std::io;
+use std::io::Write;
 
 use crate::{buffer::Cell, terminal::Config};
 
@@ -49,4 +50,27 @@ pub trait Backend {
     fn supports_true_color(&self) -> bool;
     fn get_theme_mode(&self) -> Option<helix_view::theme::Mode>;
     fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()>;
+    /// Write raw bytes to the terminal output.
+    fn write_raw(&mut self, bytes: &[u8]) -> io::Result<()>;
+    /// Emit kitty multi-cursor protocol sequence (CSI > Ps ; ... SP q).
+    /// Backends should gate this on their capability check, then delegate here.
+    fn emit_extra_cursors(&mut self, cursors: &[(u16, u16)]) -> io::Result<()> {
+        self.write_raw(&build_multi_cursor_sequence(cursors))
+    }
+}
+
+/// Build the wire-format kitty multi-cursor protocol sequence.
+/// Empty cursors produces a clear sequence; non-empty produces shape 29
+/// with 1-indexed point coordinates.
+fn build_multi_cursor_sequence(cursors: &[(u16, u16)]) -> Vec<u8> {
+    if cursors.is_empty() {
+        return b"\x1b[>0;4 q".to_vec();
+    }
+    let mut buf = Vec::with_capacity(8 + cursors.len() * 12);
+    buf.extend_from_slice(b"\x1b[>29");
+    for &(row, col) in cursors {
+        write!(buf, ";2:{}:{}", row + 1, col + 1).unwrap();
+    }
+    buf.extend_from_slice(b" q");
+    buf
 }

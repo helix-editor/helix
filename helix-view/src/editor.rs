@@ -430,6 +430,9 @@ pub struct Config {
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    /// Whether to emit kitty multi-cursor protocol sequences.
+    /// Only works in terminals that support the protocol (e.g., custom Alacritty builds).
+    pub kitty_multi_cursor: KittyMultiCursorConfig,
     pub buffer_picker: BufferPickerConfig,
 }
 
@@ -464,6 +467,14 @@ impl PickerStartPosition {
 pub enum KittyKeyboardProtocolConfig {
     #[default]
     Auto,
+    Disabled,
+    Enabled,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum KittyMultiCursorConfig {
+    #[default]
     Disabled,
     Enabled,
 }
@@ -1152,6 +1163,7 @@ impl Default for Config {
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
+            kitty_multi_cursor: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
         }
     }
