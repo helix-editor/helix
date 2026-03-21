@@ -1522,7 +1522,7 @@ pub fn show_code_lenses_under_cursor(cx: &mut Context) {
             }
 
             if let Some(doc) = editor.documents.get_mut(&doc_id) {
-                doc.set_code_lenses(lenses.clone());
+                doc.update_code_lenses(lenses.clone());
             }
 
             let mut picker = ui::Menu::new(lenses, (), move |editor, lens, event| {
