@@ -3286,6 +3286,7 @@ fn jumplist_picker(cx: &mut Context) {
         id: DocumentId,
         path: Option<PathBuf>,
         selection: Selection,
+        line: usize,
         text: String,
         is_current: bool,
     }
@@ -3306,11 +3307,15 @@ fn jumplist_picker(cx: &mut Context) {
                 .collect::<Vec<_>>()
                 .join(" ")
         });
+        let line = doc.map_or(0usize, |d| {
+            selection.primary().cursor_line(d.text().slice(..)) + 1
+        });
 
         JumpMeta {
             id: doc_id,
             path: doc.and_then(|d| d.path().cloned()),
             selection,
+            line,
             text,
             is_current: view.doc == doc_id,
         }
@@ -3329,6 +3334,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .to_string()
                 .into()
         }),
+        ui::PickerColumn::new("line", |item: &JumpMeta, _| item.line.to_string().into()),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
             if item.is_current {
