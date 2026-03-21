@@ -2240,29 +2240,40 @@ impl Document {
         &self.code_lenses
     }
 
-    pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+    fn map_code_lenses(&self, lenses: Vec<lsp::CodeLens>) -> Vec<CodeLens> {
         let text = self.text().clone();
         let Some(language_server) = self
             .language_servers_with_feature(LanguageServerFeature::CodeLens)
             .next()
         else {
-            return;
+            return Vec::new();
         };
         let offset_encoding = language_server.offset_encoding();
-        self.code_lenses = lenses
+        lenses
             .into_iter()
             .filter_map(|l| {
-                if let Some(char_idx) = lsp_pos_to_pos(&text, l.range.start, offset_encoding) {
-                    Some(CodeLens {
-                        line: self.text.char_to_line(char_idx),
-                        char_idx,
-                        lens: l,
-                    })
-                } else {
-                    None
-                }
+                lsp_pos_to_pos(&text, l.range.start, offset_encoding).map(|char_idx| CodeLens {
+                    line: self.text.char_to_line(char_idx),
+                    char_idx,
+                    lens: l,
+                })
             })
-            .collect();
+            .collect()
+    }
+
+    pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        self.code_lenses = self.map_code_lenses(lenses);
+    }
+
+    pub fn update_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        for updated_lens in lenses {
+            if let Some(existing_lens) = self.code_lenses.iter_mut().find(|existing_lens| {
+                existing_lens.lens.range == updated_lens.range
+                    && existing_lens.lens.data == updated_lens.data
+            }) {
+                existing_lens.lens = updated_lens;
+            }
+        }
     }
 
     /// Get the document's auto pairs. If the document has a recognized
