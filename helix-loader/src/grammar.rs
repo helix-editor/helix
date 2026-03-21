@@ -267,6 +267,7 @@ enum FetchStatus {
     NonGit,
 }
 
+#[derive(Copy, Clone)]
 enum GitObjectFormat {
     Sha1,
     Sha256,
@@ -322,7 +323,7 @@ impl VendoredGrammar {
     ///
     /// To ensure clean state, existing grammar directory is removed and re-inited
     /// before fetch operation.
-    fn fetch(&self, remote: &str, rev: &str, object_format: &GitObjectFormat) -> Result<()> {
+    fn fetch(&self, remote: &str, rev: &str, object_format: GitObjectFormat) -> Result<()> {
         self.reinit(remote, object_format)?;
 
         git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
@@ -334,7 +335,7 @@ impl VendoredGrammar {
     /// Initializes the grammar directory.
     ///
     /// Creates directory and sets it up as a git repo, with remote set correctly.
-    fn init(&self, remote: &str, object_format: &GitObjectFormat) -> Result<()> {
+    fn init(&self, remote: &str, object_format: GitObjectFormat) -> Result<()> {
         // Create the grammar directory if needed.
         fs::create_dir_all(&self.dir).context(format!(
             "Could not create grammar directory {:?}",
@@ -355,7 +356,7 @@ impl VendoredGrammar {
     }
 
     /// Removes the grammar directory before initializing again.
-    fn reinit(&self, remote: &str, object_format: &GitObjectFormat) -> Result<()> {
+    fn reinit(&self, remote: &str, object_format: GitObjectFormat) -> Result<()> {
         fs::remove_dir_all(&self.dir)?;
         self.init(remote, object_format)?;
         Ok(())
@@ -387,14 +388,14 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     let (object_format, revision) = extract_object_format_from_revision(&revision);
 
     // WARN: Must init before other operations are done.
-    repo.init(&remote, &object_format)?;
+    repo.init(&remote, object_format)?;
 
     if repo.revision().is_some_and(|rev| rev == revision) {
         return Ok(FetchStatus::GitUpToDate);
     }
 
     // Fetch the grammar if the revision doesn't match.
-    repo.fetch(&remote, &revision, &object_format)?;
+    repo.fetch(&remote, &revision, object_format)?;
 
     Ok(FetchStatus::GitUpdated { revision: revision.to_string() })
 }
