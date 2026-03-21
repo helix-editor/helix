@@ -31,7 +31,7 @@ commit-lsp = { command = "commit-lsp", args = ["run"] }
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
-cuelsp = { command = "cuelsp" }
+cuelsp = { command = "cue", args = ["lsp", "serve"] }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 djlsp = { command = "djlsp" }
@@ -1963,13 +1963,17 @@ grammar = "scheme"
 
 [[language]]
 name = "common-lisp"
-scope = "source.lisp"
+scope = "source.commonlisp"
 file-types = ["lisp", "asd", "cl", "l", "lsp", "ny", "podsl", "ros", "sexp"]
 shebangs = ["lisp", "sbcl", "ccl", "clisp", "ecl"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "cl-lsp" ]
-grammar = "scheme"
+grammar = "commonlisp"
+
+[[grammar]]
+name = "commonlisp"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp", rev = "32323509b3d9fe96607d151c2da2c9009eb13a2f" }
 
 [language.auto-pairs]
 '(' = ')'
@@ -3666,7 +3670,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "capnp"
-source = { git = "https://github.com/amaanq/tree-sitter-capnp", rev = "fc6e2addf103861b9b3dffb82c543eb6b71061aa" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-capnp", rev = "7b0883c03e5edd34ef7bcf703194204299d7099f" }
 
 [[language]]
 name = "smithy"
@@ -3829,7 +3833,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "blueprint"
-source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "863cea9f83ad5637300478e0559262f1e791684b" }
+source = { git = "https://gitlab.com/gabmus/tree-sitter-blueprint", rev = "355ef84ef8a958ac822117b652cf4d49bac16c79" }
 
 [[language]]
 name = "forth"
@@ -4193,7 +4197,7 @@ source = { git = "https://github.com/tact-lang/tree-sitter-tact", rev = "ec57ab2
 name = "pkl"
 scope = "source.pkl"
 injection-regex = "pkl"
-file-types = ["pkl", "pcf"]
+file-types = ["pkl", "pcf", { glob = "PklProject" }]
 comment-token = "//"
 language-servers = ["pkl-lsp"]
 indent = { tab-width = 2, unit = "  " }
@@ -4783,13 +4787,13 @@ source = { git = "https://github.com/uncenter/tree-sitter-tera", rev = "e8d679a2
 name = "fga"
 scope = "source.fga"
 injection-regex = "fga"
-file-types = ["fga"]
+file-types = ["fga", { glob = "fga.mod" } ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "fga"
-source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
+source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "ce72d1c484ba133a18e966d67be66bce85695451" }
 
 [[language]]
 name = "csv"
@@ -5412,3 +5416,15 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "ptx"
 source = { git = "https://codeberg.org/jer-gremlin/tree-sitter-ptx", rev = "3dfa6758d4c15832d051f933101992b9e01d6611" }
+
+[[language]]
+name = "tql"
+scope = "source.tql"
+file-types = [ "tql" ]
+injection-regex = "tql"
+indent = {tab-width = 2, unit = "  "}
+comment-token = "//"
+
+[[grammar]]
+name = "tql"
+source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }

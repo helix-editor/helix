@@ -53,6 +53,8 @@ struct Capabilities {
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
+    /// OSC11 / OSC111 - change the terminal's background color.
+    dynamic_background_color: bool,
     theme_mode: Option<theme::Mode>,
 }
 
@@ -77,6 +79,7 @@ pub struct TerminaBackend {
     capabilities: Capabilities,
     reset_cursor_command: String,
     is_synchronized_output_set: bool,
+    background_color: Option<RgbColor>,
 }
 
 impl TerminaBackend {
@@ -114,6 +117,7 @@ impl TerminaBackend {
             capabilities,
             reset_cursor_command,
             is_synchronized_output_set: false,
+            background_color: None,
         })
     }
 
@@ -134,6 +138,9 @@ impl TerminaBackend {
 
         let mut capabilities = Capabilities::default();
         let start = Instant::now();
+
+        // HACK: emitting OSC11 / OSC111 seems to break SGR and cause flickering in tmux.
+        capabilities.dynamic_background_color = std::env::var_os("TMUX").is_none();
 
         capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
             KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
@@ -392,6 +399,16 @@ impl Backend for TerminaBackend {
             // things like mosh are buggy. See <https://github.com/helix-editor/helix/pull/1944>.
             Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
         )?;
+        if let Some(color) = self.background_color {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![color.into()]
+                )
+            )?;
+        }
         self.enable_mouse_capture()?;
         self.enable_extensions()?;
 
@@ -422,6 +439,13 @@ impl Backend for TerminaBackend {
             decreset!(FocusTracking),
             decreset!(ClearAndEnableAlternateScreen),
         )?;
+        if self.background_color.is_some() {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor)
+            )?;
+        }
         self.terminal.flush()?;
         self.terminal.enter_cooked_mode()?;
         Ok(())
@@ -575,13 +599,20 @@ impl Backend for TerminaBackend {
     }
 
     fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()> {
+        if !self.capabilities.dynamic_background_color {
+            return Ok(());
+        }
+        self.background_color = match color {
+            Some(Color::Rgb(r, g, b)) => Some(RgbColor::new(r, g, b)),
+            _ => None,
+        };
         write!(
             self.terminal,
             "{}",
-            match color {
-                Some(Color::Rgb(r, g, b)) => Osc::ChangeDynamicColors(
+            match self.background_color {
+                Some(color) => Osc::ChangeDynamicColors(
                     osc::DynamicColorNumber::TextBackgroundColor,
-                    vec![RgbColor::new(r, g, b).into()]
+                    vec![color.into()]
                 ),
                 _ => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
             }
@@ -598,13 +629,19 @@ impl Drop for TerminaBackend {
             let _ = self.disable_mouse_capture();
             let _ = write!(
                 self.terminal,
-                "{}{}{}{}{}",
+                "{}{}{}{}",
                 &self.reset_cursor_command,
                 decreset!(BracketedPaste),
                 decreset!(FocusTracking),
-                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
                 decreset!(ClearAndEnableAlternateScreen),
             );
+            if self.background_color.is_some() {
+                let _ = write!(
+                    self.terminal,
+                    "{}",
+                    Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor)
+                );
+            }
             // NOTE: Drop for Platform terminal resets the mode and flushes the buffer when not
             // panicking.
         }

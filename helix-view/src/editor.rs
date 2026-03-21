@@ -1483,26 +1483,26 @@ impl Editor {
             .unwrap_or(false)
     }
 
-    pub fn unset_theme_preview(&mut self) {
+    pub fn unset_theme_preview(&mut self) -> anyhow::Result<()> {
         if let Some(last_theme) = self.last_theme.take() {
-            self.set_theme(last_theme);
+            self.set_theme(last_theme)?;
         }
         // None likely occurs when the user types ":theme" and then exits before previewing
+        Ok(())
     }
 
-    pub fn set_theme_preview(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, ThemeAction::Preview);
+    pub fn set_theme_preview(&mut self, theme: Theme) -> anyhow::Result<()> {
+        self.set_theme_impl(theme, ThemeAction::Preview)
     }
 
-    pub fn set_theme(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, ThemeAction::Set);
+    pub fn set_theme(&mut self, theme: Theme) -> anyhow::Result<()> {
+        self.set_theme_impl(theme, ThemeAction::Set)
     }
 
-    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) -> anyhow::Result<()> {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_highlight_exact("ui.selection").is_none() {
-            self.set_error("Invalid theme: `ui.selection` required");
-            return;
+            bail!("Invalid theme: `ui.selection` required");
         }
 
         let scopes = theme.scopes();
@@ -1521,6 +1521,9 @@ impl Editor {
         }
 
         self._refresh();
+        self.config_events.0.send(ConfigEvent::ThemeChanged)?;
+
+        Ok(())
     }
 
     #[inline]
