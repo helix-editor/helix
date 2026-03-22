@@ -387,7 +387,8 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
-        global_search, "Global search in workspace folder",
+        global_search, "Global fuzzy search in workspace folder",
+        global_search_regex, "Global regex search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2479,6 +2480,14 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
+    global_search_impl(cx, true);
+}
+
+fn global_search_regex(cx: &mut Context) {
+    global_search_impl(cx, false);
+}
+
+fn global_search_impl(cx: &mut Context, fuzzy: bool) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
@@ -2577,11 +2586,11 @@ fn global_search(cx: &mut Context) {
     }
 
     let config = cx.editor.config();
-    let search_fuzzy = config.search.fuzzy;
+    let search_fuzzy = fuzzy;
     let search_smart_case = config.search.smart_case;
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
-        fuzzy: config.search.fuzzy,
+        fuzzy,
         file_picker_config: config.file_picker.clone(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
