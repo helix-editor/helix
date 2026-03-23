@@ -1,0 +1,35 @@
+# Alucard — Dracula's light counterpart
+# Based on https://draculatheme.com/spec (Alucard Classic)
+
+inherits = "dracula"
+
+"ui.help" = { fg = "foreground", bg = "lighter" }
+"ui.menu.selected" = { fg = "background", bg = "purple" }
+"ui.statusline" = { fg = "foreground", bg = "light" }
+"ui.statusline.insert" = { fg = "background", bg = "green", modifiers = ["bold"] }
+"ui.statusline.normal" = { fg = "background", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "background" , bg = "cyan", modifiers = ["bold"] }
+"ui.popup" = { fg = "foreground", bg = "lighter" }
+"ui.cursorline.primary" = { bg = "light" }
+"ui.virtual.ruler" = { bg = "lighter" }
+
+[palette]
+background = "#FFFBEB"
+lighter = "#ECE9DF"
+light = "#DEDCCF"
+dark = "#CECCC0"
+darker = "#BCBAB3"
+comment = "#6C664B"
+current_line = "#CFCFDE"
+cyan = "#036A96"
+foreground = "#1F1F1F"
+green = "#14710A"
+grey = "#B0AB96"
+indent = "#C5C0AD"
+orange = "#A34D14"
+pink = "#A3144D"
+purple = "#644AC9"
+red = "#CB3A2A"
+selection = "#CFDECF"
+whitespace = "#B0AA90"
+yellow = "#846E15"
