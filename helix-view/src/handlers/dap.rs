@@ -346,16 +346,8 @@ impl Editor {
                         }
                         // TODO: fetch breakpoints (in case we're attaching)
 
-                        if debugger
-                            .capabilities()
-                            .supports_configuration_done_request
-                            .unwrap_or(false)
-                        {
-                            if let Err(err) = debugger.configuration_done().await {
-                                self.set_error(format!("Debugger configuration failed: {}", err));
-                            } else {
-                                self.set_status("Debugged application started");
-                            }
+                        if let Err(err) = debugger.configuration_done().await {
+                            self.set_error(format!("Debugger configuration failed: {}", err));
                         } else {
                             self.set_status("Debugged application started");
                         }
