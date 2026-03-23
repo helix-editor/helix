@@ -1,5 +1,3 @@
-use std::{collections::HashSet, time::Duration};
-
 use helix_core::{
     syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation, Range,
 };
@@ -14,97 +12,35 @@ use helix_view::{
     handlers::{lsp::InlayHintsEvent, Handlers},
     Document, DocumentId, Editor, View, ViewId,
 };
-use tokio::time::Instant;
 
 use crate::job;
 
-const INLAY_HINT_DEBOUNCE: Duration = Duration::from_millis(75);
-
 #[derive(Debug, Default)]
-pub(super) struct InlayHintsHandler {
-    refresh_visible_views: bool,
-    dirty_documents: HashSet<DocumentId>,
-    dirty_views: HashSet<(DocumentId, ViewId)>,
-}
+pub(super) struct InlayHintsHandler;
 
 impl helix_event::AsyncHook for InlayHintsHandler {
     type Event = InlayHintsEvent;
 
-    fn handle_event(&mut self, event: Self::Event, _timeout: Option<Instant>) -> Option<Instant> {
-        match event {
-            InlayHintsEvent::RefreshVisibleViews => {
-                self.refresh_visible_views = true;
-            }
+    fn handle_event(
+        &mut self,
+        event: Self::Event,
+        _timeout: Option<tokio::time::Instant>,
+    ) -> Option<tokio::time::Instant> {
+        job::dispatch_blocking(move |editor, _| match event {
+            InlayHintsEvent::RefreshVisibleViews => refresh_visible_inlay_hints(editor),
             InlayHintsEvent::RefreshDocument { document_id } => {
-                self.dirty_documents.insert(document_id);
+                request_all_document_inlay_hints(editor, document_id)
             }
             InlayHintsEvent::RefreshView {
                 document_id,
                 view_id,
-            } => {
-                self.dirty_views.insert((document_id, view_id));
-            }
-        }
-
-        Some(Instant::now() + INLAY_HINT_DEBOUNCE)
-    }
-
-    fn finish_debounce(&mut self) {
-        let refresh_visible_views = std::mem::take(&mut self.refresh_visible_views);
-        let dirty_documents = std::mem::take(&mut self.dirty_documents);
-        let dirty_views = std::mem::take(&mut self.dirty_views);
-
-        job::dispatch_blocking(move |editor, _| {
-            let requests =
-                collect_requests(editor, refresh_visible_views, dirty_documents, dirty_views);
-
-            for (document_id, view_id) in requests {
-                request_inlay_hints(editor, document_id, view_id);
-            }
+            } => request_inlay_hints(editor, document_id, view_id),
         });
-    }
-}
 
-fn collect_requests(
-    editor: &Editor,
-    refresh_visible_views: bool,
-    dirty_documents: HashSet<DocumentId>,
-    dirty_views: HashSet<(DocumentId, ViewId)>,
-) -> HashSet<(DocumentId, ViewId)> {
-    let mut requests = HashSet::new();
-
-    if refresh_visible_views || !dirty_documents.is_empty() {
-        for (view, _) in editor.tree.views() {
-            let request = (view.doc, view.id);
-            let should_request = if refresh_visible_views {
-                editor
-                    .document(view.doc)
-                    .map(|doc| {
-                        doc.inlay_hints(view.id).map(|hints| hints.id)
-                            != Some(visible_inlay_hints_id(view, doc))
-                    })
-                    .unwrap_or(false)
-            } else {
-                dirty_documents.contains(&view.doc)
-            };
-
-            if should_request {
-                requests.insert(request);
-            }
-        }
+        None
     }
 
-    for (document_id, view_id) in dirty_views {
-        if editor
-            .tree
-            .try_get(view_id)
-            .is_some_and(|view| view.doc == document_id)
-        {
-            requests.insert((document_id, view_id));
-        }
-    }
-
-    requests
+    fn finish_debounce(&mut self) {}
 }
 
 struct InlayHintsRequest {
@@ -198,6 +134,36 @@ fn request_inlay_hints(editor: &mut Editor, document_id: DocumentId, view_id: Vi
             None => {}
         }
     });
+}
+
+fn refresh_visible_inlay_hints(editor: &mut Editor) {
+    let requests: Vec<_> = editor
+        .tree
+        .views()
+        .filter_map(|(view, _)| {
+            let doc = editor.document(view.doc)?;
+
+            (doc.inlay_hints(view.id).map(|hints| hints.id)
+                != Some(visible_inlay_hints_id(view, doc)))
+            .then_some((view.doc, view.id))
+        })
+        .collect();
+
+    for (document_id, view_id) in requests {
+        request_inlay_hints(editor, document_id, view_id);
+    }
+}
+
+fn request_all_document_inlay_hints(editor: &mut Editor, document_id: DocumentId) {
+    let view_ids: Vec<_> = editor
+        .tree
+        .views()
+        .filter_map(|(view, _)| (view.doc == document_id).then_some(view.id))
+        .collect();
+
+    for view_id in view_ids {
+        request_inlay_hints(editor, document_id, view_id);
+    }
 }
 
 fn apply_inlay_hints_response(
