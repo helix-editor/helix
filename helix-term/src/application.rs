@@ -1219,6 +1219,7 @@ impl Application {
         // Determine the focus strategy based on the current UI state and LSP request:
         // 1. If there is no pop-up overlay, jump directly (Replace).
         // 2. If there is a pop-up overlay, unless the LSP forces take_focus, only load in the background (Load) to prevent interruption of input.
+        // Note: We assume layer_count() == 1 means only the EditorView is present (no popups/overlays).
         let action = if self.compositor.layer_count() == 1 {
             helix_view::editor::Action::Replace
         } else {
