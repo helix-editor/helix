@@ -1,0 +1,65 @@
+# Author: Erik Schwagerus <erikcsgooff@gmail.com>
+# License: MIT
+# Description: A Helix theme inspired by Visual Studio Code.
+# Repository: https://github.com/erikkabanela/helix-modern-dark
+
+attribute = "#9CDCFE"
+
+namespace = "#4EC9B0"
+
+type = "#4EC9B0"
+"type.builtin" = "#569CD6"
+"type.enum.variant" = "#4FC1FF"
+
+function = "#DCDCAA"
+"function.macro" = "#569CD6"
+
+label = "#D7BA7D"
+
+tag = "#569CD6"
+
+comment = "#6A9955"
+
+constructor = "#DCDCAA"
+
+string = "#CE9178"
+
+punctuation = "#D4D4D4"
+
+"constant.builtin" = "#569CD6"
+constant = "#4FC1FF"
+"constant.numeric" = "#B5CEA8"
+"constant.character.escape" = "#D7BA7D"
+
+variable = "#9CDCFE"
+"variable.builtin" = "#569CD6"
+"variable.parameter" = "#9CDCFE"
+"variable.other.member" = "#9CDCFE"
+
+keyword = "#569CD6"
+"keyword.control" = "#C586C0"
+"keyword.directive" = "#C586C0"
+"keyword.control.repeat" = "#C586C0"
+
+"ui.background" = { bg = "background" }
+
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+
+"ui.statusline" = { bg = "statusline_bg" }
+
+"ui.linenr" = { fg = "#6E7681" }
+"ui.linenr.selected" = { fg = "foreground" }
+
+"ui.cursor" = { fg = "hover", bg = "#AEAFAD" }
+"ui.cursor.match" = { fg = "foreground", bg = "#525252" }
+
+[palette]
+background = "#1F1F1F"
+statusline_bg = "#181818"
+
+foreground = "#CCCCCC"
+
+hover = "#2B2B2B"
+
+selection = "#264F78"
