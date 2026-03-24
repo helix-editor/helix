@@ -1310,6 +1310,7 @@ file-types = [
   { glob = "bash_completion" },
   { glob = "bash-completion/completions/*" },
   { glob = "bash_completion.d/*" },
+  { glob = "bin/activate" },
   { glob = ".Renviron" },
   { glob = ".xprofile" },
   { glob = ".xsession" },
