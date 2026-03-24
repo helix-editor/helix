@@ -1,4 +1,4 @@
-## Themes
+# Themes
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
@@ -17,10 +17,9 @@ light = "catppuccin_latte"
 
 Create a file with the name of your theme as the file name (i.e `mytheme.toml`) and place it in your `themes` directory (i.e `~/.config/helix/themes` or `%AppData%\helix\themes` on Windows). The directory might have to be created beforehand.
 
-> 💡 The names "default" and "base16_default" are reserved for built-in themes
-> and cannot be overridden by user-defined themes.
+> 💡 The names "default" and "base16_default" are reserved for built-in themes and cannot be overridden by user-defined themes.
 
-### Overview
+## Overview
 
 Each line in the theme file is specified as below:
 
@@ -48,19 +47,13 @@ Color values must be either a [CSS hex RGB string](https://developer.mozilla.org
 
 > 💡 Note that Helix doesn't support transparency (alpha channel).
 
-For inspiration, you can find the default `theme.toml`
-[here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
-user-submitted themes
-[here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
-
+For inspiration, you can find the [default `theme.toml`](https://github.com/helix-editor/helix/blob/master/theme.toml) and the [user-submitted themes directory](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
 ## The details of theme creation
 
-### Color palettes
+## Color palettes
 
-It's recommended to define a palette of named colors, and refer to them in the
-configuration values in your theme. To do this, add a table called
-`palette` to your theme file:
+It's recommended to define a palette of named colors, and refer to them in the configuration values in your theme. To do this, add a table called `palette` to your theme file:
 
 ```toml
 "ui.background" = "white"
@@ -71,12 +64,9 @@ white = "#ffffff"
 black = "#000000"
 ```
 
-Keep in mind that the `[palette]` table includes all keys after its header,
-so it should be defined after the normal theme options.
+Keep in mind that the `[palette]` table includes all keys after its header, so it should be defined after the normal theme options.
 
-The default palette uses the terminal's default 16 colors, and the colors names
-are listed below. The `[palette]` section in the config file takes precedence
-over it and is merged into the default palette.
+The default palette uses the terminal's default 16 colors, and the colors names are listed below. The `[palette]` section in the config file takes precedence over it and is merged into the default palette.
 
 | Color Name      |
 | ---             |
@@ -98,10 +88,9 @@ over it and is merged into the default palette.
 | `light-gray`    |
 | `white`         |
 
-### Modifiers
+## Modifiers
 
-The following values may be used as modifier, provided they are supported by
-your terminal emulator.
+The following values may be used as modifier, provided they are supported by your terminal emulator.
 
 | Modifier             |
 | ---                  |
@@ -115,13 +104,11 @@ your terminal emulator.
 | `hidden`             |
 | `crossed_out`        |
 
-> 💡 The `underlined` modifier is deprecated and only available for backwards compatibility.
-> Its behavior is equivalent to setting `underline.style="line"`.
+> 💡 The `underlined` modifier is deprecated and only available for backwards compatibility. Its behavior is equivalent to setting `underline.style="line"`.
 
-### Underline style
+## Underline style
 
-One of the following values may be used as a value for `underline.style`, providing it is
-supported by your terminal emulator.
+One of the following values may be used as a value for `underline.style`, providing it is supported by your terminal emulator.
 
 | Modifier       |
 | ---            |
@@ -131,8 +118,7 @@ supported by your terminal emulator.
 | `dotted`       |
 | `double_line`  |
 
-
-### Inheritance
+## Inheritance
 
 Extend other themes by setting the `inherits` property to an existing theme.
 
@@ -147,10 +133,9 @@ inherits = "boo_berry"
 berry = "#2A2A4D"
 ```
 
-### Rainbow
+## Rainbow
 
-The `rainbow` key is used for rainbow highlight for matching brackets.
-The key is a list of styles.
+The `rainbow` key is used for rainbow highlight for matching brackets. The key is a list of styles.
 
 ```toml
 rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
@@ -158,19 +143,17 @@ rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold
 
 Colors from the palette and modifiers may be used.
 
-### Scopes
+## Scopes
 
 The following is a list of scopes available to use for styling:
 
-#### Syntax highlighting
+### Syntax highlighting
 
 These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights).
 
 When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
-We use a similar set of scopes as
-[Sublime Text](https://www.sublimetext.com/docs/scope_naming.html). See also
-[TextMate](https://macromates.com/manual/en/language_grammars) scopes.
+We use a similar set of scopes as [Sublime Text](https://www.sublimetext.com/docs/scope_naming.html). See also [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
 
 - `attribute` - Class attributes, HTML tag attributes
 
@@ -179,6 +162,7 @@ We use a similar set of scopes as
   - `parameter` - Generic type parameters (`T`)
   - `enum`
     - `variant`
+
 - `constructor`
 
 - `constant` (TODO: constant.other.placeholder for `%v`)
@@ -249,8 +233,7 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
-See also [#2380]
+- `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc. See also [#2380]
 
 - `markup`
   - `heading`
@@ -283,7 +266,7 @@ See also [#2380]
     - `conflict` - merge conflicts
     - `gutter` - gutter indicator
 
-#### Interface
+### Interface
 
 These scopes are used for theming the editor interface:
 
@@ -298,7 +281,6 @@ These scopes are used for theming the editor interface:
     - `inline`
       - `completion` - for completion doc popup UI
       - `hover` - for hover popup UI
-
 
 | Key                               | Notes                                                                                          |
 | ---                               | ---                                                                                            |

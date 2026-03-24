@@ -1,0 +1,41 @@
+name: Book Lint
+
+on:
+  pull_request:
+    paths:
+      - "book/**"
+      - ".rumdl.toml"
+      - ".github/workflows/book-lint.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "book/**"
+      - ".rumdl.toml"
+      - ".github/workflows/book-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  rumdl:
+    name: rumdl
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "book-lint"
+
+      - name: Install rumdl
+        run: cargo +stable install --locked rumdl
+
+      - name: Run rumdl
+        run: rumdl check book

@@ -1,0 +1,19 @@
+[global]
+# Match the book's current mdBook conventions and ignore legacy patterns that
+# would require broad content rewrites before linting becomes useful.
+exclude = ["book/src/generated/*.md"]
+extend-enable = ["MD060"]
+disable = [
+  "MD013",
+  "MD033",
+  "MD051",
+]
+
+[MD060]
+style = "aligned"
+
+[MD004]
+style = "dash"
+
+[per-file-ignores]
+"book/src/generated/*.md" = ["MD040"]
