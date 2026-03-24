@@ -1,6 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::SystemTime;
 use std::{
     collections::HashSet,
@@ -10,8 +12,6 @@ use std::{
 };
 use tempfile::TempPath;
 use tree_house::tree_sitter::Grammar;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 #[cfg(target_os = "macos")]
 const DYLIB_EXTENSION: &str = "dylib";
@@ -107,9 +107,7 @@ pub fn fetch_grammars(verbose: bool) -> Result<()> {
         if verbose {
             println!(
                 "Fetching grammars ({}/{}): {}",
-                current,
-                total,
-                grammar.grammar_id
+                current, total, grammar.grammar_id
             );
         };
         fetch_grammar(grammar)
@@ -181,12 +179,10 @@ pub fn build_grammars(target: Option<String>, verbose: bool) -> Result<()> {
         let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
 
         if verbose {
-           println!(
-               "Building grammars ({}/{}): {}",
-               current,
-               total,
-               grammar.grammar_id
-           );
+            println!(
+                "Building grammars ({}/{}): {}",
+                current, total, grammar.grammar_id
+            );
         };
         build_grammar(grammar, target.as_deref())
     });

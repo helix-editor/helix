@@ -68,7 +68,7 @@ impl Args {
                     }
                 },
                 "-v" | "--verbose" => args.verbose_grammars = true,
-                _ => {},
+                _ => {}
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),
