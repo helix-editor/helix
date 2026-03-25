@@ -2923,7 +2923,18 @@ source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e43eff8
 name = "starlark"
 scope = "source.starlark"
 injection-regex = "(starlark|bzl|bazel|buck)"
-file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUCK" }, { glob = "BUILD.*" }, { glob = "WORKSPACE" }, { glob = "WORKSPACE.bzlmod" }, { glob = "PACKAGE" }]
+file-types = [
+  "bzl",
+  "bazel",
+  "star",
+  "bxl", # Buck Extension Language
+  { glob = "BUILD" },
+  { glob = "BUCK" },
+  { glob = "BUILD.*" },
+  { glob = "WORKSPACE" },
+  { glob = "WORKSPACE.bzlmod" },
+  { glob = "PACKAGE" },
+]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "starpls" ]
