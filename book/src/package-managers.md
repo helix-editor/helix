@@ -17,6 +17,7 @@
   - [Winget](#winget)
   - [Scoop](#scoop)
   - [Chocolatey](#chocolatey)
+  - [Packably](#packably)
   - [MSYS2](#msys2)
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
@@ -146,7 +147,7 @@ sudo port install helix
 
 ## Windows
 
-Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/), [Packably](https://www.packably.com.br/)
 or [MSYS2](https://msys2.org/).
 
 ### Winget
@@ -167,6 +168,12 @@ scoop install helix
 
 ```sh
 choco install helix
+```
+
+### Packably
+
+```sh
+packl install helix
 ```
 
 ### MSYS2
