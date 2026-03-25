@@ -273,7 +273,7 @@
 | spicedb | ✓ |  |  | ✓ |  |  |
 | sql | ✓ | ✓ |  |  | ✓ |  |
 | ssh_client_config | ✓ |  |  |  |  |  |
-| starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls` |
+| starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls`, `buck2` |
 | strace | ✓ |  |  |  |  |  |
 | strictdoc | ✓ |  |  | ✓ |  |  |
 | styx | ✓ | ✓ | ✓ |  | ✓ | `styx` |

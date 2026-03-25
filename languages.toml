@@ -19,6 +19,7 @@ beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 biome-lsp-proxy = { command = "biome", args = ["lsp-proxy"] }
 bitbake-language-server = { command = "bitbake-language-server" }
+buck2 = { command = "buck2", args = ["lsp"] }
 buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
 c3-lsp = { command = "c3-lsp" }
 cairo-language-server = { command = "cairo-language-server", args = [] }
@@ -2937,7 +2938,7 @@ file-types = [
 ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
-language-servers = [ "starpls" ]
+language-servers = [ "starpls", "buck2" ]
 grammar = "python"
 
 [[language]]
