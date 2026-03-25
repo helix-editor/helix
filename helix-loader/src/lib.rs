@@ -2,6 +2,8 @@ pub mod config;
 pub mod grammar;
 
 use helix_stdx::{env::current_working_dir, path};
+use std::collections::HashSet;
+use toml::Value;
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
@@ -152,14 +154,14 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-/// Merge two TOML documents, merging values from `right` onto `left`
+/// Merge two TOML documents, merging values from `incoming` onto `base`
 ///
 /// `merge_depth` sets the nesting depth up to which values are merged instead
 /// of overridden.
 ///
-/// When a table exists in both `left` and `right`, the merged table consists of
-/// all keys in `left`'s table unioned with all keys in `right` with the values
-/// of `right` being merged recursively onto values of `left`.
+/// When a table exists in both `base` and `incoming`, the merged table consists of
+/// all keys in `base`'s table unioned with all keys in `incoming` with the values
+/// of `incoming` being merged recursively onto values of `base`.
 ///
 /// `crate::merge_toml_values(a, b, 3)` combines, for example:
 ///
@@ -184,54 +186,130 @@ pub fn default_log_file() -> PathBuf {
 ///
 /// thus it overrides the third depth-level of b with values of a if they exist,
 /// but otherwise merges their values
-pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usize) -> toml::Value {
+pub fn merge_toml_values(
+    base: toml::Value,
+    incoming: toml::Value,
+    merge_depth: usize,
+) -> toml::Value {
     use toml::Value;
 
     fn get_name(v: &Value) -> Option<&str> {
         v.get("name").and_then(Value::as_str)
     }
 
-    match (left, right) {
-        (Value::Array(mut left_items), Value::Array(right_items)) => {
-            if merge_depth > 0 {
-                left_items.reserve(right_items.len());
-                for rvalue in right_items {
-                    let lvalue = get_name(&rvalue)
-                        .and_then(|rname| {
-                            left_items.iter().position(|v| get_name(v) == Some(rname))
-                        })
-                        .map(|lpos| left_items.remove(lpos));
-                    let mvalue = match lvalue {
-                        Some(lvalue) => merge_toml_values(lvalue, rvalue, merge_depth - 1),
-                        None => rvalue,
-                    };
-                    left_items.push(mvalue);
+    match (base, incoming) {
+        (Value::Array(mut base_items), Value::Array(incoming_items)) => {
+            // Attempt merge with list modifiers if any are present
+            let needs_list_modifier_merge = incoming_items.iter().any(|val| {
+                if let Value::String(s) = val {
+                    s == "..." || s.starts_with('!')
+                } else {
+                    false
                 }
-                Value::Array(left_items)
+            }) || incoming_items.iter().all(|val| val.is_str());
+
+            if needs_list_modifier_merge {
+                Value::Array(merge_list_with_modifiers(base_items, incoming_items))
+            } else if merge_depth > 0 {
+                // Existing logic for merging arrays of tables based on 'name' key
+                base_items.reserve(incoming_items.len());
+                for incoming_value in incoming_items {
+                    let existing_value_option = get_name(&incoming_value)
+                        .and_then(|incoming_name| {
+                            base_items
+                                .iter()
+                                .position(|v| get_name(v) == Some(incoming_name))
+                        })
+                        .map(|base_pos| base_items.remove(base_pos));
+
+                    let merged_value = match existing_value_option {
+                        Some(base_value) => {
+                            merge_toml_values(base_value, incoming_value, merge_depth - 1)
+                        }
+                        None => incoming_value,
+                    };
+                    base_items.push(merged_value);
+                }
+                Value::Array(base_items)
             } else {
-                Value::Array(right_items)
+                Value::Array(incoming_items)
             }
         }
-        (Value::Table(mut left_map), Value::Table(right_map)) => {
+        (Value::Table(mut base_map), Value::Table(incoming_map)) => {
             if merge_depth > 0 {
-                for (rname, rvalue) in right_map {
-                    match left_map.remove(&rname) {
-                        Some(lvalue) => {
-                            let merged_value = merge_toml_values(lvalue, rvalue, merge_depth - 1);
-                            left_map.insert(rname, merged_value);
+                for (incoming_name, incoming_value) in incoming_map {
+                    match base_map.remove(&incoming_name) {
+                        Some(base_value) => {
+                            let merged_value =
+                                merge_toml_values(base_value, incoming_value, merge_depth - 1);
+                            base_map.insert(incoming_name, merged_value);
                         }
                         None => {
-                            left_map.insert(rname, rvalue);
+                            base_map.insert(incoming_name, incoming_value);
                         }
                     }
                 }
-                Value::Table(left_map)
+                Value::Table(base_map)
             } else {
-                Value::Table(right_map)
+                Value::Table(incoming_map)
             }
         }
         // Catch everything else we didn't handle, and use the right value
         (_, value) => value,
+    }
+}
+
+fn merge_list_with_modifiers(base_list: Vec<Value>, incoming_list: Vec<Value>) -> Vec<Value> {
+    let mut final_list = Vec::new();
+    let mut excluded_items = HashSet::new();
+    let mut append_at_idx: Option<usize> = None;
+
+    for r_val in incoming_list {
+        if let Value::String(s) = r_val {
+            if s == "..." {
+                if append_at_idx.is_some() {
+                    log::warn!(
+                        "Multiple '...' found in list. Only the first one will be considered."
+                    );
+                    continue;
+                }
+                append_at_idx = Some(final_list.len());
+            } else if let Some(name) = s.strip_prefix('!') {
+                excluded_items.insert(name.to_string());
+            } else {
+                final_list.push(Value::String(s));
+            }
+        } else {
+            // Non-string values are passed through directly,
+            // but modifiers only apply to strings.
+            final_list.push(r_val);
+        }
+    }
+
+    // combine
+    if let Some(idx) = append_at_idx {
+        // remove excluded and already present items from base list
+        let mut processed_base_list = Vec::new();
+        for l_val in base_list {
+            if let Value::String(s) = l_val {
+                if !excluded_items.contains(&s)
+                    && !final_list
+                        .iter()
+                        .any(|item| item.is_str() && item.as_str().is_some_and(|v| v == &s))
+                {
+                    processed_base_list.push(Value::String(s));
+                }
+            } else {
+                processed_base_list.push(l_val);
+            }
+        }
+
+        final_list.splice(idx..idx, processed_base_list);
+        final_list
+    } else {
+        // follow previous behavior when no ... is specified
+        // final_list here is just left
+        final_list
     }
 }
 
@@ -344,5 +422,202 @@ mod merge_toml_tests {
                 .unwrap(),
             &vec![Value::String("lsp".into())]
         )
+    }
+
+    // --- Integration style tests for merge_toml_values with language-servers modifiers ---
+    #[test]
+    fn test_merge_toml_values_language_servers_exclude() {
+        let base_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["rust-analyzer", "taplo"]
+        "#;
+        let user_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["!taplo", "custom-lsp"]
+        "#;
+        let base: Value = toml::from_str(base_toml).unwrap();
+        let user: Value = toml::from_str(user_toml).unwrap();
+
+        let merged = super::merge_toml_values(base, user, 3);
+        let rust_lang = merged
+            .get("language")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "rust")
+            .unwrap();
+        let servers = rust_lang
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let server_names: Vec<String> = servers
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+
+        assert_eq!(server_names, vec!["custom-lsp"]);
+    }
+
+    #[test]
+    fn test_merge_toml_values_language_servers_append() {
+        let base_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["rust-analyzer", "taplo"]
+        "#;
+        let user_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["custom-lsp-before", "...", "custom-lsp-after"]
+        "#;
+        let base: Value = toml::from_str(base_toml).unwrap();
+        let user: Value = toml::from_str(user_toml).unwrap();
+
+        let merged = super::merge_toml_values(base, user, 3);
+        let rust_lang = merged
+            .get("language")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "rust")
+            .unwrap();
+        let servers = rust_lang
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let server_names: Vec<String> = servers
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+
+        assert_eq!(
+            server_names,
+            vec![
+                "custom-lsp-before",
+                "rust-analyzer",
+                "taplo",
+                "custom-lsp-after"
+            ]
+        );
+    }
+
+    #[test]
+    fn test_merge_toml_values_language_servers_append_implicit() {
+        let base_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["rust-analyzer", "taplo"]
+        "#;
+        let user_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["custom-lsp"]
+        "#;
+        let base: Value = toml::from_str(base_toml).unwrap();
+        let user: Value = toml::from_str(user_toml).unwrap();
+
+        let merged = super::merge_toml_values(base, user, 3);
+        let rust_lang = merged
+            .get("language")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "rust")
+            .unwrap();
+        let servers = rust_lang
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let server_names: Vec<String> = servers
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+
+        assert_eq!(server_names, vec!["custom-lsp"]);
+    }
+
+    #[test]
+    fn test_merge_toml_values_language_servers_exclude_and_append() {
+        let base_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["rust-analyzer", "taplo", "clippy"]
+        "#;
+        let user_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["custom-lsp", "!taplo", "...", "!clippy", "another-custom"]
+        "#;
+        let base: Value = toml::from_str(base_toml).unwrap();
+        let user: Value = toml::from_str(user_toml).unwrap();
+
+        let merged = super::merge_toml_values(base, user, 3);
+        let rust_lang = merged
+            .get("language")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "rust")
+            .unwrap();
+        let servers = rust_lang
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let server_names: Vec<String> = servers
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+
+        assert_eq!(
+            server_names,
+            vec!["custom-lsp", "rust-analyzer", "another-custom"]
+        );
+    }
+
+    #[test]
+    fn test_merge_toml_values_language_servers_deduplication() {
+        let base_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["rust-analyzer", "taplo"]
+        "#;
+        let user_toml = r#"
+        [[language]]
+        name = "rust"
+        language-servers = ["custom-lsp", "rust-analyzer", "..."]
+        "#;
+        let base: Value = toml::from_str(base_toml).unwrap();
+        let user: Value = toml::from_str(user_toml).unwrap();
+
+        let merged = super::merge_toml_values(base, user, 3);
+        let rust_lang = merged
+            .get("language")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.get("name").unwrap().as_str().unwrap() == "rust")
+            .unwrap();
+        let servers = rust_lang
+            .get("language-servers")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let server_names: Vec<String> = servers
+            .iter()
+            .map(|v| v.as_str().unwrap().to_string())
+            .collect();
+
+        assert_eq!(server_names, vec!["custom-lsp", "rust-analyzer", "taplo"]);
     }
 }
