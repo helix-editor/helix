@@ -3,7 +3,7 @@
 
 (special_sequence) @string.special
 
-(integer) @number
+(integer) @constant.numeric.integer
 
 (comment) @comment.block
 
