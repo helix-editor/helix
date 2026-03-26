@@ -3420,6 +3420,11 @@ file-types = [
   "cfg",
   "directory",
   { glob = ".wslconfig" },
+  { glob = ".buckconfig" },
+  { glob = ".buckconfig.local" },
+  { glob = ".buckconfig.d/*" },
+  { glob = "/etc/buckconfig" },
+  { glob = "/etc/buckconfig.d/*" },
 ]
 injection-regex = "ini"
 comment-token = "#"
