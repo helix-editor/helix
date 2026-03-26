@@ -1097,30 +1097,21 @@ async fn delete_before_multi_code_point_graphemes() -> anyhow::Result<()> {
         .await?;
 
         test((
-            format!(
-                "hello {}{}#[|👨‍👩‍👧‍👦]# goodbye{}",
-                pair.0, pair.1, LINE_END
-            ),
+            format!("hello {}{}#[|👨‍👩‍👧‍👦]# goodbye{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
             format!("hello {}#[|👨‍👩‍👧‍👦]# goodbye{}", pair.0, LINE_END),
         ))
         .await?;
 
         test((
-            format!(
-                "hello {}#[|{}]#👨‍👩‍👧‍👦 goodbye{}",
-                pair.0, pair.1, LINE_END
-            ),
+            format!("hello {}#[|{}]#👨‍👩‍👧‍👦 goodbye{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
             format!("hello #[|👨‍👩‍👧‍👦]# goodbye{}", LINE_END),
         ))
         .await?;
 
         test((
-            format!(
-                "hello {}#[|{}👨‍👩‍👧‍👦]# goodbye{}",
-                pair.0, pair.1, LINE_END
-            ),
+            format!("hello {}#[|{}👨‍👩‍👧‍👦]# goodbye{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
             format!("hello #[|👨‍👩‍👧‍👦]# goodbye{}", LINE_END),
         ))
