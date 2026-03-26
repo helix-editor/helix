@@ -57,11 +57,11 @@ impl Display for ConfigLoadError {
 
 impl Config {
     pub fn load(
-        global: Result<String, ConfigLoadError>,
+        global: Result<&String, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
-            global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+            global.and_then(|file| toml::from_str(file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let res = match (global_config, local_config) {
@@ -119,10 +119,19 @@ impl Config {
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
         let global_config =
-            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
+            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error)?;
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
-        Config::load(global_config, local_config)
+
+        let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
+        let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
+        if let helix_loader::workspace_trust::TrustStatus::Trusted =
+            helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
+        {
+            Config::load(Ok(&global_config), local_config)
+        } else {
+            Ok(global_parsed)
+        }
     }
 }
 
@@ -132,7 +141,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            Config::load(Ok(&config.to_owned()), Err(ConfigLoadError::default())).unwrap()
         }
     }
 
