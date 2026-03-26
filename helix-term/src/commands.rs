@@ -4892,7 +4892,8 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 fn replace_with_yanked(cx: &mut Context) {
     replace_selections_with_register(
         cx.editor,
-        cx.editor.config().default_yank_register,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
         cx.count(),
     );
     exit_select_mode(cx);
