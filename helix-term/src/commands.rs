@@ -92,7 +92,12 @@ use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use helix_core::fuzzy::MATCHER;
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use nucleo::{
+    pattern::{CaseMatching, Normalization, Pattern as NucleoPattern},
+    Utf32Str,
+};
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -382,7 +387,8 @@ impl MappableCommand {
         search_selection, "Use current selection as search pattern",
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
-        global_search, "Global search in workspace folder",
+        global_search, "Global fuzzy search in workspace folder",
+        global_search_regex, "Global regex search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2474,36 +2480,117 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
+    global_search_impl(cx, true);
+}
+
+fn global_search_regex(cx: &mut Context) {
+    global_search_impl(cx, false);
+}
+
+fn global_search_impl(cx: &mut Context, fuzzy: bool) {
     #[derive(Debug)]
     struct FileResult {
         path: PathBuf,
-        /// 0 indexed line start
-        line_start: usize,
-        /// 0 indexed line end
-        line_end: usize,
+        /// 0 indexed lines
+        line_num: usize,
+        /// The content of the matching line (for fuzzy ranking)
+        content: String,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
+        fn new(path: &Path, line_num: usize, content: &str) -> Self {
             Self {
                 path: path.to_path_buf(),
-                line_start,
-                line_end,
+                line_num,
+                content: content.trim().to_string(),
             }
         }
     }
 
     struct GlobalSearchConfig {
         smart_case: bool,
+        fuzzy: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
         directory_style: Style,
         number_style: Style,
         colon_style: Style,
     }
 
+    /// Fuzzy-search an open document's rope, pushing matching lines to the injector.
+    /// Returns true if the injector is closed (caller should quit the walk).
+    fn fuzzy_search_rope(
+        path: &Path,
+        rope: &Rope,
+        pattern: &NucleoPattern,
+        matcher: &mut nucleo::Matcher,
+        char_buf: &mut Vec<char>,
+        injector: &ui::picker::Injector<FileResult, GlobalSearchConfig>,
+    ) -> bool {
+        for (line_idx, line) in rope.lines().enumerate() {
+            let line_str: std::borrow::Cow<str> = line.into();
+            let trimmed = line_str.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let haystack = Utf32Str::new(trimmed, char_buf);
+            if pattern.score(haystack, matcher).is_some() {
+                if injector
+                    .push(FileResult::new(path, line_idx, trimmed))
+                    .is_err()
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Fuzzy-search a file on disk, pushing matching lines to the injector.
+    /// Returns true if the injector is closed (caller should quit the walk).
+    fn fuzzy_search_path(
+        path: &Path,
+        pattern: &NucleoPattern,
+        matcher: &mut nucleo::Matcher,
+        char_buf: &mut Vec<char>,
+        injector: &ui::picker::Injector<FileResult, GlobalSearchConfig>,
+    ) -> bool {
+        use std::io::BufRead;
+        let file = match std::fs::File::open(path) {
+            Ok(f) => f,
+            Err(_) => return false,
+        };
+        let reader = std::io::BufReader::new(file);
+        for (line_idx, line_result) in reader.lines().enumerate() {
+            let line = match line_result {
+                Ok(l) => l,
+                Err(_) => break,
+            };
+            if line.contains('\0') {
+                break;
+            }
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let haystack = Utf32Str::new(trimmed, char_buf);
+            if pattern.score(haystack, matcher).is_some() {
+                if injector
+                    .push(FileResult::new(path, line_idx, trimmed))
+                    .is_err()
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     let config = cx.editor.config();
+    let search_fuzzy = fuzzy;
+    let search_smart_case = config.search.smart_case;
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
+        fuzzy,
         file_picker_config: config.file_picker.clone(),
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
@@ -2530,10 +2617,12 @@ fn global_search(cx: &mut Context) {
                 Span::styled(directories, config.directory_style),
                 Span::raw(filename),
                 Span::styled(":", config.colon_style),
-                Span::styled((item.line_start + 1).to_string(), config.number_style),
+                Span::styled((item.line_num + 1).to_string(), config.number_style),
             ]))
         }),
-        PickerColumn::hidden("contents"),
+        PickerColumn::new("contents", |item: &FileResult, _config: &GlobalSearchConfig| {
+            Cell::from(item.content.as_str())
+        }),
     ];
 
     let get_files = |query: &str,
@@ -2555,20 +2644,39 @@ fn global_search(cx: &mut Context) {
             .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
             .collect();
 
-        let matcher = match RegexMatcherBuilder::new()
-            .case_smart(config.smart_case)
-            .multi_line(true)
-            .build(query)
-        {
-            Ok(matcher) => {
-                // Clear any "Failed to compile regex" errors out of the statusline.
-                editor.clear_status();
-                matcher
+        // For non-fuzzy mode, build a regex matcher
+        let regex_matcher = if !config.fuzzy {
+            match RegexMatcherBuilder::new()
+                .case_smart(config.smart_case)
+                .build(query)
+            {
+                Ok(matcher) => {
+                    editor.clear_status();
+                    Some(matcher)
+                }
+                Err(err) => {
+                    log::info!(
+                        "Failed to compile search pattern in global search: {}",
+                        err
+                    );
+                    return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
+                }
             }
-            Err(err) => {
-                log::info!("Failed to compile search pattern in global search: {}", err);
-                return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
-            }
+        } else {
+            editor.clear_status();
+            None
+        };
+
+        // For fuzzy mode, build a nucleo Pattern (consistent with picker's
+        // Pattern::reparse, which splits on spaces and respects special syntax)
+        let fuzzy_pattern = if config.fuzzy {
+            Some(NucleoPattern::parse(
+                query,
+                CaseMatching::Smart,
+                Normalization::Smart,
+            ))
+        } else {
+            None
         };
 
         let dedup_symlinks = config.file_picker_config.deduplicate_links;
@@ -2580,7 +2688,6 @@ fn global_search(cx: &mut Context) {
         async move {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
-                .multi_line(true)
                 .build();
             WalkBuilder::new(search_root)
                 .hidden(config.file_picker_config.hidden)
@@ -2599,9 +2706,13 @@ fn global_search(cx: &mut Context) {
                 .build_parallel()
                 .run(|| {
                     let mut searcher = searcher.clone();
-                    let matcher = matcher.clone();
+                    let regex_matcher = regex_matcher.clone();
+                    let fuzzy_pattern = fuzzy_pattern.clone();
                     let injector = injector.clone();
                     let documents = &documents;
+                    // Per-thread nucleo state for fuzzy matching
+                    let mut nucleo_matcher = nucleo::Matcher::default();
+                    let mut char_buf: Vec<char> = Vec::new();
                     Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
                         let entry = match entry {
                             Ok(entry) => entry,
@@ -2612,50 +2723,79 @@ fn global_search(cx: &mut Context) {
                             return WalkState::Continue;
                         }
 
-                        let mut stop = false;
-                        let sink = sinks::UTF8(|line_start, line_content| {
-                            let line_start = line_start as usize - 1;
-                            let line_end = line_start + line_content.lines().count() - 1;
-                            stop = injector
-                                .push(FileResult::new(entry.path(), line_start, line_end))
-                                .is_err();
-
-                            Ok(!stop)
-                        });
                         let doc = documents.iter().find(|&(doc_path, _)| {
                             doc_path
                                 .as_ref()
                                 .is_some_and(|doc_path| doc_path == entry.path())
                         });
 
-                        let result = if let Some((_, doc)) = doc {
-                            // there is already a buffer for this file
-                            // search the buffer instead of the file because it's faster
-                            // and captures new edits without requiring a save
-                            if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continuous buffer is required
-                                // convert the rope to a string
-                                let text = doc.to_string();
-                                searcher.search_slice(&matcher, text.as_bytes(), sink)
-                            } else {
-                                searcher.search_reader(
-                                    &matcher,
-                                    RopeReader::new(doc.slice(..)),
-                                    sink,
-                                )
-                            }
-                        } else {
-                            searcher.search_path(&matcher, entry.path(), sink)
-                        };
+                        if let Some(ref regex_matcher) = regex_matcher {
+                            // Non-fuzzy: use grep searcher with regex
+                            let mut stop = false;
+                            let sink = sinks::UTF8(|line_num, line_content| {
+                                stop = injector
+                                    .push(FileResult::new(
+                                        entry.path(),
+                                        line_num as usize - 1,
+                                        line_content,
+                                    ))
+                                    .is_err();
 
-                        if let Err(err) = result {
-                            log::error!("Global search error: {}, {}", entry.path().display(), err);
+                                Ok(!stop)
+                            });
+
+                            let result = if let Some((_, doc)) = doc {
+                                if searcher.multi_line_with_matcher(regex_matcher) {
+                                    let text = doc.to_string();
+                                    searcher.search_slice(regex_matcher, text.as_bytes(), sink)
+                                } else {
+                                    searcher.search_reader(
+                                        regex_matcher,
+                                        RopeReader::new(doc.slice(..)),
+                                        sink,
+                                    )
+                                }
+                            } else {
+                                searcher.search_path(regex_matcher, entry.path(), sink)
+                            };
+
+                            if let Err(err) = result {
+                                log::error!(
+                                    "Global search error: {}, {}",
+                                    entry.path().display(),
+                                    err
+                                );
+                            }
+                            if stop {
+                                return WalkState::Quit;
+                            }
+                        } else if let Some(ref fuzzy_pattern) = fuzzy_pattern {
+                            // Fuzzy: use nucleo Pattern to pre-filter lines;
+                            // the picker's nucleo instance handles final ranking by score
+                            let stop = if let Some((_, rope)) = doc {
+                                fuzzy_search_rope(
+                                    entry.path(),
+                                    rope,
+                                    fuzzy_pattern,
+                                    &mut nucleo_matcher,
+                                    &mut char_buf,
+                                    &injector,
+                                )
+                            } else {
+                                fuzzy_search_path(
+                                    entry.path(),
+                                    fuzzy_pattern,
+                                    &mut nucleo_matcher,
+                                    &mut char_buf,
+                                    &injector,
+                                )
+                            };
+                            if stop {
+                                return WalkState::Quit;
+                            }
                         }
-                        if stop {
-                            WalkState::Quit
-                        } else {
-                            WalkState::Continue
-                        }
+
+                        WalkState::Continue
                     })
                 });
             Ok(())
@@ -2671,14 +2811,7 @@ fn global_search(cx: &mut Context) {
         1, // contents
         [],
         config,
-        move |cx,
-              FileResult {
-                  path,
-                  line_start,
-                  line_end,
-                  ..
-              },
-              action| {
+        move |cx, FileResult { path, line_num, .. }, action| {
             let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
@@ -2688,18 +2821,17 @@ fn global_search(cx: &mut Context) {
                 }
             };
 
-            let line_start = *line_start;
-            let line_end = *line_end;
+            let line_num = *line_num;
             let view = view_mut!(cx.editor);
             let text = doc.text();
-            if line_start >= text.len_lines() {
+            if line_num >= text.len_lines() {
                 cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
                 return;
             }
-            let start = text.line_to_char(line_start);
-            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
@@ -2707,15 +2839,75 @@ fn global_search(cx: &mut Context) {
             }
         },
     )
-    .with_preview(
-        |_editor,
-         FileResult {
-             path,
-             line_start,
-             line_end,
-             ..
-         }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
-    )
+    .with_preview(|_editor, FileResult { path, line_num, .. }| {
+        Some((path.as_path().into(), Some((*line_num, *line_num))))
+    })
+    .with_preview_highlights(move |doc, (start, end), query| {
+        if query.is_empty() {
+            return Vec::new();
+        }
+        let text = doc.text().slice(..);
+        let mut ranges = Vec::new();
+
+        if search_fuzzy {
+            let pattern = NucleoPattern::parse(
+                query,
+                CaseMatching::Smart,
+                Normalization::Smart,
+            );
+            let mut matcher = MATCHER.lock();
+            matcher.config = nucleo::Config::DEFAULT;
+            let mut buf = Vec::new();
+            let mut indices = Vec::new();
+
+            for line_idx in start..=end {
+                if line_idx >= text.len_lines() {
+                    break;
+                }
+                let line_start = text.line_to_char(line_idx);
+                let line_text: String = text.line(line_idx).chars().collect();
+
+                indices.clear();
+                let haystack = Utf32Str::new(&line_text, &mut buf);
+                if pattern.indices(haystack, &mut matcher, &mut indices).is_some() {
+                    indices.sort_unstable();
+                    indices.dedup();
+                    for &idx in &indices {
+                        let char_pos = line_start + idx as usize;
+                        ranges.push(char_pos..char_pos + 1);
+                    }
+                }
+            }
+        } else {
+            for line_idx in start..=end {
+                if line_idx >= text.len_lines() {
+                    break;
+                }
+                let line_start = text.line_to_char(line_idx);
+                let line_text: String = text.line(line_idx).chars().collect();
+                let mut builder = grep_regex::RegexMatcherBuilder::new();
+                if search_smart_case {
+                    builder.case_smart(true);
+                }
+                if let Ok(matcher) = builder.build(query) {
+                    use grep_matcher::Matcher;
+                    let mut start_pos = 0;
+                    while let Ok(Some(m)) = matcher.find_at(line_text.as_bytes(), start_pos) {
+                        let char_start = line_text[..m.start()].chars().count();
+                        let char_end = line_text[..m.end()].chars().count();
+                        if char_start < char_end {
+                            ranges.push((line_start + char_start)..(line_start + char_end));
+                        }
+                        if m.end() == start_pos {
+                            break;
+                        }
+                        start_pos = m.end();
+                    }
+                }
+            }
+        }
+        ranges
+    })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
