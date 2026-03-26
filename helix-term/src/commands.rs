@@ -66,7 +66,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlaid_with_layout, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -1453,8 +1453,9 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let path = path::expand(&sel);
         let path = &rel_path.join(path);
         if path.is_dir() {
+            let layout = cx.editor.config().picker.layout;
             let picker = ui::file_picker(cx.editor, path.into());
-            cx.push_layer(Box::new(overlaid(picker)));
+            cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
@@ -1490,8 +1491,9 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {
+                let layout = cx.editor.config().picker.layout;
                 let picker = ui::file_picker(cx.editor, path.into());
-                cx.push_layer(Box::new(overlaid(picker)));
+                cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
             } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
@@ -2719,7 +2721,8 @@ fn global_search(cx: &mut Context) {
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 enum Extend {
@@ -3106,8 +3109,9 @@ fn file_picker(cx: &mut Context) {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
+    let layout = cx.editor.config().picker.layout;
     let picker = ui::file_picker(cx.editor, root);
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 fn file_picker_in_current_buffer_directory(cx: &mut Context) {
@@ -3132,8 +3136,9 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
+    let layout = cx.editor.config().picker.layout;
     let picker = ui::file_picker(cx.editor, path);
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 fn file_picker_in_current_directory(cx: &mut Context) {
@@ -3143,8 +3148,9 @@ fn file_picker_in_current_directory(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
+    let layout = cx.editor.config().picker.layout;
     let picker = ui::file_picker(cx.editor, cwd);
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 fn file_explorer(cx: &mut Context) {
@@ -3155,7 +3161,8 @@ fn file_explorer(cx: &mut Context) {
     }
 
     if let Ok(picker) = ui::file_explorer(root, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        let layout = cx.editor.config().picker.layout;
+        cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
     }
 }
 
@@ -3182,7 +3189,8 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
     };
 
     if let Ok(picker) = ui::file_explorer(path, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        let layout = cx.editor.config().picker.layout;
+        cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
     }
 }
 
@@ -3195,7 +3203,8 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 
     if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        let layout = cx.editor.config().picker.layout;
+        cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
     }
 }
 
@@ -3278,7 +3287,8 @@ fn buffer_picker(cx: &mut Context) {
         });
         Some((meta.id.into(), lines))
     });
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 fn jumplist_picker(cx: &mut Context) {
@@ -3369,7 +3379,8 @@ fn jumplist_picker(cx: &mut Context) {
         let line = meta.selection.primary().cursor_line(doc.text().slice(..));
         Some((meta.id.into(), Some((line, line))))
     });
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 fn changed_file_picker(cx: &mut Context) {
@@ -3463,7 +3474,8 @@ fn changed_file_picker(cx: &mut Context) {
                 true
             }
         });
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -3543,7 +3555,8 @@ pub fn command_palette(cx: &mut Context) {
                     }
                 }
             });
-            compositor.push(Box::new(overlaid(picker)));
+            let layout = cx.editor.config().picker.layout;
+            compositor.push(Box::new(overlaid_with_layout(picker, layout)));
         },
     ));
 }
