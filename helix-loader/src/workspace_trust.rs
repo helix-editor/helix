@@ -149,7 +149,8 @@ pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
                 }
             }
         }
-        Err(e) => log::error!("workspace file couldn't be read: {:?}", e),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
+        Err(err) => log::error!("workspace file couldn't be read: {err:?}"),
     };
     TrustStatus::Untrusted
 }
@@ -168,7 +169,8 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
                 }
             }
         }
-        Err(e) => log::error!("workspace_trust file couldn't be read: {:?}", e),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
+        Err(err) => log::error!("workspace_trust file couldn't be read: {err:?}"),
     };
 
     match fs::read_to_string(workspace_exclude_file()) {
@@ -179,7 +181,8 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
                 }
             }
         }
-        Err(e) => log::error!("workspace_untrust file couldn't be read: {:?}", e),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
+        Err(err) => log::error!("workspace_untrust file couldn't be read: {err:?}"),
     };
     TrustUntrustStatus::DenyOnce
 }
