@@ -229,6 +229,8 @@
 | prql | ✓ |  |  |  |  |  |
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
+| Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Code Navigation Tags | Rainbow Brackets | Default language servers |
+| puppet | ✓ | ✓ |  |  |  | `puppet-languageserver`|
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
