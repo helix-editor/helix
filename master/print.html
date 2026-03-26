@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-64d18d91.js";
+            window.path_to_searchindex_js = "searchindex-9ddb6ab9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-c295f344.js"></script>
+        <script src="toc-887400e0.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,7 @@
 <p>Docs for bleeding edge master can be found at
 <a href="https://docs.helix-editor.com/master">https://docs.helix-editor.com/master</a>.</p>
 <p>See the <a href="#using-helix">usage</a> section for a quick overview of the editor, <a href="#keymap-1">keymap</a>
-section for all available keybindings and the <a href="#configuration">configuration</a> section
+section for all available keybindings and the <a href="#configuration-1">configuration</a> section
 for defining custom keybindings, setting themes, etc.
 For everything else (e.g., how to install supported language servers), see the <a href="https://github.com/helix-editor/helix/wiki">Helix Wiki</a>.</p>
 <p>Refer the <a href="https://github.com/helix-editor/helix/wiki/FAQ">FAQ</a> for common questions.</p>
@@ -1560,6 +1560,8 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 <tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
 <tr><td><code>:echo</code></td><td>Prints the given arguments to the statusline.</td></tr>
 <tr><td><code>:noop</code></td><td>Does nothing.</td></tr>
+<tr><td><code>:workspace-trust</code></td><td>Add current workspace to the list of trusted workspaces.</td></tr>
+<tr><td><code>:workspace-untrust</code></td><td>Remove current workspace from the list of trusted workspaces.</td></tr>
 </tbody>
 </table>
 </div>
@@ -2238,6 +2240,20 @@ Languages</a> guide for more language configuration information.</p>
 </table>
 </div>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="workspace-trust"><a class="header" href="#workspace-trust">Workspace trust</a></h1>
+<p>Helix has a number of potentially dangerous features, namely LSP and ability to use local to workspace configurations. Those features can lead to unexpected code execution. To protect against code execution in dangerous contexts, Helix has a workspace trust protection, which will prevent these potentially dangerous features from running automatically.</p>
+<p>Helix will not trust any workspace by default.</p>
+<p>By default, it will prompt about trust when you open new file in a workspace where you didn’t make a decision about trust yet.</p>
+<p>If you decide not to trust a workspace and don’t want to be prompted about trust every time you start a new session in it, you can exclude the workspace by choosing <code>Never</code> option in trust selection window.</p>
+<p>You can always make current workspace trusted by running <code>:workspace-trust</code> command, and untrust it with <code>:workspace-untrust</code>.</p>
+<p>Lists of trusted and excluded workspaces, delimited by newline characters, are stored in <code>~/.local/share/helix/trusted_workspaces</code> and <code>~/.local/share/helix/excluded_workspaces</code> correspondingly.</p>
+<!-- TODO: Windows paths -->
+<h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<p>You can return to the old behaviour of loading every local <code>.helix/config.toml</code> and <code>.helix/languages.toml</code> and starting LSP’s without an explicit permission by setting following option:</p>
+<pre><code class="language-toml">[editor]
+insecure = true
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="ecosystem"><a class="header" href="#ecosystem">Ecosystem</a></h1>
 <p>This section has information related to the wider Helix ecosystem.</p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -2436,7 +2452,7 @@ insert = "bar"
 </table>
 </div>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
 <p>To override global configuration parameters, create a <code>config.toml</code> file located in your config directory:</p>
 <ul>
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
@@ -3010,7 +3026,7 @@ trigger-length = 4
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="themes-1"><a href="#themes-1" class="header">Themes</a></h1>
 <h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
-<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="#configuration"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="#configuration-1"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <p>Separate themes can be configured for light and dark modes. On terminals supporting <a href="https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md">mode 2031 dark/light detection</a>, the theme mode is detected from the terminal.</p>
 <pre><code class="language-toml">[theme]
 dark = "catppuccin_frappe"
@@ -3609,7 +3625,7 @@ in <code>languages.toml</code> files.</p>
 It provides the default configurations for languages and language servers.</p>
 </li>
 <li>
-<p>In your <a href="#configuration">configuration directory</a>. This overrides values
+<p>In your <a href="#configuration-1">configuration directory</a>. This overrides values
 from the built-in language configuration. For example, to disable
 auto-formatting for Rust:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
