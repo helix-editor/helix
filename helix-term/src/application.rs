@@ -751,6 +751,8 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
+            #[cfg(not(windows))]
+            event if event.is_escape() => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
