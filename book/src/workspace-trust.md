@@ -10,7 +10,7 @@ If you decide not to trust a workspace and don't want to be prompted about trust
 
 You can always make current workspace trusted by running `:workspace-trust` command, and untrust it with `:workspace-untrust`.
 
-Lists of trusted and exluded workspaces, delimited by newline characters, are stored in `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces` correspondingly.
+Lists of trusted and excluded workspaces, delimited by newline characters, are stored in `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces` correspondingly.
 <!-- TODO: macOS/Windows paths -->
 
 # Configuration
