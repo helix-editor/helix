@@ -559,6 +559,8 @@ pub struct LspConfig {
     pub inlay_hints_length_limit: Option<NonZeroU8>,
     /// Display document color swatches
     pub display_color_swatches: bool,
+    /// Display document color swatches
+    pub display_code_lenses: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
@@ -579,6 +581,7 @@ impl Default for LspConfig {
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
+            display_code_lenses: true,
         }
     }
 }

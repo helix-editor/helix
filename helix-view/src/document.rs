@@ -213,6 +213,7 @@ pub struct Document {
     pub color_swatches: Option<DocumentColorSwatches>,
     /// Cached LSP document links for navigation (e.g. goto_file).
     pub document_links: Vec<DocumentLink>,
+    pub code_lenses: Vec<CodeLens>,
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
@@ -220,11 +221,19 @@ pub struct Document {
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
+    pub code_lenses_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CodeLens {
+    pub char_idx: usize,
+    pub line: usize,
+    pub lens: lsp::CodeLens,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -339,6 +348,7 @@ impl fmt::Debug for Document {
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
             .field("diagnostics", &self.diagnostics)
+            .field("lenses", &self.code_lenses)
             // .field("language_server", &self.language_server)
             .finish()
     }
@@ -738,6 +748,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            code_lenses: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -756,10 +767,11 @@ impl Document {
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
-            syn_loader,
-            previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
+            code_lenses_controller: TaskController::new(),
+            syn_loader,
+            previous_diagnostic_id: None,
         }
     }
 
@@ -2221,6 +2233,47 @@ impl Document {
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
             .retain(|d| d.provider.language_server_id() != Some(id));
+    }
+
+    #[inline]
+    pub fn code_lenses(&self) -> &[CodeLens] {
+        &self.code_lenses
+    }
+
+    fn map_code_lenses(&self, lenses: Vec<lsp::CodeLens>) -> Vec<CodeLens> {
+        let text = self.text().clone();
+        let Some(language_server) = self
+            .language_servers_with_feature(LanguageServerFeature::CodeLens)
+            .next()
+        else {
+            return Vec::new();
+        };
+        let offset_encoding = language_server.offset_encoding();
+        lenses
+            .into_iter()
+            .filter_map(|l| {
+                lsp_pos_to_pos(&text, l.range.start, offset_encoding).map(|char_idx| CodeLens {
+                    line: self.text.char_to_line(char_idx),
+                    char_idx,
+                    lens: l,
+                })
+            })
+            .collect()
+    }
+
+    pub fn set_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        self.code_lenses = self.map_code_lenses(lenses);
+    }
+
+    pub fn update_code_lenses(&mut self, lenses: Vec<lsp::CodeLens>) {
+        for updated_lens in lenses {
+            if let Some(existing_lens) = self.code_lenses.iter_mut().find(|existing_lens| {
+                existing_lens.lens.range == updated_lens.range
+                    && existing_lens.lens.data == updated_lens.data
+            }) {
+                existing_lens.lens = updated_lens;
+            }
+        }
     }
 
     /// Get the document's auto pairs. If the document has a recognized
