@@ -22,9 +22,11 @@ use std::{
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
+    #[serde(skip)]
     name: String,
     #[serde(flatten)]
     map: IndexMap<KeyEvent, KeyTrie>,
+    #[serde(skip)]
     pub is_sticky: bool,
 }
 
@@ -375,8 +377,11 @@ pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, Key
 mod tests {
     use super::macros::keymap;
     use super::*;
+    use crate::commands::MappableCommand;
     use arc_swap::access::Constant;
     use helix_core::hashmap;
+    use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+    use indexmap::indexmap;
 
     #[test]
     #[should_panic]
@@ -550,12 +555,38 @@ mod tests {
         )
     }
 
+    /// Deserialize into KeyTrieNode
+    #[test]
+    fn deserialize_node() {
+        let keys = r#"
+"+" = "select_all"
+a = "append_mode"
+        "#;
+        let expectation = KeyTrie::Node(KeyTrieNode::new(
+            "",
+            indexmap! {
+                key!('+') => KeyTrie::MappableCommand(
+                    MappableCommand::select_all
+                ),
+                key!('a') => KeyTrie::MappableCommand(
+                    MappableCommand::append_mode
+                ),
+            },
+        ));
+
+        assert_eq!(toml::from_str(keys), Ok(expectation));
+
+        // Other fields in KeyTrieNode CANNOT be deserialized
+        let invalid = r#"
+name = "name"
+is_sticky = false
+        "#;
+        let result = toml::from_str::<KeyTrieNode>(invalid);
+        assert!(result.is_err_and(|error| error.message().contains("Invalid key code 'is_sticky'")));
+    }
+
     #[test]
     fn escaped_keymap() {
-        use crate::commands::MappableCommand;
-        use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
-        use indexmap::indexmap;
-
         let keys = r#"
 "+" = [
     "select_all",
