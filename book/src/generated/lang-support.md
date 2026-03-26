@@ -60,6 +60,7 @@
 | dune | ✓ |  |  |  |  |  |
 | dunstrc | ✓ |  |  |  |  |  |
 | earthfile | ✓ | ✓ | ✓ |  |  | `earthlyls` |
+| ebnf | ✓ |  |  |  |  | `ebnfer` |
 | edoc | ✓ |  |  |  |  |  |
 | eex | ✓ |  |  |  |  |  |
 | eiffel | ✓ | ✓ | ✓ |  |  | `eiffel-language-server` |
