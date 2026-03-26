@@ -537,7 +537,7 @@ fn build_tree_sitter_library(
                     ));
                 }
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
 
@@ -594,7 +594,7 @@ fn build_tree_sitter_library(
                 }
 
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
         command.arg("-xc").arg("-std=c11").arg(parser_path);
