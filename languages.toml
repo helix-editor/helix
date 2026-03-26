@@ -5012,7 +5012,7 @@ auto-format = true
 
 [[grammar]]
 name = "caddyfile"
-source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "b04bdb4ec53e40c44afbf001e15540f60a296aef" }
+source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "8951716aa2855e02dada302c540a90f277546095" }
 
 [[language]]
 name = "properties"
