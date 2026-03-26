@@ -1,21 +1,23 @@
 # Workspace trust
 
-Helix has a number of potentially dangerous features, namely LSP and ability to use local to workspace configurations. Those features can lead to unexpected code execution. To protect against code execution in dangerous contexts, Helix has a workspace trust protection, which will prevent these potentially dangerous features from running automatically.
+Helix has a concept of workspace trust. Workspace that is not deemed to be trusted cannot: 
+
+  - load `.helix/languages.toml` and `.helix/config.toml` files found in the workspace;
+  - start a language server.
 
 Helix will not trust any workspace by default.
 
-By default, it will prompt about trust when you open new file in a workspace where you didn't make a decision about trust yet.
+When you open a file in an untrusted workspace, you will be prompted about trust. You can make a choice with arrow keys, `<Tab>`, `<C-n>` and `<C-p>`, confirming selection with `<Enter>`. Typing anything else will close the menu selecting 'Not now' option.
 
-If you decide not to trust a workspace and don't want to be prompted about trust every time you start a new session in it, you can exclude the workspace by choosing `Never` option in trust selection window.
+You can always make active workspace trusted by running `:workspace-trust` command, or you can remove trust with `:workspace-untrust`.
 
-You can always make current workspace trusted by running `:workspace-trust` command, and untrust it with `:workspace-untrust`.
-
-Lists of trusted and excluded workspaces, delimited by newline characters, are stored in `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces` correspondingly.
-<!-- TODO: Windows paths -->
+Lists of trusted and excluded workspaces, delimited by newline characters, are stored in:
+  - Linux and macOS: `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces`
+  - Windows: `%AppData%/Roaming/helix/trusted_workspaces` and `%AppData%/Roaming/helix/excluded_workspaces` 
 
 # Configuration
 
-You can return to the old behaviour of loading every local `.helix/config.toml` and `.helix/languages.toml` and starting LSP's without an explicit permission by setting following option:
+You can return to the old behavior of implicitly trusting every workspace by setting configuration option:
 
 ```toml
 [editor]
