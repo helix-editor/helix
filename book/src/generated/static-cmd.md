@@ -94,6 +94,8 @@
 | `collapse_selection` | Collapse selection into single cursor | normal: `` ; ``, select: `` ; `` |
 | `flip_selections` | Flip selection cursor and anchor | normal: `` <A-;> ``, select: `` <A-;> `` |
 | `ensure_selections_forward` | Ensure all selections face forward | normal: `` <A-:> ``, select: `` <A-:> `` |
+| `move_selection_lines_up` | Move selections lines up |  |
+| `move_selection_lines_down` | Move selection lines down |  |
 | `insert_mode` | Insert before selection | normal: `` i ``, select: `` i `` |
 | `append_mode` | Append after selection | normal: `` a ``, select: `` a `` |
 | `command_mode` | Enter command mode | normal: `` : ``, select: `` : `` |
