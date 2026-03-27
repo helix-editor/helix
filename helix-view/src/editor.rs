@@ -1794,7 +1794,7 @@ impl Editor {
                         view.remove_document(&id);
                     }
                 } else {
-                    let jump = (view.doc, doc.selection(view.id).clone());
+                    let jump = (view.doc, doc.selection(view.id).clone(), None);
                     view.jumps.push(jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
@@ -2401,17 +2401,26 @@ impl Editor {
     }
 
     pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
-        if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
+        if let Some((doc_id, selection, _)) = view_mut!(self, view_id).jumps.forward(count).cloned()
+        {
             self.jump_to(view_id, doc_id, selection);
         }
     }
 
     pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
         let view = view_mut!(self, view_id);
-        if let Some((doc_id, selection)) = view
+        if let Some((doc_id, selection, _)) = view
             .jumps
             .backward(view_id, doc_mut!(self, &view.doc), count)
             .cloned()
+        {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    pub fn jump_to_mark(&mut self, view_id: ViewId, mark: char) {
+        if let Some((doc_id, selection, _)) =
+            view!(self, view_id).jumps.get_jump_with_mark(mark).cloned()
         {
             self.jump_to(view_id, doc_id, selection);
         }
