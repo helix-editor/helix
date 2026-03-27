@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap.workspace = true
 termini = "1"
-indexmap = "2.13"
+indexmap = { version = "2.13", features = ["serde"] }
 
 # Logging
 fern = "0.7"
@@ -91,6 +91,8 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 dashmap = "6.0"
+
+parking_lot.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream"] }
