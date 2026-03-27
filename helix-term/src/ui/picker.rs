@@ -249,6 +249,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     completion_height: u16,
 
     cursor: u32,
+    scroll: u32,
+
     prompt: Prompt,
     query: PickerQuery,
 
@@ -381,6 +383,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             editor_data,
             version,
             cursor: 0,
+            scroll: 0,
             prompt,
             query,
             truncate_start: true,
@@ -746,11 +749,51 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // subtract area of prompt from top
         let inner = inner.clip_top(2);
         let rows = inner.height.saturating_sub(self.header_height()) as u32;
-        let offset = self.cursor - (self.cursor % std::cmp::max(1, rows));
-        let cursor = self.cursor.saturating_sub(offset);
-        let end = offset
-            .saturating_add(rows)
-            .min(snapshot.matched_item_count());
+
+        let items_count = snapshot.matched_item_count();
+
+        let max_scroll = items_count.saturating_sub(rows);
+        self.scroll = self.scroll.clamp(0, max_scroll);
+
+        let view_len = std::cmp::min(items_count, rows);
+        let view_end = self.scroll + view_len;
+
+        let scrolloff = cx.editor.config().picker.scrolloff as u32;
+
+        let max_scrolloff = view_len / 2;
+        let is_scrolloff_truncated = max_scrolloff <= scrolloff;
+        let scrolloff = std::cmp::min(scrolloff, max_scrolloff);
+
+        let is_view_len_even = view_len % 2 == 0;
+
+        // When we have an even amount of items and the scrolloff is half of
+        // the picker's view, we want to make sure to scroll on all moves
+        // (except when we are at the start or end of the list). In order to do
+        // that, we need to have different values for the bottom and top
+        // scrolloffs - one of them ought to be smaller by 1. We choose to make
+        // the top scrolloff the smaller one to be consistant with the editor's
+        // buffer scrolloff behavior.
+        let top_scrolloff = if is_view_len_even && is_scrolloff_truncated {
+            scrolloff.saturating_sub(1)
+        } else {
+            scrolloff
+        };
+        let bot_scrolloff = scrolloff;
+
+        if self.cursor < self.scroll + top_scrolloff {
+            self.scroll = self.cursor.saturating_sub(top_scrolloff);
+        } else if view_end.saturating_sub(bot_scrolloff) <= self.cursor {
+            let new_scroll = (self.cursor + bot_scrolloff + 1).saturating_sub(view_len);
+            self.scroll = std::cmp::min(new_scroll, max_scroll);
+        }
+
+        debug_assert!((0..=max_scroll).contains(&self.scroll));
+        debug_assert!((self.scroll..=self.scroll + view_len).contains(&self.cursor));
+
+        let offset = self.scroll;
+        let cursor = self.cursor - self.scroll;
+        let end = offset + view_len;
+
         let mut indices = Vec::new();
         let mut matcher = MATCHER.lock();
         matcher.config = Config::DEFAULT;
