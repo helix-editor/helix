@@ -1,6 +1,6 @@
 use crate::{
     align_view,
-    annotations::diagnostics::InlineDiagnostics,
+    annotations::diagnostics::{InlineDiagnostics, InlineDiagnosticsConfig},
     document::{DocumentColorSwatches, DocumentInlayHints},
     editor::{GutterConfig, GutterType},
     graphics::Rect,
@@ -170,7 +170,11 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(
+        doc: DocumentId,
+        gutters: GutterConfig,
+        inline_diagnostics_config: InlineDiagnosticsConfig,
+    ) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -181,7 +185,7 @@ impl View {
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
-            diagnostics_handler: DiagnosticsHandler::new(),
+            diagnostics_handler: DiagnosticsHandler::new(inline_diagnostics_config),
         }
     }
 
@@ -704,7 +708,11 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let mut doc = Document::from(
@@ -880,6 +888,7 @@ mod tests {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            InlineDiagnosticsConfig::default(),
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -911,6 +920,7 @@ mod tests {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            InlineDiagnosticsConfig::default(),
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -936,7 +946,11 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let mut doc = Document::from(
@@ -1021,7 +1035,11 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let mut doc = Document::from(
