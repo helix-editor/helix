@@ -167,6 +167,7 @@ wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
+zuban = { command = "zuban", args = ["server"] }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 tinymist = { command = "tinymist" }
 ts_query_ls = { command = "ts_query_ls" }
@@ -1151,7 +1152,7 @@ file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { gl
 shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
-language-servers = ["ty", "ruff", "jedi", "pylsp"]
+language-servers = ["ty", "ruff", "jedi", "pylsp", "zuban"]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
