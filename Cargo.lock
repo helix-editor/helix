@@ -1481,6 +1481,7 @@ dependencies = [
  "helix-loader",
  "helix-lsp-types",
  "helix-stdx",
+ "libc",
  "log",
  "parking_lot",
  "serde",
@@ -1490,6 +1491,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
