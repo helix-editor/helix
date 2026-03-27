@@ -12,12 +12,14 @@ use crate::handlers::signature_help::SignatureHelpHandler;
 
 pub use helix_view::handlers::{word_index, Handlers};
 
+use self::document_change::DocumentChangeHandler;
 use self::document_colors::DocumentColorsHandler;
 use self::document_links::DocumentLinksHandler;
 
 mod auto_save;
 pub mod completion;
 pub mod diagnostics;
+mod document_change;
 mod document_colors;
 mod document_highlight;
 mod document_links;
@@ -30,6 +32,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();
 
     let event_tx = completion::CompletionHandler::new(config).spawn();
+    let document_changes = DocumentChangeHandler.spawn();
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
@@ -40,6 +43,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
 
     let handlers = Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
+        document_changes,
         signature_hints,
         auto_save,
         document_colors,

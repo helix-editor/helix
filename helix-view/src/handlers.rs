@@ -20,6 +20,7 @@ pub enum AutoSaveEvent {
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: CompletionHandler,
+    pub document_changes: Sender<lsp::DocumentChangeEvent>,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
     pub document_colors: Sender<lsp::DocumentColorsEvent>,

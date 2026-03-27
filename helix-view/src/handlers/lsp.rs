@@ -7,9 +7,9 @@ use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
 use crate::{DocumentId, Editor};
-use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
-use helix_event::register_hook;
+use helix_core::{diagnostic::DiagnosticProvider, ChangeSet, Rope};
+use helix_event::{register_hook, send_blocking};
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
 
@@ -17,6 +17,13 @@ use super::Handlers;
 
 pub struct DocumentColorsEvent(pub DocumentId);
 pub struct DocumentLinksEvent(pub DocumentId);
+pub struct DocumentChangeEvent {
+    pub language_servers: Vec<LanguageServerId>,
+    pub text_document: lsp::VersionedTextDocumentIdentifier,
+    pub old_text: Rope,
+    pub text: Rope,
+    pub changes: ChangeSet,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -399,7 +406,7 @@ impl Editor {
     }
 }
 
-pub fn register_hooks(_handlers: &Handlers) {
+pub fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
         let language_server = event.editor.language_server_by_id(event.server_id).unwrap();
 
@@ -420,17 +427,19 @@ pub fn register_hooks(_handlers: &Handlers) {
         Ok(())
     });
 
+    let tx = handlers.document_changes.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        // Send textDocument/didChange notifications.
         if !event.ghost_transaction {
-            for language_server in event.doc.language_servers() {
-                language_server.text_document_did_change(
-                    event.doc.versioned_identifier(),
-                    event.old_text,
-                    event.doc.text(),
-                    event.changes,
-                );
-            }
+            send_blocking(
+                &tx,
+                DocumentChangeEvent {
+                    language_servers: event.doc.language_servers().map(|ls| ls.id()).collect(),
+                    text_document: event.doc.versioned_identifier(),
+                    old_text: event.old_text.clone(),
+                    text: event.doc.text().clone(),
+                    changes: *event.changes,
+                },
+            );
         }
 
         Ok(())
