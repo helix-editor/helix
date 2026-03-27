@@ -616,6 +616,7 @@ impl MappableCommand {
         goto_prev_tabstop, "Goto next snippet placeholder",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
+        move_current_file, "Move file, pre-filled with current path",
     );
 }
 
@@ -7041,4 +7042,39 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
     } else {
         syntax_workspace_symbol_picker(cx);
     }
+}
+
+fn move_current_file(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let current_path = match doc.path() {
+        Some(p) => {
+            let cwd = helix_stdx::env::current_working_dir();
+            p.strip_prefix(&cwd)
+                .unwrap_or(p)
+                .to_string_lossy()
+                .into_owned()
+        }
+        None => {
+            cx.editor.set_error("Scratch buffer cannot be moved. Use :write instead");
+            return;
+        }
+    };
+
+    let prompt = ui::Prompt::new(
+        "mv: ".into(),
+        None,
+        ui::completers::filename,
+        |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            let new_path: PathBuf = input.into();
+            if let Err(err) = move_buffer_impl(cx, new_path, MoveBufferOptions { force: false }) {
+                cx.editor.set_error(err.to_string());
+            }
+        },
+    )
+    .with_line(current_path, cx.editor);
+
+    cx.push_layer(Box::new(prompt));
 }
