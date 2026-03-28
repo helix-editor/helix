@@ -1,7 +1,7 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{graphemes, movement::Direction, Change, Deletion, Range, Rope, Tendril};
+use crate::{Change, Deletion, Range, Rope, Tendril, graphemes, movement::Direction};
 use std::collections::HashMap;
 
 // Heavily based on https://github.com/codemirror/closebrackets/

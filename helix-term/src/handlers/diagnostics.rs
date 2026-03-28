@@ -5,18 +5,18 @@ use std::time::Duration;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
 
+use helix_core::Uri;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
-use helix_core::Uri;
 use helix_event::{cancelable_future, register_hook, send_blocking};
-use helix_lsp::{lsp, LanguageServerId};
+use helix_lsp::{LanguageServerId, lsp};
 use helix_view::document::Mode;
 use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
 };
+use helix_view::handlers::Handlers;
 use helix_view::handlers::diagnostics::DiagnosticEvent;
 use helix_view::handlers::lsp::{PullAllDocumentsDiagnosticsEvent, PullDiagnosticsEvent};
-use helix_view::handlers::Handlers;
 use helix_view::{DocumentId, Editor};
 
 use crate::events::OnModeSwitch;

@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
-use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::Position;
+use helix_core::doc_formatter::FormattedGrapheme;
 use helix_view::editor::CursorCache;
 
 use crate::ui::document::{LinePos, TextRenderer};

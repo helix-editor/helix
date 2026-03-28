@@ -1,5 +1,5 @@
-use crate::movement::Direction;
 use crate::RopeSlice;
+use crate::movement::Direction;
 
 // TODO: switch to std::str::Pattern when it is stable.
 pub trait CharMatcher {

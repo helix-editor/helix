@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use crate::workspace_trust::{quick_query_workspace, TrustStatus};
+use crate::workspace_trust::{TrustStatus, quick_query_workspace};
 
 /// Default built-in languages.toml.
 pub fn default_lang_config() -> toml::Value {
