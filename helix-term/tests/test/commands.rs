@@ -1,3 +1,4 @@
+use helix_stdx::path;
 use helix_term::application::Application;
 use helix_view::{
     doc,
@@ -221,7 +222,8 @@ async fn test_picker_quicklist_navigation() -> anyhow::Result<()> {
         Some("<space>balpha<C-q><esc>]q"),
         Some(&|app| {
             let doc = doc!(app.editor);
-            assert_eq!(doc.path(), Some(&alpha));
+            let expected = path::normalize(&alpha);
+            assert_eq!(doc.path(), Some(expected.as_path()));
         }),
         false,
     )
@@ -284,7 +286,8 @@ async fn test_quicklist_picker_navigation() -> anyhow::Result<()> {
         Some("<space>balpha<C-q><esc><space>q<ret>"),
         Some(&|app| {
             let doc = doc!(app.editor);
-            assert_eq!(doc.path(), Some(&alpha));
+            let expected = path::normalize(&alpha);
+            assert_eq!(doc.path(), Some(expected.as_path()));
         }),
         false,
     )

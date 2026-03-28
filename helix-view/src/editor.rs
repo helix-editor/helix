@@ -2568,7 +2568,6 @@ impl Editor {
             self.documents
                 .get(&current_doc_id)
                 .and_then(|doc| doc.path())
-                .map(PathBuf::as_path)
         } else {
             None
         };

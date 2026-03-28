@@ -2847,7 +2847,7 @@ fn global_search(cx: &mut Context) {
     )
     .with_quicklist(|_editor, item| {
         Some(helix_view::editor::QuicklistEntry {
-            target: helix_view::editor::QuicklistTarget::Path(item.path.clone()),
+            target: helix_view::editor::QuicklistTarget::Path(item.path.clone().into_owned()),
             position: helix_view::editor::QuicklistPosition::LineColRange {
                 start_line: item.line_start,
                 start_col: item.match_start_col,
@@ -3607,7 +3607,7 @@ fn quicklist_picker(cx: &mut Context) {
                         .documents
                         .get(id)
                         .and_then(|doc| doc.path())
-                        .cloned();
+                        .map(Path::to_path_buf);
                     let label = path
                         .as_deref()
                         .map(helix_stdx::path::get_relative_path)
