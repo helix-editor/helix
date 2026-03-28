@@ -517,7 +517,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|item| item.data)
     }
 
-    fn matched_quicklist_entries(&self, editor: &Editor) -> Vec<QuicklistEntry> {
+    /// Collect current content of the picker into a quicklist entries.
+    fn quicklist_entries(&self, editor: &Editor) -> Vec<QuicklistEntry> {
         let snapshot = self.matcher.snapshot();
         let mut entries = Vec::with_capacity(snapshot.matched_item_count() as usize);
 
@@ -1161,7 +1162,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 // Pickers can provide explicit quicklist entries when they have
                 // more precise jump data. Everything else falls back to preview
                 // locations, which are still usually just path + line span.
-                let entries = self.matched_quicklist_entries(ctx.editor);
+                let entries = self.quicklist_entries(ctx.editor);
                 let count = entries.len();
                 ctx.editor.replace_quicklist(entries);
                 if count == 0 {
