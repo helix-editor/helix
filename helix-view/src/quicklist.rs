@@ -21,12 +21,6 @@
 //! - `QuicklistPosition::None` reopens the target without overriding the
 //!   document's existing restored cursor/selection.
 //!
-//! The stored location data is still mixed-fidelity today. Some pickers can
-//! now provide exact selections directly, while many others still only expose
-//! preview-oriented file locations such as path + line span. That is good
-//! enough for basic quicklist traversal, but it can still lose picker-specific
-//! precision such as offset-encoding-aware LSP ranges or other activation
-//! metadata.
 
 use crate::DocumentId;
 use helix_core::{movement::Direction, RopeSlice, Selection};
