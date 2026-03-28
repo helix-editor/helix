@@ -4,6 +4,8 @@ use helix_loader::grammar::fetch_grammars;
 // This binary is used in the Release CI as an optimization to cut down on
 // compilation time. This is not meant to be run manually.
 
+const STRICT: bool = true;
+
 fn main() -> Result<()> {
-    fetch_grammars()
+    fetch_grammars(STRICT)
 }
