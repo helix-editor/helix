@@ -45,7 +45,7 @@ use helix_core::{
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
-    editor::Action,
+    editor::{Action, QuicklistEntry, QuicklistPosition, QuicklistTarget},
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
@@ -79,6 +79,7 @@ impl From<DocumentId> for PathOrId<'_> {
 }
 
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
+type QuicklistCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<QuicklistEntry>>;
 
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
@@ -266,6 +267,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+    /// Given an item in the picker, return an explicit quicklist entry.
+    quicklist_fn: Option<QuicklistCallback<T>>,
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
@@ -392,6 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            quicklist_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
         }
@@ -421,6 +425,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // assumption: if we have a preview we are matching paths... If this is ever
         // not true this could be a separate builder function
         self.matcher.update_config(Config::DEFAULT.match_paths());
+        self
+    }
+
+    pub fn with_quicklist(
+        mut self,
+        quicklist_fn: impl Fn(&Editor, &T) -> Option<QuicklistEntry> + 'static,
+    ) -> Self {
+        self.quicklist_fn = Some(Box::new(quicklist_fn));
         self
     }
 
@@ -503,6 +515,47 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .snapshot()
             .get_matched_item(self.cursor)
             .map(|item| item.data)
+    }
+
+    fn matched_quicklist_entries(&self, editor: &Editor) -> Vec<QuicklistEntry> {
+        let snapshot = self.matcher.snapshot();
+        let mut entries = Vec::with_capacity(snapshot.matched_item_count() as usize);
+
+        if let Some(quicklist_fn) = &self.quicklist_fn {
+            for item in snapshot.matched_items(0..snapshot.matched_item_count()) {
+                let Some(entry) = quicklist_fn(editor, item.data) else {
+                    continue;
+                };
+                entries.push(entry);
+            }
+            return entries;
+        }
+
+        let Some(file_fn) = &self.file_fn else {
+            return Vec::new();
+        };
+
+        for item in snapshot.matched_items(0..snapshot.matched_item_count()) {
+            let Some((path_or_id, line_range)) = file_fn(editor, item.data) else {
+                continue;
+            };
+
+            // TODO: quicklist currently captures the preview location only, which is
+            // usually just a path plus an optional coarse line span. Extend this
+            // handoff to preserve picker-specific jump metadata such as exact
+            // columns, selections, or offset-encoding-aware LSP ranges.
+            let target = match path_or_id {
+                PathOrId::Path(path) => QuicklistTarget::Path(path.to_path_buf()),
+                PathOrId::Id(id) => QuicklistTarget::Document(id),
+            };
+            let position = line_range.map_or(QuicklistPosition::None, |(start, end)| {
+                QuicklistPosition::LineRange { start, end }
+            });
+
+            entries.push(QuicklistEntry { target, position });
+        }
+
+        entries
     }
 
     fn primary_query(&self) -> Arc<str> {
@@ -1104,6 +1157,21 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.to_end();
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
+            ctrl!('q') => {
+                // Pickers can provide explicit quicklist entries when they have
+                // more precise jump data. Everything else falls back to preview
+                // locations, which are still usually just path + line span.
+                let entries = self.matched_quicklist_entries(ctx.editor);
+                let count = entries.len();
+                ctx.editor.replace_quicklist(entries);
+                if count == 0 {
+                    ctx.editor
+                        .set_status("No quicklist entries available for this picker");
+                } else {
+                    ctx.editor
+                        .set_status(format!("Quicklist populated with {count} entries"));
+                }
+            }
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, self.default_action);
