@@ -193,8 +193,15 @@ fn mark(context: &mut compositor::Context, args: Args, event: PromptEvent) -> an
     let mark = args
         .get(0)
         .as_ref()
-        .map(|mark| Some(mark.chars().next().unwrap()))
-        .unwrap();
+        .map(|arg| {
+            let mark = arg.chars().next();
+            if mark.is_some() {
+                mark
+            } else {
+                None
+            }
+        })
+        .ok_or(anyhow!("No <mark> provided"))?;
 
     push_jump_with_mark(view, doc, mark);
     Ok(())
@@ -212,13 +219,19 @@ fn jump_to_mark(
     let mark = args
         .get(0)
         .as_ref()
-        .map(|mark| Some(mark.chars().next().unwrap()))
-        .unwrap()
-        .unwrap();
+        .and_then(|arg| {
+            let mark = arg.chars().next();
+            if mark.is_some() {
+                mark
+            } else {
+                None
+            }
+        })
+        .ok_or(anyhow!("No <mark> provided "))?;
 
     let view = view!(context.editor);
 
-    if let Some(_) = view.jumps.get_jump_with_mark(mark) {
+    if view.jumps.get_jump_with_mark(mark).is_some() {
         context.editor.jump_to_mark(view.id, mark);
     }
 
