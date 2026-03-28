@@ -428,6 +428,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
+    /// Defines how the content of the picket gets transformed into quicklist entries.
     pub fn with_quicklist(
         mut self,
         quicklist_fn: impl Fn(&Editor, &T) -> Option<QuicklistEntry> + 'static,
