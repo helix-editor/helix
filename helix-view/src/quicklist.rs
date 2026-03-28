@@ -45,18 +45,23 @@ pub enum QuicklistTarget {
 /// The position to restore when activating a quicklist entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QuicklistPosition {
-    /// Restore an exact selection.
+    /// Exact selection.
     Selection(Selection),
-    /// Restore a coarse zero-based line range.
+    /// Coarse zero-based line range.
     LineRange { start: usize, end: usize },
-    /// Restore a zero-based line/column range.
+    /// Zero-based line/column range.
     LineColRange {
         start_line: usize,
         start_col: usize,
         end_line: usize,
         end_col: usize,
     },
-    /// Restore an exact LSP range using the original offset encoding.
+    /// Exact LSP range using the original offset encoding.
+    //
+    // NOTE: shouldn't be needed if we are able to perform
+    // offset encoding right in the LSP client and work with
+    // helix-specific offsets outside of it. That's unfortunately
+    // not the case at the moment.
     LspRange {
         range: lsp::Range,
         offset_encoding: OffsetEncoding,
@@ -90,9 +95,6 @@ pub struct QuicklistEntry {
     /// The file or document to visit.
     pub target: QuicklistTarget,
     /// The position to restore within the target.
-    ///
-    /// TODO: extend this to store richer picker-specific jump metadata such as
-    /// LSP ranges with offset encodings and other activation-only payloads.
     pub position: QuicklistPosition,
 }
 
@@ -101,6 +103,11 @@ pub struct QuicklistEntry {
 pub struct Quicklist {
     entries: Vec<QuicklistEntry>,
     current: Option<usize>,
+}
+
+pub(crate) struct QuicklistMatch<'a> {
+    pub index: usize,
+    pub entry: &'a QuicklistEntry,
 }
 
 impl Quicklist {
@@ -115,16 +122,6 @@ impl Quicklist {
         &self.entries
     }
 
-    /// Returns whether the quicklist has no entries.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    /// Returns the number of stored entries.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
     /// Returns the current quicklist position, if one has been visited.
     pub fn current(&self) -> Option<usize> {
         self.current
@@ -135,14 +132,14 @@ impl Quicklist {
         self.current = current;
     }
 
-    pub(crate) fn next_index(
+    pub(crate) fn next_entry(
         &self,
         count: usize,
         current_doc_id: DocumentId,
         current_path: Option<&Path>,
         same_file: bool,
-    ) -> Option<usize> {
-        self.find_index(
+    ) -> Option<QuicklistMatch<'_>> {
+        self.find_entry(
             Direction::Forward,
             count,
             current_doc_id,
@@ -151,14 +148,14 @@ impl Quicklist {
         )
     }
 
-    pub(crate) fn prev_index(
+    pub(crate) fn prev_entry(
         &self,
         count: usize,
         current_doc_id: DocumentId,
         current_path: Option<&Path>,
         same_file: bool,
-    ) -> Option<usize> {
-        self.find_index(
+    ) -> Option<QuicklistMatch<'_>> {
+        self.find_entry(
             Direction::Backward,
             count,
             current_doc_id,
@@ -167,14 +164,14 @@ impl Quicklist {
         )
     }
 
-    fn find_index(
+    fn find_entry(
         &self,
         direction: Direction,
         count: usize,
         current_doc_id: DocumentId,
         current_path: Option<&Path>,
         same_file: bool,
-    ) -> Option<usize> {
+    ) -> Option<QuicklistMatch<'_>> {
         if self.entries.is_empty() {
             return None;
         }
@@ -215,7 +212,10 @@ impl Quicklist {
             }
         }
 
-        Some(index)
+        Some(QuicklistMatch {
+            index,
+            entry: &self.entries[index],
+        })
     }
 }
 
@@ -260,17 +260,23 @@ mod tests {
         quicklist.replace(vec![entry("a.rs", 0), entry("b.rs", 1), entry("c.rs", 2)]);
 
         assert_eq!(
-            quicklist.next_index(1, DocumentId::default(), None, false),
-            Some(0)
+            quicklist
+                .next_entry(1, DocumentId::default(), None, false)
+                .map(|entry| entry.index),
+            Some(0),
         );
         quicklist.set_current(Some(0));
         assert_eq!(
-            quicklist.next_index(1, DocumentId::default(), None, false),
-            Some(1)
+            quicklist
+                .next_entry(1, DocumentId::default(), None, false)
+                .map(|entry| entry.index),
+            Some(1),
         );
         assert_eq!(
-            quicklist.prev_index(1, DocumentId::default(), None, false),
-            Some(2)
+            quicklist
+                .prev_entry(1, DocumentId::default(), None, false)
+                .map(|entry| entry.index),
+            Some(2),
         );
     }
 
@@ -286,17 +292,23 @@ mod tests {
 
         let path = PathBuf::from("a.rs");
         assert_eq!(
-            quicklist.next_index(1, DocumentId::default(), Some(&path), true),
-            Some(0)
+            quicklist
+                .next_entry(1, DocumentId::default(), Some(&path), true)
+                .map(|entry| entry.index),
+            Some(0),
         );
         quicklist.set_current(Some(0));
         assert_eq!(
-            quicklist.next_index(1, DocumentId::default(), Some(&path), true),
-            Some(2)
+            quicklist
+                .next_entry(1, DocumentId::default(), Some(&path), true)
+                .map(|entry| entry.index),
+            Some(2),
         );
         assert_eq!(
-            quicklist.prev_index(1, DocumentId::default(), Some(&path), true),
-            Some(2)
+            quicklist
+                .prev_entry(1, DocumentId::default(), Some(&path), true)
+                .map(|entry| entry.index),
+            Some(2),
         );
     }
 
@@ -310,8 +322,18 @@ mod tests {
             entry("b.rs", 2),
         ]);
 
-        assert_eq!(quicklist.next_index(1, doc_id, None, true), Some(1));
+        assert_eq!(
+            quicklist
+                .next_entry(1, doc_id, None, true)
+                .map(|entry| entry.index),
+            Some(1),
+        );
         quicklist.set_current(Some(1));
-        assert_eq!(quicklist.prev_index(1, doc_id, None, true), Some(1));
+        assert_eq!(
+            quicklist
+                .prev_entry(1, doc_id, None, true)
+                .map(|entry| entry.index),
+            Some(1),
+        );
     }
 }

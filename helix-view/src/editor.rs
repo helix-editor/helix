@@ -9,6 +9,7 @@ use crate::{
     handlers::Handlers,
     info::Info,
     input::KeyEvent,
+    quicklist::QuicklistMatch,
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -2482,22 +2483,22 @@ impl Editor {
             None
         };
 
-        let index = match direction {
+        let matched = match direction {
             Direction::Forward => {
                 self.quicklist
-                    .next_index(count, current_doc_id, current_path, same_file)
+                    .next_entry(count, current_doc_id, current_path, same_file)
             }
             Direction::Backward => {
                 self.quicklist
-                    .prev_index(count, current_doc_id, current_path, same_file)
+                    .prev_entry(count, current_doc_id, current_path, same_file)
             }
         };
-        let Some(index) = index else {
+
+        let Some(QuicklistMatch { index, entry }) = matched else {
             return false;
         };
 
-        let entry = self.quicklist.entries()[index].clone();
-        if self.activate_quicklist_entry(view_id, &entry, Action::Replace) {
+        if self.activate_quicklist_entry(view_id, &entry.clone(), Action::Replace) {
             self.quicklist.set_current(Some(index));
             true
         } else {
