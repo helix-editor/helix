@@ -2509,6 +2509,8 @@ fn global_search(cx: &mut Context) {
         }
     }
 
+    /// Converts the regex engine's byte match within `line_content` into
+    /// zero-based line and character-column bounds relative to `line_start`.
     fn match_line_cols(
         line_start: usize,
         line_content: &str,
