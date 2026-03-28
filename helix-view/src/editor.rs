@@ -42,10 +42,12 @@ use tokio::{
 
 use anyhow::{anyhow, bail, Error};
 
+pub use crate::quicklist::{Quicklist, QuicklistEntry, QuicklistPosition, QuicklistTarget};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
+    movement::Direction,
     syntax::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
@@ -53,7 +55,7 @@ use helix_core::{
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap::{self as dap, registry::DebugAdapterId};
-use helix_lsp::lsp;
+use helix_lsp::{lsp, util::lsp_range_to_range};
 use helix_stdx::path::canonicalize;
 
 use serde::{ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
@@ -1184,7 +1186,6 @@ pub struct Breakpoint {
 }
 
 use futures_util::stream::{Flatten, Once};
-
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
 
 pub struct Editor {
@@ -1225,6 +1226,7 @@ pub struct Editor {
     /// restored when the preview is aborted, or added to the jumplist when it is
     /// confirmed.
     pub last_selection: Option<Selection>,
+    pub quicklist: Quicklist,
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
@@ -1362,6 +1364,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
+            quicklist: Quicklist::default(),
             registers: Registers::new(Box::new(arc_swap::access::Map::new(
                 Arc::clone(&config),
                 |config: &Config| &config.clipboard_provider,
@@ -2413,6 +2416,18 @@ impl Editor {
         self.last_cwd.as_deref()
     }
 
+    pub fn replace_quicklist(&mut self, entries: Vec<QuicklistEntry>) {
+        self.quicklist.replace(entries);
+    }
+
+    pub fn jump_next_quicklist(&mut self, view_id: ViewId, count: usize, same_file: bool) -> bool {
+        self.jump_quicklist(view_id, Direction::Forward, count, same_file)
+    }
+
+    pub fn jump_prev_quicklist(&mut self, view_id: ViewId, count: usize, same_file: bool) -> bool {
+        self.jump_quicklist(view_id, Direction::Backward, count, same_file)
+    }
+
     pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
         if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
             self.jump_to(view_id, doc_id, selection);
@@ -2448,6 +2463,197 @@ impl Editor {
         let (view, doc) = current!(self);
         doc.set_selection(view_id, selection);
         view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
+    }
+
+    fn jump_quicklist(
+        &mut self,
+        view_id: ViewId,
+        direction: Direction,
+        count: usize,
+        same_file: bool,
+    ) -> bool {
+        let current_doc_id = self.tree.get(view_id).doc;
+        let current_path = if same_file {
+            self.documents
+                .get(&current_doc_id)
+                .and_then(|doc| doc.path())
+                .map(PathBuf::as_path)
+        } else {
+            None
+        };
+
+        let index = match direction {
+            Direction::Forward => {
+                self.quicklist
+                    .next_index(count, current_doc_id, current_path, same_file)
+            }
+            Direction::Backward => {
+                self.quicklist
+                    .prev_index(count, current_doc_id, current_path, same_file)
+            }
+        };
+        let Some(index) = index else {
+            return false;
+        };
+
+        let entry = self.quicklist.entries()[index].clone();
+        if self.activate_quicklist_entry(view_id, &entry, Action::Replace) {
+            self.quicklist.set_current(Some(index));
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn activate_quicklist_entry(
+        &mut self,
+        view_id: ViewId,
+        entry: &QuicklistEntry,
+        action: Action,
+    ) -> bool {
+        let doc_id = match &entry.target {
+            QuicklistTarget::Path(path) => match self.open(path, action) {
+                Ok(id) => id,
+                Err(err) => {
+                    self.set_error(format!(
+                        "failed to open quicklist entry '{}': {err}",
+                        path.display()
+                    ));
+                    return false;
+                }
+            },
+            QuicklistTarget::Document(doc_id) => {
+                if !self.documents.contains_key(doc_id) {
+                    self.set_error("The quicklist entry no longer points to an open document.");
+                    return false;
+                }
+                self.switch(*doc_id, action);
+                *doc_id
+            }
+        };
+
+        match &entry.position {
+            QuicklistPosition::None => {
+                // TODO: extend quicklist capture for more pickers so fewer
+                // entries need to fall back to the document's restored cursor.
+                true
+            }
+            QuicklistPosition::Selection(selection) => {
+                let scrolloff = self.config.load().scrolloff;
+                let target_view_id = match action {
+                    Action::Replace => view_id,
+                    Action::HorizontalSplit | Action::VerticalSplit => self.tree.focus,
+                    Action::Load => view_id,
+                };
+                let view = view_mut!(self, target_view_id);
+                let doc = doc_mut!(self, &doc_id);
+                let selection = selection.clone().ensure_invariants(doc.text().slice(..));
+                doc.set_selection(view.id, selection);
+                if action.align_view(view, doc.id()) {
+                    view.ensure_cursor_in_view_center(doc, scrolloff);
+                }
+                true
+            }
+            QuicklistPosition::LineRange {
+                start: line_start,
+                end: line_end,
+            } => {
+                let (start, end) = {
+                    let doc = doc_mut!(self, &doc_id);
+                    let text = doc.text();
+
+                    if *line_start >= text.len_lines() {
+                        self.set_error(
+                            "The quicklist entry no longer points to a valid line in the file.",
+                        );
+                        return false;
+                    }
+                    let start = text.line_to_char(*line_start);
+                    let end = text.line_to_char((*line_end + 1).min(text.len_lines()));
+                    (start, end)
+                };
+
+                let scrolloff = self.config.load().scrolloff;
+                let target_view_id = match action {
+                    Action::Replace => view_id,
+                    Action::HorizontalSplit | Action::VerticalSplit => self.tree.focus,
+                    Action::Load => view_id,
+                };
+                let view = view_mut!(self, target_view_id);
+                let doc = doc_mut!(self, &doc_id);
+                doc.set_selection(view.id, Selection::single(start, end));
+                if action.align_view(view, doc.id()) {
+                    view.ensure_cursor_in_view_center(doc, scrolloff);
+                }
+                true
+            }
+            QuicklistPosition::LineColRange {
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            } => {
+                let selection = {
+                    let doc = doc_mut!(self, &doc_id);
+                    let text = doc.text();
+
+                    if *start_line >= text.len_lines() || *end_line >= text.len_lines() {
+                        self.set_error(
+                            "The quicklist entry no longer points to a valid location in the file.",
+                        );
+                        return false;
+                    }
+
+                    let start = text.line_to_char(*start_line).saturating_add(*start_col);
+                    let end = text.line_to_char(*end_line).saturating_add(*end_col);
+                    Selection::single(start, end).ensure_invariants(text.slice(..))
+                };
+
+                let scrolloff = self.config.load().scrolloff;
+                let target_view_id = match action {
+                    Action::Replace => view_id,
+                    Action::HorizontalSplit | Action::VerticalSplit => self.tree.focus,
+                    Action::Load => view_id,
+                };
+                let view = view_mut!(self, target_view_id);
+                let doc = doc_mut!(self, &doc_id);
+                doc.set_selection(view.id, selection);
+                if action.align_view(view, doc.id()) {
+                    view.ensure_cursor_in_view_center(doc, scrolloff);
+                }
+                true
+            }
+            QuicklistPosition::LspRange {
+                range,
+                offset_encoding,
+            } => {
+                let selection = {
+                    let doc = doc_mut!(self, &doc_id);
+                    let Some(range) = lsp_range_to_range(doc.text(), *range, *offset_encoding)
+                    else {
+                        self.set_error(
+                            "The quicklist entry no longer points to a valid location in the file.",
+                        );
+                        return false;
+                    };
+                    Selection::single(range.head, range.anchor)
+                };
+
+                let scrolloff = self.config.load().scrolloff;
+                let target_view_id = match action {
+                    Action::Replace => view_id,
+                    Action::HorizontalSplit | Action::VerticalSplit => self.tree.focus,
+                    Action::Load => view_id,
+                };
+                let view = view_mut!(self, target_view_id);
+                let doc = doc_mut!(self, &doc_id);
+                doc.set_selection(view.id, selection);
+                if action.align_view(view, doc.id()) {
+                    view.ensure_cursor_in_view_center(doc, scrolloff);
+                }
+                true
+            }
+        }
     }
 }
 
