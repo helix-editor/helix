@@ -90,6 +90,7 @@ use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
 use url::Url;
 
+use grep_matcher::Matcher;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use ignore::{DirEntry, WalkBuilder, WalkState};
@@ -409,6 +410,7 @@ impl MappableCommand {
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
+        quicklist_picker, "Open quicklist picker",
         symbol_picker, "Open symbol picker",
         syntax_symbol_picker, "Open symbol picker from syntax information",
         lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
@@ -454,6 +456,10 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_quicklist, "Goto next quicklist entry",
+        goto_prev_quicklist, "Goto previous quicklist entry",
+        goto_next_file_quicklist, "Goto next quicklist entry in current file",
+        goto_prev_file_quicklist, "Goto previous quicklist entry in current file",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -2481,16 +2487,49 @@ fn global_search(cx: &mut Context) {
         line_start: usize,
         /// 0 indexed line end
         line_end: usize,
+        match_start_col: usize,
+        match_end_col: usize,
     }
 
     impl FileResult {
-        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
+        fn new(
+            path: &Path,
+            line_start: usize,
+            line_end: usize,
+            match_start_col: usize,
+            match_end_col: usize,
+        ) -> Self {
             Self {
                 path: path.to_path_buf(),
                 line_start,
                 line_end,
+                match_start_col,
+                match_end_col,
             }
         }
+    }
+
+    fn match_line_cols(
+        line_start: usize,
+        line_content: &str,
+        matcher: &grep_regex::RegexMatcher,
+    ) -> Option<(usize, usize, usize, usize)> {
+        let matched = matcher.find(line_content.as_bytes()).ok().flatten()?;
+        let prefix = &line_content[..matched.start()];
+        let matched_text = &line_content[..matched.end()];
+
+        let start_line = line_start + prefix.matches('\n').count();
+        let start_col = prefix.rsplit('\n').next().unwrap_or(prefix).chars().count();
+
+        let end_line = line_start + matched_text.matches('\n').count();
+        let end_col = matched_text
+            .rsplit('\n')
+            .next()
+            .unwrap_or(matched_text)
+            .chars()
+            .count();
+
+        Some((start_line, start_col, end_line, end_col))
     }
 
     struct GlobalSearchConfig {
@@ -2615,9 +2654,23 @@ fn global_search(cx: &mut Context) {
                         let mut stop = false;
                         let sink = sinks::UTF8(|line_start, line_content| {
                             let line_start = line_start as usize - 1;
-                            let line_end = line_start + line_content.lines().count() - 1;
+                            let Some((
+                                match_start_line,
+                                match_start_col,
+                                match_end_line,
+                                match_end_col,
+                            )) = match_line_cols(line_start, line_content, &matcher)
+                            else {
+                                return Ok(true);
+                            };
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_start, line_end))
+                                .push(FileResult::new(
+                                    entry.path(),
+                                    match_start_line,
+                                    match_end_line,
+                                    match_start_col,
+                                    match_end_col,
+                                ))
                                 .is_err();
 
                             Ok(!stop)
@@ -2676,6 +2729,8 @@ fn global_search(cx: &mut Context) {
                   path,
                   line_start,
                   line_end,
+                  match_start_col,
+                  match_end_col,
                   ..
               },
               action| {
@@ -2698,10 +2753,15 @@ fn global_search(cx: &mut Context) {
                 );
                 return;
             }
-            let start = text.line_to_char(line_start);
-            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
+            let start = text
+                .line_to_char(line_start)
+                .saturating_add(*match_start_col);
+            let end = text.line_to_char(line_end).saturating_add(*match_end_col);
 
-            doc.set_selection(view.id, Selection::single(start, end));
+            doc.set_selection(
+                view.id,
+                Selection::single(start, end).ensure_invariants(text.slice(..)),
+            );
             if action.align_view(view, doc.id()) {
                 align_view(doc, view, Align::Center);
             }
@@ -2716,6 +2776,17 @@ fn global_search(cx: &mut Context) {
              ..
          }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
     )
+    .with_quicklist(|_editor, item| {
+        Some(helix_view::editor::QuicklistEntry {
+            target: helix_view::editor::QuicklistTarget::Path(item.path.clone()),
+            position: helix_view::editor::QuicklistPosition::LineColRange {
+                start_line: item.line_start,
+                start_col: item.match_start_col,
+                end_line: item.line_end,
+                end_col: item.match_end_col,
+            },
+        })
+    })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
@@ -3368,7 +3439,121 @@ fn jumplist_picker(cx: &mut Context) {
         let doc = &editor.documents.get(&meta.id)?;
         let line = meta.selection.primary().cursor_line(doc.text().slice(..));
         Some((meta.id.into(), Some((line, line))))
+    })
+    .with_quicklist(|_editor, meta| {
+        Some(helix_view::editor::QuicklistEntry {
+            target: helix_view::editor::QuicklistTarget::Document(meta.id),
+            position: helix_view::editor::QuicklistPosition::Selection(meta.selection.clone()),
+        })
     });
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn quicklist_entry_line_range(
+    editor: &Editor,
+    entry: &helix_view::editor::QuicklistEntry,
+) -> Option<(usize, usize)> {
+    let text = match &entry.target {
+        helix_view::editor::QuicklistTarget::Path(path) => editor
+            .document_by_path(path)
+            .map(|doc| doc.text().slice(..)),
+        helix_view::editor::QuicklistTarget::Document(id) => {
+            editor.documents.get(id).map(|doc| doc.text().slice(..))
+        }
+    };
+
+    entry.position.line_range(text)
+}
+
+fn quicklist_picker(cx: &mut Context) {
+    #[derive(Clone)]
+    struct QuicklistMeta {
+        index: usize,
+        entry: helix_view::editor::QuicklistEntry,
+        label: String,
+        line: Option<usize>,
+        is_current: bool,
+    }
+
+    let entries = cx.editor.quicklist.entries();
+    if entries.is_empty() {
+        cx.editor.set_error("No quicklist entries available");
+        return;
+    }
+
+    let items = entries
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(index, entry)| {
+            let label = match &entry.target {
+                helix_view::editor::QuicklistTarget::Path(path) => {
+                    helix_stdx::path::get_relative_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                }
+                helix_view::editor::QuicklistTarget::Document(id) => {
+                    let path = cx
+                        .editor
+                        .documents
+                        .get(id)
+                        .and_then(|doc| doc.path())
+                        .cloned();
+                    let label = path
+                        .as_deref()
+                        .map(helix_stdx::path::get_relative_path)
+                        .map(|path| path.to_string_lossy().to_string())
+                        .unwrap_or_else(|| format!("{SCRATCH_BUFFER_NAME} ({id})"));
+                    label
+                }
+            };
+
+            QuicklistMeta {
+                index,
+                label,
+                line: quicklist_entry_line_range(cx.editor, &entry).map(|(start, _)| start + 1),
+                is_current: cx.editor.quicklist.current() == Some(index),
+                entry,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let columns = [
+        ui::PickerColumn::new("path", |item: &QuicklistMeta, _| item.label.as_str().into()),
+        ui::PickerColumn::new("line", |item: &QuicklistMeta, _| {
+            item.line
+                .map_or_else(String::new, |line| line.to_string())
+                .into()
+        }),
+        ui::PickerColumn::new("flags", |item: &QuicklistMeta, _| {
+            if item.is_current {
+                " (*)".into()
+            } else {
+                "".into()
+            }
+        }),
+    ];
+
+    let initial_cursor = cx.editor.quicklist.current().unwrap_or(0) as u32;
+
+    let picker = Picker::new(columns, 0, items, (), |cx, meta, action| {
+        let view_id = cx.editor.tree.focus;
+        if cx
+            .editor
+            .activate_quicklist_entry(view_id, &meta.entry, action)
+        {
+            cx.editor.quicklist.set_current(Some(meta.index));
+        }
+    })
+    .with_initial_cursor(initial_cursor)
+    .with_preview(|editor, meta| {
+        let path_or_id = match &meta.entry.target {
+            helix_view::editor::QuicklistTarget::Path(path) => path.as_path().into(),
+            helix_view::editor::QuicklistTarget::Document(id) => (*id).into(),
+        };
+        Some((path_or_id, quicklist_entry_line_range(editor, &meta.entry)))
+    });
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -4080,6 +4265,43 @@ fn goto_prev_diag(cx: &mut Context) {
             .immediately_show_diagnostic(doc, view.id);
     };
     cx.editor.apply_motion(motion)
+}
+
+fn goto_next_quicklist(cx: &mut Context) {
+    goto_quicklist_impl(cx, Direction::Forward, false);
+}
+
+fn goto_prev_quicklist(cx: &mut Context) {
+    goto_quicklist_impl(cx, Direction::Backward, false);
+}
+
+fn goto_next_file_quicklist(cx: &mut Context) {
+    goto_quicklist_impl(cx, Direction::Forward, true);
+}
+
+fn goto_prev_file_quicklist(cx: &mut Context) {
+    goto_quicklist_impl(cx, Direction::Backward, true);
+}
+
+fn goto_quicklist_impl(cx: &mut Context, direction: Direction, same_file: bool) {
+    let view_id = cx.editor.tree.focus;
+    let jumped = match direction {
+        Direction::Forward => cx
+            .editor
+            .jump_next_quicklist(view_id, cx.count(), same_file),
+        Direction::Backward => cx
+            .editor
+            .jump_prev_quicklist(view_id, cx.count(), same_file),
+    };
+
+    if !jumped {
+        let message = if same_file {
+            "No quicklist entries available in the current file"
+        } else {
+            "No quicklist entries available"
+        };
+        cx.editor.set_error(message);
+    }
 }
 
 fn goto_first_change(cx: &mut Context) {
