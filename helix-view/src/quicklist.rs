@@ -180,9 +180,10 @@ impl Quicklist {
             !same_file
                 || match &entry.target {
                     QuicklistTarget::Document(doc_id) => *doc_id == current_doc_id,
-                    QuicklistTarget::Path(path) => {
-                        current_path.is_some_and(|current| path == current)
-                    }
+                    QuicklistTarget::Path(path) => current_path.is_some_and(|current| {
+                        helix_stdx::path::canonicalize(path)
+                            == helix_stdx::path::canonicalize(current)
+                    }),
                 }
         };
 
@@ -307,6 +308,31 @@ mod tests {
         assert_eq!(
             quicklist
                 .prev_entry(1, DocumentId::default(), Some(&path), true)
+                .map(|entry| entry.index),
+            Some(2),
+        );
+    }
+
+    #[test]
+    fn quicklist_filters_to_current_file_with_canonicalized_entry_path() {
+        let mut quicklist = Quicklist::default();
+        quicklist.replace(vec![
+            entry("./a.rs", 0),
+            entry("b.rs", 1),
+            entry("dir/../a.rs", 2),
+        ]);
+
+        let path = helix_stdx::path::canonicalize("a.rs");
+        assert_eq!(
+            quicklist
+                .next_entry(1, DocumentId::default(), Some(&path), true)
+                .map(|entry| entry.index),
+            Some(0),
+        );
+        quicklist.set_current(Some(0));
+        assert_eq!(
+            quicklist
+                .next_entry(1, DocumentId::default(), Some(&path), true)
                 .map(|entry| entry.index),
             Some(2),
         );
