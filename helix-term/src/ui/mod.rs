@@ -22,6 +22,10 @@ pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
 use helix_view::theme::Style;
+use helix_view::{
+    editor::{QuicklistEntry, QuicklistPosition, QuicklistTarget},
+    Editor,
+};
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -31,7 +35,6 @@ pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-use helix_view::Editor;
 use tui::text::{Span, Spans};
 
 use std::path::Path;
@@ -353,6 +356,16 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    let picker = picker.with_quicklist(|_editor, (path, is_dir)| {
+        if *is_dir {
+            return None;
+        }
+
+        Some(QuicklistEntry {
+            target: QuicklistTarget::Path(path.clone()),
+            position: QuicklistPosition::None,
+        })
+    });
 
     Ok(picker)
 }
