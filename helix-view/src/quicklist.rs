@@ -27,9 +27,6 @@
 //! enough for basic quicklist traversal, but it can still lose picker-specific
 //! precision such as offset-encoding-aware LSP ranges or other activation
 //! metadata.
-//!
-//! TODO: extend quicklist entries to store richer picker-specific positions so
-//! quicklist activation can reproduce the original picker jump exactly.
 
 use crate::DocumentId;
 use helix_core::{movement::Direction, RopeSlice, Selection};
