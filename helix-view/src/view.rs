@@ -62,7 +62,9 @@ impl JumpList {
     }
 
     fn add_mark_impl(&mut self, jump: Jump) {
-        self.marks.insert(jump.2.unwrap(), jump);
+        if let Some(mark) = jump.2 {
+            self.marks.insert(mark, jump);
+        }
     }
 
     pub fn push(&mut self, jump: Jump) {
