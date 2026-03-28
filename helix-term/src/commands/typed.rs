@@ -6,7 +6,8 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
+use crate::commands::args::{Args, Flag, Signature};
+use helix_core::command_line::{Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
@@ -29,7 +30,7 @@ pub struct TypableCommand {
     pub signature: Signature,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct CommandCompleter {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
@@ -39,21 +40,21 @@ pub struct CommandCompleter {
 }
 
 impl CommandCompleter {
-    const fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             positional_args: &[],
             var_args: completers::none,
         }
     }
 
-    const fn positional(completers: &'static [Completer]) -> Self {
+    pub const fn positional(completers: &'static [Completer]) -> Self {
         Self {
             positional_args: completers,
             var_args: completers::none,
         }
     }
 
-    const fn all(completer: Completer) -> Self {
+    pub const fn all(completer: Completer) -> Self {
         Self {
             positional_args: &[],
             var_args: completer,
@@ -4090,7 +4091,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
             } else {
                 0
             };
-            let arg_len = if flag.completions.is_some() {
+            let arg_len = if flag.completer.is_some() {
                 ARG_PLACEHOLDER.len()
             } else {
                 0
@@ -4124,7 +4125,7 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
                     } else {
                         ""
                     },
-                    if flag.completions.is_some() {
+                    if flag.completer.is_some() {
                         ARG_PLACEHOLDER
                     } else {
                         ""
@@ -4167,7 +4168,8 @@ pub fn complete_command_args(
     input: &str,
     offset: usize,
 ) -> Vec<ui::prompt::Completion> {
-    use command_line::{CompletionState, ExpansionKind, Tokenizer};
+    use args::CompletionState;
+    use command_line::{ExpansionKind, Tokenizer};
 
     // TODO: completion should depend on the location of the cursor instead of the end of the
     // string. This refactor is left for the future but the below completion code should respect
@@ -4234,15 +4236,16 @@ pub fn complete_command_args(
                 .into_iter()
                 .map(|(name, _)| ((offset + token.content_start).., format!("--{name}").into()))
                 .collect(),
-                CompletionState::FlagArgument(flag) => fuzzy_match(
-                    &token.content,
-                    flag.completions
-                        .expect("flags in FlagArgument always have completions"),
-                    false,
-                )
-                .into_iter()
-                .map(|(value, _)| ((offset + token.content_start).., (*value).into()))
-                .collect(),
+                CompletionState::FlagArgument(flag) => {
+                    let flag_completer = flag
+                        .completer
+                        .expect("flags in FlagArgument always have completions");
+                    let completer = flag_completer.for_argument_number(0);
+                    completer(editor, &token.content)
+                        .into_iter()
+                        .map(|(range, span)| ((offset + token.content_start + range.start).., span))
+                        .collect()
+                }
             }
         }
         TokenKind::Expand | TokenKind::Expansion(ExpansionKind::Shell) => {
