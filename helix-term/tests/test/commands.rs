@@ -1,5 +1,8 @@
 use helix_term::application::Application;
-use helix_view::doc;
+use helix_view::{
+    doc,
+    quicklist::{QuicklistEntry, QuicklistPosition, QuicklistTarget},
+};
 
 use super::*;
 
@@ -219,6 +222,44 @@ async fn test_picker_quicklist_navigation() -> anyhow::Result<()> {
         Some(&|app| {
             let doc = doc!(app.editor);
             assert_eq!(doc.path(), Some(&alpha));
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_quicklist_motion_pushes_pre_jump_location_to_jumplist() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let file = dir.path().join("quicklist.rs");
+    std::fs::write(&file, "alpha\nbeta\ngamma\n")?;
+
+    let mut app = AppBuilder::new().with_file(&file, None).build()?;
+
+    let initial_cursor = 0;
+    {
+        let (view, doc) = helix_view::current!(app.editor);
+        doc.set_selection(view.id, helix_core::Selection::point(initial_cursor));
+        view.sync_changes(doc);
+    }
+    app.editor.replace_quicklist(vec![QuicklistEntry {
+        target: QuicklistTarget::Path(file.clone()),
+        position: QuicklistPosition::LineRange { start: 1, end: 1 },
+    }]);
+
+    test_key_sequence(
+        &mut app,
+        Some("]q<C-o>"),
+        Some(&|app| {
+            let (view, doc) = helix_view::current_ref!(app.editor);
+            assert_eq!(
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+                initial_cursor,
+            );
         }),
         false,
     )

@@ -2498,7 +2498,20 @@ impl Editor {
             return false;
         };
 
+        let jump = {
+            let view = self.tree.get(view_id);
+            let doc = self
+                .documents
+                .get(&view.doc)
+                .expect("current view should reference an open document");
+            (doc.id(), doc.selection(view.id).clone())
+        };
+
         if self.activate_quicklist_entry(view_id, &entry.clone(), Action::Replace) {
+            let view = view_mut!(self, view_id);
+            let doc = doc_mut!(self, &jump.0);
+            doc.append_changes_to_history(view);
+            view.jumps.push(jump);
             self.quicklist.set_current(Some(index));
             true
         } else {
