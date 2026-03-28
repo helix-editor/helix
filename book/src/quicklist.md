@@ -9,8 +9,8 @@ After populating the quicklist, use:
 
 - `]q` to jump to the next quicklist entry
 - `[q` to jump to the previous quicklist entry
-- `]l` to jump to the next quicklist entry in the current file
-- `[l` to jump to the previous quicklist entry in the current file
+- `]l` to jump to the next quicklist entry in the current buffer
+- `[l` to jump to the previous quicklist entry in the current buffer
 
 To browse the current quicklist contents, press `Space-q` to open the quicklist picker.
 
