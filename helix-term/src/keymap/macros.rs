@@ -99,8 +99,7 @@ macro_rules! keymap {
         // modified from the hashmap! macro
         {
             let _cap = hashmap!(@count $($($key),+),*);
-            let mut _map = ::std::collections::HashMap::with_capacity(_cap);
-            let mut _order = ::std::vec::Vec::with_capacity(_cap);
+            let mut _map = ::indexmap::IndexMap::with_capacity(_cap);
             $(
                 $(
                     let _key = $key.parse::<::helix_view::input::KeyEvent>().unwrap();
@@ -109,10 +108,9 @@ macro_rules! keymap {
                         keymap!(@trie $value)
                     );
                     assert!(_duplicate.is_none(), "Duplicate key found: {:?}", _duplicate.unwrap());
-                    _order.push(_key);
                 )+
             )*
-            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
+            let mut _node = $crate::keymap::KeyTrieNode::new($label, _map);
             $( _node.is_sticky = $sticky; )?
             $crate::keymap::KeyTrie::Node(_node)
         }
