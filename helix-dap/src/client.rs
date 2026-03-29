@@ -434,6 +434,15 @@ impl Client {
     }
 
     pub async fn configuration_done(&self) -> Result<()> {
+        if !self
+            .caps
+            .as_ref()
+            .and_then(|caps| caps.supports_configuration_done_request)
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+
         self.request::<requests::ConfigurationDone>(Some(requests::ConfigurationDoneArguments {}))
             .await
     }
