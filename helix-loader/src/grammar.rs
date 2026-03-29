@@ -1,6 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::SystemTime;
 use std::{
     collections::HashSet,
@@ -86,15 +88,30 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(verbose: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
     let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
 
-    println!("Fetching {} grammars", grammars.len());
-    let results = run_parallel(grammars, fetch_grammar);
+    let total = grammars.len();
+    let counter = Arc::new(AtomicUsize::new(0));
+
+    println!("Fetching {} grammars", total);
+    let counter = Arc::clone(&counter);
+
+    let results = run_parallel(grammars, move |grammar| {
+        let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
+
+        if verbose {
+            println!(
+                "Fetching grammars ({}/{}): {}",
+                current, total, grammar.grammar_id
+            );
+        };
+        fetch_grammar(grammar)
+    });
 
     let mut errors = Vec::new();
     let mut git_updated = Vec::new();
@@ -147,12 +164,26 @@ pub fn fetch_grammars() -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>) -> Result<()> {
+pub fn build_grammars(target: Option<String>, verbose: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
+
+    let total = grammars.len();
+    let counter = Arc::new(AtomicUsize::new(0));
+
     println!("Building {} grammars", grammars.len());
+
+    let counter = Arc::clone(&counter);
     let results = run_parallel(grammars, move |grammar| {
+        let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
+
+        if verbose {
+            println!(
+                "Building grammars ({}/{}): {}",
+                current, total, grammar.grammar_id
+            );
+        };
         build_grammar(grammar, target.as_deref())
     });
 
