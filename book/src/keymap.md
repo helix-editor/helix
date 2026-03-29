@@ -404,6 +404,8 @@ escaping from insert mode to normal mode.
 | `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
+| `Tab`                                       | Smart tab                   | `smart_tab`              |
+| `Shift-Tab`                                 | Insert tab                  | `insert_tab`             |
 
 These keys are not recommended, but are included for new users less familiar
 with modal editors.
