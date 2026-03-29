@@ -22,7 +22,7 @@ use tokio::sync::mpsc::Sender;
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
-    text::{Span, Spans},
+    text::{Span, Spans, ToSpan},
     widgets::{Block, BorderType, Cell, Row, Table},
 };
 
@@ -32,7 +32,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     io::Read,
-    path::Path,
+    path::{Path, PathBuf},
     sync::{
         atomic::{self, AtomicUsize},
         Arc,
@@ -47,6 +47,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    icons::ICONS,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -85,7 +86,7 @@ pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
-    Directory(Vec<(String, bool)>),
+    Directory(Vec<(PathBuf, bool)>),
     Binary,
     LargeFile,
     NotFound,
@@ -107,7 +108,7 @@ impl Preview<'_, '_> {
         }
     }
 
-    fn dir_content(&self) -> Option<&Vec<(String, bool)>> {
+    fn dir_content(&self) -> Option<&Vec<(PathBuf, bool)>> {
         match self {
             Preview::Cached(CachedPreview::Directory(dir_content)) => Some(dir_content),
             _ => None,
@@ -611,22 +612,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     .and_then(|metadata| {
                         if metadata.is_dir() {
                             let files = super::directory_content(&path, editor)?;
-                            let file_names: Vec<_> = files
-                                .iter()
-                                .filter_map(|(file_path, is_dir)| {
-                                    let name = file_path
-                                        .strip_prefix(&path)
-                                        .map(|p| Some(p.as_os_str()))
-                                        .unwrap_or_else(|_| file_path.file_name())?
-                                        .to_string_lossy();
-                                    if *is_dir {
-                                        Some((format!("{}/", name), true))
-                                    } else {
-                                        Some((name.into_owned(), false))
-                                    }
-                                })
-                                .collect();
-                            Ok(CachedPreview::Directory(file_names))
+                            Ok(CachedPreview::Directory(files))
                         } else if metadata.is_file() {
                             if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
                                 return Ok(CachedPreview::LargeFile);
@@ -880,12 +866,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         );
     }
 
+    #[allow(clippy::too_many_lines)]
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
-        let text = cx.editor.theme.get("ui.text");
-        let directory = cx.editor.theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
@@ -911,14 +896,58 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                         for (i, (path, is_dir)) in
                             dir_content.iter().take(inner.height as usize).enumerate()
                         {
-                            let style = if *is_dir { directory } else { text };
-                            surface.set_stringn(
-                                inner.x,
-                                inner.y + i as u16,
-                                path,
-                                inner.width as usize,
-                                style,
-                            );
+                            let icons = ICONS.load();
+
+                            let dir = path.file_name();
+                            // If path is `..` then this will be `None` and signifies being the
+                            // previous directory, which said another way, is the currently open
+                            // directory we are viewing.
+                            let is_open = dir.is_none() && *is_dir;
+
+                            let name = dir
+                                // Path `..` does not have a name, and so will become `..` as a string.
+                                .map_or_else(|| Cow::Borrowed(".."), |dir| dir.to_string_lossy());
+
+                            if *is_dir {
+                                let dir = match icons.fs().directory(is_open) {
+                                    Some(icon) => format!("{icon} {name}/"),
+                                    None => format!("{name}/"),
+                                };
+
+                                surface.set_stringn(
+                                    inner.x,
+                                    inner.y + i as u16,
+                                    dir,
+                                    inner.width as usize,
+                                    cx.editor.theme.get("ui.text.directory"),
+                                );
+                            } else if let Some(icon) = icons.fs().from_path(path) {
+                                let icon = icon.to_span_with(|icon| format!("{icon} "));
+
+                                surface.set_stringn(
+                                    inner.x,
+                                    inner.y + i as u16,
+                                    &icon.content,
+                                    inner.width as usize,
+                                    icon.style,
+                                );
+
+                                surface.set_stringn(
+                                    inner.x + icon.width() as u16,
+                                    inner.y + i as u16,
+                                    name,
+                                    inner.width as usize,
+                                    cx.editor.theme.get("ui.text"),
+                                );
+                            } else {
+                                surface.set_stringn(
+                                    inner.x,
+                                    inner.y + i as u16,
+                                    name,
+                                    inner.width as usize,
+                                    cx.editor.theme.get("ui.text"),
+                                );
+                            }
                         }
                         return;
                     }
@@ -926,7 +955,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;
-                    surface.set_stringn(x, y, alt_text, inner.width as usize, text);
+                    surface.set_stringn(
+                        x,
+                        y,
+                        alt_text,
+                        inner.width as usize,
+                        cx.editor.theme.get("ui.text"),
+                    );
                     return;
                 }
             };
