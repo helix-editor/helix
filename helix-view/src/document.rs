@@ -207,7 +207,7 @@ pub struct Document {
 
     pub readonly: bool,
 
-    pub previous_diagnostic_id: Option<String>,
+    pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -757,7 +757,7 @@ impl Document {
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
             syn_loader,
-            previous_diagnostic_id: None,
+            previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
         }
