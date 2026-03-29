@@ -239,7 +239,7 @@
 | r | ✓ |  |  |  |  | `R` |
 | racket | ✓ |  | ✓ |  | ✓ | `racket` |
 | regex | ✓ |  |  |  | ✓ |  |
-| rego | ✓ |  |  |  |  | `regols` |
+| rego | ✓ |  |  |  |  | `regols`, `regal` |
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | ripple | ✓ |  |  | ✓ | ✓ | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
