@@ -220,6 +220,10 @@ impl Compositor {
     pub fn need_full_redraw(&mut self) {
         self.full_redraw = true;
     }
+
+    pub fn layer_count(&self) -> usize {
+        self.layers.len()
+    }
 }
 
 // View casting, taken straight from Cursive
