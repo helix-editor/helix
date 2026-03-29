@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::time::SystemTime;
@@ -141,7 +141,6 @@ pub fn fetch_grammars() -> Result<()> {
         for (i, (grammar, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar} {error}", i + 1);
         }
-        bail!("{len} grammars failed to fetch");
     }
 
     Ok(())
@@ -184,7 +183,6 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
         for (i, (grammar_id, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar_id} {error}", i + 1);
         }
-        bail!("{len} grammars failed to build");
     }
 
     Ok(())
