@@ -358,6 +358,14 @@ impl Client {
                 capabilities.document_highlight_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
+            LanguageServerFeature::LinkedEditingRange => matches!(
+                capabilities.linked_editing_range_provider,
+                Some(
+                    LinkedEditingRangeServerCapabilities::Simple(true)
+                        | LinkedEditingRangeServerCapabilities::Options(_)
+                        | LinkedEditingRangeServerCapabilities::RegistrationOptions(_),
+                )
+            ),
             LanguageServerFeature::Completion => capabilities.completion_provider.is_some(),
             LanguageServerFeature::CodeAction => matches!(
                 capabilities.code_action_provider,
@@ -565,7 +573,11 @@ impl Client {
     // General messages
     // -------------------------------------------------------------------------------------------
 
-    pub(crate) async fn initialize(&self, enable_snippets: bool) -> Result<lsp::InitializeResult> {
+    pub(crate) async fn initialize(
+        &self,
+        enable_snippets: bool,
+        enable_linked_editing: bool,
+    ) -> Result<lsp::InitializeResult> {
         if let Some(config) = &self.config {
             log::info!("Using custom LSP config: {}", config);
         }
@@ -723,6 +735,11 @@ impl Client {
                     call_hierarchy: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    linked_editing_range: enable_linked_editing.then_some(
+                        lsp::DynamicRegistrationClientCapabilities {
+                            dynamic_registration: Some(false),
+                        },
+                    ),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
@@ -1345,6 +1362,35 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentHighlightRequest>(params))
+    }
+
+    pub fn text_document_linked_editing_range(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Option<lsp::LinkedEditingRanges>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        // Return early if the server does not support linked editing range.
+        match capabilities.linked_editing_range_provider {
+            Some(
+                lsp::LinkedEditingRangeServerCapabilities::Simple(true)
+                | lsp::LinkedEditingRangeServerCapabilities::Options(_)
+                | lsp::LinkedEditingRangeServerCapabilities::RegistrationOptions(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::LinkedEditingRangeParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+        };
+
+        Some(self.call::<lsp::request::LinkedEditingRange>(params))
     }
 
     fn goto_request<

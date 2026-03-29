@@ -1737,6 +1737,7 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
                 doc.path(),
                 &editor_config.workspace_lsp_roots,
                 editor_config.lsp.snippets,
+                editor_config.lsp.linked_editing,
             )
             .transpose()
         {

@@ -615,6 +615,7 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
+        enable_linked_editing: bool,
     ) -> Result<Arc<Client>, StartupError> {
         let syn_loader = self.syn_loader.load();
         let config = syn_loader
@@ -630,6 +631,7 @@ impl Registry {
                 doc_path,
                 root_dirs,
                 enable_snippets,
+                enable_linked_editing,
             )
             .map(|client| {
                 self.incoming.push(UnboundedReceiverStream::new(client.1));
@@ -648,6 +650,7 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
+        enable_linked_editing: bool,
     ) -> Option<Result<Arc<Client>>> {
         if let Some(old_clients) = self.inner_by_name.remove(name) {
             if old_clients.is_empty() {
@@ -669,6 +672,7 @@ impl Registry {
             doc_path,
             root_dirs,
             enable_snippets,
+            enable_linked_editing,
         ) {
             Ok(client) => client,
             Err(StartupError::NoRequiredRootFound) => return None,
@@ -703,6 +707,7 @@ impl Registry {
         doc_path: Option<&'a std::path::PathBuf>,
         root_dirs: &'a [PathBuf],
         enable_snippets: bool,
+        enable_linked_editing: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
         language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
@@ -731,6 +736,7 @@ impl Registry {
                     doc_path,
                     root_dirs,
                     enable_snippets,
+                    enable_linked_editing,
                 ) {
                     Ok(client) => {
                         self.inner_by_name
@@ -883,6 +889,7 @@ impl<T: Into<Error>> From<T> for StartupError {
 
 /// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
 /// it is only called when it makes sense.
+#[allow(clippy::too_many_arguments)]
 fn start_client(
     id: LanguageServerId,
     name: String,
@@ -891,6 +898,7 @@ fn start_client(
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
+    enable_linked_editing: bool,
 ) -> Result<NewClient, StartupError> {
     let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
     let workspace = path::normalize(workspace);
@@ -944,7 +952,7 @@ fn start_client(
             .capabilities
             .get_or_try_init(|| {
                 _client
-                    .initialize(enable_snippets)
+                    .initialize(enable_snippets, enable_linked_editing)
                     .map_ok(|response| response.capabilities)
             })
             .await;
