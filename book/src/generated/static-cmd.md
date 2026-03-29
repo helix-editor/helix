@@ -163,6 +163,10 @@
 | `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |
 | `goto_first_nonwhitespace` | Goto first non-blank in line | normal: `` gs ``, select: `` gs `` |
+| `goto_indent_start` | Goto start of indent scope | normal: `` [i `` |
+| `goto_indent_end` | Goto end of indent scope | normal: `` ]i `` |
+| `extend_to_indent_start` | Extend to start of indent scope | select: `` [i `` |
+| `extend_to_indent_end` | Extend to end of indent scope | select: `` ]i `` |
 | `trim_selections` | Trim whitespace from selections | normal: `` _ ``, select: `` _ `` |
 | `extend_to_line_start` | Extend to line start | select: `` <home> `` |
 | `extend_to_first_nonwhitespace` | Extend to first non-blank in line |  |
