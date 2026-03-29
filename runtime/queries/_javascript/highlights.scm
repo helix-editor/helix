@@ -1,3 +1,12 @@
+; Class definitions
+;------------------
+
+; JavaScript uses identifier for class names (TypeScript uses type_identifier)
+(class
+  name: (identifier) @type.definition)
+(class_declaration
+  name: (identifier) @type.definition)
+
 ; Function and method parameters
 ;-------------------------------
 
