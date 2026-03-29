@@ -1397,17 +1397,15 @@ fn compute_inlay_hints_for_view(
                 // Truncate the hint if too long
                 if let Some(limit) = inlay_hints_length_limit {
                     // Limit on displayed width
-                    use helix_core::unicode::{
-                        segmentation::UnicodeSegmentation, width::UnicodeWidthStr,
-                    };
+                    use helix_core::unicode::{self, segmentation::UnicodeSegmentation};
 
-                    let width = label.width();
+                    let width = unicode::width(&label);
                     let limit = limit.get().into();
                     if width > limit {
                         let mut floor_boundary = 0;
                         let mut acc = 0;
                         for (i, grapheme_cluster) in label.grapheme_indices(true) {
-                            acc += grapheme_cluster.width();
+                            acc += unicode::width(grapheme_cluster);
 
                             if acc > limit {
                                 floor_boundary = i;
