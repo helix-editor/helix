@@ -1,1 +1,1 @@
-; inherits: markdown
+; inherits: markdown,comment
