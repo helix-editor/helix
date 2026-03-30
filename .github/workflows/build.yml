@@ -77,7 +77,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm, windows-11-arm]
+        os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm, windows-11-arm, ubuntu-24.04-riscv]
 
   lints:
     name: Lints
