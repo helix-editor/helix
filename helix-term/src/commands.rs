@@ -3282,11 +3282,11 @@ fn buffer_picker(cx: &mut Context) {
 }
 
 fn jumplist_picker(cx: &mut Context) {
-    struct JumpMeta {
+    struct JumpMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         selection: Selection,
-        line: usize,
+        line_start: usize,
         text: String,
         is_current: bool,
     }
@@ -3307,34 +3307,62 @@ fn jumplist_picker(cx: &mut Context) {
                 .collect::<Vec<_>>()
                 .join(" ")
         });
-        let line = doc.map_or(0usize, |d| {
-            selection.primary().cursor_line(d.text().slice(..)) + 1
+        let line_start = doc.map_or(0usize, |d| {
+            selection.primary().cursor_line(d.text().slice(..))
         });
 
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|d| d.path().cloned()),
+            path: doc.and_then(|d| {
+                d.path()
+                    .cloned()
+                    .map(|p| helix_stdx::path::get_relative_path(p))
+            }),
             selection,
-            line,
+            line_start,
             text,
             is_current: view.doc == doc_id,
         }
     };
 
+    struct JumpListConfig {
+        directory_style: Style,
+        number_style: Style,
+        colon_style: Style,
+    }
+
+    let config = JumpListConfig {
+        directory_style: cx.editor.theme.get("ui.text.directory"),
+        number_style: cx.editor.theme.get("constant.numeric.integer"),
+        colon_style: cx.editor.theme.get("punctuation"),
+    };
+
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
-        ui::PickerColumn::new("path", |item: &JumpMeta, _| {
-            let path = item
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        ui::PickerColumn::new("path", |item: &JumpMeta, config: &JumpListConfig| {
+            if let Some(ref path) = item.path {
+                let directories = path
+                    .parent()
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                    .unwrap_or_default()
+                    .clone();
+
+                let filename = path
+                    .file_name()
+                    .map(|f| f.to_string_lossy())
+                    .unwrap_or(SCRATCH_BUFFER_NAME.into());
+
+                Cell::from(Spans::from(vec![
+                    Span::styled(directories, config.directory_style),
+                    Span::raw(filename),
+                    Span::styled(":", config.colon_style),
+                    Span::styled((item.line_start + 1).to_string(), config.number_style),
+                ]))
+            } else {
+                "".into()
+            }
         }),
-        ui::PickerColumn::new("line", |item: &JumpMeta, _| item.line.to_string().into()),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
             if item.is_current {
@@ -3359,7 +3387,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        (),
+        config,
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
