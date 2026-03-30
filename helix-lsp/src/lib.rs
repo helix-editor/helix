@@ -658,9 +658,7 @@ impl Registry {
             for old_client in old_clients {
                 self.file_event_handler.remove_client(old_client.id());
                 self.inner.remove(old_client.id());
-                tokio::spawn(async move {
-                    let _ = old_client.force_shutdown().await;
-                });
+                old_client.force_shutdown();
             }
         }
         let client = match self.start_client(
@@ -690,9 +688,7 @@ impl Registry {
             for client in clients.drain(..) {
                 self.file_event_handler.remove_client(client.id());
                 self.inner.remove(client.id());
-                tokio::spawn(async move {
-                    let _ = client.force_shutdown().await;
-                });
+                client.force_shutdown();
             }
         }
     }
