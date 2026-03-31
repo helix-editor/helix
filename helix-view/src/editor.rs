@@ -2258,10 +2258,7 @@ impl Editor {
 
     /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
-    pub async fn close_language_servers(
-        &self,
-        timeout: Option<u64>,
-    ) {
+    pub async fn close_language_servers(&self, timeout: Option<u64>) {
         // Remove all language servers from the file event handler.
         // Note: this is non-blocking.
         for client in self.language_servers.iter_clients() {
