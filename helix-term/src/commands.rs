@@ -6858,7 +6858,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     // Accept two characters matching a visible label. Jump to the candidate
     // for that label if it exists.
     let primary_selection = doc.selection(view.id).primary();
-    let view = view.id;
+    let view_id = view.id;
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
         let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -6867,17 +6867,17 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             return;
         };
         let outer = i * alphabet.len();
         // Bail if the given character cannot be a jump label.
         if outer > labels.len() {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             return;
         }
         cx.on_next_key(move |cx, event| {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
@@ -6907,8 +6907,9 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                save_selection(cx);
-                doc_mut!(cx.editor, &doc).set_selection(view, range.into());
+                let (view, doc) = current!(cx.editor);
+                push_jump(view, doc);
+                doc.set_selection(view_id, range.into());
             }
         });
     });
