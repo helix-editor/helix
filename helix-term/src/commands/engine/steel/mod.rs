@@ -1323,7 +1323,10 @@ fn load_theme_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("add-theme!", add_theme)
         .register_fn("theme-style", get_style)
         .register_fn("theme-set-style!", set_style)
-        .register_fn("string->color", string_to_color);
+        .register_fn("string->color", string_to_color)
+        .register_fn_with_ctx(CTX, "get-theme", get_theme)
+        .register_fn_with_ctx(CTX, "current-theme", current_theme)
+        .register_fn_with_ctx(CTX, "current-theme-name", current_theme_name);
 
     if generate_sources {
         configure_lsp_builtins("themes", &module);
@@ -1382,6 +1385,18 @@ fn theme_from_json_string(name: String, value: SteelVal) -> Result<SteelTheme, a
 fn add_theme(cx: &mut Context, theme: SteelTheme) {
     Arc::make_mut(&mut cx.editor.theme_loader)
         .add_dynamic_theme(theme.0.name().to_owned(), theme.0);
+}
+
+fn get_theme(cx: &mut Context, name: SteelString) -> Option<SteelTheme> {
+    cx.editor.theme_loader.load(&name).ok().map(SteelTheme)
+}
+
+fn current_theme_name(cx: &mut Context) -> SteelString {
+    cx.editor.theme.name().to_owned().into()
+}
+
+fn current_theme(cx: &mut Context) -> SteelTheme {
+    SteelTheme(cx.editor.theme.clone())
 }
 
 fn get_style(theme: &SteelTheme, name: SteelString) -> helix_view::theme::Style {

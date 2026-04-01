@@ -170,12 +170,19 @@
          register-theme
          theme-style
          theme-set-style!
-         string->color)
+         string->color
+         get-theme-by-name
+         current-theme
+         current-theme-name)
 
 ;;@doc
 ;; Register this theme with helix for use
 (define (register-theme theme)
   (add-theme! *helix.cx* theme))
+
+;;@doc
+;; Fetch a theme by name. Returns #false if the theme does not exist
+(define get-theme-by-name get-theme)
 
 (define-syntax theme-func
   (syntax-rules ()
