@@ -4,13 +4,14 @@
 use crate::widechar_width::WcLookupTable;
 use ropey::{str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
+use unicode_width::UnicodeWidthStr;
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display};
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr::NonNull;
-use std::sync::LazyLock;
+use std::sync::{LazyLock, OnceLock};
 use std::{slice, str};
 
 use crate::chars::{char_is_whitespace, char_is_word};
@@ -19,6 +20,15 @@ use crate::LineEnding;
 // 64KB table, created once on first call.
 // O(1) lookups for codepoints <= 0xFFFF, falls back to binary search for others.
 static WC_TABLE: LazyLock<WcLookupTable> = LazyLock::new(|| WcLookupTable::new());
+static MODE_2027_ACTIVE: OnceLock<bool> = OnceLock::new();
+
+pub fn set_mode_2027(active: bool) {
+    let _ = MODE_2027_ACTIVE.set(active);
+}
+
+fn mode_2027() -> bool {
+    MODE_2027_ACTIVE.get().copied().unwrap_or(false)
+}
 
 #[inline]
 pub fn tab_width_at(visual_x: usize, tab_width: u16) -> usize {
@@ -114,7 +124,7 @@ pub fn grapheme_width(g: &str) -> usize {
         // Point 3: we're only examining the first _byte_.  But for utf8, when
         // checking for ascii range values only, that works.
         1
-    } else {
+    } else if mode_2027() {
         let mut width = 1usize; // minimum 1 so it's always editable
         for c in g.chars() {
             // VS15 - text presentation - force width 1
@@ -132,6 +142,8 @@ pub fn grapheme_width(g: &str) -> usize {
             width = width.max(w);
         }
         width
+    } else {
+        UnicodeWidthStr::width(g).max(1)
     }
 }
 

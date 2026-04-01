@@ -1,5 +1,6 @@
 use std::io::{self, Write as _};
 
+use helix_core::graphemes;
 use helix_view::{
     editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
@@ -257,6 +258,9 @@ impl TerminaBackend {
                 decreset!(ClearAndEnableAlternateScreen),
             );
         });
+
+        // Notify helix-core of the terminal's Unicode width behavior.
+        graphemes::set_mode_2027(capabilities.grapheme_clustering);
 
         Ok(Self {
             terminal,
