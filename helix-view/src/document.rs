@@ -608,9 +608,13 @@ fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
         .map(|encoding| (encoding, false))
         .or_else(|| encoding::Encoding::for_bom(buf).map(|(encoding, _bom_size)| (encoding, true)))
         .unwrap_or_else(|| {
-            let mut encoding_detector = chardetng::EncodingDetector::new();
+            let mut encoding_detector =
+                chardetng::EncodingDetector::new(chardetng::Iso2022JpDetection::Allow);
             encoding_detector.feed(buf, is_empty);
-            (encoding_detector.guess(None, true), false)
+            (
+                encoding_detector.guess(None, chardetng::Utf8Detection::Allow),
+                false,
+            )
         });
     let decoder = encoding.new_decoder();
 
