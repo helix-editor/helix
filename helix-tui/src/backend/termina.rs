@@ -51,6 +51,7 @@ fn vte_version() -> Option<usize> {
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
     synchronized_output: bool,
+    grapheme_clustering: bool,
     true_color: bool,
     extended_underlines: bool,
     /// OSC11 / OSC111 - change the terminal's background color.
@@ -120,10 +121,14 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
+            ))),
+            // Mode 2027 grapheme clustering
+            Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
+                csi::DecPrivateModeCode::GraphemeClustering
             ))),
             // Mode 2031 theme updates. Query the current theme.
             Csi::Mode(csi::Mode::QueryTheme),
@@ -161,6 +166,12 @@ impl TerminaBackend {
                         setting: csi::DecModeSetting::Set | csi::DecModeSetting::Reset,
                     })) => {
                         capabilities.synchronized_output = true;
+                    }
+                    Event::Csi(Csi::Mode(csi::Mode::ReportDecPrivateMode {
+                        mode: csi::DecPrivateMode::Code(csi::DecPrivateModeCode::GraphemeClustering),
+                        setting: csi::DecModeSetting::Set | csi::DecModeSetting::Reset,
+                    })) => {
+                        capabilities.grapheme_clustering = true;
                     }
                     Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
                         capabilities.theme_mode = Some(mode.into());
