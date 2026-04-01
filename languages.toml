@@ -325,7 +325,6 @@ injection-regex = "rs|rust"
 file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 shebangs = ["rust-script", "cargo"]
-auto-format = true
 comment-tokens = ["//", "///", "//!"]
 block-comment-tokens = [
   { start = "/*", end = "*/" },
@@ -451,7 +450,6 @@ comment-token = "#"
 scope = "source.textproto"
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "txtpbfmt" }
-auto-format = true
 
 [[grammar]]
 name = "textproto"
@@ -506,7 +504,6 @@ shebangs = ["fish"]
 comment-token = "#"
 language-servers = ["fish-lsp"]
 indent = { tab-width = 4, unit = "    " }
-auto-format = true
 formatter = { command = "fish_indent" }
 
 [[grammar]]
@@ -545,7 +542,6 @@ file-types = ["mojo", "🔥"]
 language-servers = [ "mojo-lsp-server" ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
-auto-format = true
 formatter = { command = "pixi", args = ["run", "mojo" , "format", "-q", "-"]}
 
 [[grammar]]
@@ -622,7 +618,6 @@ file-types = [
   { glob = "deno.lock" }, # https://deno.com/
 ]
 language-servers = [ "vscode-json-language-server" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -645,7 +640,6 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 # https://www.w3.org/TR/json-ld/
@@ -656,7 +650,6 @@ injection-regex = "json-ld"
 grammar = "json"
 file-types = ["jsonld"]
 language-servers = ["vscode-json-language-server"]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[language]]
@@ -866,7 +859,6 @@ scope = "source.go"
 injection-regex = "go"
 file-types = ["go"]
 roots = ["go.work", "go.mod"]
-auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "gopls", "golangci-lint-lsp" ]
@@ -919,7 +911,6 @@ name = "gomod"
 scope = "source.gomod"
 injection-regex = "gomod"
 file-types = [{ glob = "go.mod" }]
-auto-format = true
 comment-token = "//"
 language-servers = [ "gopls" ]
 indent = { tab-width = 4, unit = "\t" }
@@ -947,7 +938,6 @@ name = "gowork"
 scope = "source.gowork"
 injection-regex = "gowork"
 file-types = [{ glob = "go.work" }]
-auto-format = true
 comment-token = "//"
 language-servers = [ "gopls" ]
 indent = { tab-width = 4, unit = "\t" }
@@ -1033,7 +1023,6 @@ injection-regex = "(tsp|typespec)"
 language-id = "typespec"
 file-types = ["tsp"]
 roots = ["tspconfig.yaml"]
-auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = ["typespec"]
@@ -1066,7 +1055,6 @@ injection-regex = "css"
 file-types = ["css"]
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1080,7 +1068,6 @@ injection-regex = "scss"
 file-types = ["scss"]
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1094,7 +1081,6 @@ injection-regex = "less"
 file-types = ["less"]
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1108,7 +1094,6 @@ injection-regex = "html"
 file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml", "cshtml"]
 block-comment-tokens = { start = "<!--", end = "-->" }
 language-servers = [ "vscode-html-language-server", "superhtml" ]
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
@@ -1407,7 +1392,6 @@ file-types = ["bib"]
 comment-token = "%"
 language-servers = [ "texlab" ]
 indent = { tab-width = 4, unit = "\t" }
-auto-format = true
 
 [language.formatter]
 command = 'bibtex-tidy'
@@ -1578,7 +1562,6 @@ file-types = [{ glob = "dune-project" }, { glob = "dune" }]
 comment-token = ";"
 indent = { tab-width = 1, unit = " " }
 grammar = "scheme"
-auto-format = true
 formatter = { command = "dune", args = ["format-dune-file"] }
 
 [language.auto-pairs]
@@ -1689,7 +1672,6 @@ indent = { tab-width = 2, unit = "  " }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
 injection-regex = "yml|yaml"
 formatter = { command = "yamlfmt", args = ['-'] }
-auto-format = true
 
 [[grammar]]
 name = "yaml"
@@ -1757,7 +1739,6 @@ comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "purescript-language-server" ]
 indent = { tab-width = 2, unit = "  " }
-auto-format = true
 formatter = { command = "purs-tidy", args = ["format"] }
 
 [[grammar]]
@@ -1770,7 +1751,6 @@ scope = "source.zig"
 injection-regex = "zig"
 file-types = ["zig", "zon"]
 roots = ["build.zig"]
-auto-format = true
 comment-tokens = ["//", "///", "//!"]
 language-servers = [ "zls" ]
 indent = { tab-width = 4, unit = "    " }
@@ -1894,7 +1874,6 @@ source = { git = "https://github.com/theHamsta/tree-sitter-glsl", rev = "24a6c8e
 [[language]]
 name = "penrose"
 scope = "source.penrose"
-auto-format = false
 file-types = ["substance", "style", "domain"]
 comment-tokens = "--"
 indent = { tab-width = 2, unit = "  " }
@@ -2139,7 +2118,6 @@ name = "dart"
 scope = "source.dart"
 file-types = ["dart"]
 roots = ["pubspec.yaml"]
-auto-format = true
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "dart" ]
@@ -2326,7 +2304,6 @@ scope = "source.elm"
 injection-regex = "elm"
 file-types = ["elm"]
 roots = ["elm.json"]
-auto-format = true
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 language-servers = [ "elm-language-server" ]
@@ -2353,7 +2330,6 @@ scope = "source.rescript"
 injection-regex = "rescript"
 file-types = ["res"]
 roots = ["bsconfig.json"]
-auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "rescript-language-server" ]
@@ -2405,7 +2381,6 @@ comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "terraform-ls" ]
-auto-format = true
 
 [[grammar]]
 name = "hcl"
@@ -2420,7 +2395,6 @@ comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "terraform-ls" ]
-auto-format = true
 grammar = "hcl"
 
 [[language]]
@@ -2457,7 +2431,6 @@ roots = ["gleam.toml"]
 comment-tokens = ["//", "///", "////"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "gleam" ]
-auto-format = true
 
 [[grammar]]
 name = "gleam"
@@ -2611,7 +2584,6 @@ injection-regex = "gdscript"
 file-types = ["gd"]
 shebangs = []
 roots = ["project.godot"]
-auto-format = true
 formatter = { command = "gdformat", args = ["-"] }
 comment-tokens = ["#", "##"]
 indent = { tab-width = 4, unit = "\t" }
@@ -2627,7 +2599,6 @@ injection-regex = "godot"
 file-types = ["tscn", "tres", "godot", "gdextension"]
 shebangs = []
 roots = ["project.godot"]
-auto-format = false
 comment-token = ";"
 indent = { tab-width = 4, unit = "\t" }
 
@@ -2645,7 +2616,6 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "nu-lsp", "nu-lint" ]
 formatter = { command = "nufmt", args = ["--stdin"] } # https://github.com/nushell/nufmt
-auto-format = false
 
 [[grammar]]
 name = "nu"
@@ -2703,7 +2673,6 @@ injection-regex = "cairo"
 file-types = ["cairo"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-# auto-format = true
 language-servers = [ "cairo-language-server" ]
 
 [[grammar]]
@@ -2715,7 +2684,6 @@ name = "cpon"
 scope = "scope.cpon"
 injection-regex = "cpon"
 file-types = ["cpon", "cp"]
-auto-format = true
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
 
@@ -2725,7 +2693,6 @@ source = { git = "https://github.com/fvacek/tree-sitter-cpon", rev = "0d01fcdae5
 
 [[language]]
 name = "odin"
-auto-format = true
 scope = "source.odin"
 file-types = ["odin"]
 roots = ["ols.json", "main.odin"]
@@ -2812,7 +2779,6 @@ file-types = ["v", "vv", "vsh"]
 shebangs = ["v run"]
 roots = ["v.mod"]
 language-servers = [ "vlang-language-server" ]
-auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
@@ -2993,7 +2959,6 @@ scope = "source.cue"
 injection-regex = "cue"
 file-types = ["cue"]
 roots = ["cue.mod"]
-auto-format = true
 comment-token = "//"
 language-servers = [ "cuelsp" ]
 indent = { tab-width = 4, unit = "\t" }
@@ -3438,7 +3403,6 @@ source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "32b31863f
 
 [[language]]
 name = "inko"
-auto-format = true
 scope = "source.inko"
 injection-regex = "inko"
 file-types = ["inko"]
@@ -3455,7 +3419,6 @@ source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "f58a87a
 name = "bicep"
 scope = "source.bicep"
 file-types = ["bicep","bicepparam"]
-auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = " "}
@@ -3594,7 +3557,6 @@ name = "uxntal"
 scope = "source.tal"
 injection-regex = "tal"
 file-types = ["tal"]
-auto-format = false
 block-comment-tokens = { start = "(", end = ")" }
 
 [[grammar]]
@@ -3727,7 +3689,6 @@ name = "rego"
 scope = "source.rego"
 injection-regex = "rego"
 file-types = ["rego"]
-auto-format = true
 comment-token = "#"
 language-servers = [ "regols" ]
 grammar = "rego"
@@ -3811,7 +3772,6 @@ injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
-# auto-format = true
 # formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
 
 [[grammar]]
@@ -3868,7 +3828,6 @@ file-types = ["fs", "fsx", "fsi", "fsscript"]
 comment-token = "//"
 block-comment-tokens = { start = "(*", end = "*)" }
 indent = { tab-width = 4, unit = "    " }
-auto-format = true
 language-servers = ["fsharp-ls"]
 
 [[grammar]]
@@ -4029,7 +3988,6 @@ scope = "source.unison"
 injection-regex = "unison"
 file-types = ["u"]
 shebangs = []
-auto-format = false
 comment-token = "--"
 indent = { tab-width = 4, unit = "    " }
 
@@ -4050,7 +4008,6 @@ scope = "text.todotxt"
 # glob = "todo.txt" is too common and can conflict regular files, define in user config if necessary
 file-types = [{ glob = "*.todo.txt" }, "todotxt"]
 formatter = { command = "sort" }
-auto-format = true
 
 [[grammar]]
 name = "todotxt"
@@ -4083,7 +4040,6 @@ roots = []
 comment-token = "--"
 # language-servers = [ "als" ]
 # the agda language server is of questionable functionality.
-auto-format = false
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
@@ -4166,7 +4122,6 @@ file-types = [
   { glob = "*scalafix*.conf" },
 ]
 comment-token = "#"
-auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -4594,7 +4549,6 @@ file-types       = ["circom"]
 roots            = ["package.json"]
 comment-tokens   = "//"
 indent           = { tab-width = 4, unit = "    " }
-auto-format      = false
 language-servers = ["circom-lsp"]
 
 [[grammar]]
@@ -5009,7 +4963,6 @@ file-types = [
 comment-tokens = ["#"]
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "caddy", args = ["fmt", "-"] }
-auto-format = true
 
 [[grammar]]
 name = "caddyfile"
@@ -5222,7 +5175,6 @@ injection-regex = "hx|haxe"
 file-types = ["hx"]
 roots = ["haxelib.json", "project.xml", "build.hxml"]
 shebangs = []
-auto-format = true
 comment-tokens = ["//", "///"]
 block-comment-tokens = [
   { start = "/*", end = "*/" },
@@ -5299,7 +5251,6 @@ indent = { tab-width = 2, unit = "  " }
 language-servers = ["yaml-language-server"]
 comment-token = "#"
 formatter = { command = "yamlfmt", args = ['-'] }
-auto-format = true
 
 [[language]]
 name = "chuck"
@@ -5344,7 +5295,6 @@ file-types = ["styx"]
 comment-tokens = ["//", "///"]
 language-servers = ["styx"]
 indent = { tab-width = 2, unit = "  " }
-auto-format = true
 
 [language.auto-pairs]
 '(' = ')'
@@ -5367,7 +5317,6 @@ grammar = "python" # Uses starlark as grammar
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["tilt"]
 formatter = {command = "buildifier"} # Official formatter tool for starlark/bazel
-auto-format = true
 
 [[language]]
 name = "gnuplot"

@@ -831,7 +831,11 @@ impl Document {
         &self,
         editor: &Editor,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if self.language_config()?.auto_format {
+        if self
+            .language_config()
+            .and_then(|lang_config| lang_config.auto_format)
+            .unwrap_or(editor.config().auto_format)
+        {
             self.format(editor)
         } else {
             None
