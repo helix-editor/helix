@@ -2490,6 +2490,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-ron", rev 
 
 [[language]]
 name = "robot"
+language-id="robotframework"
 scope = "source.robot"
 injection-regex = "robot"
 file-types = ["robot", "resource"]
