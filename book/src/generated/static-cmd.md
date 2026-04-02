@@ -66,6 +66,7 @@
 | `page_cursor_half_down` | Move page and cursor half down | normal: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> ``, select: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> `` |
 | `select_all` | Select whole document | normal: `` % ``, select: `` % `` |
 | `select_regex` | Select all regex matches inside selections | normal: `` s ``, select: `` s `` |
+| `select_character` | Select all matches of character you next press |  |
 | `split_selection` | Split selections on regex matches | normal: `` S ``, select: `` S `` |
 | `split_selection_on_newline` | Split selection on newlines | normal: `` <A-s> ``, select: `` <A-s> `` |
 | `merge_selections` | Merge selections | normal: `` <A-minus> ``, select: `` <A-minus> `` |
