@@ -222,9 +222,10 @@ impl Client {
     )> {
         info!("Starting lsp {name:?} in root {root_path:?}");
         // Resolve path to the binary
-        let cmd = helix_stdx::env::which(cmd)?;
+        let cmd_binary_path = helix_stdx::env::which(cmd)?;
 
-        let process = Command::new(cmd)
+        let mut command = Command::new(cmd_binary_path);
+        command
             .envs(server_environment)
             .args(args)
             .stdin(Stdio::piped())
@@ -232,10 +233,25 @@ impl Client {
             .stderr(Stdio::piped())
             .current_dir(&root_path)
             // make sure the process is reaped on drop
-            .kill_on_drop(true)
-            .spawn();
+            .kill_on_drop(true);
 
-        let mut process = process?;
+        #[cfg(unix)]
+        unsafe {
+            command.pre_exec(|| match libc::setsid() {
+                -1 => Err(std::io::Error::last_os_error()),
+                _ => Ok(()),
+            });
+        }
+
+        #[cfg(windows)]
+        {
+            command.creation_flags(
+                windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP
+                    | windows_sys::Win32::System::Threading::DETACHED_PROCESS,
+            );
+        }
+
+        let mut process = command.spawn()?;
 
         // TODO: do we need bufreader/writer here? or do we use async wrappers on unblock?
         let writer = BufWriter::new(process.stdin.take().expect("Failed to open stdin"));
