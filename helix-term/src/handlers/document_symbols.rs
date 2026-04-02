@@ -3,12 +3,16 @@ use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp::DocumentSymbolResponse;
 use helix_view::{
-    events::{DocumentDidChange, DocumentDidOpen, LanguageServerInitialized},
+    events::{DocumentDidChange, DocumentDidOpen, LanguageServerInitialized, SelectionDidChange},
     handlers::Handlers,
     DocumentId, Editor,
 };
 
 fn request_document_symbols(editor: &mut Editor, doc_id: DocumentId) {
+    if !editor.config().breadcrumb.enabled {
+        return;
+    }
+
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
@@ -39,7 +43,8 @@ fn request_document_symbols(editor: &mut Editor, doc_id: DocumentId) {
                     DocumentSymbolResponse::Nested(symbols) => {
                         doc.set_document_symbols(symbols, offset_encoding);
                     }
-                    // We cannot get structural information from flat responses.
+                    // TODO: Using the `Location`, it should be possible to map cursor
+                    // to a hierarchical tree?
                     DocumentSymbolResponse::Flat(_) => doc.clear_document_symbols(),
                 }
             }
@@ -69,6 +74,18 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         if let Some(view) = event.editor.tree.try_get(view_id) {
             request_document_symbols(event.editor, view.doc);
         }
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut SelectionDidChange<'_>| {
+        let doc_id = event.doc.id();
+        let view_id = event.view;
+
+        job::dispatch_blocking(move |editor, _| {
+            if let Some(doc) = editor.document_mut(doc_id) {
+                doc.update_breadcrumbs_for_view(view_id);
+            }
+        });
         Ok(())
     });
 }
