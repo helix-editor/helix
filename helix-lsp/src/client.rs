@@ -723,6 +723,10 @@ impl Client {
                     call_hierarchy: Some(lsp::DynamicRegistrationClientCapabilities {
                         dynamic_registration: Some(false),
                     }),
+                    document_symbol: Some(lsp::DocumentSymbolClientCapabilities {
+                        hierarchical_document_symbol_support: Some(true),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
@@ -1506,7 +1510,7 @@ impl Client {
 
         // Return early if the server does not support document symbols.
         match capabilities.document_symbol_provider {
-            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => (),
+            Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_)) => {}
             _ => return None,
         }
 
