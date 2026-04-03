@@ -7,12 +7,12 @@
 
 ; parametric `-type`s
 ((attribute
-    name: (atom) @_type
+    name: (atom) @keyword
     (arguments
       (binary_operator
         left: (call (arguments (variable) @local.definition.variable.parameter))
         operator: "::") @local.scope))
- (#match? @_type "(type|opaque)"))
+ (#any-of? @keyword "type" "opaque" "nominal"))
 
 ; `fun`s
 (anonymous_function (stab_clause pattern: (arguments (variable) @local.definition.variable.parameter))) @local.scope

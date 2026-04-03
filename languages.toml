@@ -1390,7 +1390,7 @@ source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "085648e01d
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
-file-types = ["tex", "sty", "cls", "Rd", "bbx", "cbx"]
+file-types = ["tex", "dtx", "ins", "sty", "cls", "Rd", "bbx", "cbx"]
 comment-token = "%"
 language-servers = [ "texlab" ]
 indent = { tab-width = 4, unit = "\t" }
