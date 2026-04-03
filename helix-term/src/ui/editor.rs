@@ -22,6 +22,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::lsp::SymbolKind;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -74,6 +75,7 @@ impl EditorView {
         &mut self.spinners
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn render_view(
         &self,
         editor: &Editor,
@@ -93,6 +95,10 @@ impl EditorView {
 
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
+
+        if config.breadcrumb.enable {
+            Self::render_breadcrumb(editor, doc, view, area.with_height(1), surface);
+        }
 
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
@@ -708,6 +714,123 @@ impl EditorView {
 
             if x >= surface.area.right() {
                 break;
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    pub fn render_breadcrumb(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+    ) {
+        use helix_view::editor::BreadcrumbPathOptions::{File, Full};
+
+        #[inline]
+        #[must_use]
+        fn draw(surface: &mut Surface, viewport: Rect, x: u16, content: &str, style: Style) -> u16 {
+            let remaining = viewport.right().saturating_sub(x) as usize;
+            let (x, _y) = surface.set_stringn(x, viewport.y, content, remaining, style);
+            x
+        }
+
+        let config = editor.config();
+        let theme = &editor.theme;
+
+        let base = theme
+            .try_get_exact("ui.breadcrumb")
+            .unwrap_or_else(|| theme.get("ui.text"));
+
+        let separator = " > ";
+        let separator_style = theme.get("ui.breadcrumb.separator");
+
+        surface.clear_with(viewport, base);
+
+        let mut x = viewport.x.saturating_add(1);
+        let mut draw_separator = false;
+
+        let mut render = |text: &str, style: Style| {
+            if draw_separator {
+                x = draw(surface, viewport, x, separator, separator_style);
+            } else {
+                draw_separator = true;
+            }
+            x = draw(surface, viewport, x, text, style);
+        };
+
+        if matches!(config.breadcrumb.path, Full | File) {
+            if let Some(path) = doc.relative_path() {
+                let directory_style = theme.get("ui.text.directory");
+
+                let n = match config.breadcrumb.path {
+                    File => {
+                        // Skip until the filename component.
+                        //
+                        // NOTE:
+                        // We could use `next_back` to get this element directly, but
+                        // this keeps our logic below simpler, with the logic for `Full`
+                        // and `File` being the same below this point.
+                        path.components().count().saturating_sub(1)
+                    }
+                    _ => 0,
+                };
+
+                let mut components = path.components().skip(n).peekable();
+
+                while let Some(component) = components.next() {
+                    let component = component.as_os_str().to_string_lossy();
+                    let is_directory = components.peek().is_some();
+                    let style = if is_directory { directory_style } else { base };
+                    render(&component, style);
+                }
+            } else {
+                // Handle scratch buffers by showing `[scratch]` as the path segment.
+                render(SCRATCH_BUFFER_NAME, base);
+
+                // NOTE:
+                // We don't need to worry about drawing symbols for scratch
+                // buffers; there are no document symbols to consider.
+                return;
+            }
+        }
+
+        if let Some(breadcrumbs) = doc.breadcrumbs.get(&view.id) {
+            for crumb in breadcrumbs {
+                let style = match crumb.kind {
+                    SymbolKind::MODULE
+                    | SymbolKind::NAMESPACE
+                    | SymbolKind::PACKAGE => theme.get("namespace"),
+
+                    SymbolKind::OBJECT // impl Block
+                    | SymbolKind::STRUCT
+                    | SymbolKind::INTERFACE
+                    | SymbolKind::CLASS => theme.get("type"),
+
+                    SymbolKind::METHOD => theme.get("function.method"),
+                    SymbolKind::FUNCTION => theme.get("function"),
+
+                    SymbolKind::ENUM => theme.get("type.enum"),
+                    SymbolKind::ENUM_MEMBER => theme.get("type.enum.variant"),
+
+                   SymbolKind::FIELD
+                   | SymbolKind::PROPERTY => theme.get("variable.other.member"),
+
+                    SymbolKind::VARIABLE => theme.get("variable"),
+                    SymbolKind::CONSTANT => theme.get("constant"),
+                    SymbolKind::CONSTRUCTOR => theme.get("constructor"),
+                    SymbolKind::STRING => theme.get("string"),
+                    SymbolKind::NUMBER => theme.get("constant.numeric"),
+                    SymbolKind::BOOLEAN => theme.get("constant.builtin.boolean"),
+                    SymbolKind::ARRAY => theme.get("punctuation.bracket"),
+                    SymbolKind::KEY => theme.get("label"),
+                    SymbolKind::NULL => theme.get("constant.builtin"),
+                    SymbolKind::TYPE_PARAMETER => theme.get("type.parameter"),
+                    _ => base,
+                };
+
+                render(&crumb.name, style);
             }
         }
     }
