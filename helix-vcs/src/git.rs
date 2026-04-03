@@ -1,6 +1,7 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
+use std::convert::Infallible;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -38,7 +39,8 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
-    let head = repo.head_commit()?;
+    let head = get_head_or_override(&repo)?;
+    log::debug!("git got head {:?}", head);
     let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
@@ -59,6 +61,14 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     }
 }
 
+fn get_head_or_override(repo: &Repository) -> Result<Commit<'_>, anyhow::Error> {
+    let head_commit = match std::env::var("HELIX_GIT_HEAD") {
+        Ok(id) => repo.find_commit(id.parse::<ObjectId>()?)?,
+        Err(_) => repo.head_commit()?,
+    };
+    Ok(head_commit)
+}
+
 pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
@@ -69,7 +79,7 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         .context("failed to open git repo")?
         .to_thread_local();
     let head_ref = repo.head_ref()?;
-    let head_commit = repo.head_commit()?;
+    let head_commit = get_head_or_override(&repo)?;
 
     let name = match head_ref {
         Some(reference) => reference.name().shorten().to_string(),
@@ -132,8 +142,19 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
         .to_path_buf();
 
-    let status_platform = repo
-        .status(gix::progress::Discard)?
+    let mut status_platform = repo.status(gix::progress::Discard)?;
+    let head_commit = get_head_or_override(repo)?;
+    let is_override = std::env::var("HELIX_GIT_HEAD").is_ok();
+    if is_override {
+        // repo.head_tree_id_or_empty()
+        let diff_tree = head_commit.tree_id()?;
+        status_platform = status_platform
+            .index(gix::worktree::IndexPersistedOrInMemory::InMemory(
+                repo.index_from_tree(gix::hash::oid::from_bytes_unchecked(diff_tree.as_bytes()))?,
+            ))
+            .head_tree(repo.head_tree_id_or_empty()?);
+    };
+    status_platform = status_platform
         // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in
         // our case to not list new (untracked) files. We could have respected this config
         // if the default value weren't `Collapsed` though, as this default value would render
@@ -151,6 +172,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
     let empty_patterns = vec![];
 
     let status_iter = status_platform.into_index_worktree_iter(empty_patterns)?;
+    let head_tree = repo.head_tree()?;
 
     for item in status_iter {
         let Ok(item) = item.map_err(|err| f(Err(err.into()))) else {
@@ -178,8 +200,22 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
                 }
             }
             Item::DirectoryContents { entry, .. } if entry.status == Status::Untracked => {
-                FileChange::Untracked {
-                    path: work_dir.join(entry.rela_path.to_path()?),
+                let rela_path = entry.rela_path.to_path()?;
+                let path = work_dir.join(rela_path);
+                // if is_override {
+                //     // let found = head_tree.find_entry(entry.rela_path);
+                //     let found2 = head_tree.lookup_entry_by_path(path.clone());
+                //     log::debug!(
+                //         "git find entry {:?} {:?}",
+                //         entry.rela_path,
+                //         // found.is_some(),
+                //         found2
+                //     );
+                // }
+                if is_override && head_tree.lookup_entry_by_path(rela_path)?.is_some() {
+                    FileChange::Added { path }
+                } else {
+                    FileChange::Untracked { path }
                 }
             }
             Item::Rewrite {
@@ -205,15 +241,49 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
     let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
-    let tree_entry = tree
-        .lookup_entry_by_path(rel_path)?
-        .context("file is untracked")?;
-    match tree_entry.mode().kind() {
-        // not a file, everything is new, do not show diff
-        mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
-            bail!("entry at {} is not a file but a {mode:?}", file.display())
+    let mut err = anyhow::Error::msg("file is untracked");
+    match tree.lookup_entry_by_path(rel_path) {
+        Ok(Some(tree_entry)) => {
+            return match tree_entry.mode().kind() {
+                // not a file, everything is new, do not show diff
+                mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
+                    bail!("entry at {} is not a file but a {mode:?}", file.display())
+                }
+                // found a file
+                EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+            };
         }
-        // found a file
-        EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+        Ok(None) => {}
+        Err(error) => err = error.into(),
     }
+    let index = repo.index()?;
+    let file_path = gix::path::try_into_bstr(rel_path)?;
+    let rewrites = Rewrites {
+        copies: None,
+        percentage: Some(0.5),
+        limit: 1000,
+        ..Default::default()
+    };
+    let mut result: Result<ObjectId> = Err(err);
+    repo.tree_index_status(
+        &commit.tree_id()?,
+        &index,
+        None,
+        gix::status::tree_index::TrackRenames::Given(rewrites),
+        |c, _, _| -> Result<_, Infallible> {
+            if let gix::diff::index::ChangeRef::Rewrite {
+                source_id,
+                location,
+                ..
+            } = c
+            {
+                if location == file_path {
+                    result = Ok(source_id.into_owned());
+                    return Ok(gix::diff::index::Action::Break(()));
+                }
+            }
+            Ok(gix::diff::index::Action::Continue(()))
+        },
+    )?;
+    result
 }

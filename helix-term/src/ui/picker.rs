@@ -47,6 +47,7 @@ use helix_core::{
 use helix_view::{
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
+    gutter,
     theme::Style,
     view::ViewPosition,
     Document, DocumentId, Editor,
@@ -266,6 +267,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+    /// Given an item in the picker, return the file path and line number to display.
+    range_fn: Option<FileCallback<Document>>,
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
@@ -392,6 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            range_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
         }
@@ -421,6 +425,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // assumption: if we have a preview we are matching paths... If this is ever
         // not true this could be a separate builder function
         self.matcher.update_config(Config::DEFAULT.match_paths());
+        self
+    }
+
+    pub fn with_range(
+        mut self,
+        preview_fn: impl for<'a> Fn(&'a Editor, &'a Document) -> Option<FileLocation<'a>> + 'static,
+    ) -> Self {
+        self.range_fn = Some(Box::new(preview_fn));
         self
     }
 
@@ -580,6 +592,22 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
+    fn get_preview_range(
+        &self,
+        range: Option<(usize, usize)>,
+        editor: &Editor,
+        doc: &Document,
+    ) -> Option<(usize, usize)> {
+        if range.is_some() {
+            return range;
+        }
+        if let Some(range_fn) = &self.range_fn {
+            if let Some((_, range_result)) = range_fn(editor, doc) {
+                return range_result;
+            }
+        }
+        None
+    }
     /// Get (cached) preview for the currently selected item. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
@@ -592,7 +620,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         match path_or_id {
             PathOrId::Path(path) => {
                 if let Some(doc) = editor.document_by_path(path) {
-                    return Some((Preview::EditorDocument(doc), range));
+                    return Some((
+                        Preview::EditorDocument(doc),
+                        self.get_preview_range(range, editor, doc),
+                    ));
                 }
 
                 if self.preview_cache.contains_key(path) {
@@ -602,6 +633,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
                     if matches!(preview, CachedPreview::Document(doc) if doc.syntax().is_none()) {
                         helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
+                    }
+                    if let CachedPreview::Document(doc) = preview {
+                        return Some((
+                            Preview::Cached(preview),
+                            self.get_preview_range(range, editor, doc),
+                        ));
                     }
                     return Some((Preview::Cached(preview), range));
                 }
@@ -662,6 +699,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                                     path.clone(),
                                 );
                             }
+                            if let Some(diff_base) = editor.diff_providers.get_diff_base(&path) {
+                                doc.set_diff_base(diff_base);
+                            }
                             Ok(CachedPreview::Document(Box::new(doc)))
                         } else {
                             Err(std::io::Error::new(
@@ -672,7 +712,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     })
                     .unwrap_or(CachedPreview::NotFound);
                 self.preview_cache.insert(path.clone(), preview);
-                Some((Preview::Cached(&self.preview_cache[&path]), range))
+                let cached_preview = &self.preview_cache[&path];
+                if let CachedPreview::Document(doc) = cached_preview {
+                    return Some((
+                        Preview::Cached(cached_preview),
+                        self.get_preview_range(range, editor, doc),
+                    ));
+                }
+                Some((Preview::Cached(cached_preview), range))
             }
             PathOrId::Id(id) => {
                 let doc = editor.documents.get(&id).unwrap();
@@ -980,13 +1027,49 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
-            EditorView::doc_diagnostics_highlights_into(
-                doc,
-                &cx.editor.theme,
-                &mut overlay_highlights,
-            );
+            let theme = &cx.editor.theme;
+            EditorView::doc_diagnostics_highlights_into(doc, theme, &mut overlay_highlights);
 
             let mut decorations = DecorationManager::default();
+
+            if doc.diff_handle().is_some() {
+                let gutter_style = theme.get("ui.gutter");
+                let gutter_style_virtual = theme.get("ui.gutter.virtual");
+
+                let mut gutter = gutter::diff_style(doc, theme);
+                // equivalent to helix_view::editor::GutterType::Diff.width(_, doc);
+                let width = 1;
+                // avoid lots of small allocations by reusing a text buffer for each line
+                let mut text = String::with_capacity(width);
+                let gutter_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+                    // draw over the margin with width
+                    let x = inner.x - 1;
+                    let y = pos.visual_line;
+
+                    let gutter_style = match pos.first_visual_line {
+                        true => gutter_style,
+                        false => gutter_style_virtual,
+                    };
+
+                    if let Some(style) =
+                        gutter(pos.doc_line, false, pos.first_visual_line, &mut text)
+                    {
+                        renderer.set_stringn(x, y, &text, width, gutter_style.patch(style));
+                    } else {
+                        renderer.set_style(
+                            Rect {
+                                x,
+                                y,
+                                width: width as u16,
+                                height: 1,
+                            },
+                            gutter_style,
+                        );
+                    }
+                    text.clear();
+                };
+                decorations.add_decoration(gutter_decoration);
+            }
 
             if let Some((start, end)) = range {
                 let style = cx
