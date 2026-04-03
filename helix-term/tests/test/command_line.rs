@@ -1,6 +1,7 @@
 use super::*;
 
 use helix_core::diagnostic::Severity;
+use helix_view::doc;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn history_completion() -> anyhow::Result<()> {
@@ -114,5 +115,27 @@ async fn percent_escaping() -> anyhow::Result<()> {
         Severity::Error,
     )
     .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn languages_open() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":languages-open<ret>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+            let doc = doc!(app.editor);
+            assert!(
+                doc.path()
+                    .map_or(false, |p| p.ends_with("languages.toml")),
+                "expected buffer path to end with languages.toml, got {:?}",
+                doc.path()
+            );
+        }),
+        false,
+    )
+    .await?;
+
     Ok(())
 }
