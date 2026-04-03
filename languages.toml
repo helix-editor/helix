@@ -430,6 +430,18 @@ name = "awk"
 source = { git = "https://github.com/Beaglefoot/tree-sitter-awk", rev = "a799bc5da7c2a84bc9a06ba5f3540cf1191e4ee3" }
 
 [[language]]
+name = "sed"
+scope = "source.sed"
+injection-regex = "sed"
+file-types = ["sed"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "sed"
+source = { git = "https://github.com/mskelton/tree-sitter-sed", rev = "e13f8bccd4e6bc190fa34f3df8b2d576a41ff04d" }
+
+[[language]]
 name = "protobuf"
 scope = "source.proto"
 injection-regex = "proto"

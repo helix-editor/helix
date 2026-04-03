@@ -258,6 +258,7 @@
 | scfg | ✓ |  |  |  |  |  |
 | scheme | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
+| sed | ✓ |  |  |  |  |  |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |

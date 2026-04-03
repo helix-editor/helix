@@ -7,6 +7,13 @@
  (#match? @_command "^[gnm]?awk$")
  (#set! injection.language "awk"))
 
+; TODO: test `-i` and other flags
+(command
+  name: (command_name (word) @_command)
+  argument: (raw_string) @injection.content
+ (#eq? @_command "sed")
+ (#set! injection.language "sed"))
+
 ((regex) @injection.content
   (#set! injection.language "regex"))
 
