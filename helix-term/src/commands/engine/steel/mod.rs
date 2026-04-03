@@ -2534,8 +2534,8 @@ impl HelixConfiguration {
                         *lconfig = Arc::new(config);
                     }
                 }
+                break;
             }
-            break;
         }
 
         // If we haven't seen it yet, we should add it to the list.
