@@ -108,6 +108,9 @@ impl Application {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
+        // Initialize i18n
+        crate::i18n::init(&config.editor);
+
         use helix_view::editor::Action;
 
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
@@ -218,11 +221,10 @@ impl Application {
                 if nr_of_files == 0 {
                     editor.new_file(Action::VerticalSplit);
                 } else {
-                    editor.set_status(format!(
-                        "Loaded {} file{}.",
-                        nr_of_files,
-                        if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
-                    ));
+                    let suffix = if nr_of_files == 1 { "" } else { "s" };
+                    editor.set_status(crate::i18n::tr("Loaded {} file{}.")
+                        .replacen("{}", &nr_of_files.to_string(), 1)
+                        .replacen("{}", suffix, 1));
                     // align the view to center after all files are loaded,
                     // does not affect views without pos since it is at the top
                     let (view, doc) = current!(editor);
@@ -445,6 +447,8 @@ impl Application {
             }
 
             self.terminal.reconfigure((&default_config.editor).into())?;
+            // Re-init i18n in case ui_language changed
+            crate::i18n::init(&default_config.editor);
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -452,7 +456,7 @@ impl Application {
 
         match refresh_config() {
             Ok(_) => {
-                self.editor.set_status("Config refreshed");
+                self.editor.set_status(crate::i18n::tr("Config refreshed"));
             }
             Err(err) => {
                 self.editor.set_error(err.to_string());
@@ -644,10 +648,10 @@ impl Application {
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
-        self.editor.set_status(format!(
-            "'{}' written, {lines}L {size}",
-            get_relative_path(&doc_save_event.path).to_string_lossy(),
-        ));
+        self.editor.set_status(crate::i18n::tr("'{}' written, {lines}L {size}")
+            .replacen("{}", &get_relative_path(&doc_save_event.path).to_string_lossy(), 1)
+            .replace("{lines}", &lines.to_string())
+            .replace("{size}", &size.to_string()));
     }
 
     #[inline(always)]
@@ -927,7 +931,7 @@ impl Application {
                         // do nothing
                     }
                     Notification::Exit => {
-                        self.editor.set_status("Language server exited");
+                        self.editor.set_status(crate::i18n::tr("Language server exited"));
 
                         // LSPs may produce diagnostics for files that haven't been opened in helix,
                         // we need to clear those and remove the entries from the list if this leads to
@@ -966,7 +970,7 @@ impl Application {
                         );
                         Err(helix_lsp::jsonrpc::Error {
                             code: helix_lsp::jsonrpc::ErrorCode::MethodNotFound,
-                            message: format!("Method not found: {}", method),
+                            message: crate::i18n::tr("Method not found: {}").replace("{}", &method),
                             data: None,
                         })
                     }
@@ -979,7 +983,7 @@ impl Application {
                         );
                         Err(helix_lsp::jsonrpc::Error {
                             code: helix_lsp::jsonrpc::ErrorCode::ParseError,
-                            message: format!("Malformed method call: {}", method),
+                            message: crate::i18n::tr("Malformed method call: {}").replace("{}", &method),
                             data: None,
                         })
                     }

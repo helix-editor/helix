@@ -1,6 +1,11 @@
 #[macro_use]
 extern crate helix_view;
 
+use rust_i18n::i18n;
+use rust_i18n::t;
+
+i18n!("i18n", fallback = "en");
+
 pub mod application;
 pub mod args;
 pub mod commands;
@@ -8,6 +13,7 @@ pub mod compositor;
 pub mod config;
 pub mod events;
 pub mod health;
+pub mod i18n;
 pub mod job;
 pub mod keymap;
 pub mod ui;
@@ -84,7 +90,7 @@ fn open_external_url_callback(
             }
         }
         Ok(job::Callback::Editor(Box::new(move |editor| {
-            editor.set_error("Opening URL in external program failed")
+            editor.set_error(crate::i18n::tr("Opening URL in external program failed"))
         })))
     }
 }

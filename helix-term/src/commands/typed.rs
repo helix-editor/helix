@@ -237,8 +237,9 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
 
     if !nonexistent_buffers.is_empty() {
         editor.set_error(format!(
-            "cannot close non-existent buffers: {}",
-            nonexistent_buffers.join(", ")
+            "{}",
+            crate::i18n::tr("cannot close non-existent buffers: {}")
+                .replace("{}", &nonexistent_buffers.join(", "))
         ));
     }
 
@@ -601,9 +602,10 @@ fn set_indent_style(
     if args.is_empty() {
         let style = doc!(cx.editor).indent_style;
         cx.editor.set_status(match style {
-            Tabs => "tabs".to_owned(),
-            Spaces(1) => "1 space".to_owned(),
-            Spaces(n) => format!("{} spaces", n),
+            Tabs => crate::i18n::tr("tabs").into_owned(),
+            Spaces(1) => crate::i18n::tr("1 space").into_owned(),
+            Spaces(n) => crate::i18n::tr("{} spaces")
+                .replace("{}", &n.to_string()),
         });
         return Ok(());
     }
@@ -643,18 +645,18 @@ fn set_line_ending(
     if args.is_empty() {
         let line_ending = doc!(cx.editor).line_ending;
         cx.editor.set_status(match line_ending {
-            Crlf => "crlf",
-            LF => "line feed",
+            Crlf => crate::i18n::tr("crlf"),
+            LF => crate::i18n::tr("line feed"),
             #[cfg(feature = "unicode-lines")]
-            FF => "form feed",
+            FF => crate::i18n::tr("form feed"),
             #[cfg(feature = "unicode-lines")]
-            CR => "carriage return",
+            CR => crate::i18n::tr("carriage return"),
             #[cfg(feature = "unicode-lines")]
-            Nel => "next line",
+            Nel => crate::i18n::tr("next line"),
 
             // These should never be a document's default line ending.
             #[cfg(feature = "unicode-lines")]
-            VT | LS | PS => "error",
+            VT | LS | PS => crate::i18n::tr("error"),
         });
 
         return Ok(());
@@ -710,7 +712,7 @@ fn earlier(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyh
     let (view, doc) = current!(cx.editor);
     let success = doc.earlier(view, uk);
     if !success {
-        cx.editor.set_status("Already at oldest change");
+        cx.editor.set_status(crate::i18n::tr("Already at oldest change"));
     }
 
     Ok(())
@@ -725,7 +727,7 @@ fn later(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view, uk);
     if !success {
-        cx.editor.set_status("Already at newest change");
+        cx.editor.set_status(crate::i18n::tr("Already at newest change"));
     }
 
     Ok(())
@@ -793,10 +795,11 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
             .collect();
 
         bail!(
-            "{} unsaved buffer{} remaining: {:?}",
-            modified_names.len(),
-            if modified_names.len() == 1 { "" } else { "s" },
-            modified_names,
+            "{}",
+            crate::i18n::tr("{} unsaved buffer{} remaining: {:?}")
+                .replacen("{}", &modified_names.len().to_string(), 1)
+                .replacen("{}", &if modified_names.len() == 1 { "" } else { "s" }, 1)
+                .replacen("{}", &format!("{:?}", modified_names), 1)
         );
     }
     Ok(())
@@ -1034,7 +1037,7 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
             } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
+                    bail!("{}", crate::i18n::tr("Unsupported theme: theme requires true color support"));
                     }
                     cx.editor.set_theme_preview(theme)?;
                 };
@@ -1232,7 +1235,7 @@ fn show_clipboard_provider(
 #[inline]
 fn parse_first_arg_as_dir(args: &Args, last_cwd: Option<PathBuf>) -> anyhow::Result<PathBuf> {
     match args.first().map(AsRef::as_ref) {
-        Some("-") => last_cwd.ok_or_else(|| anyhow!("No previous working directory")),
+        Some("-") => last_cwd.ok_or_else(|| anyhow!("{}", crate::i18n::tr("No previous working directory"))),
         Some(path) => Ok(helix_stdx::path::expand_tilde(Path::new(path)).into_owned()),
         None => Ok(home_dir()?),
     }
@@ -1243,14 +1246,17 @@ fn parse_first_arg_as_dir(args: &Args, last_cwd: Option<PathBuf>) -> anyhow::Res
 fn apply_directory_change(cx: &mut compositor::Context, dir: &Path) -> anyhow::Result<()> {
     cx.editor.set_cwd(dir).map_err(|err| {
         anyhow!(
-            "Could not change working directory to '{}': {err}",
-            dir.display()
+            "{}",
+            crate::i18n::tr("Could not change working directory to '{}': {err}")
+                .replace("{}", &dir.display().to_string())
+                .replace("{err}", &err.to_string())
         )
     })?;
 
     cx.editor.set_status(format!(
-        "Current working directory is now {}",
-        helix_stdx::env::current_working_dir().display()
+        "{}",
+        crate::i18n::tr("Current working directory is now {}")
+            .replace("{}", &helix_stdx::env::current_working_dir().display().to_string())
     ));
 
     Ok(())
@@ -1290,7 +1296,7 @@ fn show_directory_stack(
     if !serialized_stack.is_empty() {
         cx.editor.set_status(serialized_stack);
     } else {
-        cx.editor.set_error("Stack is empty");
+        cx.editor.set_error(crate::i18n::tr("Stack is empty"));
     }
 
     Ok(())
@@ -1329,7 +1335,7 @@ fn pop_directory(
     if let Some(dir) = cx.editor.dir_stack.pop_front() {
         apply_directory_change(cx, &dir)?;
     } else {
-        cx.editor.set_error("Stack is empty");
+        cx.editor.set_error(crate::i18n::tr("Stack is empty"));
     }
 
     Ok(())
@@ -1345,12 +1351,19 @@ fn show_current_directory(
     }
 
     let cwd = helix_stdx::env::current_working_dir();
-    let message = format!("Current working directory is {}", cwd.display());
+    let message = format!(
+        "{}",
+        crate::i18n::tr("Current working directory is {}")
+            .replace("{}", &cwd.display().to_string())
+    );
 
     if cwd.exists() {
         cx.editor.set_status(message);
     } else {
-        cx.editor.set_error(format!("{} (deleted)", message));
+        cx.editor.set_error(format!(
+            "{}",
+            crate::i18n::tr("{} (deleted)").replace("{}", &message)
+        ));
     }
     Ok(())
 }
@@ -1455,7 +1468,7 @@ fn get_character_info(
 
     // Give the decimal value for ascii characters
     let dec = if encoding.is_ascii_compatible() && grapheme.len() == 1 {
-        format!(" Dec {}", grapheme.as_bytes()[0])
+        format!(" {}", crate::i18n::tr("Dec {}").replace("{}", &grapheme.as_bytes()[0].to_string()))
     } else {
         String::new()
     };
@@ -1481,7 +1494,12 @@ fn get_character_info(
             );
 
             if let encoding::EncoderResult::Unmappable(char) = result {
-                bail!("{char:?} cannot be mapped to {}", encoding.name());
+                bail!(
+                    "{}",
+                    crate::i18n::tr("{:?} cannot be mapped to {}")
+                        .replace("{:?}", &format!("{char:?}"))
+                        .replace("{}", &encoding.name())
+                );
             }
 
             for byte in &bytes[current_byte..] {
@@ -1683,12 +1701,16 @@ fn lsp_workspace_command(
             }
             [] => {
                 cx.editor.set_status(format!(
-                    "`{command}` is not supported for any language server"
+                    "{}",
+                    crate::i18n::tr("`{command}` is not supported for any language server")
+                        .replace("{command}", &command)
                 ));
             }
             _ => {
                 cx.editor.set_status(format!(
-                    "`{command}` supported by multiple language servers"
+                    "{}",
+                    crate::i18n::tr("`{command}` supported by multiple language servers")
+                        .replace("{command}", &command)
                 ));
             }
         }
@@ -1721,7 +1743,12 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
             .partition(|name| language_servers.contains(name));
         if !invalid.is_empty() {
             let s = if invalid.len() == 1 { "" } else { "s" };
-            bail!("Unknown language server{s}: {}", invalid.join(", "));
+            bail!(
+                "{}",
+                crate::i18n::tr("Unknown language server{s}: {}")
+                    .replace("{s}", s)
+                    .replace("{}", &invalid.join(", "))
+            );
         }
         valid
     };
@@ -2028,7 +2055,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
             (Some(frame), Some(thread_id)) => (frame, thread_id),
             _ => {
-                bail!("Cannot find current stack frame to access variables")
+                bail!("{}", crate::i18n::tr("Cannot find current stack frame to access variables"))
             }
         };
 
@@ -2161,7 +2188,7 @@ fn get_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
     }
 
     let key = &args[0].to_lowercase();
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    let key_error = || anyhow::anyhow!("{}", crate::i18n::tr("Unknown key `{}`").replace("{}", key));
 
     let config = serde_json::json!(cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -2180,8 +2207,8 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 
     let (key, arg) = (&args[0].to_lowercase(), args[1].trim());
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+    let key_error = || anyhow::anyhow!("{}", crate::i18n::tr("Unknown key `{}`").replace("{}", key));
+    let field_error = |_| anyhow::anyhow!("{}", crate::i18n::tr("Could not parse field `{}`").replace("{}", arg));
 
     let mut config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -2216,7 +2243,7 @@ fn toggle_option(
 
     let key = &args[0].to_lowercase();
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+    let key_error = || anyhow::anyhow!("{}", crate::i18n::tr("Unknown key `{}`").replace("{}", key));
 
     let mut config = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -2226,14 +2253,18 @@ fn toggle_option(
         Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
-                "Bad arguments. For boolean configurations use: `:toggle {key}`"
+                "{}",
+                crate::i18n::tr("Bad arguments. For boolean configurations use: `:toggle {key}`")
+                    .replace("{key}", key)
             );
             Value::Bool(!value)
         }
         Value::String(ref value) => {
             ensure!(
                 args.len() == 2,
-                "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",
+                "{}",
+                crate::i18n::tr("Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`")
+                    .replace("{key}", key)
             );
             // For string values, parse the input according to normal command line rules.
             let values: Vec<_> = command_line::Tokenizer::new(&args[1], true)
@@ -2286,7 +2317,12 @@ fn toggle_option(
         }
     };
 
-    let status = format!("'{key}' is now set to {value}");
+    let status = format!(
+        "{}",
+        crate::i18n::tr("'{key}' is now set to {value}")
+            .replace("{key}", key)
+            .replace("{value}", &value.to_string())
+    );
     let config = serde_json::from_value(config)
         .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
 
@@ -2342,7 +2378,7 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     let selection = doc.selection(view.id);
 
     if selection.len() == 1 {
-        bail!("Sorting requires multiple selections. Hint: split selection first");
+        bail!("{}", crate::i18n::tr("Sorting requires multiple selections. Hint: split selection first"));
     }
 
     let mut fragments: Vec<_> = selection
@@ -2572,7 +2608,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                editor.set_status("Command run");
+                editor.set_status(crate::i18n::tr("Command run"));
             },
         ));
         Ok(call)
@@ -2596,7 +2632,7 @@ fn reset_diff_change(
 
     let (view, doc) = current!(editor);
     let Some(handle) = doc.diff_handle() else {
-        bail!("Diff is not available in the current buffer")
+        bail!("{}", crate::i18n::tr("Diff is not available in the current buffer"))
     };
 
     let diff = handle.load();
@@ -2620,7 +2656,7 @@ fn reset_diff_change(
             }),
     );
     if changes == 0 {
-        bail!("There are no changes under any selection");
+        bail!("{}", crate::i18n::tr("There are no changes under any selection"));
     }
 
     drop(diff); // make borrow check happy
@@ -2628,8 +2664,10 @@ fn reset_diff_change(
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
     cx.editor.set_status(format!(
-        "Reset {changes} change{}",
-        if changes == 1 { "" } else { "s" }
+        "{}",
+        crate::i18n::tr("Reset {changes} change{}")
+            .replacen("{changes}", &changes.to_string(), 1)
+            .replace("{}", if changes == 1 { "" } else { "s" })
     ));
     Ok(())
 }
@@ -2645,21 +2683,28 @@ fn clear_register(
 
     if args.is_empty() {
         cx.editor.registers.clear();
-        cx.editor.set_status("All registers cleared");
+        cx.editor.set_status(crate::i18n::tr("All registers cleared"));
         return Ok(());
     }
 
     ensure!(
         args[0].chars().count() == 1,
-        format!("Invalid register {}", &args[0])
+        "{}",
+        crate::i18n::tr("Invalid register {}").replace("{}", &args[0])
     );
     let register = args[0].chars().next().unwrap_or_default();
     if cx.editor.registers.remove(register) {
         cx.editor
-            .set_status(format!("Register {} cleared", register));
+            .set_status(format!(
+                "{}",
+                crate::i18n::tr("Register {} cleared").replace("{}", &register.to_string())
+            ));
     } else {
         cx.editor
-            .set_error(format!("Register {} not found", register));
+            .set_error(format!(
+                "{}",
+                crate::i18n::tr("Register {} not found").replace("{}", &register.to_string())
+            ));
     }
     Ok(())
 }
@@ -2675,7 +2720,8 @@ fn set_register(
 
     ensure!(
         args[0].chars().count() == 1,
-        format!("Invalid register {}", &args[0])
+        "{}",
+        crate::i18n::tr("Invalid register {}").replace("{}", &args[0])
     );
 
     let register = args[0].chars().next().unwrap_or_default();
@@ -2754,7 +2800,8 @@ fn move_buffer_impl(
                     std::fs::DirBuilder::new().recursive(true).create(parent)?;
                 } else {
                     bail!(
-                        "can't move file, parent directory does not exist (use :mv! to create it)"
+                        "{}",
+                        crate::i18n::tr("can't move file, parent directory does not exist (use :mv! to create it)")
                     )
                 }
             }
@@ -2778,7 +2825,7 @@ fn yank_diagnostic(
 
     let reg = match args.first() {
         Some(s) => {
-            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            ensure!(s.chars().count() == 1, "{}", crate::i18n::tr("Invalid register {s}").replace("{s}", s));
             s.chars().next().unwrap()
         }
         None => '+',
@@ -2796,13 +2843,16 @@ fn yank_diagnostic(
         .collect();
     let n = diag.len();
     if n == 0 {
-        bail!("No diagnostics under primary selection");
+        bail!("{}", crate::i18n::tr("No diagnostics under primary selection"));
     }
 
     cx.editor.registers.write(reg, diag)?;
     cx.editor.set_status(format!(
-        "Yanked {n} diagnostic{} to register {reg}",
-        if n == 1 { "" } else { "s" }
+        "{}",
+        crate::i18n::tr("Yanked {n} diagnostic{} to register {reg}")
+            .replacen("{n}", &n.to_string(), 1)
+            .replace("{}", if n == 1 { "" } else { "s" })
+            .replace("{reg}", &reg.to_string())
     ));
     Ok(())
 }
@@ -2820,14 +2870,14 @@ fn read(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 
     ensure!(
         path.exists() && path.is_file(),
-        "path is not a file: {:?}",
-        path
+        "{}",
+        crate::i18n::tr("path is not a file: {:?}").replace("{:?}", &format!("{path:?}"))
     );
 
-    let file = std::fs::File::open(path).map_err(|err| anyhow!("error opening file: {}", err))?;
+    let file = std::fs::File::open(path).map_err(|err| anyhow!("{}" , crate::i18n::tr("error opening file: {}").replace("{}", &err.to_string())))?;
     let mut reader = BufReader::new(file);
     let (contents, _, _) = read_to_string(&mut reader, Some(doc.encoding()))
-        .map_err(|err| anyhow!("error reading file: {}", err))?;
+        .map_err(|err| anyhow!("{}", crate::i18n::tr("error reading file: {}").replace("{}", &err.to_string())))?;
     let contents = Tendril::from(contents);
     let selection = doc.selection(view.id);
     let transaction = Transaction::insert(doc.text(), selection, contents);
@@ -4071,10 +4121,10 @@ fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
     let command = TYPABLE_COMMAND_MAP.get(command)?;
 
     if command.aliases.is_empty() && command.signature.flags.is_empty() {
-        return Some(Cow::Borrowed(command.doc));
+        return Some(crate::i18n::tr(command.doc));
     }
 
-    let mut doc = command.doc.to_string();
+    let mut doc = crate::i18n::tr(command.doc).into_owned();
 
     if !command.aliases.is_empty() {
         write!(doc, "\nAliases: {}", command.aliases.join(", ")).unwrap();

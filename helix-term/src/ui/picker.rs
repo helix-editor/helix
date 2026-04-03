@@ -651,7 +651,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             )
                             .or(Err(std::io::Error::new(
                                 std::io::ErrorKind::NotFound,
-                                "Cannot open document",
+                                crate::i18n::tr("Cannot open document"),
                             )))?;
                             let loader = editor.syn_loader.load();
                             if let Some(language_config) = doc.detect_language_config(&loader) {

@@ -55,7 +55,7 @@ impl KeyTrieNode {
     }
 
     pub fn infobox(&self) -> Info {
-        let mut body: Vec<(BTreeSet<KeyEvent>, &str)> = Vec::with_capacity(self.len());
+        let mut body: Vec<(BTreeSet<KeyEvent>, Cow<'static, str>)> = Vec::with_capacity(self.len());
         for (&key, trie) in self.iter() {
             let desc = match trie {
                 KeyTrie::MappableCommand(cmd) => {
@@ -64,8 +64,8 @@ impl KeyTrieNode {
                     }
                     cmd.doc()
                 }
-                KeyTrie::Node(n) => &n.name,
-                KeyTrie::Sequence(_) => "[Multiple commands]",
+                KeyTrie::Node(n) => translate_keymap_label(&n.name),
+                KeyTrie::Sequence(_) => Cow::Borrowed("[Multiple commands]"),
             };
             match body.iter().position(|(_, d)| d == &desc) {
                 Some(pos) => {
@@ -83,6 +83,27 @@ impl KeyTrieNode {
             })
             .collect();
         Info::new(self.name.clone(), &body)
+    }
+}
+
+/// Translate a keymap label to the current locale.
+/// Falls back to the original label if no translation is found.
+fn translate_keymap_label(label: &str) -> Cow<'static, str> {
+    match label {
+        "Normal mode" => crate::i18n::tr("Normal mode"),
+        "Select mode" => crate::i18n::tr("Select mode"),
+        "Insert mode" => crate::i18n::tr("Insert mode"),
+        "Goto" => crate::i18n::tr("Goto"),
+        "Match" => crate::i18n::tr("Match"),
+        "Window" => crate::i18n::tr("Window"),
+        "View" => crate::i18n::tr("View"),
+        "Space" => crate::i18n::tr("Space"),
+        "Left bracket" => crate::i18n::tr("Left bracket"),
+        "Right bracket" => crate::i18n::tr("Right bracket"),
+        "Debug (experimental)" => crate::i18n::tr("Debug (experimental)"),
+        "Switch" => crate::i18n::tr("Switch"),
+        "New split scratch buffer" => crate::i18n::tr("New split scratch buffer"),
+        _ => Cow::Owned(label.to_string()),
     }
 }
 

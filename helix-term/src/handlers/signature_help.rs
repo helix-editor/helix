@@ -118,7 +118,7 @@ pub fn request_signature_help(
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            editor.set_error("No configured language server supports signature-help");
+            editor.set_error(crate::i18n::tr("No configured language server supports signature-help"));
         }
         return;
     };

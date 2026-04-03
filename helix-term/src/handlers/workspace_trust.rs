@@ -49,8 +49,10 @@ const TRUST_MESSAGE: &str = "Trust this workspace?
 Trusted workspaces may load local config files and auto-start language servers. Config and language servers can execute arbitrary code. Only trust workspaces which you know contain harmless config and code.";
 
 fn select() -> ui::Select<TrustUntrustStatus> {
+    use crate::i18n;
+    let message = i18n::tr(TRUST_MESSAGE);
     ui::Select::new(
-        TRUST_MESSAGE,
+        message,
         [
             TrustUntrustStatus::DenyOnce,
             TrustUntrustStatus::DenyAlways,
@@ -91,9 +93,9 @@ impl crate::ui::menu::Item for TrustUntrustStatus {
 
     fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
         match self {
-            TrustUntrustStatus::DenyAlways => "Never",
-            TrustUntrustStatus::DenyOnce => "Not now",
-            TrustUntrustStatus::AllowAlways => "Always",
+            TrustUntrustStatus::DenyAlways => crate::i18n::tr("Never"),
+            TrustUntrustStatus::DenyOnce => crate::i18n::tr("Not now"),
+            TrustUntrustStatus::AllowAlways => crate::i18n::tr("Always"),
         }
         .into()
     }

@@ -1,0 +1,935 @@
+' 1 sel ': ' 1 sel '
+' W ': ' W '
+' [readonly] ': ' [readonly] '
+' char': ' char'
+' chars': ' chars'
+' reg={} ': ' reg={} '
+' sel ': ' sel '
+' sels ': ' sels '
+' set to ': ' set to '
+' space': ' space'
+' spaces': ' spaces'
+' tabs ': ' tabs '
+'''{key}'' is now set to {value}': '''{key}'' is now set to {value}'
+'''{}'' not found in $PATH': '''{}'' not found in $PATH'
+'''{}'' written, {lines}L {size}': '''{}'' written, {lines}L {size}'
+(X)HTML element (tree-sitter): (X)HTML element (tree-sitter)
+'... or any character acting as a pair': '... or any character acting as a pair'
+1 space: 1 space
+<Binary file>: <Binary file>
+<File not found>: <File not found>
+<File too large to preview>: <File too large to preview>
+<Invalid directory location>: <Invalid directory location>
+<Invalid file location>: <Invalid file location>
+Add current workspace to the list of trusted workspaces.: Add current workspace to the list of trusted workspaces.
+Add newline above: Add newline above
+Add newline below: Add newline below
+Add next search match to selection: Add next search match to selection
+Add previous search match to selection: Add previous search match to selection
+Align selections in column: Align selections in column
+Align view bottom: Align view bottom
+Align view center: Align view center
+Align view middle: Align view middle
+Align view top: Align view top
+All registers cleared: All registers cleared
+Already at line end: Already at line end
+Already at line start: Already at line start
+Already at newest change: Already at newest change
+Already at oldest change: Already at oldest change
+Always: Always
+Append after selection: Append after selection
+Append an interactively-chosen char: Append an interactively-chosen char
+Append shell command output after selections: Append shell command output after selections
+Argument/parameter (tree-sitter): Argument/parameter (tree-sitter)
+Auto-save failed: Auto-save failed
+'Bad arguments. For boolean configurations use: `:toggle {key}`': 'Bad arguments. For boolean configurations use: `:toggle {key}`'
+'Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`': 'Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`'
+Block comment/uncomment selections: Block comment/uncomment selections
+Buffer not modified: Buffer not modified
+'Can''t set breakpoint: document has no path': 'Can''t set breakpoint: document has no path'
+Cannot abort: Cannot abort
+Cannot accept: Cannot accept
+Cannot access variables while target is running.: Cannot access variables while target is running.
+Cannot acquire: Cannot acquire
+Cannot add: Cannot add
+Cannot add hook: Cannot add hook
+Cannot allocate: Cannot allocate
+Cannot apply: Cannot apply
+Cannot authenticate: Cannot authenticate
+Cannot authorize: Cannot authorize
+Cannot backup: Cannot backup
+Cannot begin: Cannot begin
+Cannot benchmark: Cannot benchmark
+Cannot bind: Cannot bind
+Cannot blame: Cannot blame
+Cannot block: Cannot block
+Cannot branch: Cannot branch
+Cannot bridge: Cannot bridge
+Cannot broadcast: Cannot broadcast
+Cannot buffer: Cannot buffer
+Cannot calculate: Cannot calculate
+Cannot cancel: Cannot cancel
+Cannot capture: Cannot capture
+Cannot catch: Cannot catch
+Cannot change directory: Cannot change directory
+Cannot check: Cannot check
+Cannot checkout: Cannot checkout
+Cannot cherry-pick: Cannot cherry-pick
+Cannot clear state: Cannot clear state
+Cannot clock: Cannot clock
+Cannot clone: Cannot clone
+Cannot close: Cannot close
+Cannot close connection: Cannot close connection
+Cannot commit: Cannot commit
+Cannot complete: Cannot complete
+Cannot compress: Cannot compress
+Cannot compute: Cannot compute
+Cannot connect: Cannot connect
+Cannot connect to server: Cannot connect to server
+Cannot convert: Cannot convert
+Cannot create: Cannot create
+Cannot create directory: Cannot create directory
+Cannot deallocate: Cannot deallocate
+Cannot decode: Cannot decode
+Cannot decompress: Cannot decompress
+Cannot decrypt: Cannot decrypt
+Cannot default: Cannot default
+Cannot delete file: Cannot delete file
+Cannot deliver: Cannot deliver
+Cannot dequeue: Cannot dequeue
+Cannot describe: Cannot describe
+Cannot destroy: Cannot destroy
+Cannot detect: Cannot detect
+Cannot determine: Cannot determine
+Cannot diff: Cannot diff
+Cannot disconnect: Cannot disconnect
+Cannot disconnect from server: Cannot disconnect from server
+Cannot dispatch: Cannot dispatch
+Cannot download: Cannot download
+Cannot emit hook: Cannot emit hook
+Cannot encode: Cannot encode
+Cannot encrypt: Cannot encrypt
+Cannot end: Cannot end
+Cannot enqueue: Cannot enqueue
+Cannot epoll: Cannot epoll
+Cannot evaluate: Cannot evaluate
+Cannot eventfd: Cannot eventfd
+Cannot exec: Cannot exec
+Cannot execute: Cannot execute
+Cannot execute command: Cannot execute command
+Cannot execute macro because the [@] register is already playing a macro: Cannot execute macro because the [@] register is already playing a macro
+Cannot fetch: Cannot fetch
+Cannot finalize: Cannot finalize
+Cannot find: Cannot find
+Cannot find current stack frame to access variables: Cannot find current stack frame to access variables
+Cannot find current stack frame to access variables.: Cannot find current stack frame to access variables.
+Cannot finish: Cannot finish
+Cannot fire hook: Cannot fire hook
+Cannot flush connection: Cannot flush connection
+Cannot fork: Cannot fork
+Cannot format: Cannot format
+Cannot forward: Cannot forward
+Cannot free: Cannot free
+Cannot fsevents: Cannot fsevents
+Cannot get handler: Cannot get handler
+Cannot grep: Cannot grep
+Cannot handle: Cannot handle
+Cannot handle notification: Cannot handle notification
+Cannot handle request: Cannot handle request
+Cannot identify: Cannot identify
+Cannot ignore: Cannot ignore
+Cannot init: Cannot init
+Cannot initialize: Cannot initialize
+Cannot initialize connection: Cannot initialize connection
+Cannot inotify: Cannot inotify
+Cannot invoke hook: Cannot invoke hook
+Cannot iocp: Cannot iocp
+Cannot kill: Cannot kill
+Cannot kqueue: Cannot kqueue
+Cannot lex: Cannot lex
+Cannot listen: Cannot listen
+Cannot listen hook: Cannot listen hook
+Cannot load state: Cannot load state
+Cannot locate: Cannot locate
+Cannot lock: Cannot lock
+Cannot log: Cannot log
+Cannot lookup: Cannot lookup
+Cannot match: Cannot match
+Cannot measure: Cannot measure
+Cannot merge: Cannot merge
+Cannot monitor: Cannot monitor
+Cannot notify: Cannot notify
+Cannot notify hook: Cannot notify hook
+Cannot observe: Cannot observe
+Cannot open: Cannot open
+Cannot open connection: Cannot open connection
+Cannot open document: Cannot open document
+Cannot parse: Cannot parse
+Cannot parse response: Cannot parse response
+Cannot pause: Cannot pause
+Cannot peek: Cannot peek
+Cannot play: Cannot play
+Cannot poll: Cannot poll
+Cannot pop: Cannot pop
+Cannot process response: Cannot process response
+Cannot profile: Cannot profile
+Cannot proxy: Cannot proxy
+Cannot publish hook: Cannot publish hook
+Cannot pull: Cannot pull
+Cannot push: Cannot push
+Cannot query: Cannot query
+Cannot queue: Cannot queue
+Cannot raise: Cannot raise
+Cannot read connection: Cannot read connection
+Cannot read file: Cannot read file
+Cannot rebase: Cannot rebase
+Cannot receive: Cannot receive
+Cannot receive response: Cannot receive response
+Cannot reconnect: Cannot reconnect
+Cannot record: Cannot record
+Cannot recover: Cannot recover
+Cannot redirect: Cannot redirect
+Cannot register handler: Cannot register handler
+Cannot relay: Cannot relay
+Cannot release: Cannot release
+Cannot remove: Cannot remove
+Cannot remove hook: Cannot remove hook
+Cannot rename: Cannot rename
+Cannot repeat: Cannot repeat
+Cannot replace: Cannot replace
+Cannot replay: Cannot replay
+Cannot replay from register [: Cannot replay from register [
+Cannot reserve: Cannot reserve
+Cannot reset: Cannot reset
+Cannot reset connection: Cannot reset connection
+Cannot reset state: Cannot reset state
+Cannot resolve: Cannot resolve
+Cannot restore: Cannot restore
+Cannot resume: Cannot resume
+Cannot retry: Cannot retry
+Cannot revert: Cannot revert
+Cannot route: Cannot route
+Cannot run: Cannot run
+Cannot save: Cannot save
+Cannot save state: Cannot save state
+Cannot scan: Cannot scan
+Cannot schedule: Cannot schedule
+Cannot search: Cannot search
+Cannot select: Cannot select
+Cannot send: Cannot send
+Cannot send notification: Cannot send notification
+Cannot send request: Cannot send request
+Cannot send response: Cannot send response
+Cannot serialize request: Cannot serialize request
+Cannot set handler: Cannot set handler
+Cannot show: Cannot show
+Cannot shutdown connection: Cannot shutdown connection
+Cannot sign: Cannot sign
+Cannot signal: Cannot signal
+Cannot signalfd: Cannot signalfd
+Cannot spawn: Cannot spawn
+Cannot split: Cannot split
+Cannot start: Cannot start
+Cannot stash: Cannot stash
+Cannot status: Cannot status
+Cannot stop: Cannot stop
+Cannot stream: Cannot stream
+Cannot subscribe hook: Cannot subscribe hook
+Cannot substitute: Cannot substitute
+Cannot sync: Cannot sync
+Cannot tag: Cannot tag
+Cannot terminate: Cannot terminate
+Cannot terminate connection: Cannot terminate connection
+Cannot test: Cannot test
+Cannot time: Cannot time
+Cannot timerfd: Cannot timerfd
+Cannot tokenize: Cannot tokenize
+Cannot trace: Cannot trace
+Cannot track: Cannot track
+Cannot transform: Cannot transform
+Cannot translate: Cannot translate
+Cannot transmit: Cannot transmit
+Cannot trigger hook: Cannot trigger hook
+Cannot tunnel: Cannot tunnel
+Cannot unblock: Cannot unblock
+Cannot unlock: Cannot unlock
+Cannot unregister handler: Cannot unregister handler
+Cannot unsubscribe hook: Cannot unsubscribe hook
+Cannot unwatch: Cannot unwatch
+Cannot upload: Cannot upload
+Cannot validate: Cannot validate
+Cannot validate response: Cannot validate response
+Cannot verify: Cannot verify
+Cannot wait: Cannot wait
+Cannot waitpid: Cannot waitpid
+Cannot watch: Cannot watch
+Cannot write connection: Cannot write connection
+Cannot write file: Cannot write file
+Cannot write to file: Cannot write to file
+Cannot yield: Cannot yield
+Change: Change
+Change selection: Change selection
+Change selection without yanking: Change selection without yanking
+Change the current working directory.: Change the current working directory.
+Change the editor theme (show current theme if no name specified).: Change the editor theme (show current theme if no name specified).
+Checking config: Checking config
+'Checking language: {lang}': 'Checking language: {lang}'
+Clear and re-render the whole UI: Clear and re-render the whole UI
+Clear given register. If no argument is provided, clear all registers.: Clear given register. If no argument is provided, clear all registers.
+Close all buffers but the currently focused one.: Close all buffers but the currently focused one.
+Close all buffers without quitting.: Close all buffers without quitting.
+Close all views.: Close all views.
+Close the current buffer forcefully, ignoring unsaved changes.: Close the current buffer forcefully, ignoring unsaved changes.
+Close the current buffer.: Close the current buffer.
+Close the current view.: Close the current view.
+Close window: Close window
+Close windows except current: Close windows except current
+Closest surrounding pair (tree-sitter): Closest surrounding pair (tree-sitter)
+Collapse selection into single cursor: Collapse selection into single cursor
+Command run: Command run
+Comment (tree-sitter): Comment (tree-sitter)
+Comment/uncomment selections: Comment/uncomment selections
+Commit changes to new checkpoint: Commit changes to new checkpoint
+'Config directory: {path}': 'Config directory: {path}'
+'Config file: default': 'Config file: default'
+'Config file: {path}': 'Config file: {path}'
+Config refreshed: Config refreshed
+Configuration file malformed: Configuration file malformed
+'Configured language server: {name}': 'Configured language server: {name}'
+Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.: Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.
+Continue program execution: Continue program execution
+Copy between two registers: Copy between two registers
+Copy selection on next line: Copy selection on next line
+Copy selection on previous line: Copy selection on previous line
+'Could not change working directory to ''{}'': {err}': 'Could not change working directory to ''{}'': {err}'
+Could not parse field `{}`: Could not parse field `{}`
+Create a new scratch buffer.: Create a new scratch buffer.
+Current buffer has no parent and current working directory does not exist: Current buffer has no parent and current working directory does not exist
+Current buffer has no parent, opening file explorer in current working directory: Current buffer has no parent, opening file explorer in current working directory
+Current buffer has no parent, opening file picker in current working directory: Current buffer has no parent, opening file picker in current working directory
+Current working directory does not exist: Current working directory does not exist
+Current working directory is now {}: Current working directory is now {}
+Current working directory is {}: Current working directory is {}
+Currently active thread is not stopped. Switch the thread.: Currently active thread is not stopped. Switch the thread.
+'Data directory: {path}': 'Data directory: {path}'
+Data structure entry (tree-sitter): Data structure entry (tree-sitter)
+Debug (experimental): Debug (experimental)
+Debug session failed: Debug session failed
+Debugger does not support session restarts: Debugger does not support session restarts
+Debugger is already running: Debugger is already running
+Debugger is not running: Debugger is not running
+Debugging session restarted: Debugging session restarted
+Dec {}: Dec {}
+Decrement item under cursor: Decrement item under cursor
+Delete next char: Delete next char
+Delete next word: Delete next word
+Delete previous char: Delete previous char
+Delete previous word: Delete previous word
+Delete selection: Delete selection
+Delete selection without yanking: Delete selection without yanking
+Delete surrounding pair of: Delete surrounding pair of
+Delete till end of line: Delete till end of line
+Delete till start of line: Delete till start of line
+'Diagnostic provider: {provider}': 'Diagnostic provider: {provider}'
+'Did you mean one of these: {} ?': 'Did you mean one of these: {} ?'
+Diff is not available in current buffer: Diff is not available in current buffer
+Diff is not available in the current buffer: Diff is not available in the current buffer
+Directory not found: Directory not found
+Disable exception breakpoints: Disable exception breakpoints
+Discard changes and reload all documents from the source files.: Discard changes and reload all documents from the source files.
+Discard changes and reload from the source file.: Discard changes and reload from the source file.
+Display language names of tree-sitter injection layers under the cursor.: Display language names of tree-sitter injection layers under the cursor.
+Display name of tree-sitter highlight scope under the cursor.: Display name of tree-sitter highlight scope under the cursor.
+Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.: Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.
+Display tree sitter scopes, primarily for theming and development.: Display tree sitter scopes, primarily for theming and development.
+Do nothing: Do nothing
+Does nothing.: Does nothing.
+Edit breakpoint condition on current line: Edit breakpoint condition on current line
+Edit breakpoint log message on current line: Edit breakpoint log message on current line
+Enable exception breakpoints: Enable exception breakpoints
+End debug session: End debug session
+Ensure all selections face forward: Ensure all selections face forward
+Enter command mode: Enter command mode
+Enter normal mode: Enter normal mode
+Enter selection extend mode: Enter selection extend mode
+Error parsing user language config: Error parsing user language config
+Error saving: Error saving
+Evaluate expression in current debug context.: Evaluate expression in current debug context.
+Exit selection mode: Exit selection mode
+Expand selection to parent syntax node: Expand selection to parent syntax node
+Extend down: Extend down
+Extend left: Extend left
+Extend right: Extend right
+Extend selection to line bounds: Extend selection to line bounds
+Extend till next occurrence of char: Extend till next occurrence of char
+Extend till previous occurrence of char: Extend till previous occurrence of char
+Extend to a two-character label: Extend to a two-character label
+Extend to beginning of the parent node: Extend to beginning of the parent node
+Extend to column: Extend to column
+Extend to end of next long word: Extend to end of next long word
+Extend to end of next sub word: Extend to end of next sub word
+Extend to end of next word: Extend to end of next word
+Extend to end of prev long word: Extend to end of prev long word
+Extend to end of prev sub word: Extend to end of prev sub word
+Extend to end of previous word: Extend to end of previous word
+Extend to end of the parent node: Extend to end of the parent node
+Extend to file end: Extend to file end
+Extend to first non-blank in line: Extend to first non-blank in line
+Extend to last line: Extend to last line
+Extend to line end: Extend to line end
+Extend to line number <n> else file start: Extend to line number <n> else file start
+Extend to line start: Extend to line start
+Extend to next occurrence of char: Extend to next occurrence of char
+Extend to previous occurrence of char: Extend to previous occurrence of char
+Extend to start of next long word: Extend to start of next long word
+Extend to start of next sub word: Extend to start of next sub word
+Extend to start of next word: Extend to start of next word
+Extend to start of previous long word: Extend to start of previous long word
+Extend to start of previous sub word: Extend to start of previous sub word
+Extend to start of previous word: Extend to start of previous word
+Extend up: Extend up
+'Failed to get scopes: {}': 'Failed to get scopes: {}'
+'Failed to get stack frame for thread: {thread_id}': 'Failed to get stack frame for thread: {thread_id}'
+'Failed to open file ': 'Failed to open file '
+'Failed to open file ''{uri:?}'': {e}': 'Failed to open file ''{uri:?}'': {e}'
+'Failed to pause: {}': 'Failed to pause: {}'
+'Failed to set breakpoints: {}': 'Failed to set breakpoints: {}'
+File not found: File not found
+Filter selections with shell predicate: Filter selections with shell predicate
+Flip selection cursor and anchor: Flip selection cursor and anchor
+For troubleshooting system clipboard issues, refer: For troubleshooting system clipboard issues, refer
+Force close all buffers but the currently focused one.: Force close all buffers but the currently focused one.
+Force close all buffers ignoring unsaved changes without quitting.: Force close all buffers ignoring unsaved changes without quitting.
+Force close all views ignoring unsaved changes.: Force close all views ignoring unsaved changes.
+Force close the current view, ignoring unsaved changes.: Force close the current view, ignoring unsaved changes.
+Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).: Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).
+? Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)
+: Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)
+Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt): Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)
+? Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).
+: Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).
+Forcefully write changes from all buffers to disk creating necessary subdirectories.: Forcefully write changes from all buffers to disk creating necessary subdirectories.
+? Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).
+: Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).
+Format failed: Format failed
+Format selection: Format selection
+Format the file using an external formatter or language server.: Format the file using an external formatter or language server.
+'Found language server: {name}': 'Found language server: {name}'
+Function (tree-sitter): Function (tree-sitter)
+Get info about the character under the primary cursor.: Get info about the character under the primary cursor.
+Get the current value of a config option.: Get the current value of a config option.
+Global search in workspace folder: Global search in workspace folder
+Goto: Goto
+Goto column: Goto column
+Goto declaration: Goto declaration
+Goto definition: Goto definition
+Goto file end: Goto file end
+Goto files in selections (hsplit): Goto files in selections (hsplit)
+Goto files in selections (vsplit): Goto files in selections (vsplit)
+Goto files/URLs in selections: Goto files/URLs in selections
+Goto first change: Goto first change
+Goto first diagnostic: Goto first diagnostic
+Goto first non-blank in line: Goto first non-blank in line
+Goto implementation: Goto implementation
+Goto last accessed file: Goto last accessed file
+Goto last change: Goto last change
+Goto last diagnostic: Goto last diagnostic
+Goto last line: Goto last line
+Goto last modification: Goto last modification
+Goto last modified file: Goto last modified file
+Goto line: Goto line
+Goto line end: Goto line end
+Goto line number <n> else file start: Goto line number <n> else file start
+Goto line number.: Goto line number.
+Goto line start: Goto line start
+Goto matching bracket: Goto matching bracket
+Goto newline at line end: Goto newline at line end
+Goto next (X)HTML element: Goto next (X)HTML element
+Goto next buffer: Goto next buffer
+Goto next buffer.: Goto next buffer.
+Goto next change: Goto next change
+Goto next comment: Goto next comment
+Goto next diagnostic: Goto next diagnostic
+Goto next function: Goto next function
+Goto next pairing: Goto next pairing
+Goto next paragraph: Goto next paragraph
+Goto next parameter: Goto next parameter
+Goto next snippet placeholder: Goto next snippet placeholder
+Goto next test: Goto next test
+Goto next type definition: Goto next type definition
+Goto next window: Goto next window
+Goto previous (X)HTML element: Goto previous (X)HTML element
+Goto previous buffer: Goto previous buffer
+Goto previous buffer.: Goto previous buffer.
+Goto previous change: Goto previous change
+Goto previous comment: Goto previous comment
+Goto previous diagnostic: Goto previous diagnostic
+Goto previous function: Goto previous function
+Goto previous pairing: Goto previous pairing
+Goto previous paragraph: Goto previous paragraph
+Goto previous parameter: Goto previous parameter
+Goto previous test: Goto previous test
+Goto previous type definition: Goto previous type definition
+Goto previous window: Goto previous window
+Goto references: Goto references
+Goto type definition: Goto type definition
+Goto window bottom: Goto window bottom
+Goto window center: Goto window center
+Goto window top: Goto window top
+Hard-wrap the current selection of lines to a given width.: Hard-wrap the current selection of lines to a given width.
+'Highlight provider: {name}': 'Highlight provider: {name}'
+Horizontal bottom split: Horizontal bottom split
+Horizontal bottom split scratch buffer: Horizontal bottom split scratch buffer
+Increment item under cursor: Increment item under cursor
+Indent selection: Indent selection
+Insert an interactively-chosen char: Insert an interactively-chosen char
+Insert at end of line: Insert at end of line
+Insert at start of line: Insert at start of line
+Insert before selection: Insert before selection
+Insert mode: Insert mode
+Insert newline char: Insert newline char
+Insert register: Insert register
+Insert shell command output before selections: Insert shell command output before selections
+Insert tab char: Insert tab char
+Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.: Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.
+Invalid encoding: Invalid encoding
+Invalid indent style: Invalid indent style
+Invalid language: Invalid language
+Invalid line ending: Invalid line ending
+Invalid macro: Invalid macro
+Invalid option: Invalid option
+Invalid register: Invalid register
+Invalid register {s}: Invalid register {s}
+Invalid register {}: Invalid register {}
+Invalid theme: Invalid theme
+Invalid value: Invalid value
+Invoke completion popup: Invoke completion popup
+Join and yank selections: Join and yank selections
+Join and yank selections to clipboard: Join and yank selections to clipboard
+Join and yank selections to primary clipboard: Join and yank selections to primary clipboard
+Join lines inside selection: Join lines inside selection
+Join lines inside selection and select spaces: Join lines inside selection and select spaces
+Jump back to an earlier point in edit history. Accepts a number of steps or a time span.: Jump back to an earlier point in edit history. Accepts a number of steps or a time span.
+Jump backward on jumplist: Jump backward on jumplist
+Jump forward on jumplist: Jump forward on jumplist
+Jump to a later point in edit history. Accepts a number of steps or a time span.: Jump to a later point in edit history. Accepts a number of steps or a time span.
+Jump to a two-character label: Jump to a two-character label
+Jump to left split: Jump to left split
+Jump to right split: Jump to right split
+Jump to split above: Jump to split above
+Jump to split below: Jump to split below
+Keep primary selection: Keep primary selection
+Keep selections matching regex: Keep selections matching regex
+Language '{lang}' not found: Language '{lang}' not found
+Language '{}' not found: Language '{}' not found
+Language Server disappeared: Language Server disappeared
+Language server exited: Language server exited
+'Language server not configured for: {lang}': 'Language server not configured for: {lang}'
+'Language server not found: {name}': 'Language server not found: {name}'
+'Language server not running: {name}': 'Language server not running: {name}'
+'Language server running: {name}': 'Language server running: {name}'
+Language servers: Language servers
+Launch debug target: Launch debug target
+Left bracket: Left bracket
+Line comment/uncomment selections: Line comment/uncomment selections
+List variables: List variables
+Load a file into buffer: Load a file into buffer
+Loaded {} file{}.: Loaded {} file{}.
+Make the first selection your primary one: Make the first selection your primary one
+Make the last selection your primary one: Make the last selection your primary one
+'Malformed method call: {}': 'Malformed method call: {}'
+Match: Match
+Match around: Match around
+Match inside: Match inside
+Merge consecutive selections: Merge consecutive selections
+Merge selections: Merge selections
+'Method not found: {}': 'Method not found: {}'
+Modify current search to make it word bounded: Modify current search to make it word bounded
+Move backward in history: Move backward in history
+Move down: Move down
+Move forward in history: Move forward in history
+Move half page down: Move half page down
+Move half page up: Move half page up
+Move left: Move left
+Move page and cursor down: Move page and cursor down
+Move page and cursor half down: Move page and cursor half down
+Move page and cursor half up: Move page and cursor half up
+Move page and cursor up: Move page and cursor up
+Move page down: Move page down
+Move page up: Move page up
+Move right: Move right
+Move the current buffer and its corresponding file to a different path: Move the current buffer and its corresponding file to a different path
+Move the current buffer and its corresponding file to a different path creating necessary subdirectories: Move the current buffer and its corresponding file to a different path creating necessary subdirectories
+Move till next occurrence of char: Move till next occurrence of char
+Move till previous occurrence of char: Move till previous occurrence of char
+Move to beginning of the parent node: Move to beginning of the parent node
+Move to end of next long word: Move to end of next long word
+Move to end of next sub word: Move to end of next sub word
+Move to end of next word: Move to end of next word
+Move to end of previous long word: Move to end of previous long word
+Move to end of previous sub word: Move to end of previous sub word
+Move to end of previous word: Move to end of previous word
+Move to end of the parent node: Move to end of the parent node
+Move to next occurrence of char: Move to next occurrence of char
+Move to previous occurrence of char: Move to previous occurrence of char
+Move to start of next long word: Move to start of next long word
+Move to start of next sub word: Move to start of next sub word
+Move to start of next word: Move to start of next word
+Move to start of previous long word: Move to start of previous long word
+Move to start of previous sub word: Move to start of previous sub word
+Move to start of previous word: Move to start of previous word
+Move up: Move up
+Neither a dir, nor a file: Neither a dir, nor a file
+Never: Never
+New split scratch buffer: New split scratch buffer
+No LSP server for this document: No LSP server for this document
+No arguments found with which to restart the sessions: No arguments found with which to restart the sessions
+No breakpoints: No breakpoints
+No changes to save: No changes to save
+No code actions available: No code actions available
+No completions: No completions
+No configured language server supports code actions: No configured language server supports code actions
+No configured language server supports document symbols: No configured language server supports document symbols
+No configured language server supports hover: No configured language server supports hover
+No configured language server supports range formatting: No configured language server supports range formatting
+No configured language server supports signature-help: No configured language server supports signature-help
+No configured language server supports symbol renaming: No configured language server supports symbol renaming
+No configured language server supports workspace symbols: No configured language server supports workspace symbols
+No configured language server supports {}: No configured language server supports {}
+No configured languages: No configured languages
+No debug adapter: No debug adapter
+No debug adapter available for language: No debug adapter available for language
+No declaration found: No declaration found
+No declaration found.: No declaration found.
+No definition found: No definition found
+No definition found.: No definition found.
+No diagnostics: No diagnostics
+No diagnostics under primary selection: No diagnostics under primary selection
+No hover information: No hover information
+No hover results available.: No hover results available.
+No implementation found: No implementation found
+No implementation found.: No implementation found.
+No language server: No language server
+No language server supporting document symbols or syntax info available: No language server supporting document symbols or syntax info available
+No location found.: No location found.
+No more buffers: No more buffers
+No more files: No more files
+No more jumps: No more jumps
+No more matches: No more matches
+No previous working directory: No previous working directory
+No references found: No references found
+No references found.: No references found.
+No selections remaining: No selections remaining
+No signature help: No signature help
+No stack frames: No stack frames
+No symbol found: No symbol found
+No threads: No threads
+No type definition found: No type definition found
+No type definition found.: No type definition found.
+No variables: No variables
+Normal mode: Normal mode
+Not now: Not now
+Open a file from disk into the current view.: Open a file from disk into the current view.
+Open a scratch buffer in a horizontal split.: Open a scratch buffer in a horizontal split.
+Open a scratch buffer in a vertical split.: Open a scratch buffer in a vertical split.
+Open buffer picker: Open buffer picker
+Open changed file picker: Open changed file picker
+Open command palette: Open command palette
+Open diagnostic picker: Open diagnostic picker
+Open file explorer at current buffer's directory: Open file explorer at current buffer's directory
+Open file explorer at current working directory: Open file explorer at current working directory
+Open file explorer in workspace root: Open file explorer in workspace root
+Open file failed: Open file failed
+Open file picker: Open file picker
+Open file picker at current buffer's directory: Open file picker at current buffer's directory
+Open file picker at current working directory: Open file picker at current working directory
+Open jumplist picker: Open jumplist picker
+Open last picker: Open last picker
+Open new line above selection: Open new line above selection
+Open new line below selection: Open new line below selection
+Open symbol picker: Open symbol picker
+Open symbol picker from LSP or syntax information: Open symbol picker from LSP or syntax information
+Open symbol picker from syntax information: Open symbol picker from syntax information
+Open the file in a horizontal split.: Open the file in a horizontal split.
+Open the file in a vertical split.: Open the file in a vertical split.
+Open the helix log file.: Open the helix log file.
+Open the tutorial.: Open the tutorial.
+Open the user config.toml file.: Open the user config.toml file.
+Open the workspace config.toml file.: Open the workspace config.toml file.
+Open workspace command picker: Open workspace command picker
+Open workspace diagnostic picker: Open workspace diagnostic picker
+Open workspace symbol picker: Open workspace symbol picker
+Open workspace symbol picker from LSP or syntax information: Open workspace symbol picker from LSP or syntax information
+Open workspace symbol picker from syntax information: Open workspace symbol picker from syntax information
+Opening URL in external program failed: Opening URL in external program failed
+Paragraph: Paragraph
+Paste after selection: Paste after selection
+Paste before selection: Paste before selection
+Paste clipboard after selections: Paste clipboard after selections
+Paste clipboard before selections: Paste clipboard before selections
+Paste primary clipboard after selections: Paste primary clipboard after selections
+Paste primary clipboard after selections.: Paste primary clipboard after selections.
+Paste primary clipboard before selections: Paste primary clipboard before selections
+Paste primary clipboard before selections.: Paste primary clipboard before selections.
+Paste system clipboard after selections.: Paste system clipboard after selections.
+Paste system clipboard before selections.: Paste system clipboard before selections.
+Pause program execution: Pause program execution
+Perform code action: Perform code action
+Pipe each selection to the shell command, ignoring output.: Pipe each selection to the shell command, ignoring output.
+Pipe each selection to the shell command.: Pipe each selection to the shell command.
+Pipe selections into shell command ignoring output: Pipe selections into shell command ignoring output
+Pipe selections through shell command: Pipe selections through shell command
+Press <ENTER> to continue with default config: Press <ENTER> to continue with default config
+Prints the given arguments to the statusline.: Prints the given arguments to the statusline.
+Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).: Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).
+Record macro: Record macro
+Recorded to register [: Recorded to register [
+Recording to register [: Recording to register [
+Redo change: Redo change
+Refresh user config.: Refresh user config.
+Register [: Register [
+Register {} cleared: Register {} cleared
+Register {} not found: Register {} not found
+Remove current workspace from the list of trusted workspaces.: Remove current workspace from the list of trusted workspaces.
+Remove primary selection: Remove primary selection
+Remove selections matching regex: Remove selections matching regex
+Remove the top entry from the directory stack, and cd to the new top directory..: Remove the top entry from the directory stack, and cd to the new top directory..
+Rename failed: Rename failed
+Rename symbol: Rename symbol
+Repeat last motion: Repeat last motion
+Replace selections by clipboard content: Replace selections by clipboard content
+Replace selections by primary clipboard: Replace selections by primary clipboard
+Replace selections with content of system clipboard.: Replace selections with content of system clipboard.
+Replace selections with content of system primary clipboard.: Replace selections with content of system primary clipboard.
+Replace surrounding pair of: Replace surrounding pair of
+Replace with a pair of: Replace with a pair of
+Replace with new char: Replace with new char
+Replace with yanked text: Replace with yanked text
+Replay macro: Replay macro
+Reset the diff change at the cursor position.: Reset the diff change at the cursor position.
+Reset {changes} change{}: Reset {changes} change{}
+Restart debugging session: Restart debugging session
+? Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied
+: Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied
+Reverse search for regex pattern: Reverse search for regex pattern
+Reverse selections contents: Reverse selections contents
+Right bracket: Right bracket
+Rotate selection contents forward: Rotate selection contents forward
+Rotate selections backward: Rotate selections backward
+Rotate selections contents backward: Rotate selections contents backward
+Rotate selections forward: Rotate selections forward
+Run a shell command: Run a shell command
+Run shell command, appending output after each selection.: Run shell command, appending output after each selection.
+Run shell command, inserting output before each selection.: Run shell command, inserting output before each selection.
+Runtime directory: Runtime directory
+Runtime directory does not exist: Runtime directory does not exist
+Runtime directory is empty: Runtime directory is empty
+'Runtime directory: {path}': 'Runtime directory: {path}'
+Save and then change the current directory.: Save and then change the current directory.
+Save current selection to jumplist: Save current selection to jumplist
+Scroll view down: Scroll view down
+Scroll view up: Scroll view up
+Search for regex pattern: Search for regex pattern
+Select all children of the current node: Select all children of the current node
+Select all regex matches inside selections: Select all regex matches inside selections
+Select all siblings of the current node: Select all siblings of the current node
+Select around object: Select around object
+Select current line, if already selected, extend or shrink line above based on the anchor: Select current line, if already selected, extend or shrink line above based on the anchor
+Select current line, if already selected, extend or shrink line below based on the anchor: Select current line, if already selected, extend or shrink line below based on the anchor
+Select current line, if already selected, extend to another line based on the anchor: Select current line, if already selected, extend to another line based on the anchor
+Select current line, if already selected, extend to next line: Select current line, if already selected, extend to next line
+Select current line, if already selected, extend to previous line: Select current line, if already selected, extend to previous line
+Select inside object: Select inside object
+Select mode: Select mode
+Select next search match: Select next search match
+Select next sibling in the syntax tree: Select next sibling in the syntax tree
+Select previous search match: Select previous search match
+Select previous sibling the in syntax tree: Select previous sibling the in syntax tree
+Select register: Select register
+Select symbol references: Select symbol references
+Select whole document: Select whole document
+Selection saved to jumplist: Selection saved to jumplist
+? 'Set a config option at runtime.
+
+  For example to disable smart case search, use `:set search.smart-case false`.'
+: 'Set a config option at runtime.
+
+  For example to disable smart case search, use `:set search.smart-case false`.'
+Set contents of the given register.: Set contents of the given register.
+Set encoding. Based on https://encoding.spec.whatwg.org: Set encoding. Based on https://encoding.spec.whatwg.org
+'Set the document''s default line ending. Options: crlf, lf, cr, ff, nel.': 'Set the document''s default line ending. Options: crlf, lf, cr, ff, nel.'
+'Set the document''s default line ending. Options: crlf, lf.': 'Set the document''s default line ending. Options: crlf, lf.'
+Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.): Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)
+Set the language of current buffer (show current language if no value specified).: Set the language of current buffer (show current language if no value specified).
+Shell command failed: Shell command failed
+Show clipboard provider name in status bar.: Show clipboard provider name in status bar.
+Show docs for item under cursor: Show docs for item under cursor
+Show signature help: Show signature help
+Show the current working directory.: Show the current working directory.
+Show the directory stack as a <space> delimited string.: Show the directory stack as a <space> delimited string.
+Shrink selection to line bounds: Shrink selection to line bounds
+Shrink selection to previously expanded syntax node: Shrink selection to previously expanded syntax node
+Sort ranges in selection.: Sort ranges in selection.
+'Sorting requires multiple selections. Hint: split selection first': 'Sorting requires multiple selections. Hint: split selection first'
+Space: Space
+Split selection on newlines: Split selection on newlines
+Split selections on regex matches: Split selections on regex matches
+Stack is empty: Stack is empty
+Start a debug session from a given template with given parameters.: Start a debug session from a given template with given parameters.
+Step in: Step in
+Step out: Step out
+Step to next: Step to next
+Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied: Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied
+Surround add: Surround add
+Surround delete: Surround delete
+Surround replace: Surround replace
+Suspend and return to shell: Suspend and return to shell
+Swap with left split: Swap with left split
+Swap with right split: Swap with right split
+Swap with split above: Swap with split above
+Swap with split below: Swap with split below
+Switch: Switch
+Switch (toggle) case: Switch (toggle) case
+Switch current thread: Switch current thread
+Switch stack frame: Switch stack frame
+Switch to lowercase: Switch to lowercase
+Switch to uppercase: Switch to uppercase
+Syntax tree is not available on this buffer: Syntax tree is not available on this buffer
+Syntax-tree is not available in current buffer: Syntax-tree is not available in current buffer
+'System clipboard provider: Not installed': 'System clipboard provider: Not installed'
+Terminating debug session...: Terminating debug session...
+Test (tree-sitter): Test (tree-sitter)
+'Text doc sync: {sync}': 'Text doc sync: {sync}'
+The line you jumped to does not exist anymore because the file has changed.: The line you jumped to does not exist anymore because the file has changed.
+The location you jumped to does not exist anymore because the file has changed.: The location you jumped to does not exist anymore because the file has changed.
+There are no changes under any selection: There are no changes under any selection
+This list is filtered according to the 'use-grammars' option in languages.toml file.: This list is filtered according to the 'use-grammars' option in languages.toml file.
+To see the full list, use the '--health all' or '--health all-languages' option.: To see the full list, use the '--health all' or '--health all-languages' option.
+? 'Toggle a config option at runtime.
+
+  For example to toggle smart case search, use `:toggle search.smart-case`.'
+: 'Toggle a config option at runtime.
+
+  For example to toggle smart case search, use `:toggle search.smart-case`.'
+Toggle breakpoint: Toggle breakpoint
+Transpose splits: Transpose splits
+Trim whitespace from selections: Trim whitespace from selections
+Trust this workspace?: Trust this workspace?
+Type definition (tree-sitter): Type definition (tree-sitter)
+Undo change: Undo change
+Unindent selection: Unindent selection
+Unknown key `{}`: Unknown key `{}`
+'Unknown language server{s}: {}': 'Unknown language server{s}: {}'
+'Unsupported theme: theme requires true color support': 'Unsupported theme: theme requires true color support'
+Use current selection as search pattern: Use current selection as search pattern
+Use current selection as the search pattern, automatically wrapping with \b on word boundaries: Use current selection as the search pattern, automatically wrapping with \b on word boundaries
+Using default language config: Using default language config
+Vertical right split: Vertical right split
+Vertical right split scratch buffer: Vertical right split scratch buffer
+View: View
+WORD: WORD
+Window: Window
+Word: Word
+Workspace directory does not exist: Workspace directory does not exist
+Wrapped around document: Wrapped around document
+Write changes from all buffers to disk and close all views.: Write changes from all buffers to disk and close all views.
+Write changes from all buffers to disk.: Write changes from all buffers to disk.
+Write changes only if the file has been modified.: Write changes only if the file has been modified.
+Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt): Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)
+Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt): Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)
+Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt): Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)
+Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).: Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).
+Write changes to disk. Accepts an optional path (:write some/path.txt): Write changes to disk. Accepts an optional path (:write some/path.txt)
+Yank diagnostic(s) under primary cursor to register, or clipboard by default: Yank diagnostic(s) under primary cursor to register, or clipboard by default
+Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.: Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.
+? Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.
+: Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.
+Yank joined selections. A separator can be provided as first argument. Default value is newline.: Yank joined selections. A separator can be provided as first argument. Default value is newline.
+Yank main selection into system clipboard.: Yank main selection into system clipboard.
+Yank main selection into system primary clipboard.: Yank main selection into system primary clipboard.
+Yank main selection to clipboard: Yank main selection to clipboard
+Yank main selection to primary clipboard: Yank main selection to primary clipboard
+Yank selection: Yank selection
+Yank selections to clipboard: Yank selections to clipboard
+Yank selections to primary clipboard: Yank selections to primary clipboard
+Yanked {n} diagnostic{} to register {reg}: Yanked {n} diagnostic{} to register {reg}
+'[+]': '[+]'
+'] because already replaying from same register': '] because already replaying from same register'
+'] empty': '] empty'
+'`{command}` is not supported for any language server': '`{command}` is not supported for any language server'
+'`{command}` supported by multiple language servers': '`{command}` supported by multiple language servers'
+align cannot work with multi line selections: align cannot work with multi line selections
+can't move file, parent directory does not exist (use :mv! to create it): can't move file, parent directory does not exist (use :mv! to create it)
+'cannot close non-existent buffers: {}': 'cannot close non-existent buffers: {}'
+carriage return: carriage return
+class: class
+color: color
+'color ': 'color '
+conflict: conflict
+constant: constant
+constructor: constructor
+crlf: crlf
+deleted: deleted
+enum: enum
+enum member: enum member
+error: error
+'error opening file: {}': 'error opening file: {}'
+'error reading file: {}': 'error reading file: {}'
+event: event
+field: field
+file: file
+folder: folder
+form feed: form feed
+format_selections only supports a single selection for now: format_selections only supports a single selection for now
+from register: from register
+function: function
+inserting multiple newlines not yet supported: inserting multiple newlines not yet supported
+interface: interface
+is empty: is empty
+'is symlinked to: {}': 'is symlinked to: {}'
+joined and: joined and
+keyword: keyword
+line feed: line feed
+method: method
+modified: modified
+module: module
+next line: next line
+no last accessed buffer: no last accessed buffer
+no last modified buffer: no last modified buffer
+no last picker: no last picker
+no selections remaining: no selections remaining
+no snippet is currently active: no snippet is currently active
+'no such command: ''{cmd}''': 'no such command: ''{cmd}'''
+nothing selected: nothing selected
+operator: operator
+'path is not a file: {:?}': 'path is not a file: {:?}'
+primary selection: primary selection
+property: property
+reference: reference
+register: register
+'register ': 'register '
+renamed: renamed
+selection: selection
+skip auto-formatting: skip auto-formatting
+snippet: snippet
+sort ranges in reverse order: sort ranges in reverse order
+sort the ranges case-insensitively: sort the ranges case-insensitively
+struct: struct
+tabs: tabs
+text: text
+to: to
+to register: to register
+type parameter: type parameter
+'unable to convert URI to filepath: {:?}': 'unable to convert URI to filepath: {:?}'
+unable to open: unable to open
+unit: unit
+untracked: untracked
+value: value
+variable: variable
+version: 1
+yanked: yanked
+'{:?} cannot be mapped to {}': '{:?} cannot be mapped to {}'
+'{} (deleted)': '{} (deleted)'
+'{} spaces': '{} spaces'
+'{} unsaved buffer{} remaining: {:?}': '{} unsaved buffer{} remaining: {:?}'
+▸ {}: ▸ {}

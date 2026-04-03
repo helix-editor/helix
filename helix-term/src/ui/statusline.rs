@@ -336,9 +336,15 @@ where
     write(
         context,
         if count == 1 {
-            " 1 sel ".into()
+            crate::i18n::tr(" 1 sel ").into_owned().into()
         } else {
-            format!(" {}/{count} sels ", selection.primary_index() + 1).into()
+            format!(
+                " {}/{}{}",
+                selection.primary_index() + 1,
+                count,
+                crate::i18n::tr(" sels ")
+            )
+            .into()
         },
     );
 }
@@ -350,7 +356,11 @@ where
     let tot_sel = context.doc.selection(context.view.id).primary().len();
     write(
         context,
-        format!(" {} char{} ", tot_sel, if tot_sel == 1 { "" } else { "s" }).into(),
+        if tot_sel == 1 {
+            format!(" {}{}", tot_sel, crate::i18n::tr(" char")).into()
+        } else {
+            format!(" {}{}", tot_sel, crate::i18n::tr(" chars")).into()
+        },
     );
 }
 
@@ -479,9 +489,9 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let title = if context.doc.is_modified() {
-        "[+]"
+        crate::i18n::tr("[+]")
     } else {
-        "   "
+        "   ".into()
     };
 
     write(context, title.into());
@@ -492,9 +502,9 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let title = if context.doc.readonly {
-        " [readonly] "
+        crate::i18n::tr(" [readonly] ")
     } else {
-        ""
+        "".into()
     };
     write(context, title.into());
 }
@@ -563,9 +573,13 @@ where
     write(
         context,
         match style {
-            IndentStyle::Tabs => " tabs ".into(),
+            IndentStyle::Tabs => crate::i18n::tr(" tabs ").into(),
             IndentStyle::Spaces(indent) => {
-                format!(" {} space{} ", indent, if indent == 1 { "" } else { "s" }).into()
+                if indent == 1 {
+                    format!(" {}{}", indent, crate::i18n::tr(" space")).into()
+                } else {
+                    format!(" {}{}", indent, crate::i18n::tr(" spaces")).into()
+                }
             }
         },
     );
