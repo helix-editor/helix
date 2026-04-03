@@ -2522,18 +2522,29 @@ impl HelixConfiguration {
         // of the inner values - if the documents haven't been opened yet, we
         // don't need to clone the _whole_ loader.
         let mut loader = (*(*self.language_configuration.load())).clone();
-        let config = config.config;
+        let id = config.config.language_id.clone();
+        let mut config = Some(config.config);
 
         for lconfig in loader.language_configs_mut() {
-            if lconfig.language_id == config.language_id {
-                if let Some(inner) = Arc::get_mut(lconfig) {
-                    *inner = config;
-                } else {
-                    *lconfig = Arc::new(config);
+            if lconfig.language_id == id {
+                if let Some(config) = config.take() {
+                    if let Some(inner) = Arc::get_mut(lconfig) {
+                        *inner = config;
+                    } else {
+                        *lconfig = Arc::new(config);
+                    }
                 }
-                break;
             }
+            break;
         }
+
+        // If we haven't seen it yet, we should add it to the list.
+        // It'll get updated in the following function.
+        if let Some(config) = config {
+            loader.add_language(config);
+        }
+
+        loader.update_matchers_and_maps();
 
         self.language_configuration.store(Arc::new(loader));
     }

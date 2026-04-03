@@ -416,12 +416,54 @@ impl Loader {
         self.language_for_shebang_marker(marker)
     }
 
+    pub fn update_matchers_and_maps(&mut self) {
+        let mut languages_by_extension = HashMap::new();
+        let mut languages_by_shebang = HashMap::new();
+        let mut file_type_globs = Vec::new();
+
+        for (idx, config) in self.languages.iter().enumerate() {
+            let language = Language(idx as _);
+
+            let config = config.config();
+
+            for file_type in &config.file_types {
+                match file_type {
+                    FileType::Extension(extension) => {
+                        languages_by_extension.insert(extension.clone(), language);
+                    }
+                    FileType::Glob(glob) => {
+                        file_type_globs.push(FileTypeGlob::new(glob.to_owned(), language));
+                    }
+                };
+            }
+            for shebang in &config.shebangs {
+                languages_by_shebang.insert(shebang.clone(), language);
+            }
+        }
+
+        self.languages_by_shebang = languages_by_shebang;
+        self.languages_by_extension = languages_by_extension;
+
+        match FileTypeGlobMatcher::new(file_type_globs) {
+            Ok(m) => {
+                self.languages_glob_matcher = m;
+            }
+            Err(e) => {
+                log::info!("Unable to construct glob matcher: {}", e);
+            }
+        }
+    }
+
     pub fn language_configs_mut(
         &mut self,
     ) -> impl Iterator<Item = &mut Arc<LanguageConfiguration>> {
         self.languages
             .iter_mut()
             .map(|language| &mut language.config)
+    }
+
+    pub fn add_language(&mut self, config: LanguageConfiguration) {
+        self.languages.push(LanguageData::new(config));
     }
 
     pub fn language_server_configs_mut(
