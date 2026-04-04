@@ -239,6 +239,7 @@
 [
   "static"
   "const"
+  "readonly"
 ] @keyword.storage.modifier
 
 [

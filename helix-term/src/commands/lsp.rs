@@ -1,4 +1,4 @@
-use futures_util::{stream::FuturesOrdered, FutureExt};
+use futures_util::{stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -14,7 +14,7 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    diagnostic::DiagnosticProvider, syntax::LanguageServerFeature,
+    diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Selection, Uri,
 };
 use helix_stdx::path;
@@ -46,7 +46,7 @@ macro_rules! language_server_with_feature {
         match language_server {
             Some(language_server) => language_server,
             None => {
-                $editor.set_status(format!(
+                $editor.set_error(format!(
                     "No configured language server supports {}",
                     $feature
                 ));
@@ -100,7 +100,7 @@ struct PickerDiagnostic {
     diag: lsp::Diagnostic,
 }
 
-fn location_to_file_location(location: &Location) -> Option<FileLocation> {
+fn location_to_file_location(location: &Location) -> Option<FileLocation<'_>> {
     let path = location.uri.as_path()?;
     let line = Some((
         location.range.start.line as usize,
@@ -231,6 +231,13 @@ fn diag_picker(
         }
     }
 
+    flat_diag.sort_by(|a, b| {
+        a.diag
+            .severity
+            .unwrap_or(lsp::DiagnosticSeverity::HINT)
+            .cmp(&b.diag.severity.unwrap_or(lsp::DiagnosticSeverity::HINT))
+    });
+
     let styles = DiagnosticStyles {
         hint: cx.editor.theme.get("hint"),
         info: cx.editor.theme.get("info"),
@@ -252,6 +259,9 @@ fn diag_picker(
                 .into()
             },
         ),
+        ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
+            item.diag.source.as_deref().unwrap_or("").into()
+        }),
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
             match item.diag.code.as_ref() {
                 Some(NumberOrString::Number(n)) => n.to_string().into(),
@@ -263,12 +273,12 @@ fn diag_picker(
             item.diag.message.as_str().into()
         }),
     ];
-    let mut primary_column = 2; // message
+    let mut primary_column = 3; // message
 
     if format == DiagnosticsFormat::ShowSourcePath {
         columns.insert(
             // between message code and message
-            2,
+            3,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
                 if let Some(path) = item.location.uri.as_path() {
                     path::get_truncated_path(path)
@@ -331,7 +341,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
@@ -450,7 +460,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesOrdered<_> = doc
+        let mut futures: FuturesUnordered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
@@ -579,7 +589,7 @@ struct CodeActionOrCommandItem {
 
 impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
+    fn format(&self, _data: &Self::Data) -> Row<'_> {
         match &self.lsp_item {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
@@ -651,7 +661,7 @@ pub fn code_action(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
@@ -804,7 +814,9 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let popup = Popup::new("code-action", picker).with_scrollbar(false);
+            let popup = Popup::new("code-action", picker)
+                .with_scrollbar(false)
+                .auto_close(true);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -878,7 +890,7 @@ where
     F: Future<Output = helix_lsp::Result<Option<lsp::GotoDefinitionResponse>>> + 'static + Send,
 {
     let (view, doc) = current_ref!(cx.editor);
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(feature)
         .map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
@@ -923,7 +935,13 @@ where
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
-                editor.set_error("No definition found.");
+                editor.set_error(match feature {
+                    LanguageServerFeature::GotoDeclaration => "No declaration found.",
+                    LanguageServerFeature::GotoDefinition => "No definition found.",
+                    LanguageServerFeature::GotoTypeDefinition => "No type definition found.",
+                    LanguageServerFeature::GotoImplementation => "No implementation found.",
+                    _ => "No location found.",
+                });
             } else {
                 goto_impl(editor, compositor, locations);
             }
@@ -968,7 +986,7 @@ pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
     let (view, doc) = current_ref!(cx.editor);
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::GotoReference)
         .map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
@@ -1030,7 +1048,7 @@ pub fn hover(cx: &mut Context) {
     }
 
     let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Hover)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
@@ -1128,7 +1146,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 let Some(language_server) = doc
                     .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
-                    .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
+                    .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
                 else {
                     cx.editor
                         .set_error("No configured language server supports symbol renaming");
@@ -1357,6 +1375,7 @@ fn compute_inlay_hints_for_view(
             let mut padding_after_inlay_hints = Vec::new();
 
             let doc_text = doc.text();
+            let inlay_hints_length_limit = doc.config.load().lsp.inlay_hints_length_limit;
 
             for hint in hints {
                 let char_idx =
@@ -1367,7 +1386,7 @@ fn compute_inlay_hints_for_view(
                         None => continue,
                     };
 
-                let label = match hint.label {
+                let mut label = match hint.label {
                     lsp::InlayHintLabel::String(s) => s,
                     lsp::InlayHintLabel::LabelParts(parts) => parts
                         .into_iter()
@@ -1375,6 +1394,31 @@ fn compute_inlay_hints_for_view(
                         .collect::<Vec<_>>()
                         .join(""),
                 };
+                // Truncate the hint if too long
+                if let Some(limit) = inlay_hints_length_limit {
+                    // Limit on displayed width
+                    use helix_core::unicode::{
+                        segmentation::UnicodeSegmentation, width::UnicodeWidthStr,
+                    };
+
+                    let width = label.width();
+                    let limit = limit.get().into();
+                    if width > limit {
+                        let mut floor_boundary = 0;
+                        let mut acc = 0;
+                        for (i, grapheme_cluster) in label.grapheme_indices(true) {
+                            acc += grapheme_cluster.width();
+
+                            if acc > limit {
+                                floor_boundary = i;
+                                break;
+                            }
+                        }
+
+                        label.truncate(floor_boundary);
+                        label.push('…');
+                    }
+                }
 
                 let inlay_hints_vec = match hint.kind {
                     Some(lsp::InlayHintKind::TYPE) => &mut type_inlay_hints,

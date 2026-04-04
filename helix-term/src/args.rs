@@ -102,6 +102,7 @@ impl Args {
                         }
                     }
                 }
+                "+" => line_number = usize::MAX,
                 arg if arg.starts_with('+') => {
                     match arg[1..].parse::<usize>() {
                         Ok(n) => line_number = n.saturating_sub(1),

@@ -1,3 +1,5 @@
+//! Functions for working with [Path].
+
 pub use etcetera::home_dir;
 use once_cell::sync::Lazy;
 use regex_cursor::{engines::meta::Regex, Input};
@@ -140,6 +142,7 @@ pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     normalize(path)
 }
 
+/// Convert path into a relative path
 pub fn get_relative_path<'a, P>(path: P) -> Cow<'a, Path>
 where
     P: Into<Cow<'a, Path>>,

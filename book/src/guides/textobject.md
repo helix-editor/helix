@@ -23,10 +23,13 @@ The following [captures][tree-sitter-captures] are recognized:
 | `test.inside`      |
 | `test.around`      |
 | `parameter.inside` |
+| `parameter.around` |
 | `comment.inside`   |
 | `comment.around`   |
 | `entry.inside`     |
 | `entry.around`     |
+| `xml-element.inside` |
+| `xml-element.around` |
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 

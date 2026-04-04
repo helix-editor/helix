@@ -35,10 +35,12 @@
 ; Literals
 (boolean) @constant.builtin.boolean
 (number) @constant.numeric
-(null) @constant.numeric
+(null) @constant.builtin
 (string) @string
 (status) @keyword
-(command) @string
+; Highlight only command delimiters, not content (bash injection handles content)
+(command
+  ["$"] @string)
 (handler) @keyword
 (block) @punctuation.delimiter
 (variable_init) @keyword

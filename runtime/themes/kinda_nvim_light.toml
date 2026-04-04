@@ -1,0 +1,36 @@
+# Theme  : kinda_nvim_light (light)
+# 
+# Author : Strash familev.imen.otchestvovich@gmail.com
+# License: MIT
+# 
+# GitHub : https://github.com/strash/kinda_nvim.hx
+
+inherits = "kinda_nvim"
+
+[palette]
+fg = "#414D49"
+fg_1 = "#62736D"
+fg_2 = "#738780"
+fg_3 = "#8FA8A0"
+fg_4 = "#BECFC9"
+fg_err = "#BF0020"
+fg_warn = "#B58200"
+fg_info = "#005BAB"
+fg_hint = "#119CA8"
+fg_primary = "#008C5D"
+fg_secondary = "#2470B2"
+fg_tertiary = "#9847B2"
+fg_primary_variant = "#2F9C77"
+fg_secondary_variant = "#759ABA"
+fg_tertiary_variant = "#A860BF"
+
+bg = "#F2F5F4"
+bg_1 = "#EDF0EF"
+bg_2 = "#FCFFFE"
+bg_3 = "#F7FAF9"
+bg_4 = "#E6E8E7"
+bg_err = "#E8D8DB"
+bg_warn = "#E8E3D8"
+bg_info = "#D3DCE3"
+bg_hint = "#D3E2E3"
+

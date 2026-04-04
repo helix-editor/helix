@@ -79,6 +79,7 @@
 (property_signature "?" @punctuation.special)
 
 (conditional_type ["?" ":"] @operator)
+(ternary_expression ["?" ":"] @operator)
 
 ; Keywords
 ; --------
@@ -87,7 +88,6 @@
   "abstract"
   "declare"
   "module"
-  "export"
   "infer"
   "implements"
   "keyof"
@@ -95,6 +95,11 @@
   "override"
   "satisfies"
 ] @keyword
+
+[
+  "export"
+  "from"
+] @keyword.control.import
 
 [
   "type"

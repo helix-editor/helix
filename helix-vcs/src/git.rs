@@ -162,11 +162,18 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             } => {
                 let path = work_dir.join(rela_path.to_path()?);
                 match status {
-                    EntryStatus::Conflict(_) => FileChange::Conflict { path },
+                    EntryStatus::Conflict { .. } => FileChange::Conflict { path },
                     EntryStatus::Change(Change::Removed) => FileChange::Deleted { path },
                     EntryStatus::Change(Change::Modification { .. }) => {
                         FileChange::Modified { path }
                     }
+                    // Files marked with `git add --intent-to-add`. Such files
+                    // still show up as new in `git status`, so it's appropriate
+                    // to show them the same way as untracked files in the
+                    // "changed file" picker. One example of this being used
+                    // is Jujutsu, a Git-compatible VCS. It marks all new files
+                    // with `--intent-to-add` automatically.
+                    EntryStatus::IntentToAdd => FileChange::Untracked { path },
                     _ => continue,
                 }
             }

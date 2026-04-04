@@ -14,8 +14,8 @@ use crate::{
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
-use dap::StackFrame;
 use helix_event::dispatch;
+use helix_loader::workspace_trust::TrustStatus;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -26,10 +26,10 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fs,
     io::{self, stdin},
-    num::NonZeroUsize,
+    num::{NonZeroU8, NonZeroUsize},
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
@@ -46,10 +46,13 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     diagnostic::DiagnosticProvider,
-    syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    syntax::{
+        self,
+        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+    },
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
-use helix_dap as dap;
+use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
 use helix_stdx::path::canonicalize;
 
@@ -60,6 +63,7 @@ use arc_swap::{
     ArcSwap,
 };
 
+pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
@@ -219,6 +223,49 @@ impl Default for FilePickerConfig {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct FileExplorerConfig {
+    /// IgnoreOptions
+    /// Enables ignoring hidden files.
+    /// Whether to hide hidden files in file explorer and global search results. Defaults to false.
+    pub hidden: bool,
+    /// Enables following symlinks.
+    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to false.
+    pub follow_symlinks: bool,
+    /// Enables reading ignore files from parent directories. Defaults to false.
+    pub parents: bool,
+    /// Enables reading `.ignore` files.
+    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to false.
+    pub ignore: bool,
+    /// Enables reading `.gitignore` files.
+    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to false.
+    pub git_ignore: bool,
+    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
+    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to false.
+    pub git_global: bool,
+    /// Enables reading `.git/info/exclude` files.
+    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to false.
+    pub git_exclude: bool,
+    /// Whether to flatten single-child directories in file explorer. Defaults to true.
+    pub flatten_dirs: bool,
+}
+
+impl Default for FileExplorerConfig {
+    fn default() -> Self {
+        Self {
+            hidden: false,
+            follow_symlinks: false,
+            parents: false,
+            ignore: false,
+            git_ignore: false,
+            git_global: false,
+            git_exclude: false,
+            flatten_dirs: true,
+        }
+    }
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -269,6 +316,8 @@ pub struct Config {
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
     pub mouse: bool,
+    /// Which register to use for mouse yank.
+    pub mouse_yank_register: char,
     /// Shell to use for shell commands. Defaults to ["cmd", "/C"] on Windows and ["sh", "-c"] otherwise.
     pub shell: Vec<String>,
     /// Line number mode.
@@ -292,6 +341,9 @@ pub struct Config {
     /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
     /// Defaults to true.
     pub path_completion: bool,
+    /// Configures completion of words from open buffers.
+    /// Defaults to enabled with a trigger length of 7.
+    pub word_completion: WordCompletion,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Default register used for yank/paste. Defaults to '"'
@@ -329,6 +381,7 @@ pub struct Config {
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
+    pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
     /// Shape for cursor in each mode
@@ -359,6 +412,10 @@ pub struct Config {
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
     pub insert_final_newline: bool,
+    /// Whether to use atomic operations to write documents to disk.
+    /// This prevents data loss if the editor is interrupted while writing the file, but may
+    /// confuse some file watching/hot reloading programs. Defaults to `true`.
+    pub atomic_save: bool,
     /// Whether to automatically remove all trailing line-endings after the final one on write.
     /// Defaults to `false`.
     pub trim_final_newlines: bool,
@@ -386,6 +443,48 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
+    pub rainbow_brackets: bool,
+    /// Whether to enable Kitty Keyboard Protocol
+    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    pub buffer_picker: BufferPickerConfig,
+    /// Whether to implicitly trust every workspace or not
+    pub insecure: bool,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub struct BufferPickerConfig {
+    pub start_position: PickerStartPosition,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerStartPosition {
+    #[default]
+    Current,
+    Previous,
+}
+
+impl PickerStartPosition {
+    #[must_use]
+    pub fn is_previous(self) -> bool {
+        matches!(self, Self::Previous)
+    }
+
+    #[must_use]
+    pub fn is_current(self) -> bool {
+        matches!(self, Self::Current)
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum KittyKeyboardProtocolConfig {
+    #[default]
+    Auto,
+    Disabled,
+    Enabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -472,6 +571,11 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Automatically highlight symbol references at the cursor.
+    pub auto_document_highlight: bool,
+    /// Maximum displayed length of inlay hints (excluding the added trailing `…`).
+    /// If it's `None`, there's no limit
+    pub inlay_hints_length_limit: Option<NonZeroU8>,
     /// Display document color swatches
     pub display_color_swatches: bool,
     /// Whether to enable snippet support
@@ -489,6 +593,8 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            auto_document_highlight: false,
+            inlay_hints_length_limit: None,
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
@@ -593,6 +699,9 @@ pub enum StatusLineElement {
     /// The file line endings (CRLF or LF)
     FileLineEnding,
 
+    /// The file indentation style
+    FileIndentStyle,
+
     /// The file type (language ID or "text")
     FileType,
 
@@ -628,6 +737,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// The base of current working directory
+    CurrentWorkingDirectory,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -977,12 +1089,29 @@ pub enum PopupBorderConfig {
     Menu,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct WordCompletion {
+    pub enable: bool,
+    pub trigger_length: NonZeroU8,
+}
+
+impl Default for WordCompletion {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            trigger_length: NonZeroU8::new(7).unwrap(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
             scrolloff: ScrolloffConfig::default(),
             scroll_lines: 3,
             mouse: true,
+            mouse_yank_register: '*',
             shell: if cfg!(windows) {
                 vec!["cmd".to_owned(), "/C".to_owned()]
             } else {
@@ -996,6 +1125,7 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             path_completion: true,
+            word_completion: WordCompletion::default(),
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),
@@ -1005,6 +1135,7 @@ impl Default for Config {
             completion_trigger_len: 2,
             auto_info: true,
             file_picker: FilePickerConfig::default(),
+            file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
@@ -1027,6 +1158,7 @@ impl Default for Config {
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
+            atomic_save: true,
             trim_final_newlines: false,
             trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
@@ -1034,9 +1166,13 @@ impl Default for Config {
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
-            end_of_line_diagnostics: DiagnosticFilter::Disable,
+            end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            rainbow_brackets: false,
+            kitty_keyboard_protocol: Default::default(),
+            buffer_picker: BufferPickerConfig::default(),
+            insecure: false,
         }
     }
 }
@@ -1089,8 +1225,7 @@ pub struct Editor {
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
 
-    pub debugger: Option<dap::Client>,
-    pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
+    pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
@@ -1117,7 +1252,8 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
-    last_cwd: Option<PathBuf>,
+    pub last_cwd: Option<PathBuf>,
+    pub dir_stack: VecDeque<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1148,7 +1284,7 @@ pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
-    DebuggerEvent(dap::Payload),
+    DebuggerEvent((DebugAdapterId, dap::Payload)),
     IdleTimer,
     Redraw,
 }
@@ -1157,6 +1293,7 @@ pub enum EditorEvent {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+    ThemeChanged,
 }
 
 enum ThemeAction {
@@ -1235,8 +1372,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
-            debugger: None,
-            debugger_events: SelectAll::new(),
+            debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
@@ -1261,6 +1397,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
         }
     }
 
@@ -1298,11 +1435,16 @@ impl Editor {
 
     /// Call if the config has changed to let the editor update all
     /// relevant members.
-    pub fn refresh_config(&mut self) {
+    pub fn refresh_config(&mut self, old_config: &Config) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
         self.reset_idle_timer();
         self._refresh();
+        helix_event::dispatch(crate::events::ConfigDidChange {
+            editor: self,
+            old: old_config,
+            new: &config,
+        })
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -1358,26 +1500,26 @@ impl Editor {
             .unwrap_or(false)
     }
 
-    pub fn unset_theme_preview(&mut self) {
+    pub fn unset_theme_preview(&mut self) -> anyhow::Result<()> {
         if let Some(last_theme) = self.last_theme.take() {
-            self.set_theme(last_theme);
+            self.set_theme(last_theme)?;
         }
         // None likely occurs when the user types ":theme" and then exits before previewing
+        Ok(())
     }
 
-    pub fn set_theme_preview(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, ThemeAction::Preview);
+    pub fn set_theme_preview(&mut self, theme: Theme) -> anyhow::Result<()> {
+        self.set_theme_impl(theme, ThemeAction::Preview)
     }
 
-    pub fn set_theme(&mut self, theme: Theme) {
-        self.set_theme_impl(theme, ThemeAction::Set);
+    pub fn set_theme(&mut self, theme: Theme) -> anyhow::Result<()> {
+        self.set_theme_impl(theme, ThemeAction::Set)
     }
 
-    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
+    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) -> anyhow::Result<()> {
         // `ui.selection` is the only scope required to be able to render a theme.
-        if theme.find_scope_index_exact("ui.selection").is_none() {
-            self.set_error("Invalid theme: `ui.selection` required");
-            return;
+        if theme.find_highlight_exact("ui.selection").is_none() {
+            bail!("Invalid theme: `ui.selection` required");
         }
 
         let scopes = theme.scopes();
@@ -1396,6 +1538,9 @@ impl Editor {
         }
 
         self._refresh();
+        self.config_events.0.send(ConfigEvent::ThemeChanged)?;
+
+        Ok(())
     }
 
     #[inline]
@@ -1443,7 +1588,11 @@ impl Editor {
                 log::error!("failed to apply workspace edit: {err:?}")
             }
         }
-        fs::rename(old_path, &new_path)?;
+
+        if old_path.exists() {
+            fs::rename(old_path, &new_path)?;
+        }
+
         if let Some(doc) = self.document_by_path(old_path) {
             self.set_doc_path(doc.id(), &new_path);
         }
@@ -1491,9 +1640,9 @@ impl Editor {
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
-        let loader = self.syn_loader.clone();
+        let loader = self.syn_loader.load();
         let doc = doc_mut!(self, &doc_id);
-        doc.detect_language(loader);
+        doc.detect_language(&loader);
         doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
@@ -1504,7 +1653,7 @@ impl Editor {
     }
 
     /// Launch a language server for a given document
-    fn launch_language_servers(&mut self, doc_id: DocumentId) {
+    pub fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
             return;
         }
@@ -1519,6 +1668,15 @@ impl Editor {
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
+        if let TrustStatus::Untrusted =
+            helix_loader::workspace_trust::quick_query_workspace(self.config.load().insecure)
+        {
+            self.set_status(
+                "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",
+            );
+            return;
+        };
+
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
@@ -1529,12 +1687,12 @@ impl Editor {
                         if let helix_lsp::Error::ExecutableNotFound(err) = err {
                             // Silence by default since some language servers might just not be installed
                             log::debug!(
-                                "Language server not found for `{}` {} {}", language.scope(), lang, err,
+                                "Language server not found for `{}` {} {}", language.scope, lang, err,
                             );
                         } else {
                             log::error!(
                                 "Failed to initialize the language servers for `{}` - `{}` {{ {} }}",
-                                language.scope(),
+                                language.scope,
                                 lang,
                                 err
                             );
@@ -1556,7 +1714,7 @@ impl Editor {
             doc.language_servers.iter().filter(|(name, doc_ls)| {
                 language_servers
                     .get(*name)
-                    .map_or(true, |ls| ls.id() != doc_ls.id())
+                    .is_none_or(|ls| ls.id() != doc_ls.id())
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
@@ -1566,7 +1724,7 @@ impl Editor {
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
             doc.language_servers
                 .get(*name)
-                .map_or(true, |doc_ls| ls.id() != doc_ls.id())
+                .is_none_or(|doc_ls| ls.id() != doc_ls.id())
         });
 
         for (_, language_server) in language_servers_not_in_doc {
@@ -1731,7 +1889,7 @@ impl Editor {
     /// Generate an id for a new document and register it.
     fn new_document(&mut self, mut doc: Document) -> DocumentId {
         let id = self.next_document_id;
-        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        // Safety: adding 1 from 1 is fine, practically impossible to reach usize max
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
@@ -1753,7 +1911,10 @@ impl Editor {
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {
-        self.new_file_from_document(action, Document::default(self.config.clone()))
+        self.new_file_from_document(
+            action,
+            Document::default(self.config.clone(), self.syn_loader.clone()),
+        )
     }
 
     pub fn new_file_from_stdin(&mut self, action: Action) -> Result<DocumentId, Error> {
@@ -1762,6 +1923,7 @@ impl Editor {
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
             self.config.clone(),
+            self.syn_loader.clone(),
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1790,8 +1952,9 @@ impl Editor {
             let mut doc = Document::open(
                 &path,
                 None,
-                Some(self.syn_loader.clone()),
+                true,
                 self.config.clone(),
+                self.syn_loader.clone(),
             )?;
 
             let diagnostics =
@@ -1887,7 +2050,12 @@ impl Editor {
                 .iter()
                 .map(|(&doc_id, _)| doc_id)
                 .next()
-                .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
+                .unwrap_or_else(|| {
+                    self.new_document(Document::default(
+                        self.config.clone(),
+                        self.syn_loader.clone(),
+                    ))
+                });
             let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
@@ -1946,28 +2114,29 @@ impl Editor {
     }
 
     pub fn focus(&mut self, view_id: ViewId) {
-        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
-
-        // if leaving the view: mode should reset and the cursor should be
-        // within view
-        if prev_id != view_id {
-            self.enter_normal_mode();
-            self.ensure_cursor_in_view(view_id);
-
-            // Update jumplist selections with new document changes.
-            for (view, _focused) in self.tree.views_mut() {
-                let doc = doc_mut!(self, &view.doc);
-                view.sync_changes(doc);
-            }
-            let view = view!(self, view_id);
-            let doc = doc_mut!(self, &view.doc);
-            doc.mark_as_focused();
-            let focus_lost = self.tree.get(prev_id).doc;
-            dispatch(DocumentFocusLost {
-                editor: self,
-                doc: focus_lost,
-            });
+        if self.tree.focus == view_id {
+            return;
         }
+
+        // Reset mode to normal and ensure any pending changes are committed in the old document.
+        self.enter_normal_mode();
+        let (view, doc) = current!(self);
+        doc.append_changes_to_history(view);
+        self.ensure_cursor_in_view(view_id);
+        // Update jumplist selections with new document changes.
+        for (view, _focused) in self.tree.views_mut() {
+            let doc = doc_mut!(self, &view.doc);
+            view.sync_changes(doc);
+        }
+
+        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+        doc_mut!(self).mark_as_focused();
+
+        let focus_lost = self.tree.get(prev_id).doc;
+        dispatch(DocumentFocusLost {
+            editor: self,
+            doc: focus_lost,
+        });
     }
 
     pub fn focus_next(&mut self) {
@@ -2146,7 +2315,7 @@ impl Editor {
                 Some(message) = self.language_servers.incoming.next() => {
                     return EditorEvent::LanguageServerMessage(message)
                 }
-                Some(event) = self.debugger_events.next() => {
+                Some(event) = self.debug_adapters.incoming.next() => {
                     return EditorEvent::DebuggerEvent(event)
                 }
 
@@ -2222,10 +2391,8 @@ impl Editor {
         }
     }
 
-    pub fn current_stack_frame(&self) -> Option<&StackFrame> {
-        self.debugger
-            .as_ref()
-            .and_then(|debugger| debugger.current_stack_frame())
+    pub fn current_stack_frame(&self) -> Option<&dap::StackFrame> {
+        self.debug_adapters.current_stack_frame()
     }
 
     /// Returns the id of a view that this doc contains a selection for,
@@ -2261,20 +2428,61 @@ impl Editor {
     pub fn get_last_cwd(&mut self) -> Option<&Path> {
         self.last_cwd.as_deref()
     }
+
+    pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
+        if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
+        let view = view_mut!(self, view_id);
+        if let Some((doc_id, selection)) = view
+            .jumps
+            .backward(view_id, doc_mut!(self, &view.doc), count)
+            .cloned()
+        {
+            self.jump_to(view_id, doc_id, selection);
+        }
+    }
+
+    fn jump_to(&mut self, view_id: ViewId, dest_doc_id: DocumentId, mut selection: Selection) {
+        let view = view_mut!(self, view_id);
+        let old_doc_id = view.doc;
+        if old_doc_id != dest_doc_id {
+            let new_doc = doc_mut!(self, &dest_doc_id);
+            if let Some(transaction) = view.changes_to_sync(new_doc) {
+                let text = new_doc.text().slice(..);
+                selection = selection.map(transaction.changes()).ensure_invariants(text);
+            }
+            self.replace_document_in_view(view_id, dest_doc_id);
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: old_doc_id,
+            });
+        }
+        let (view, doc) = current!(self);
+        doc.set_selection(view_id, selection);
+        view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
-        chars::char_is_whitespace, line_ending::line_end_char_index, Operation, Transaction,
+        chars::char_is_whitespace,
+        line_ending::{line_end_char_index, str_is_line_ending},
+        unicode::segmentation::UnicodeSegmentation,
+        Operation, Transaction,
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
         if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
             changes
         {
+            let mut graphemes = inserted_str.graphemes(true);
             move_pos + inserted_str.len() == pos
-                && inserted_str.starts_with('\n')
-                && inserted_str.chars().skip(1).all(char_is_whitespace)
+                && graphemes.next().is_some_and(str_is_line_ending)
+                && graphemes.all(|g| g.chars().all(char_is_whitespace))
                 && pos == line_end_pos // ensure no characters exists after current position
         } else {
             false
@@ -2288,12 +2496,10 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
 
     if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
-        // Removes tailing whitespaces.
+        // Removes tailing whitespaces for the primary selection only, preserving existing behavior
+        let line_start_pos = text.line_to_char(range.cursor_line(text));
         let transaction =
-            Transaction::change_by_selection(doc.text(), doc.selection(view.id), |range| {
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                (line_start_pos, pos, None)
-            });
+            Transaction::change(doc.text(), [(line_start_pos, pos, None)].into_iter());
         doc.apply(&transaction, view.id);
     }
 }

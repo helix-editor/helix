@@ -1,3 +1,5 @@
+//! Provides [Range] type expanding on [RangeBounds].
+
 use std::ops::{self, RangeBounds};
 
 /// A range of `char`s within the text.
@@ -66,6 +68,7 @@ pub fn is_subset<const ALLOW_EMPTY: bool>(
     }
 }
 
+/// Similar to is_subset but requires each element of `super_set` to be matched
 pub fn is_exact_subset(
     mut super_set: impl Iterator<Item = Range>,
     mut sub_set: impl Iterator<Item = Range>,

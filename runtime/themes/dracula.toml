@@ -9,6 +9,7 @@
 "comment.block"                   = { fg = "comment"                                                        }
 "comment.block.documentation"     = { fg = "comment"                                                        }
 "comment.line"                    = { fg = "comment"                                                        }
+"comment.line.documentation"      = { fg = "comment"                                                        }
 
 "constant"                        = { fg = "purple"                                                         }
 "constant.builtin"                = { fg = "purple"                                                         }

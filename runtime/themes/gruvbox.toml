@@ -92,7 +92,7 @@
 "ui.linenr" = { fg = "bg3" }
 "ui.linenr.selected" = { fg = "yellow1" }
 "ui.menu" = { fg = "fg1", bg = "bg2" }
-"ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
+"ui.menu.selected" = { fg = "green1", bg = "bg1", modifiers = ["bold"] }
 "ui.popup" = { bg = "bg1" }
 "ui.picker.header.column" = { underline.style = "line" }
 "ui.picker.header.column.active" = { modifiers = ["bold"], underline.style = "line" }
@@ -106,7 +106,7 @@
 "ui.statusline.select" = { fg = "bg1", bg = "orange1", modifiers = ["bold"] }
 
 "ui.text" = { fg = "fg1" }
-"ui.text.focus" = { fg = "green1" }
+"ui.text.focus" = { fg = "green1", bg="bg1" }
 "ui.text.directory" = { fg = "blue1" }
 "ui.virtual.inlay-hint" = { fg = "gray" }
 "ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }

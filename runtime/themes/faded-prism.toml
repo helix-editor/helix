@@ -1,0 +1,119 @@
+# Author: Ryan Brue <ryanbrue.dev@gmail.com>
+# Ref: https://github.com/ryanabx/faded-prism-color-theme
+
+# Syntax
+
+"variable" = "white"
+"namespace" = "white"
+"punctuation" = "off_white"
+"operator" = "off_white"
+"comment" = "light_gray"
+
+"keyword" = "red"
+"special" = "red"
+"label" = "red"
+"tag" = "red"
+"string" = "yellow"
+"attribute" = "green"
+"constructor" = "green"
+"function" = "green"
+"type" = "blue"
+"type.enum.variant" = "light_blue"
+"constant" = "light_blue"
+"constant.numeric" = "purple"
+
+"markup.heading.1" = "vibrant_yellow"
+"markup.heading.2" = "vibrant_green"
+"markup.heading.3" = "vibrant_blue"
+"markup.heading.4" = "vibrant_purple"
+"markup.heading.5" = "vibrant_red"
+"markup.heading.6" = "vibrant_orange"
+
+# UI
+
+"ui.background" = { fg = "white", bg = "dark_gray" }
+
+"ui.linenr" = { fg = "off_white" }
+"ui.linenr.selected" = { fg = "white" }
+
+"ui.statusline" = { fg = "white", bg = "black" }
+"ui.statusline.inactive" = { fg = "gray", bg = "black" }
+"ui.statusline.normal" = { fg = "white", bg = "vibrant_red", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "white", bg = "vibrant_blue", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "white", bg = "vibrant_orange", modifiers = ["bold"] }
+
+"ui.popup" = { fg = "white", bg = "black" }
+"ui.window" = { fg = "white" }
+"ui.help" = { fg = "white", bg = "black" }
+
+"ui.bufferline" = { fg = "white", bg = "gray" }
+# "ui.bufferline.active" = { fg = "yellow", bg = "black", underline = { color = "red", style = "line" } }
+# "ui.bufferline.background" = { bg = "gray" }
+
+"ui.text" = "white"
+"ui.text.focus" = { fg = "white", bg = "gray", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "off_white" }
+"ui.text.directory" = { fg = "blue" }
+
+"ui.virtual" = "gray"
+"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.indent-guide" = "gray"
+"ui.virtual.inlay-hint" = { fg = "white", bg = "gray" }
+"ui.virtual.jump-label" = { fg = "white", modifiers = ["bold"] }
+
+"ui.selection" = { bg = "gray" }
+
+"ui.cursor" = { fg = "black", bg = "white" }
+
+"ui.highlight" = { bg = "gray", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "white", bg = "black" }
+"ui.menu.selected" = { fg = "white", bg = "gray", modifiers = ["bold"] }
+
+"diagnostic.error" = { underline = { color = "error_red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning_yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "suggestion_blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "suggestion_blue", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+
+error = "error_red"
+warning = "warning_yellow"
+info = "suggestion_blue"
+hint = "suggestion_blue"
+
+"diff.plus" = "diff_green"
+"diff.minus" = "diff_red"
+"diff.delta" = "diff_yellow"
+
+rainbow = ["vibrant_yellow", "vibrant_green", "vibrant_blue", "vibrant_purple", "vibrant_red", "vibrant_orange"]
+
+[palette]
+# Grayscale
+white = "#d8d8d8"
+off_white = "#909090"
+light_gray = "#6c6c6c"
+gray = "#4d4d4d"
+dark_gray = "#252525"
+black = "#181818"
+# Diffs and diagnostics
+diff_red = "#ff3e3e"
+diff_yellow = "#ffea8a"
+diff_green = "#6eff69"
+error_red = "#ff3e3e"
+warning_yellow = "#ffd932"
+suggestion_blue = "#4fd6ff"
+# Pastel colors
+light_red = "#f7afaf"
+red = "#ff8d74"
+yellow = "#fffa9f"
+green = "#abff8d"
+blue = "#7bbdff"
+light_blue = "#b8e3ff"
+purple = "#f5c8ff"
+# Vibrant colors, used exclusively for bracket rainbows
+vibrant_yellow = "#fffd78"
+vibrant_green = "#6cffa4"
+vibrant_blue = "#628cff"
+vibrant_purple = "#e552ff"
+vibrant_red = "#ff4b90"
+vibrant_orange = "#ff915a"

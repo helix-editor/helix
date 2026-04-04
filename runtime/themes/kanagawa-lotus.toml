@@ -1,0 +1,156 @@
+# Kanagawa-lotus
+# Author: vmanolop
+
+# A light variant of the Kanagawa theme, based on the original dark Kanagawa theme
+# and inspired by the lotus variant of https://github.com/rebelot/kanagawa.nvim
+
+## User interface
+"ui.selection" = { bg = "lotusBlue1" }
+"ui.selection.primary" = { bg = "lotusBlue1" }
+"ui.background" = { fg = "lotusInk0", bg = "lotusWhite0" }
+
+"ui.linenr" = { fg = "lotusInk1" }
+"ui.linenr.selected" = { fg = "lotusBrightOrange", modifiers = ["bold"] }
+"ui.gutter" = { fg = "lotusInk1", bg = "lotusWhite1" }
+
+"ui.virtual" = "lotusInk1"
+"ui.virtual.ruler" = { bg = "lotusWhite1" }
+"ui.virtual.inlay-hint" = "lotusInk2"
+"ui.virtual.jump-label" = { fg = "lotusRed", modifiers = ["bold"] }
+"ui.virtual.whitespace" = { fg = "lotusWhite2" }
+
+"ui.statusline" = { fg = "lotusInk0", bg = "lotusWhite2" }
+"ui.statusline.inactive" = { fg = "lotusInk1", bg = "lotusWhite2" }
+"ui.statusline.normal" = { fg = "lotusWhite2", bg = "lotusBlue1", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "lotusWhite2", bg = "lotusBrightGreen", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "lotusWhite2", bg = "lotusBrightViolet", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "lotusInk1", bg = "lotusWhite2" }
+"ui.bufferline.active" = { fg = "lotusInk0", bg = "lotusWhite2" }
+"ui.bufferline.background" = { bg = "lotusWhite2" }
+
+"ui.popup" = { fg = "lotusInk0", bg = "lotusWhite2" }
+"ui.window" = { fg = "lotusWhite2" }
+"ui.help" = { fg = "lotusInk0", bg = "lotusWhite2" }
+"ui.text" = "lotusInk0"
+"ui.text.focus" = { fg = "lotusInk0", bg = "lotusBlue1", modifiers = ["bold"] }
+
+"ui.cursor" = { fg = "lotusSuperBlue", bg = "lotusInk3" }
+"ui.cursor.primary" = { fg = "lotusSuperBlue", bg = "lotusPink" }
+"ui.cursor.match" = { fg = "lotusRed", modifiers = ["bold"] }
+"ui.highlight" = { fg = "lotusInk0", bg = "lotusBlue1" }
+"ui.menu" = { fg = "lotusInk0", bg = "lotusBlue1" }
+"ui.menu.selected" = { fg = "lotusWhite0", bg = "lotusBlue3", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "lotusInk0", bg = "lotusBlue1" }
+
+"ui.cursorline.primary" = { bg = "lotusWhite1" }
+"ui.cursorcolumn.primary" = { bg = "lotusWhite1" }
+
+"ui.debug.breakpoint" = "lotusBlue3"
+"ui.debug.active" = "lotusRed"
+
+"diagnostic.error" = { underline = { color = "lotusRed", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "lotusBrightOrange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "lotusBlue3", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "lotusGreen", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+error = "lotusRed"
+warning = "lotusBrightOrange"
+info = "lotusBlue3"
+hint = "lotusGreen"
+
+## Diff
+"diff.plus" = "lotusBrightGreen"
+"diff.minus" = "lotusRed"
+"diff.delta" = "lotusBrightOrange"
+
+## Syntax highlighting
+"attribute" = "lotusAutumnRed"
+"type" = { fg = "lotusSuperAqua" }
+"type.builtin" = { fg = "lotusBlue3" }
+"constructor" = { fg = "lotusBlue3" }
+"constant" = { fg = "lotusSuperOrange" }
+"constant.numeric" = { fg = "lotusSuperPink" }
+"constant.character.escape" = { fg = "lotusYellow2" }
+"string" = { fg = "lotusSuperBlue" }
+"string.regexp" = { fg = "lotusYellow2" }
+"string.special.url" = { fg = "lotusSuperGreen" }
+"string.special.symbol" = { fg = "lotusSuperViolet" }
+"comment" = { fg = "lotusInk1", modifiers = ["italic"] }
+"variable" = { fg = "lotusInk0" }
+"variable.builtin" = { fg = "lotusAutumnRed" }
+"variable.parameter" = { fg = "lotusSuperViolet" }
+"variable.other.member" = { fg = "lotusSuperOrange" }
+"label" = { fg = "lotusBlue3" }
+"punctuation" = { fg = "lotusPunctuation" }
+"keyword" = { fg = "lotusSuperViolet", modifiers = ["italic"] }
+"keyword.control.return" = { fg = "lotusSuperPink" }
+"keyword.control.exception" = { fg = "lotusSuperPink" }
+"keyword.directive" = { fg = "lotusAutumnRed" }
+"operator" = { fg = "lotusBrightPink", modifiers = ["bold"] }
+"function" = { fg = "lotusBlue2" }
+"function.builtin" = { fg = "lotusCyan" }
+"function.macro" = { fg = "lotusAutumnRed" }
+"tag" = { fg = "lotusSuperAqua" }
+"namespace" = { fg = "lotusSuperOrange" }
+"special" = { fg = "lotusSuperPink" }
+
+## Markup modifiers
+"markup.heading" = { fg = "lotusBlue3", modifiers = ["bold"] }
+"markup.heading.marker" = "lotusBlue3"
+"markup.heading.1" = { fg = "lotusYellow", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "lotusBlue3", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "lotusSuperAqua", modifiers = ["bold"] }
+"markup.list" = { fg = "lotusSuperPink" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = { fg = "lotusBlue3" }
+"markup.link.url" = { fg = "lotusCyan" }
+"markup.link.label" = { fg = "lotusSuperOrange" }
+"markup.quote" = { fg = "lotusViolet", modifiers = ["italic"] }
+"markup.raw" = { fg = "lotusSuperGreen" }
+
+[palette]
+lotusWhite0       = "#FDFCFB"
+lotusWhite1       = "#F7ECE1"
+lotusWhite2       = "#EAE3D7"
+
+lotusInk0         = "#181825"
+lotusInk1         = "#8F909C"
+lotusInk2         = "#8AA6B8"
+lotusInk3         = "#65869C"
+
+lotusBlue1        = "#B7C5D8"
+lotusBlue2        = "#086187"
+lotusBlue3        = "#223249"
+
+lotusGreen        = "#76946A"
+lotusBrightGreen  = "#2E8B57"
+
+lotusViolet       = "#957FB8"
+lotusBrightViolet = "#7C3AED"
+
+lotusAutumnRed    = "#C34043"
+lotusRed          = "#E82424"
+lotusPink         = "#D27E99"
+lotusBrightPink   = "#FF5D62"
+
+lotusYellow       = "#DCA561"
+lotusYellow2      = "#AD8700"
+lotusBrightOrange = "#FF8800"
+
+lotusCyan         = "#0081A7"
+
+lotusPunctuation  = "#473428"
+
+# Max contrast accent colors
+lotusSuperGreen   = "#00612D"
+lotusSuperAqua    = "#006A6A"
+lotusSuperViolet  = "#43098A"
+lotusSuperOrange  = "#A34100"
+lotusSuperPink    = "#861657"
+lotusSuperBlue    = "#0D267D"
+

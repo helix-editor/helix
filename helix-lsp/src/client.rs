@@ -4,13 +4,18 @@ use crate::{
     transport::{Payload, Transport},
     Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
+use log::info;
 
 use crate::lsp::{
     self, notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
-use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
+use helix_core::{
+    find_workspace,
+    syntax::config::{LanguageServerFeature, RootMarkers},
+    ChangeSet, Rope,
+};
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use parking_lot::Mutex;
@@ -67,7 +72,7 @@ pub struct Client {
 impl Client {
     pub fn try_add_doc(
         self: &Arc<Self>,
-        root_markers: &[String],
+        root_markers: &RootMarkers,
         manual_roots: &[PathBuf],
         doc_path: Option<&std::path::PathBuf>,
         may_support_workspace: bool,
@@ -176,6 +181,29 @@ impl Client {
         self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new())
     }
 
+    /// Merge FormattingOptions with 'config.format' and return it
+    fn get_merged_formatting_options(
+        &self,
+        options: lsp::FormattingOptions,
+    ) -> lsp::FormattingOptions {
+        let config_format = self
+            .config
+            .as_ref()
+            .and_then(|cfg| cfg.get("format"))
+            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+
+        if let Some(mut properties) = config_format {
+            // passed in options take precedence over 'config.format'
+            properties.extend(options.properties);
+            lsp::FormattingOptions {
+                properties,
+                ..options
+            }
+        } else {
+            options
+        }
+    }
+
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
     pub fn start(
         cmd: &str,
@@ -192,6 +220,7 @@ impl Client {
         UnboundedReceiver<(LanguageServerId, Call)>,
         Arc<Notify>,
     )> {
+        info!("Starting lsp {name:?} in root {root_path:?}");
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -201,6 +230,7 @@ impl Client {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .current_dir(&root_path)
             // make sure the process is reaped on drop
             .kill_on_drop(true)
             .spawn();
@@ -336,6 +366,7 @@ impl Client {
                         | CodeActionProviderCapability::Options(_),
                 )
             ),
+            LanguageServerFeature::DocumentLinks => capabilities.document_link_provider.is_some(),
             LanguageServerFeature::WorkspaceCommand => {
                 capabilities.execute_command_provider.is_some()
             }
@@ -348,6 +379,7 @@ impl Client {
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
             LanguageServerFeature::Diagnostics => true, // there's no extra server capability
+            LanguageServerFeature::PullDiagnostics => capabilities.diagnostic_provider.is_some(),
             LanguageServerFeature::RenameSymbol => matches!(
                 capabilities.rename_provider,
                 Some(OneOf::Left(true)) | Some(OneOf::Right(_))
@@ -356,7 +388,21 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
-            LanguageServerFeature::DocumentColors => capabilities.color_provider.is_some(),
+            LanguageServerFeature::DocumentColors => matches!(
+                capabilities.color_provider,
+                Some(
+                    ColorProviderCapability::Simple(true)
+                        | ColorProviderCapability::ColorProvider(_)
+                        | ColorProviderCapability::Options(_)
+                )
+            ),
+            LanguageServerFeature::CallHierarchy => matches!(
+                capabilities.call_hierarchy_provider,
+                Some(
+                    CallHierarchyServerCapability::Simple(true)
+                        | CallHierarchyServerCapability::Options(_)
+                )
+            ),
         }
     }
 
@@ -564,12 +610,15 @@ impl Client {
                     }),
                     did_change_watched_files: Some(lsp::DidChangeWatchedFilesClientCapabilities {
                         dynamic_registration: Some(true),
-                        relative_pattern_support: Some(false),
+                        relative_pattern_support: Some(true),
                     }),
                     file_operations: Some(lsp::WorkspaceFileOperationsClientCapabilities {
                         will_rename: Some(true),
                         did_rename: Some(true),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticWorkspaceClientCapabilities {
+                        refresh_support: Some(true),
                     }),
                     ..Default::default()
                 }),
@@ -634,6 +683,7 @@ impl Client {
                                     lsp::CodeActionKind::REFACTOR_REWRITE,
                                     lsp::CodeActionKind::SOURCE,
                                     lsp::CodeActionKind::SOURCE_ORGANIZE_IMPORTS,
+                                    lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
                                 .map(|kind| kind.as_str().to_string())
@@ -647,6 +697,10 @@ impl Client {
                             properties: vec!["edit".to_owned(), "command".to_owned()],
                         }),
                         ..Default::default()
+                    }),
+                    diagnostic: Some(lsp::DiagnosticClientCapabilities {
+                        dynamic_registration: Some(false),
+                        related_document_support: Some(true),
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
@@ -662,11 +716,23 @@ impl Client {
                         dynamic_registration: Some(false),
                         resolve_support: None,
                     }),
+                    document_link: Some(lsp::DocumentLinkClientCapabilities {
+                        dynamic_registration: Some(false),
+                        tooltip_support: Some(false),
+                    }),
+                    call_hierarchy: Some(lsp::DynamicRegistrationClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp::WindowClientCapabilities {
+                    show_message: Some(lsp::ShowMessageRequestClientCapabilities {
+                        message_action_item: Some(lsp::MessageActionItemCapabilities {
+                            additional_properties_support: Some(true),
+                        }),
+                    }),
                     work_done_progress: Some(true),
-                    ..Default::default()
+                    show_document: Some(lsp::ShowDocumentClientCapabilities { support: true }),
                 }),
                 general: Some(lsp::GeneralClientCapabilities {
                     position_encodings: Some(vec![
@@ -1115,6 +1181,35 @@ impl Client {
         Some(self.call::<lsp::request::DocumentColor>(params))
     }
 
+    pub fn text_document_document_link(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::DocumentLink>>>>> {
+        if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
+            return None;
+        }
+
+        let params = lsp::DocumentLinkParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams { work_done_token },
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentLinkRequest>(params))
+    }
+
+    pub fn resolve_document_link(
+        &self,
+        params: lsp::DocumentLink,
+    ) -> Option<impl Future<Output = Result<lsp::DocumentLink>>> {
+        if !self.supports_feature(LanguageServerFeature::DocumentLinks) {
+            return None;
+        }
+
+        Some(self.call::<lsp::request::DocumentLinkResolve>(params))
+    }
+
     pub fn text_document_hover(
         &self,
         text_document: lsp::TextDocumentIdentifier,
@@ -1160,23 +1255,7 @@ impl Client {
             _ => return None,
         };
 
-        // merge FormattingOptions with 'config.format'
-        let config_format = self
-            .config
-            .as_ref()
-            .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
-
-        let options = if let Some(mut properties) = config_format {
-            // passed in options take precedence over 'config.format'
-            properties.extend(options.properties);
-            lsp::FormattingOptions {
-                properties,
-                ..options
-            }
-        } else {
-            options
-        };
+        let options = self.get_merged_formatting_options(options);
 
         let params = lsp::DocumentFormattingParams {
             text_document,
@@ -1202,6 +1281,8 @@ impl Client {
             _ => return None,
         };
 
+        let options = self.get_merged_formatting_options(options);
+
         let params = lsp::DocumentRangeFormattingParams {
             text_document,
             range,
@@ -1210,6 +1291,32 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::RangeFormatting>(params))
+    }
+
+    pub fn text_document_diagnostic(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        previous_result_id: Option<String>,
+    ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>> {
+        let capabilities = self.capabilities();
+
+        // Return early if the server does not support pull diagnostic.
+        let identifier = match capabilities.diagnostic_provider.as_ref()? {
+            lsp::DiagnosticServerCapabilities::Options(cap) => cap.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(cap) => {
+                cap.diagnostic_options.identifier.clone()
+            }
+        };
+
+        let params = lsp::DocumentDiagnosticParams {
+            text_document,
+            identifier,
+            previous_result_id,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::DocumentDiagnosticRequest>(params))
     }
 
     pub fn text_document_document_highlight(
@@ -1410,6 +1517,78 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::DocumentSymbolRequest>(params))
+    }
+
+    pub fn prepare_call_hierarchy(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyItem>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyPrepareParams {
+            text_document_position_params: lsp::TextDocumentPositionParams {
+                text_document,
+                position,
+            },
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyPrepare>(params))
+    }
+
+    pub fn call_hierarchy_incoming(
+        &self,
+        item: lsp::CallHierarchyItem,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyIncomingCall>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyIncomingCallsParams {
+            item,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyIncomingCalls>(params))
+    }
+
+    pub fn call_hierarchy_outgoing(
+        &self,
+        item: lsp::CallHierarchyItem,
+    ) -> Option<impl Future<Output = Result<Option<Vec<lsp::CallHierarchyOutgoingCall>>>>> {
+        let capabilities = self.capabilities.get().unwrap();
+
+        match capabilities.call_hierarchy_provider {
+            Some(
+                lsp::CallHierarchyServerCapability::Simple(true)
+                | lsp::CallHierarchyServerCapability::Options(_),
+            ) => (),
+            _ => return None,
+        }
+
+        let params = lsp::CallHierarchyOutgoingCallsParams {
+            item,
+            work_done_progress_params: lsp::WorkDoneProgressParams::default(),
+            partial_result_params: lsp::PartialResultParams::default(),
+        };
+
+        Some(self.call::<lsp::request::CallHierarchyOutgoingCalls>(params))
     }
 
     pub fn prepare_rename(

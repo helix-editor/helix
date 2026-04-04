@@ -2,6 +2,7 @@
 (erroneous_end_tag_name) @error
 (doctype) @constant
 (attribute_name) @attribute
+(entity) @string.special.symbol
 (comment) @comment
 
 ((attribute

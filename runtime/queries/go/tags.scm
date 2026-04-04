@@ -4,7 +4,7 @@
   (function_declaration
     name: (identifier) @name) @definition.function
   (#strip! @doc "^//\\s*")
-  (#set-adjacent! @doc @definition.function)
+  (#select-adjacent! @doc @definition.function)
 )
 
 (
@@ -13,7 +13,7 @@
   (method_declaration
     name: (field_identifier) @name) @definition.method
   (#strip! @doc "^//\\s*")
-  (#set-adjacent! @doc @definition.method)
+  (#select-adjacent! @doc @definition.method)
 )
 
 (call_expression
@@ -24,7 +24,13 @@
     (parenthesized_expression (selector_expression field: (field_identifier) @name))
   ]) @reference.call
 
+(const_spec
+  name: (identifier) @name) @definition.constant
+
 (type_spec
+  name: (type_identifier) @name) @definition.type
+
+(type_alias
   name: (type_identifier) @name) @definition.type
 
 (type_identifier) @name @reference.type

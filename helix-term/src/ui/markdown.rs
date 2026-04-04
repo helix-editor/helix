@@ -10,8 +10,8 @@ use std::sync::Arc;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
-    syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
-    RopeSlice,
+    syntax::{self, HighlightEvent, OverlayHighlights},
+    RopeSlice, Syntax,
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
@@ -32,8 +32,12 @@ pub fn highlighted_code_block<'a>(
     text: &str,
     language: &str,
     theme: Option<&Theme>,
-    config_loader: Arc<ArcSwap<syntax::Loader>>,
-    additional_highlight_spans: Option<Vec<(usize, std::ops::Range<usize>)>>,
+    loader: &syntax::Loader,
+    // Optional overlay highlights to mix in with the syntax highlights.
+    //
+    // Note that `OverlayHighlights` is typically used with char indexing but the only caller
+    // which passes this parameter currently passes **byte indices** instead.
+    additional_highlight_spans: Option<OverlayHighlights>,
 ) -> Text<'a> {
     let mut spans = Vec::new();
     let mut lines = Vec::new();
@@ -48,67 +52,80 @@ pub fn highlighted_code_block<'a>(
     };
 
     let ropeslice = RopeSlice::from(text);
-    let syntax = config_loader
-        .load()
-        .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
-            language.into(),
-        ))
-        .and_then(|config| config.highlight_config(theme.scopes()))
-        .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
-
-    let syntax = match syntax {
-        Some(s) => s,
-        None => return styled_multiline_text(text, code_style),
+    let Some(syntax) = loader
+        .language_for_match(RopeSlice::from(language))
+        .and_then(|lang| Syntax::new(ropeslice, lang, loader).ok())
+    else {
+        return styled_multiline_text(text, code_style);
     };
 
-    let highlight_iter = syntax
-        .highlight_iter(ropeslice, None, None)
-        .map(|e| e.unwrap());
-    let highlight_iter: Box<dyn Iterator<Item = HighlightEvent>> =
-        if let Some(spans) = additional_highlight_spans {
-            Box::new(helix_core::syntax::merge(highlight_iter, spans))
-        } else {
-            Box::new(highlight_iter)
-        };
+    let mut syntax_highlighter = syntax.highlighter(ropeslice, loader, ..);
+    let mut syntax_highlight_stack = Vec::new();
+    let mut overlay_highlight_stack = Vec::new();
+    let mut overlay_highlighter = syntax::OverlayHighlighter::new(additional_highlight_spans);
+    let mut pos = 0;
 
-    let mut highlights = Vec::new();
-    for event in highlight_iter {
-        match event {
-            HighlightEvent::HighlightStart(span) => {
-                highlights.push(span);
+    while pos < ropeslice.len_bytes() as u32 {
+        if pos == syntax_highlighter.next_event_offset() {
+            let (event, new_highlights) = syntax_highlighter.advance();
+            if event == HighlightEvent::Refresh {
+                syntax_highlight_stack.clear();
             }
-            HighlightEvent::HighlightEnd => {
-                highlights.pop();
+            syntax_highlight_stack.extend(new_highlights);
+        } else if pos == overlay_highlighter.next_event_offset() as u32 {
+            let (event, new_highlights) = overlay_highlighter.advance();
+            if event == HighlightEvent::Refresh {
+                overlay_highlight_stack.clear();
             }
-            HighlightEvent::Source { start, end } => {
-                let style = highlights
-                    .iter()
-                    .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
+            overlay_highlight_stack.extend(new_highlights)
+        }
 
-                let mut slice = &text[start..end];
-                // TODO: do we need to handle all unicode line endings
-                // here, or is just '\n' okay?
-                while let Some(end) = slice.find('\n') {
-                    // emit span up to newline
-                    let text = &slice[..end];
-                    let text = text.replace('\t', "    "); // replace tabs
-                    let span = Span::styled(text, style);
-                    spans.push(span);
+        let start = pos;
+        pos = syntax_highlighter
+            .next_event_offset()
+            .min(overlay_highlighter.next_event_offset() as u32);
+        if pos == u32::MAX {
+            pos = ropeslice.len_bytes() as u32;
+        }
+        if pos == start {
+            continue;
+        }
+        // The highlighter should always move forward.
+        // If the highlighter malfunctions, bail on syntax highlighting and log an error.
+        debug_assert!(pos > start);
+        if pos < start {
+            log::error!("Failed to highlight '{language}': {text:?}");
+            return styled_multiline_text(text, code_style);
+        }
 
-                    // truncate slice to after newline
-                    slice = &slice[end + 1..];
+        let style = syntax_highlight_stack
+            .iter()
+            .chain(overlay_highlight_stack.iter())
+            .fold(text_style, |acc, highlight| {
+                acc.patch(theme.highlight(*highlight))
+            });
 
-                    // make a new line
-                    let spans = std::mem::take(&mut spans);
-                    lines.push(Spans::from(spans));
-                }
+        let mut slice = &text[start as usize..pos as usize];
+        // TODO: do we need to handle all unicode line endings
+        // here, or is just '\n' okay?
+        while let Some(end) = slice.find('\n') {
+            // emit span up to newline
+            let text = &slice[..end];
+            let text = text.replace('\t', "    "); // replace tabs
+            let span = Span::styled(text, style);
+            spans.push(span);
 
-                // if there's anything left, emit it too
-                if !slice.is_empty() {
-                    let span = Span::styled(slice.replace('\t', "    "), style);
-                    spans.push(span);
-                }
-            }
+            // truncate slice to after newline
+            slice = &slice[end + 1..];
+
+            // make a new line
+            let spans = std::mem::take(&mut spans);
+            lines.push(Spans::from(spans));
+        }
+
+        if !slice.is_empty() {
+            let span = Span::styled(slice.replace('\t', "    "), style);
+            spans.push(span);
         }
     }
 
@@ -286,7 +303,7 @@ impl Markdown {
                             &text,
                             language,
                             theme,
-                            Arc::clone(&self.config_loader),
+                            &self.config_loader.load(),
                             None,
                         );
                         lines.extend(tui_text.lines.into_iter());

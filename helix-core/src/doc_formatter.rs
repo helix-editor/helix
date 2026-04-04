@@ -26,7 +26,6 @@ use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
 use crate::{Position, RopeSlice};
 
-/// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
 pub enum GraphemeSource {
     Document {

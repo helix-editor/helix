@@ -9,6 +9,7 @@
 'comment' = { fg = 'gray', modifiers = ['italic'] }
 'comment.block' = { fg = 'green', modifiers = ['italic'] }
 'comment.block.documentation' = { fg = 'green', modifiers = ['italic'] }
+'comment.line.documentation' = { fg = 'green', modifiers = ['italic'] }
 'constant' = { fg = 'magenta' }
 'constant.numeric' = { fg = 'orange' }
 'constructor' = { fg = 'red' }

@@ -9,11 +9,12 @@ pub use client::Client;
 pub use futures_executor::block_on;
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
+use log::warn;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::syntax::{
-    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
+use helix_core::syntax::config::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures, RootMarkers,
 };
 use helix_stdx::path;
 use slotmap::SlotMap;
@@ -21,6 +22,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -37,7 +39,7 @@ pub enum Error {
     #[error("protocol error: {0}")]
     Rpc(#[from] jsonrpc::Error),
     #[error("failed to parse: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(Box<dyn std::error::Error + Send + Sync>),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("request {0} timed out")]
@@ -50,6 +52,18 @@ pub enum Error {
     ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
+impl From<sonic_rs::Error> for Error {
+    fn from(value: sonic_rs::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -463,6 +477,8 @@ pub enum MethodCall {
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
+    WorkspaceDiagnosticRefresh,
+    ShowMessageRequest(lsp::ShowMessageRequestParams),
 }
 
 impl MethodCall {
@@ -493,6 +509,11 @@ impl MethodCall {
             lsp::request::ShowDocument::METHOD => {
                 let params: lsp::ShowDocumentParams = params.parse()?;
                 Self::ShowDocument(params)
+            }
+            lsp::request::WorkspaceDiagnosticRefresh::METHOD => Self::WorkspaceDiagnosticRefresh,
+            lsp::request::ShowMessageRequest::METHOD => {
+                let params: lsp::ShowMessageRequestParams = params.parse()?;
+                Self::ShowMessageRequest(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -895,6 +916,8 @@ fn start_client(
             .map(|entry| entry.file_name())
             .any(|entry| globset.is_match(entry))
         {
+            // TODO: also show the globset that should be matched: https://github.com/BurntSushi/ripgrep/issues/3274
+            warn!("The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'");
             return Err(StartupError::NoRequiredRootFound);
         }
     }
@@ -951,7 +974,7 @@ fn start_client(
 /// * If we stopped at `workspace` instead and `workspace_is_cwd == true` return `workspace`
 pub fn find_lsp_workspace(
     file: &str,
-    root_markers: &[String],
+    root_markers: &RootMarkers,
     root_dirs: &[PathBuf],
     workspace: &Path,
     workspace_is_cwd: bool,
@@ -971,10 +994,16 @@ pub fn find_lsp_workspace(
 
     let mut top_marker = None;
     for ancestor in file.ancestors() {
-        if root_markers
-            .iter()
-            .any(|marker| ancestor.join(marker).exists())
-        {
+        let Ok(mut dir) = fs::read_dir(ancestor) else {
+            continue;
+        };
+
+        if dir.any(|entry| {
+            if let Ok(entry) = entry {
+                return root_markers.is_match(entry.file_name());
+            }
+            false
+        }) {
             top_marker = Some(ancestor);
         }
 

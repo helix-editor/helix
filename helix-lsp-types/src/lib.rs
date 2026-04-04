@@ -2568,9 +2568,9 @@ pub enum Documentation {
 ///
 /// The pair of a language and a value is an equivalent to markdown:
 ///
-/// ```${language}
+/// <pre><code>```${language}
 /// ${value}
-/// ```
+/// ```</code></pre>
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum MarkedString {

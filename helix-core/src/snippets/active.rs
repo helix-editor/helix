@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use hashbrown::HashSet;
+use foldhash::HashSet;
 use helix_stdx::range::{is_exact_subset, is_subset};
 use helix_stdx::Range;
 use ropey::Rope;
@@ -35,7 +35,7 @@ impl ActiveSnippet {
         let snippet = Self {
             ranges: snippet.ranges,
             tabstops: snippet.tabstops,
-            active_tabstops: HashSet::new(),
+            active_tabstops: HashSet::default(),
             current_tabstop: TabstopIdx(0),
         };
         (snippet.tabstops.len() != 1).then_some(snippet)
@@ -201,7 +201,7 @@ impl ActiveSnippet {
     }
 
     pub fn insert_subsnippet(mut self, snippet: RenderedSnippet) -> Option<Self> {
-        if snippet.ranges.len() % self.ranges.len() != 0
+        if !snippet.ranges.len().is_multiple_of(self.ranges.len())
             || !is_exact_subset(self.ranges.iter().copied(), snippet.ranges.iter().copied())
         {
             log::warn!("number of subsnippets did not match, discarding outer snippet");

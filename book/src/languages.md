@@ -58,7 +58,7 @@ These configuration keys are available:
 | `injection-regex`     | regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential [language injection][treesitter-language-injection] site. |
 | `file-types`          | The filetypes of the language, for example `["yml", "yaml"]`. See the file-type detection section below. |
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
-| `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
+| `roots`               | A set of marker files used for LSP working directory selection. Helix starts at the file, walks upward, and remembers the *topmost* i.e. *last* directory that contains a marker file. For example Cargo.lock, yarn.lock |
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `error`, `warning`, `info`, `hint`) |
 | `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|
@@ -66,13 +66,40 @@ These configuration keys are available:
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-servers`    | The Language Servers used for this language. See below for more information in the section [Configuring Language Servers for a language](#configuring-language-servers-for-a-language)   |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
-| `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout |
+| `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the `%{buffer_name}` expansion variable. See below for more information in the [Configuring the formatter command](#configuring-the-formatter-command) |
 | `soft-wrap`           | [editor.softwrap](./editor.md#editorsoft-wrap-section)
 | `text-width`          |  Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set, defaults to `editor.text-width`   |
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
-| `workspace-lsp-roots`     | Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml`. Overwrites the setting of the same name in `config.toml` if set. |
+| `word-completion`     | Overrides the [`editor.word-completion`](./editor.md#editorword-completion-section) configuration for the language. |
+| `workspace-lsp-roots`     | Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local `.helix/config.toml`; |
 | `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
+| `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |
+
+## Project and LSP root selection
+
+This is the model Helix uses:
+
+- The **workspace root** is found once by walking upward from the current
+  working directory and picking the first directory that contains `.git`, `.svn`,
+  `.jj`, or `.helix`. If none are found, the current working directory is the
+  workspace root.
+- Root markers (`roots`) are used only for LSP root selection and are found by
+  starting at the **file**, not the folder Helix was opened in.
+- We use the **topmost** directory that has a root marker (we stop the search at
+  the workspace root).
+- In most cases, root markers are enough. In some repos there are multiple
+  nested root markers and whether you want the inner or outer one is project
+  specific. For these situations, use `workspace-lsp-roots` to stop the search
+  early in a particular directory.
+- `workspace-lsp-roots` is meant to be set in the **project-specific** config:
+  `$PROJECT/.helix/config.toml`.
+
+Interaction with `required-root-patterns` (a language_server configuration key):
+
+- After the LSP root is selected, Helix checks for `required-root-patterns` in
+  that directory. If none match, the server is not started.
+- This is validation, not root detection.
 
 ### File-type detection and the `file-types` key
 
@@ -101,6 +128,16 @@ with the following priorities:
 2. Extension: if there are no glob matches, any `file-types` string that matches
    the file extension of a given file wins. In the example above, the `"toml"`
    config matches files like `Cargo.toml` or `languages.toml`.
+
+### Configuring the formatter command
+
+[Command line expansions](./command-line.md#expansions) are supported in the arguments
+of the formatter command. In particular, the `%{buffer_name}` variable can be passed as
+argument to the formatter:
+
+```toml
+formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename", "%{buffer_name}"] }
+```
 
 ## Language Server configuration
 
@@ -132,7 +169,7 @@ These are the available options for a language server.
 | `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
-| `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
+| `required-root-patterns`   | A list of `glob` patterns to look for in the working directory of the lsp. The language server is only started if at least one of them is found. |
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
 [Document Formatting Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting).
@@ -184,8 +221,8 @@ If a language server itself doesn't support a feature, the next language server 
 The list of supported features is:
 
 - `format`
-- `goto-definition`
 - `goto-declaration`
+- `goto-definition`
 - `goto-type-definition`
 - `goto-reference`
 - `goto-implementation`
@@ -194,12 +231,16 @@ The list of supported features is:
 - `document-highlight`
 - `completion`
 - `code-action`
+- `document-links`
 - `workspace-command`
 - `document-symbols`
 - `workspace-symbols`
 - `diagnostics`
+- `pull-diagnostics`
 - `rename-symbol`
 - `inlay-hints`
+- `document-colors`
+- `call-hierarchy`
 
 ## Tree-sitter grammar configuration
 

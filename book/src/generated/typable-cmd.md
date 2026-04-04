@@ -1,5 +1,7 @@
 | Name | Description |
 | --- | --- |
+| `:exit`, `:x`, `:xit` | Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt). |
+| `:exit!`, `:x!`, `:xit!` | Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt). |
 | `:quit`, `:q` | Close the current view. |
 | `:quit!`, `:q!` | Force close the current view, ignoring unsaved changes. |
 | `:open`, `:o`, `:edit`, `:e` | Open a file from disk into the current view. |
@@ -21,12 +23,12 @@
 | `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | Jump back to an earlier point in edit history. Accepts a number of steps or a time span. |
 | `:later`, `:lat` | Jump to a later point in edit history. Accepts a number of steps or a time span. |
-| `:write-quit`, `:wq`, `:x` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
-| `:write-quit!`, `:wq!`, `:x!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
+| `:write-quit`, `:wq` | Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt) |
+| `:write-quit!`, `:wq!` | Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt) |
 | `:write-all`, `:wa` | Write changes from all buffers to disk. |
 | `:write-all!`, `:wa!` | Forcefully write changes from all buffers to disk creating necessary subdirectories. |
 | `:write-quit-all`, `:wqa`, `:xa` | Write changes from all buffers to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
+| `:write-quit-all!`, `:wqa!`, `:xa!` | Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | Close all views. |
 | `:quit-all!`, `:qa!` | Force close all views ignoring unsaved changes. |
 | `:cquit`, `:cq` | Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2). |
@@ -45,6 +47,9 @@
 | `:primary-clipboard-paste-replace` | Replace selections with content of system primary clipboard. |
 | `:show-clipboard-provider` | Show clipboard provider name in status bar. |
 | `:change-current-directory`, `:cd` | Change the current working directory. |
+| `:show-directory-stack` | Show the directory stack as a <space> delimited string. |
+| `:push-directory`, `:pushd` | Save and then change the current directory. |
+| `:pop-directory`, `:popd` | Remove the top entry from the directory stack, and cd to the new top directory.. |
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
@@ -56,6 +61,7 @@
 | `:lsp-stop` | Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied |
 | `:tree-sitter-scopes` | Display tree sitter scopes, primarily for theming and development. |
 | `:tree-sitter-highlight-name` | Display name of tree-sitter highlight scope under the cursor. |
+| `:tree-sitter-layers` | Display language names of tree-sitter injection layers under the cursor. |
 | `:debug-start`, `:dbg` | Start a debug session from a given template with given parameters. |
 | `:debug-remote`, `:dbg-tcp` | Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters. |
 | `:debug-eval` | Evaluate expression in current debug context. |
@@ -78,14 +84,18 @@
 | `:log-open` | Open the helix log file. |
 | `:insert-output` | Run shell command, inserting output before each selection. |
 | `:append-output` | Run shell command, appending output after each selection. |
-| `:pipe`, `:|` | Pipe each selection to the shell command. |
+| `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
+| `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
+| `:move!`, `:mv!` | Move the current buffer and its corresponding file to a different path creating necessary subdirectories |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:workspace-trust` | Add current workspace to the list of trusted workspaces. |
+| `:workspace-untrust` | Remove current workspace from the list of trusted workspaces. |

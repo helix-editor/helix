@@ -9,9 +9,12 @@ use std::{
     sync::mpsc::channel,
 };
 use tempfile::TempPath;
-use tree_sitter::Language;
+use tree_house::tree_sitter::Grammar;
 
-#[cfg(unix)]
+#[cfg(target_os = "macos")]
+const DYLIB_EXTENSION: &str = "dylib";
+
+#[cfg(all(unix, not(target_os = "macos")))]
 const DYLIB_EXTENSION: &str = "so";
 
 #[cfg(windows)]
@@ -61,28 +64,21 @@ const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
 
 #[cfg(target_arch = "wasm32")]
-pub fn get_language(name: &str) -> Result<Language> {
+pub fn get_language(name: &str) -> Result<Option<Grammar>> {
     unimplemented!()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn get_language(name: &str) -> Result<Language> {
-    use libloading::{Library, Symbol};
+pub fn get_language(name: &str) -> Result<Option<Grammar>> {
     let mut rel_library_path = PathBuf::new().join("grammars").join(name);
     rel_library_path.set_extension(DYLIB_EXTENSION);
     let library_path = crate::runtime_file(&rel_library_path);
+    if !library_path.exists() {
+        return Ok(None);
+    }
 
-    let library = unsafe { Library::new(&library_path) }
-        .with_context(|| format!("Error opening dynamic library {:?}", library_path))?;
-    let language_fn_name = format!("tree_sitter_{}", name.replace('-', "_"));
-    let language = unsafe {
-        let language_fn: Symbol<unsafe extern "C" fn() -> Language> = library
-            .get(language_fn_name.as_bytes())
-            .with_context(|| format!("Failed to load symbol {}", language_fn_name))?;
-        language_fn()
-    };
-    std::mem::forget(library);
-    Ok(language)
+    let grammar = unsafe { Grammar::new(name, &library_path) }?;
+    Ok(Some(grammar))
 }
 
 fn ensure_git_is_available() -> Result<()> {
@@ -199,7 +195,7 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config()
+    let config: Configuration = crate::config::user_lang_config(false)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -215,6 +211,27 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
             .filter(|grammar| !rejections.contains(&grammar.grammar_id))
             .collect(),
         None => config.grammar,
+    };
+
+    Ok(grammars)
+}
+
+pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config(false)
+        .context("Could not parse languages.toml")?
+        .try_into()?;
+
+    let grammars = match config.grammar_selection {
+        Some(GrammarSelection::Only { only: selections }) => Some(selections),
+        Some(GrammarSelection::Except { except: rejections }) => Some(
+            config
+                .grammar
+                .into_iter()
+                .map(|grammar| grammar.grammar_id)
+                .filter(|id| !rejections.contains(id))
+                .collect(),
+        ),
+        None => None,
     };
 
     Ok(grammars)
@@ -250,69 +267,104 @@ enum FetchStatus {
     NonGit,
 }
 
-fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
-    if let GrammarSource::Git {
-        remote, revision, ..
-    } = grammar.source
-    {
-        let grammar_dir = crate::runtime_dirs()
+struct VendoredGrammar {
+    dir: PathBuf,
+}
+
+impl VendoredGrammar {
+    fn new(grammar: &str) -> Self {
+        let dir = crate::runtime_dirs()
             .first()
             .expect("No runtime directories provided") // guaranteed by post-condition
             .join("grammars")
             .join("sources")
-            .join(&grammar.grammar_id);
+            .join(grammar);
 
-        fs::create_dir_all(&grammar_dir).context(format!(
+        Self { dir }
+    }
+
+    /// Gets the current revision of the repo.
+    fn revision(&self) -> Option<String> {
+        git(&self.dir, ["rev-parse", "HEAD"]).ok()
+    }
+
+    /// Fetches grammar at the given revision.
+    ///
+    /// To ensure clean state, existing grammar directory is removed and re-inited
+    /// before fetch operation.
+    fn fetch(&self, remote: &str, rev: &str) -> Result<()> {
+        self.reinit(remote)?;
+
+        git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
+        git(&self.dir, ["checkout", rev])?;
+
+        Ok(())
+    }
+
+    /// Initializes the grammar directory.
+    ///
+    /// Creates directory and sets it up as a git repo, with remote set correctly.
+    fn init(&self, remote: &str) -> Result<()> {
+        // Create the grammar directory if needed.
+        fs::create_dir_all(&self.dir).context(format!(
             "Could not create grammar directory {:?}",
-            grammar_dir
+            &self.dir
         ))?;
 
-        // create the grammar dir contains a git directory
-        if !grammar_dir.join(".git").exists() {
-            git(&grammar_dir, ["init"])?;
+        // Ensure directory is git initialized.
+        if !self.dir.join(".git").exists() {
+            git(&self.dir, ["init"])?;
         }
 
-        // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).as_ref() != Some(&remote) {
-            set_remote(&grammar_dir, &remote)?;
+        // Ensure the remote matches the configured remote, setting if needed.
+        if self.remote().as_deref() != Some(remote) {
+            self.set_remote(remote)?;
         }
 
-        // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
-            // Fetch the exact revision from the remote.
-            // Supported by server-side git since v2.5.0 (July 2015),
-            // enabled by default on major git hosts.
-            git(
-                &grammar_dir,
-                ["fetch", "--depth", "1", REMOTE_NAME, &revision],
-            )?;
-            git(&grammar_dir, ["checkout", &revision])?;
+        Ok(())
+    }
 
-            Ok(FetchStatus::GitUpdated { revision })
-        } else {
-            Ok(FetchStatus::GitUpToDate)
-        }
-    } else {
-        Ok(FetchStatus::NonGit)
+    /// Removes the grammar directory before initializing again.
+    fn reinit(&self, remote: &str) -> Result<()> {
+        fs::remove_dir_all(&self.dir)?;
+        self.init(remote)?;
+        Ok(())
+    }
+
+    /// Gets remote URL of grammar repo.
+    fn remote(&self) -> Option<String> {
+        git(&self.dir, ["remote", "get-url", REMOTE_NAME]).ok()
+    }
+
+    /// Sets remote URL of grammar repo.
+    fn set_remote(&self, remote: &str) -> Result<()> {
+        git(&self.dir, ["remote", "set-url", REMOTE_NAME, remote])
+            .or_else(|_| git(&self.dir, ["remote", "add", REMOTE_NAME, remote]))?;
+        Ok(())
     }
 }
 
-// Sets the remote for a repository to the given URL, creating the remote if
-// it does not yet exist.
-fn set_remote(repository_dir: &Path, remote_url: &str) -> Result<String> {
-    git(
-        repository_dir,
-        ["remote", "set-url", REMOTE_NAME, remote_url],
-    )
-    .or_else(|_| git(repository_dir, ["remote", "add", REMOTE_NAME, remote_url]))
-}
+fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
+    let GrammarSource::Git {
+        remote, revision, ..
+    } = grammar.source
+    else {
+        return Ok(FetchStatus::NonGit);
+    };
 
-fn get_remote_url(repository_dir: &Path) -> Option<String> {
-    git(repository_dir, ["remote", "get-url", REMOTE_NAME]).ok()
-}
+    let repo = VendoredGrammar::new(&grammar.grammar_id);
 
-fn get_revision(repository_dir: &Path) -> Option<String> {
-    git(repository_dir, ["rev-parse", "HEAD"]).ok()
+    // WARN: Must init before other operations are done.
+    repo.init(&remote)?;
+
+    if repo.revision().is_some_and(|rev| rev == revision) {
+        return Ok(FetchStatus::GitUpToDate);
+    }
+
+    // Fetch the grammar if the revision doesn't match.
+    repo.fetch(&remote, &revision)?;
+
+    Ok(FetchStatus::GitUpdated { revision })
 }
 
 // A wrapper around 'git' commands which returns stdout in success and a
@@ -451,7 +503,6 @@ fn build_tree_sitter_library(
         command
             .args(["/nologo", "/LD", "/I"])
             .arg(header_path)
-            .arg("/Od")
             .arg("/utf-8")
             .arg("/std:c11");
         if let Some(scanner_path) = scanner_path.as_ref() {
@@ -469,7 +520,6 @@ fn build_tree_sitter_library(
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
-                    .arg("/Od")
                     .arg("/utf-8")
                     .arg("/std:c++14")
                     .arg(format!("/Fo{}", object_file.display()))
@@ -487,7 +537,7 @@ fn build_tree_sitter_library(
                     ));
                 }
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
 
@@ -544,7 +594,7 @@ fn build_tree_sitter_library(
                 }
 
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
         command.arg("-xc").arg("-std=c11").arg(parser_path);

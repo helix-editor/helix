@@ -228,6 +228,7 @@ impl FromStr for Ini {
                 let glob = GlobBuilder::new(&glob_str)
                     .literal_separator(true)
                     .backslash_escape(true)
+                    .empty_alternates(true)
                     .build()?;
                 ini.sections.push(Section {
                     glob: glob.compile_matcher(),

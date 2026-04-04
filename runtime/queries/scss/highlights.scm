@@ -1,47 +1,64 @@
 [(comment) (single_line_comment)] @comment
 
-"~" @operator
-">" @operator
-"+" @operator
-"-" @operator
-"*" @operator
-"/" @operator
-"=" @operator
-"^=" @operator
-"|=" @operator
-"~=" @operator
-"$=" @operator
-"*=" @operator
+[
+ "~"
+ ">"
+ "+"
+ "-"
+ "*"
+ "/"
+ "="
+ "^="
+ "|="
+ "~="
+ "$="
+ "*="
+] @operator
 
-"in" @operator
-"and" @operator
-"or" @operator
-"not" @operator
-"only" @operator
+[
+  "in"
+  "and"
+  "or"
+  "not"
+  "only"
+] @operator.control
 
-"@apply" @constant.builtin
-"@at-root" @constant.builtin
-"@charset" @constant.builtin
-"@debug" @constant.builtin
-"@each" @keyword.control.repeat
-"@else" @keyword.control.conditional
-"@error" @constant.builtin
-"@extend" @constant.builtin
-"@for" @keyword.control.repeat
-"@forward" @keyword.control.import
-"@function" @function.method
-"@if" @keyword.control.conditional
-"@import" @keyword.control.import
-"@include" @keyword.control.import
-"@keyframes" @constant.builtin
-"@media" @constant.builtin
-"@mixin" @constant.builtin
-"@namespace" @namespace
+[
+  "@apply"
+  "@at-root"
+  "@charset"
+  "@debug"
+  "@error"
+  "@extend"
+  "@keyframes"
+  "@media"
+  "@mixin"
+  "@supports"
+  "@warn"
+] @constant.builtin
+
+[
+  "@import"
+  "@include"
+  "@forward"
+  "@use"
+] @keyword.control.import
+
+[
+  "@if"
+  "@else"
+] @keyword.control.conditional
+
+[
+  "@each"
+  "@for"
+  "@while"
+] @keyword.control.repeat
+
 "@return" @keyword.control.return
-"@supports" @constant.builtin
-"@use" @keyword.control.import
-"@warn" @constant.builtin
-"@while" @keyword.control.repeat
+
+"@function" @function.method
+"@namespace" @namespace
 
 (property_name) @variable.other.member
 
@@ -58,10 +75,11 @@
 (pseudo_class_selector) @attribute
 
 (identifier) @variable
-(class_name) @variable
-(id_name) @variable
-(namespace_name) @variable
-(feature_name) @variable
+(class_name) @label
+(id_name) @label
+(namespace_name) @namespace
+
+(feature_name) @variable.other.member
 (variable) @variable
 (variable_name) @variable.other.member
 (variable_value) @variable.other.member

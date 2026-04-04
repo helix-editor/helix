@@ -1,29 +1,20 @@
 {
   stdenv,
   lib,
-  runCommandLocal,
   runCommand,
-  yj,
   includeGrammarIf ? _: true,
   grammarOverlays ? [],
   ...
 }: let
-  # HACK: nix < 2.6 has a bug in the toml parser, so we convert to JSON
-  # before parsing
-  languages-json = runCommandLocal "languages-toml-to-json" {} ''
-    ${yj}/bin/yj -t < ${./languages.toml} > $out
-  '';
   languagesConfig =
-    if lib.versionAtLeast builtins.nixVersion "2.6.0"
-    then builtins.fromTOML (builtins.readFile ./languages.toml)
-    else builtins.fromJSON (builtins.readFile (builtins.toPath languages-json));
+    builtins.fromTOML (builtins.readFile ./languages.toml);
   isGitGrammar = grammar:
     builtins.hasAttr "source" grammar
     && builtins.hasAttr "git" grammar.source
     && builtins.hasAttr "rev" grammar.source;
   isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
   toGitHubFetcher = url: let
-    match = builtins.match "https://github\.com/([^/]*)/([^/]*)/?" url;
+    match = builtins.match "https://github\\.com/([^/]*)/([^/]*)/?" url;
   in {
     owner = builtins.elemAt match 0;
     repo = builtins.elemAt match 1;
@@ -82,7 +73,7 @@
         "-Wl,-z,relro,-z,now"
       ];
 
-      NAME = grammar.name;
+      SHARED_LIB = grammar.name + stdenv.hostPlatform.extensions.sharedLibrary;
 
       buildPhase = ''
         runHook preBuild
@@ -94,9 +85,7 @@
         fi
 
         $CC -c src/parser.c -o parser.o $FLAGS
-        $CXX -shared -o $NAME.so *.o
-
-        ls -al
+        $CXX -shared -o $SHARED_LIB *.o
 
         runHook postBuild
       '';
@@ -104,14 +93,14 @@
       installPhase = ''
         runHook preInstall
         mkdir $out
-        mv $NAME.so $out/
+        mv $SHARED_LIB $out/
         runHook postInstall
       '';
 
       # Strip failed on darwin: strip: error: symbols referenced by indirect symbol table entries that can't be stripped
       fixupPhase = lib.optionalString stdenv.isLinux ''
         runHook preFixup
-        $STRIP $out/$NAME.so
+        $STRIP $out/$SHARED_LIB
         runHook postFixup
       '';
     };
@@ -127,9 +116,10 @@
   overlaidGrammars =
     lib.pipe extensibleGrammars
     (builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays);
+  sharedLibExtension = stdenv.hostPlatform.extensions.sharedLibrary;
   grammarLinks =
     lib.mapAttrsToList
-    (name: artifact: "ln -s ${artifact}/${name}.so $out/${name}.so")
+    (name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}")
     (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
 in
   runCommand "consolidated-helix-grammars" {} ''

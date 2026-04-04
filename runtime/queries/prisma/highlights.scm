@@ -33,8 +33,8 @@
 [
  (true)
  (false)
- (null)
 ] @constant.builtin.boolean
+(null) @constant.builtin
 
 [
  "("

@@ -35,10 +35,19 @@ RUSTFLAGS="-C target-feature=-crt-static"
 2. Compile from source:
 
    ```sh
+   # Reproducible
    cargo install --path helix-term --locked
    ```
+   ```sh
+   # Optimized
+   cargo install \
+      --profile opt \
+      --config 'build.rustflags=["-C", "target-cpu=native"]' \
+      --path helix-term \
+      --locked
+   ```
 
-   This command will create the `hx` executable and construct the tree-sitter
+   Either command will create the `hx` executable and construct the tree-sitter
    grammars in the local `runtime` folder.
 
 > 💡 If you do not want to fetch or build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD`
@@ -48,6 +57,8 @@ RUSTFLAGS="-C target-feature=-crt-static"
 > `hx --grammar build`. This will install them in
 > the `runtime` directory within the user's helix config directory (more
 > [details below](#multiple-runtime-directories)).
+
+> 💡 If you only want to build _some_ grammars, see [`use-grammars`](./languages.md#choosing-grammars)
 
 ### Configuring Helix's runtime files
 
@@ -182,7 +193,7 @@ cargo deb -- --locked
 ```
 
 > 💡 This locks you into the `--release` profile. But you can also build helix in any way you like.
-> As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build` 
+> As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build`
 
 > 💡 Don't worry about the following:
 > ```
