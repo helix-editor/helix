@@ -145,12 +145,6 @@
 
 (dot_index_expression field: (identifier) @variable.other.member)
 
-(table_constructor
-[
-  "{"
-  "}"
-] @constructor)
-
 ;; Functions
 
 (parameters (identifier) @variable.parameter)
