@@ -1,9 +1,11 @@
 use std::fmt::Display;
 
+use helix_stdx::rope::RopeSliceExt;
 use ropey::RopeSlice;
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
+use crate::indent::indent_level_for_line;
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
 use crate::syntax;
@@ -194,6 +196,186 @@ pub fn textobject_paragraph(
 
     let anchor = slice.line_to_char(line_back);
     let head = slice.line_to_char(line);
+    Range::new(anchor, head)
+}
+
+/// Returns the character position after the last non-newline character of a line.
+fn line_end_char_index(slice: RopeSlice, line_idx: usize) -> usize {
+    let line = slice.line(line_idx);
+    let line_start = slice.line_to_char(line_idx);
+    let len = line.len_chars();
+
+    if len > 0 && rope_is_line_ending(line.slice(len - 1..)) {
+        line_start + len - 1
+    } else {
+        line_start + len
+    }
+}
+
+/// Determines the target indentation level and line to use for text object selection.
+///
+/// When the cursor is on a "boundary line" (a line that opens or closes an indentation block),
+/// this function detects that and returns the inner indentation level instead. This provides
+/// better UX when the cursor is on lines like `if true {` or `}`.
+///
+/// A line is considered a boundary if:
+/// - The next line has greater indentation (opening boundary, e.g., `if true {`)
+/// - The previous line has greater indentation (closing boundary, e.g., `}`)
+///
+/// Returns a tuple of (line_index, indentation_level) representing the target to select.
+fn find_target_indent_level(
+    slice: RopeSlice,
+    line: usize,
+    current_indent: usize,
+    tab_width: usize,
+    indent_width: usize,
+) -> (usize, usize) {
+    // Check next line first (opening boundary case: `if true {`)
+    // If the line below is more indented, we're on an opening boundary
+    if line + 1 < slice.len_lines() {
+        let next_line = slice.line(line + 1);
+        if !rope_is_line_ending(next_line) {
+            let next_indent = indent_level_for_line(next_line, tab_width, indent_width);
+            if next_indent > current_indent {
+                return (line + 1, next_indent);
+            }
+        }
+    }
+
+    // Check previous line (closing boundary case: `}`)
+    // If the line above is more indented, we're on a closing boundary
+    if line > 0 {
+        let prev_line = slice.line(line - 1);
+        if !rope_is_line_ending(prev_line) {
+            let prev_indent = indent_level_for_line(prev_line, tab_width, indent_width);
+            if prev_indent > current_indent {
+                return (line - 1, prev_indent);
+            }
+        }
+    }
+
+    // Not a boundary line, use current line
+    (line, current_indent)
+}
+
+/// Select a block based on indentation level.
+///
+/// This implements text objects similar to vim-indent-object:
+/// - `ii` (Inside): From first non-whitespace of first line to end of last line (excluding newline)
+/// - `ai` (Around): From first non-whitespace of line above to end of line below at enclosing level
+/// - `iI` (Inside uppercase): From column 0 of first line to newline of last line (full lines)
+/// - `aI` (Around uppercase): From column 0 of line above to newline of line below (full lines)
+///
+/// When cursor is on a boundary line (begins/ends indentation), selects the inner level.
+pub fn textobject_indent(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    _count: usize,
+    include_lines_above_and_below: bool,
+    tab_width: usize,
+    indent_width: usize,
+) -> Range {
+    let pos = range.cursor(slice);
+    let mut line = slice.char_to_line(pos);
+
+    // Skip blank lines to find the base indentation level
+    while line < slice.len_lines() && rope_is_line_ending(slice.line(line)) {
+        line += 1;
+    }
+
+    if line >= slice.len_lines() {
+        return range;
+    }
+
+    let current_indent = indent_level_for_line(slice.line(line), tab_width, indent_width);
+
+    // Detect if we're on a boundary line and adjust to select the inner indentation level
+    let (target_line, target_indent) =
+        find_target_indent_level(slice, line, current_indent, tab_width, indent_width);
+
+    // Find the start and end of the indentation block
+    let mut start_line = target_line;
+    while start_line > 0 {
+        let prev_line = slice.line(start_line - 1);
+        if !rope_is_line_ending(prev_line) {
+            let prev_indent = indent_level_for_line(prev_line, tab_width, indent_width);
+            if prev_indent < target_indent {
+                break;
+            }
+        }
+        start_line -= 1;
+    }
+
+    let mut end_line = target_line;
+    while end_line + 1 < slice.len_lines() {
+        let next_line = slice.line(end_line + 1);
+        if !rope_is_line_ending(next_line) {
+            let next_indent = indent_level_for_line(next_line, tab_width, indent_width);
+            if next_indent < target_indent {
+                break;
+            }
+        }
+        end_line += 1;
+    }
+
+    // Remove trailing blank lines for "inside" variants
+    if textobject == TextObject::Inside {
+        while end_line > start_line && rope_is_line_ending(slice.line(end_line)) {
+            end_line -= 1;
+        }
+    }
+
+    // Compute anchor and head based on the textobject variant
+    let (anchor, head) = match (textobject, include_lines_above_and_below) {
+        (TextObject::Inside, false) => {
+            // mii: first non-whitespace to end of content (excluding newline)
+            let anchor = slice.line_to_char(start_line)
+                + slice.line(start_line).first_non_whitespace_char().unwrap_or(0);
+            let head = line_end_char_index(slice, end_line);
+            (anchor, head)
+        }
+        (TextObject::Inside, true) => {
+            // miI: column 0 to end of line (including newline)
+            let anchor = slice.line_to_char(start_line);
+            let head = slice.line_to_char(end_line + 1);
+            (anchor, head)
+        }
+        (TextObject::Around, _) => {
+            let line_above = start_line.saturating_sub(1);
+
+            // Find the first line below the block that has less indentation
+            let closing_line = (end_line + 1..slice.len_lines())
+                .find(|&line_idx| {
+                    let line = slice.line(line_idx);
+                    if rope_is_line_ending(line) {
+                        false // Skip blank lines
+                    } else {
+                        indent_level_for_line(line, tab_width, indent_width) < target_indent
+                    }
+                })
+                .unwrap_or(end_line);
+
+            if include_lines_above_and_below {
+                // maI: column 0 of line above to newline of closing line
+                let anchor = slice.line_to_char(line_above);
+                let head = if closing_line > end_line {
+                    slice.line_to_char(closing_line + 1)
+                } else {
+                    slice.line_to_char(end_line + 1)
+                };
+                (anchor, head)
+            } else {
+                // mai: first non-whitespace of line above to end of closing line content
+                let anchor = slice.line_to_char(line_above)
+                    + slice.line(line_above).first_non_whitespace_char().unwrap_or(0);
+                let head = line_end_char_index(slice, closing_line);
+                (anchor, head)
+            }
+        }
+        (TextObject::Movement, _) => unreachable!(),
+    };
+
     Range::new(anchor, head)
 }
 
@@ -586,5 +768,184 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_textobject_indent_inside() {
+        let tests = [
+            // mii: first non-ws of first line to final char (no newline) of last line
+            (
+                "fn main() {\n    let #[x|]# = 1;\n    let y = 2;\n}\n",
+                "fn main() {\n    #[let x = 1;\n    let y = 2;|]#\n}\n",
+            ),
+            // mii: nested indentation
+            (
+                "fn main() {\n    if true {\n        pr#[i|]#nt();\n        call();\n    }\n}\n",
+                "fn main() {\n    if true {\n        #[print();\n        call();|]#\n    }\n}\n",
+            ),
+            // mii: single line
+            (
+                "fn main() {\n    #[p|]#rint();\n}\n",
+                "fn main() {\n    #[print();|]#\n}\n",
+            ),
+            // mii: with blank lines in middle
+            (
+                "fn main() {\n    let #[x|]# = 1;\n\n    let y = 2;\n}\n",
+                "fn main() {\n    #[let x = 1;\n\n    let y = 2;|]#\n}\n",
+            ),
+            // mii: cursor on opening boundary - select inner level
+            (
+                "fn main#[() {|]#\n    let x = 1;\n    let y = 2;\n}\n",
+                "fn main() {\n    #[let x = 1;\n    let y = 2;|]#\n}\n",
+            ),
+            // mii: cursor on closing boundary - select inner level
+            (
+                "fn main() {\n    let x = 1;\n    let y = 2;\n#[}|]#\n",
+                "fn main() {\n    #[let x = 1;\n    let y = 2;|]#\n}\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indent(text.slice(..), r, TextObject::Inside, 1, false, 4, 4)
+            });
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indent_inside_upper() {
+        let tests = [
+            // miI: column 0 of first line to newline of last line
+            (
+                "fn main() {\n    let #[x|]# = 1;\n    let y = 2;\n}\n",
+                "fn main() {\n#[    let x = 1;\n    let y = 2;\n|]#}\n",
+            ),
+            // miI: nested indentation
+            (
+                "fn main() {\n    if true {\n        pr#[i|]#nt();\n        call();\n    }\n}\n",
+                "fn main() {\n    if true {\n#[        print();\n        call();\n|]#    }\n}\n",
+            ),
+            // miI: single line
+            (
+                "fn main() {\n    #[p|]#rint();\n}\n",
+                "fn main() {\n#[    print();\n|]#}\n",
+            ),
+            // miI: cursor on opening boundary
+            (
+                "fn main#[() {|]#\n    let x = 1;\n    let y = 2;\n}\n",
+                "fn main() {\n#[    let x = 1;\n    let y = 2;\n|]#}\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indent(text.slice(..), r, TextObject::Inside, 1, true, 4, 4)
+            });
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indent_around() {
+        let tests = [
+            // mai: first non-ws of line above to final char (no newline) of line below
+            (
+                "fn main() {\n    let #[x|]# = 1;\n    let y = 2;\n}\n",
+                "#[fn main() {\n    let x = 1;\n    let y = 2;\n}|]#\n",
+            ),
+            // mai: nested - includes opening and closing lines
+            (
+                "fn main() {\n    if true {\n        pr#[i|]#nt();\n        call();\n    }\n}\n",
+                "fn main() {\n    #[if true {\n        print();\n        call();\n    }|]#\n}\n",
+            ),
+            // mai: single line interior
+            (
+                "fn main() {\n    #[p|]#rint();\n}\n",
+                "#[fn main() {\n    print();\n}|]#\n",
+            ),
+            // mai: with blank lines
+            (
+                "fn main() {\n    let #[x|]# = 1;\n\n    let y = 2;\n}\n",
+                "#[fn main() {\n    let x = 1;\n\n    let y = 2;\n}|]#\n",
+            ),
+            // mai: no line below at enclosing level (goes to end of last interior line)
+            (
+                "fn main() {\n    let #[x|]# = 1;\n    let y = 2;\n",
+                "#[fn main() {\n    let x = 1;\n    let y = 2;\n|]#",
+            ),
+            // mai: cursor on opening boundary - select inner with surrounding
+            (
+                "fn main#[() {|]#\n    let x = 1;\n    let y = 2;\n}\n",
+                "#[fn main() {\n    let x = 1;\n    let y = 2;\n}|]#\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indent(text.slice(..), r, TextObject::Around, 1, false, 4, 4)
+            });
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indent_around_upper() {
+        let tests = [
+            // maI: column 0 of line above to newline of line below
+            (
+                "fn main() {\n    let #[x|]# = 1;\n    let y = 2;\n}\nprint();\n",
+                "#[fn main() {\n    let x = 1;\n    let y = 2;\n}\n|]#print();\n",
+            ),
+            // maI: nested - includes opening and closing lines (full lines)
+            (
+                "fn main() {\n    if true {\n        pr#[i|]#nt();\n        call();\n    }\n}\n",
+                "fn main() {\n#[    if true {\n        print();\n        call();\n    }\n|]#}\n",
+            ),
+            // maI: single line interior
+            (
+                "fn main() {\n    #[p|]#rint();\n}\n",
+                "#[fn main() {\n    print();\n}\n|]#",
+            ),
+            // maI: cursor on opening boundary
+            (
+                "fn main#[() {|]#\n    let x = 1;\n    let y = 2;\n}\nprint();\n",
+                "#[fn main() {\n    let x = 1;\n    let y = 2;\n}\n|]#print();\n",
+            ),
+        ];
+
+        for (before, expected) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indent(text.slice(..), r, TextObject::Around, 1, true, 4, 4)
+            });
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indent_empty_document() {
+        // Empty document - should return original range unchanged
+        let text = Rope::from("");
+        let range = Range::point(0);
+        let result = textobject_indent(text.slice(..), range, TextObject::Inside, 1, false, 4, 4);
+        assert_eq!(result, range);
+
+        // Document with only blank lines - should return original range unchanged
+        let text = Rope::from("\n\n\n");
+        let range = Range::point(1);
+        let result = textobject_indent(text.slice(..), range, TextObject::Inside, 1, false, 4, 4);
+        assert_eq!(result, range);
     }
 }
