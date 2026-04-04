@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs},
-    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlaid_with_layout, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugConfigCompletion, DebugTemplate};
@@ -259,31 +259,27 @@ pub fn dap_launch(cx: &mut Context) {
         |item: &DebugTemplate, _| item.name.as_str().into(),
     )];
 
-    cx.push_layer(Box::new(overlaid(Picker::new(
-        columns,
-        0,
-        templates,
-        (),
-        |cx, template, _action| {
-            if template.completion.is_empty() {
-                if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
-                    cx.editor.set_error(err.to_string());
-                }
-            } else {
-                let completions = template.completion.clone();
-                let name = template.name.clone();
-                let callback = Box::pin(async move {
-                    let call: Callback =
-                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
-                            let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                            compositor.push(Box::new(prompt));
-                        }));
-                    Ok(call)
-                });
-                cx.jobs.callback(callback);
+    let picker = Picker::new(columns, 0, templates, (), |cx, template, _action| {
+        if template.completion.is_empty() {
+            if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
+                cx.editor.set_error(err.to_string());
             }
-        },
-    ))));
+        } else {
+            let completions = template.completion.clone();
+            let name = template.name.clone();
+            let callback = Box::pin(async move {
+                let call: Callback =
+                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                        compositor.push(Box::new(prompt));
+                    }));
+                Ok(call)
+            });
+            cx.jobs.callback(callback);
+        }
+    });
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 pub fn dap_restart(cx: &mut Context) {

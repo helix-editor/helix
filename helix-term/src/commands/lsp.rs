@@ -29,7 +29,7 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::Callback,
-    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
+    ui::{self, overlay::overlaid_with_layout, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
@@ -404,7 +404,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 Err(err) => log::error!("Error requesting document symbols: {err}"),
             }
         }
-        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             let columns = [
                 ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
                     display_symbol_kind(item.symbol.kind).into()
@@ -436,7 +436,8 @@ pub fn symbol_picker(cx: &mut Context) {
             .with_preview(move |_editor, item| location_to_file_location(&item.location))
             .truncate_start(false);
 
-            compositor.push(Box::new(overlaid(picker)))
+            let layout = editor.config().picker.layout;
+            compositor.push(Box::new(overlaid_with_layout(picker, layout)))
         };
 
         Ok(Callback::EditorCompositor(Box::new(call)))
@@ -563,7 +564,8 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     .with_dynamic_query(get_symbols, None)
     .truncate_start(false);
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 pub fn diagnostics_picker(cx: &mut Context) {
@@ -571,7 +573,8 @@ pub fn diagnostics_picker(cx: &mut Context) {
     if let Some(uri) = doc.uri() {
         let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
         let picker = diag_picker(cx, [(uri, diagnostics)], DiagnosticsFormat::HideSourcePath);
-        cx.push_layer(Box::new(overlaid(picker)));
+        let layout = cx.editor.config().picker.layout;
+        cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
     }
 }
 
@@ -579,7 +582,8 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     // TODO not yet filtered by LanguageServerFeature, need to do something similar as Document::shown_diagnostics here for all open documents
     let diagnostics = cx.editor.diagnostics.clone();
     let picker = diag_picker(cx, diagnostics, DiagnosticsFormat::ShowSourcePath);
-    cx.push_layer(Box::new(overlaid(picker)));
+    let layout = cx.editor.config().picker.layout;
+    cx.push_layer(Box::new(overlaid_with_layout(picker, layout)));
 }
 
 struct CodeActionOrCommandItem {
@@ -879,7 +883,8 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
                 jump_to_location(cx.editor, location, action)
             })
             .with_preview(|_editor, location| location_to_file_location(location));
-            compositor.push(Box::new(overlaid(picker)));
+            let layout = editor.config().picker.layout;
+            compositor.push(Box::new(overlaid_with_layout(picker, layout)));
         }
     }
 }
