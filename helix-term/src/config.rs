@@ -57,7 +57,7 @@ impl Display for ConfigLoadError {
 
 impl Config {
     pub fn load(
-        global: Result<&String, ConfigLoadError>,
+        global: Result<&str, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
@@ -141,7 +141,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(&config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            Config::load(Ok(config), Err(ConfigLoadError::default())).unwrap()
         }
     }
 

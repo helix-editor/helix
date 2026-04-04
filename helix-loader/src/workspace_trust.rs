@@ -7,7 +7,7 @@ pub struct WorkspaceTrust {
     excluded: Option<HashSet<PathBuf>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrustStatus {
     Untrusted,
     Trusted,
@@ -22,18 +22,16 @@ impl WorkspaceTrust {
     /// For querying trust status of a workspace use `quick_query_workspace()` or
     /// `quick_query_workspace_with_explicit_untrust()`
     pub fn load(with_exclusion: bool) -> Self {
-        let mut trusted = HashSet::new();
-
-        match fs::read_to_string(workspace_trust_file()) {
-            Ok(workspace_trust_file) => {
-                for line in workspace_trust_file.split('\n') {
-                    if !line.is_empty() {
-                        let path = PathBuf::from(line);
-                        trusted.insert(path);
-                    }
-                }
+        let trusted: HashSet<_> = match fs::read_to_string(workspace_trust_file()) {
+            Ok(workspace_trust_file) => workspace_trust_file
+                .split('\n')
+                .filter(|line| !line.is_empty())
+                .map(PathBuf::from)
+                .collect(),
+            Err(e) => {
+                log::error!("workspace file couldn't be read: {:?}", e);
+                HashSet::new()
             }
-            Err(e) => log::error!("workspace file couldn't be read: {:?}", e),
         };
 
         let excluded = if with_exclusion {
@@ -62,6 +60,8 @@ impl WorkspaceTrust {
         let mut trust_text = String::new();
         for workspace in self.trusted.iter() {
             if let Some(path_str) = workspace.to_str() {
+                // TO-DO: too many allocs
+                // FIXME: `path_str` can contain "\n"!
                 trust_text += &format!("{path_str}\n");
             }
         }
@@ -71,6 +71,7 @@ impl WorkspaceTrust {
                 log::error!("Couldn't create helix's data directory: {:?}", e);
             };
         }
+        // TO-DO: ensure only owner has write permission
         if let Err(e) = fs::write(workspace_trust_file(), trust_text) {
             log::error!("Error during write of workspace_trust file: {:?}", e);
         }
@@ -81,6 +82,8 @@ impl WorkspaceTrust {
             let mut trust_text = String::new();
             for workspace in untrusted.iter() {
                 if let Some(path_str) = workspace.to_str() {
+                    // TO-DO: too many allocs
+                    // FIXME: `path_str` can contain "\n"!
                     trust_text += &format!("{path_str}\n");
                 }
             }
@@ -90,6 +93,7 @@ impl WorkspaceTrust {
                     log::error!("Couldn't create helix's data directory: {:?}", e);
                 };
             }
+            // TO-DO: ensure only owner has write permission
             if let Err(e) = fs::write(workspace_exclude_file(), trust_text) {
                 log::error!("Error during write of workspace_trust file: {:?}", e);
             }
@@ -141,6 +145,7 @@ pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
     }
 
     let workspace = crate::find_workspace().0;
+    // TO-DO: `BufRead::lines` for faster parsing
     match fs::read_to_string(workspace_trust_file()) {
         Ok(workspace_trust_file) => {
             for line in workspace_trust_file.split('\n') {
@@ -161,6 +166,7 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     }
 
     let workspace = crate::find_workspace().0;
+    // TO-DO: `BufRead::lines` for faster parsing
     match fs::read_to_string(workspace_trust_file()) {
         Ok(workspace_trust_file) => {
             for line in workspace_trust_file.split('\n') {
