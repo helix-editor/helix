@@ -1,3 +1,4 @@
+use helix_stdx::faccess::write_with_perms;
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
@@ -71,8 +72,7 @@ impl WorkspaceTrust {
                 log::error!("Couldn't create helix's data directory: {:?}", e);
             };
         }
-        // TO-DO: ensure only owner has write permission
-        if let Err(e) = fs::write(workspace_trust_file(), trust_text) {
+        if let Err(e) = write_with_perms(workspace_trust_file(), trust_text, 0o0644) {
             log::error!("Error during write of workspace_trust file: {:?}", e);
         }
     }
@@ -93,8 +93,7 @@ impl WorkspaceTrust {
                     log::error!("Couldn't create helix's data directory: {:?}", e);
                 };
             }
-            // TO-DO: ensure only owner has write permission
-            if let Err(e) = fs::write(workspace_exclude_file(), trust_text) {
+            if let Err(e) = write_with_perms(workspace_exclude_file(), trust_text, 0o0644) {
                 log::error!("Error during write of workspace_trust file: {:?}", e);
             }
         } else {
