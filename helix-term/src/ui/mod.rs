@@ -142,7 +142,7 @@ pub fn raw_regex_prompt(
 
                             if event == PromptEvent::Validate {
                                 // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
+                                view.jumps.push((doc_id, snapshot.clone(), None));
                             }
 
                             fun(cx, regex, input, event);
