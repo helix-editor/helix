@@ -138,7 +138,7 @@ systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
-spade-language-server = {command = "spade-language-server"}
+spade-language-server = {command = "swim", args = ["lsp"]}
 starpls = {command = "starpls"}
 styx = { command = "styx", args = ["lsp"] }
 svlangserver = { command = "svlangserver", args = [], config.systemverilog.includeIndexing = ["*.{v,vh,sv,svh}", "**/*.{v,vh,sv,svh}"] }
