@@ -1,3 +1,4 @@
+use helix_stdx::faccess::write_with_perms;
 use std::{
     collections::HashSet,
     fs,
@@ -72,7 +73,8 @@ impl WorkspaceTrust {
                 log::error!("Couldn't create helix's data directory: {:?}", e);
             };
         }
-        if let Err(e) = fs::write(workspace_trust_file(), trust_text) {
+        // TO-DO: apply mask for group and others, while setting owner
+        if let Err(e) = write_with_perms(workspace_trust_file(), trust_text, 0o0640) {
             log::error!("Error during write of workspace_trust file: {:?}", e);
         }
     }
@@ -92,7 +94,8 @@ impl WorkspaceTrust {
                     log::error!("Couldn't create helix's data directory: {:?}", e);
                 };
             }
-            if let Err(e) = fs::write(workspace_exclude_file(), trust_text) {
+            // TO-DO: apply mask for group and others, while setting owner
+            if let Err(e) = write_with_perms(workspace_exclude_file(), trust_text, 0o0640) {
                 log::error!("Error during write of workspace_trust file: {:?}", e);
             }
         } else {
