@@ -1812,7 +1812,6 @@ fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
                 doc.clear_diagnostics_for_language_server(client.id());
                 doc.reset_all_inlay_hints();
-                doc.inlay_hints_oudated = true;
             }
         }
     }

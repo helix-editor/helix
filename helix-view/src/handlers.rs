@@ -22,6 +22,7 @@ pub struct Handlers {
     pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
+    pub inlay_hints: Sender<lsp::InlayHintsEvent>,
     pub document_colors: Sender<lsp::DocumentColorsEvent>,
     pub document_links: Sender<lsp::DocumentLinksEvent>,
     pub word_index: word_index::Handler,
@@ -50,6 +51,10 @@ impl Handlers {
             SignatureHelpInvoked::Manual => lsp::SignatureHelpEvent::Invoked,
         };
         send_blocking(&self.signature_hints, event)
+    }
+
+    pub fn refresh_inlay_hints(&self) {
+        send_blocking(&self.inlay_hints, lsp::InlayHintsEvent::RefreshVisibleViews)
     }
 
     pub fn word_index(&self) -> &word_index::WordIndex {
