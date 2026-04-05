@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -58,7 +58,7 @@ macro_rules! language_server_with_feature {
 
 /// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
 /// the server's  offset encoding.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Location {
     uri: Uri,
     range: lsp::Range,
@@ -81,6 +81,49 @@ fn lsp_location_to_location(
         range: location.range,
         offset_encoding,
     })
+}
+
+fn normalize_location_to_utf8(location: &Location, editor: &Editor) -> Location {
+    // Try to get the document text for this URI
+    let maybe_text = if let Some(doc) = editor
+        .documents
+        .values()
+        .find(|doc| doc.uri().as_ref() == Some(&location.uri))
+    {
+        // Document is already open
+        Some(doc.text().clone())
+    } else if let Some(path) = location.uri.as_path() {
+        // Try to open the file temporarily for conversion
+        match std::fs::read_to_string(path) {
+            Ok(content) => Some(Rope::from(content)),
+            Err(_) => {
+                log::warn!("Failed to read file for position conversion: {:?}", path);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    if let Some(text) = maybe_text {
+        // Convert from the location's offset encoding to UTF-8
+        if let Some(range) = lsp_range_to_range(&text, location.range, location.offset_encoding) {
+            let utf8_range = range_to_lsp_range(&text, range, OffsetEncoding::Utf8);
+            return Location {
+                uri: location.uri.clone(),
+                range: utf8_range,
+                offset_encoding: OffsetEncoding::Utf8,
+            };
+        }
+    }
+
+    // If we can't convert, return the original
+    location.clone()
+}
+
+fn deduplicate_locations(locations: &mut Vec<Location>) {
+    let mut seen: HashSet<Location> = HashSet::new();
+    locations.retain(|l| seen.insert(l.clone()))
 }
 
 struct SymbolInformationItem {
@@ -856,7 +899,14 @@ impl Display for ApplyEditErrorKind {
 fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Location>) {
     let cwdir = helix_stdx::env::current_working_dir();
 
-    match locations.as_slice() {
+    let mut normalized_locations: Vec<Location> = locations
+        .iter()
+        .map(|loc| normalize_location_to_utf8(loc, editor))
+        .collect();
+
+    deduplicate_locations(&mut normalized_locations);
+
+    match normalized_locations.as_slice() {
         [location] => {
             jump_to_location(editor, location, Action::Replace);
         }
@@ -875,9 +925,13 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
                 },
             )];
 
-            let picker = Picker::new(columns, 0, locations, cwdir, |cx, location, action| {
-                jump_to_location(cx.editor, location, action)
-            })
+            let picker = Picker::new(
+                columns,
+                0,
+                normalized_locations,
+                cwdir,
+                |cx, location, action| jump_to_location(cx.editor, location, action),
+            )
             .with_preview(|_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
@@ -932,6 +986,8 @@ where
                 },
                 Err(err) => log::error!("Error requesting locations: {err}"),
             }
+
+            deduplicate_locations(&mut locations)
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
@@ -1455,4 +1511,152 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn unique_definitions() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("non-existent-file");
+
+        // Vec with two locations with same uri and range, but with
+        // different offset encodings
+        let mut locations: Vec<Location> = vec![
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 20,
+                        character: 10,
+                    },
+                    end: lsp::Position {
+                        line: 30,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+        ];
+
+        deduplicate_locations(&mut locations);
+
+        // should have 1 unique location
+        assert_eq!(locations.len(), 1);
+    }
+
+    #[test]
+    fn preserves_order_with_multiple_duplicates() {
+        let temp_dir = TempDir::new().unwrap();
+        let path = temp_dir.path().join("non-existent-file");
+
+        let mut locations: Vec<Location> = vec![
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 1,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 1,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 2,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 2,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf16,
+            },
+            // duplicate of second location
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 2,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 2,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            // duplicate of first location
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 1,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 1,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+            Location {
+                uri: Uri::from(path.clone()),
+                range: lsp::Range {
+                    start: lsp::Position {
+                        line: 3,
+                        character: 0,
+                    },
+                    end: lsp::Position {
+                        line: 3,
+                        character: 10,
+                    },
+                },
+                offset_encoding: OffsetEncoding::Utf8,
+            },
+        ];
+
+        deduplicate_locations(&mut locations);
+
+        // should have 3 unique locations
+        assert_eq!(locations.len(), 4);
+
+        // check order is preserved: line1, line2, line3
+        assert_eq!(locations[0].range.start.line, 1);
+        assert_eq!(locations[1].range.start.line, 2);
+        assert_eq!(locations[2].range.start.line, 2);
+        assert_eq!(locations[3].range.start.line, 3);
+
+        // check that higher offset_encoding was used for duplicates
+        assert_eq!(locations[0].offset_encoding, OffsetEncoding::Utf8);
+        assert_eq!(locations[1].offset_encoding, OffsetEncoding::Utf16);
+        assert_eq!(locations[2].offset_encoding, OffsetEncoding::Utf8);
+        assert_eq!(locations[2].offset_encoding, OffsetEncoding::Utf8);
+    }
 }

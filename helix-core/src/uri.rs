@@ -9,7 +9,7 @@ use std::{
 /// Currently this type only supports paths to local files.
 ///
 /// Cloning this type is cheap: the internal representation uses an Arc.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub enum Uri {
     File(Arc<Path>),
