@@ -1257,12 +1257,11 @@ language-servers = [
   "superhtml",
 ]
 roots = ["Cargo.lock", "Cargo.toml"]
-block-comment-tokens = { start = "@*", end = "*@" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "rshtml"
-source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "89ae0f3a5e221a83aad243def85e822616d3b3c2" }
+source = { git = "https://github.com/rshtml/tree-sitter-rshtml", rev = "a1499c58d4692ec5bc0faed790b4e90ab0fb8996" }
 
 [[language]]
 name = "bash"
