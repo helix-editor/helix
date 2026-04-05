@@ -869,8 +869,8 @@ fn init_indent_query<'a, 'b>(
         .is_some();
 
     // Check for extend captures, potentially changing the node that the indent calculation starts with
-    if let Some(deepest_preceding) = deepest_preceding {
-        if !descended {
+    if let Some(deepest_preceding) = deepest_preceding
+        && !descended {
             extend_nodes(
                 &mut node,
                 deepest_preceding,
@@ -881,7 +881,6 @@ fn init_indent_query<'a, 'b>(
                 indent_width,
             );
         }
-    }
     Some((node, query_result.indent_captures, opaque_ranges))
 }
 
@@ -1160,11 +1159,10 @@ fn containment_accounting<'a>(
                 }
             }
             // Innermost containing alignment wins (first seen on the upward walk).
-            if let Some(a) = node_align {
-                if contains && align.is_none() {
+            if let Some(a) = node_align
+                && contains && align.is_none() {
                     align = Some(a);
                 }
-            }
         }
         match node.parent() {
             Some(parent) => node = parent,
@@ -1294,8 +1292,8 @@ pub fn indent_for_newline(
         indent_heuristic,
         syntax.and_then(|syntax| loader.indent_query(syntax.root_language())),
         syntax,
-    ) {
-        if let Some(indent) = treesitter_indent_for_pos(
+    )
+        && let Some(indent) = treesitter_indent_for_pos(
             query,
             syntax,
             loader,
@@ -1356,7 +1354,6 @@ pub fn indent_for_newline(
             }
             return indent.to_string(indent_style, tab_width);
         };
-    }
     // Fallback in case we either don't have indent queries or they failed for some reason
     let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)

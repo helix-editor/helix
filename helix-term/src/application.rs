@@ -1154,8 +1154,7 @@ impl Application {
                                     };
                                     if let Some(language_server) =
                                         editor.language_server_by_id(server_id)
-                                    {
-                                        if let Err(err) =
+                                        && let Err(err) =
                                             language_server.reply(id.clone(), Ok(json!(reply)))
                                         {
                                             log::error!(
@@ -1163,7 +1162,6 @@ impl Application {
                                                 language_server.name()
                                             );
                                         }
-                                    }
                                 },
                             );
                             self.compositor

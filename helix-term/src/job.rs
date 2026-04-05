@@ -171,11 +171,10 @@ impl Jobs {
 
                             // skip callbacks for which we don't have the necessary references
                             _ => None,
-                        } {
-                            if job.wait {
+                        }
+                            && job.wait {
                                 wait_futures.push(job.future);
                             }
-                        }
                     }
                 }
                 Err(e) => {

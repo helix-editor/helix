@@ -159,8 +159,8 @@ pub mod tasks {
                 //   - over-indent (computed > canonical) is only acceptable when the next line's leading token is @outdent (a closing
                 //     bracket, case/else/except keyword, ...): entering it dedents the line. An over-indent on a plain statement (e.g.
                 //     a line after `return` that should leave the block but doesn't) has nothing to correct it and is a real failure.
-                if i + 1 < doc.len_lines() {
-                    if let Some(next_pos) = text.line(i + 1).first_non_whitespace_char() {
+                if i + 1 < doc.len_lines()
+                    && let Some(next_pos) = text.line(i + 1).first_non_whitespace_char() {
                         let next = text.line(i + 1);
                         let next_trim = next.slice(next_pos..).to_string();
                         // Lines inside an @opaque body (string/comment) carry literal leading whitespace, not code indent — don't
@@ -226,7 +226,6 @@ pub mod tasks {
                             }
                         }
                     }
-                }
             }
         }
 
@@ -353,11 +352,10 @@ pub mod tasks {
             loop {
                 let off = hl.next_event_offset();
                 let cur = if off == u32::MAX { len } else { off };
-                if cur > start {
-                    if let Some(idx) = active.last() {
+                if cur > start
+                    && let Some(idx) = active.last() {
                         out.push((start as usize, cur as usize, scopes[*idx as usize].clone()));
                     }
-                }
                 if off == u32::MAX {
                     break;
                 }

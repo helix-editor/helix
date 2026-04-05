@@ -355,11 +355,10 @@ impl Markdown {
         }
 
         // if last line is empty, remove it
-        if let Some(line) = lines.last() {
-            if line.0.is_empty() {
+        if let Some(line) = lines.last()
+            && line.0.is_empty() {
                 lines.pop();
             }
-        }
 
         Text::from(lines)
     }

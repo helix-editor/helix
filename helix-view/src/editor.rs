@@ -1708,11 +1708,10 @@ impl Editor {
             }
         }
 
-        if let Some(dir) = path.parent() {
-            if !dir.is_dir() {
+        if let Some(dir) = path.parent()
+            && !dir.is_dir() {
                 fs::create_dir_all(dir)?;
             }
-        }
         if is_dir {
             fs::create_dir(&path)?;
         } else {

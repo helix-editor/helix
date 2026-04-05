@@ -116,14 +116,13 @@ impl Editor {
         };
 
         let doc = doc_mut!(self, &doc_id);
-        if let Some(version) = version {
-            if version != doc.version() {
+        if let Some(version) = version
+            && version != doc.version() {
                 let err = format!("outdated workspace edit for {path:?}");
                 log::error!("{err}, expected {} but got {version}", doc.version());
                 self.set_error(err);
                 return Err(ApplyEditErrorKind::DocumentChanged);
             }
-        }
 
         // Need to determine a view for apply/append_changes_to_history
         let view_id = self.get_synced_view_id(doc_id);
@@ -293,12 +292,11 @@ impl Editor {
             .values_mut()
             .find(|doc| doc.uri().is_some_and(|u| u == uri));
 
-        if let Some((version, doc)) = version.zip(doc.as_ref()) {
-            if version != doc.version() {
+        if let Some((version, doc)) = version.zip(doc.as_ref())
+            && version != doc.version() {
                 log::info!("Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification", doc.version());
                 return;
             }
-        }
 
         let mut unchanged_diag_sources = Vec::new();
         if let Some((lang_conf, old_diagnostics)) = doc
