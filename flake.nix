@@ -17,18 +17,32 @@
   }: let
     inherit (nixpkgs) lib;
     eachSystem = lib.genAttrs lib.systems.flakeExposed;
-    pkgsFor = eachSystem (system:
-      import nixpkgs {
+    rustPlatformFor = pkgs: let
+      toolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+    in
+      pkgs.makeRustPlatform {
+        cargo = toolchain;
+        rustc = toolchain;
+      };
+    pkgsFor = eachSystem (system: let
+      pkgs = import nixpkgs {
         localSystem.system = system;
-        overlays = [(import rust-overlay) self.overlays.helix];
-      });
+        overlays = [(import rust-overlay)];
+      };
+    in
+      pkgs.extend (final: _: {
+        helix = final.callPackage ./default.nix {
+          inherit gitRev;
+          rustPlatform = rustPlatformFor final;
+        };
+      }));
     gitRev = self.rev or self.dirtyRev or null;
   in {
     packages = eachSystem (system: {
       inherit (pkgsFor.${system}) helix;
       /*
-      The default Helix build. Uses the latest stable Rust toolchain, and unstable
-      nixpkgs.
+      The default Helix build. Uses the Rust toolchain pinned in
+      rust-toolchain.toml, and unstable nixpkgs.
 
       The build inputs can be overridden with the following:
 
@@ -41,16 +55,9 @@
       default = self.packages.${system}.helix;
     });
     checks =
-      lib.mapAttrs (system: pkgs: let
-        # Get Helix's MSRV toolchain to build with by default.
-        msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-        msrvPlatform = pkgs.makeRustPlatform {
-          cargo = msrvToolchain;
-          rustc = msrvToolchain;
-        };
-      in {
+      lib.mapAttrs (system: pkgs: {
         helix = self.packages.${system}.helix.override {
-          rustPlatform = msrvPlatform;
+          rustPlatform = rustPlatformFor pkgs;
         };
       })
       pkgsFor;
@@ -82,7 +89,10 @@
 
     overlays = {
       helix = final: prev: {
-        helix = final.callPackage ./default.nix {inherit gitRev;};
+        helix = final.callPackage ./default.nix {
+          inherit gitRev;
+          rustPlatform = rustPlatformFor final;
+        };
       };
 
       default = self.overlays.helix;
