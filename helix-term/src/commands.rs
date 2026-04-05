@@ -4294,6 +4294,13 @@ pub mod insert {
         let selection = doc.selection(view.id);
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
+        let insert_char = || {
+            Transaction::change_by_and_with_selection(text, selection, |range| {
+                let cursor = range.cursor(text.slice(..));
+                let t = Tendril::from_iter([c]);
+                ((cursor, cursor, Some(t)), None)
+            })
+        };
 
         let bracket_set = doc.bracket_set(cx.editor, loader, view);
         let transaction = bracket_set
@@ -4322,7 +4329,7 @@ pub mod insert {
                     None => auto_pairs::hook_multi(text, selection, c, bs),
                 }
             })
-            .or_else(|| insert(text, selection, c));
+            .unwrap_or_else(insert_char);
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
@@ -4641,13 +4648,69 @@ pub mod insert {
         Some((start, pos)) // delete!
     }
 
+    fn delete_auto_pair(
+        doc: &Rope,
+        text: RopeSlice,
+        range: &Range,
+        set: &auto_pairs::BracketSet,
+    ) -> Option<(Deletion, Range)> {
+        let cursor = range.cursor(text);
+        let del = {
+            let mut best: Option<auto_pairs::DeletePairResult> = None;
+
+            if cursor > 0 && cursor < doc.len_chars() {
+                let prev = doc.get_char(cursor - 1)?;
+                let cur = doc.get_char(cursor)?;
+
+                // Mirror legacy behavior: when deleting in "(  )", remove both spaces.
+                if prev.is_whitespace() && cur.is_whitespace() {
+                    for pair in set.pairs() {
+                        let open_len = pair.open_len();
+                        let close_len = pair.close_len();
+
+                        if cursor <= open_len || cursor + 1 + close_len > doc.len_chars() {
+                            continue;
+                        }
+
+                        let open_start = cursor - 1 - open_len;
+                        if doc.slice(open_start..cursor - 1) == pair.open
+                            && doc.slice(cursor + 1..cursor + 1 + close_len) == pair.close
+                            && best.as_ref().is_none_or(|m| {
+                                open_len + close_len > m.delete_before + m.delete_after
+                            })
+                        {
+                            best = Some(auto_pairs::DeletePairResult {
+                                delete_before: 1,
+                                delete_after: 1,
+                            });
+                        }
+                    }
+                }
+            }
+
+            best.or_else(|| auto_pairs::detect_pair_for_deletion(doc, cursor, set))?
+        };
+
+        let delete = (cursor - del.delete_before, cursor + del.delete_after);
+        let size_delete = del.delete_before + del.delete_after;
+        let next_head =
+            graphemes::next_grapheme_boundary(text, range.head).saturating_sub(size_delete);
+
+        let next_anchor = match (range.direction(), range.is_single_grapheme(text)) {
+            (Direction::Forward, true) => range.anchor.saturating_sub(del.delete_after),
+            (Direction::Backward, true) => range.anchor.saturating_sub(del.delete_before),
+            (Direction::Forward, false) => range.anchor,
+            (Direction::Backward, false) => range.anchor.saturating_sub(size_delete),
+        };
+
+        Some((delete, Range::new(next_anchor, next_head)))
+    }
+
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
         let full_doc = doc.text();
-        let tab_width = doc.tab_width();
-        let indent_width = doc.indent_width();
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
         let bracket_set = doc.bracket_set(cx.editor, loader, view);
@@ -4663,53 +4726,26 @@ pub mod insert {
                 if pos == 0 {
                     return ((pos, pos), None);
                 }
-                let line_start_pos = text.line_to_char(range.cursor_line(text));
-                // consider to delete by indent level if all characters before `pos` are indent units.
-                let fragment = Cow::from(text.slice(line_start_pos..pos));
-                if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
-                    if text.get_char(pos.saturating_sub(1)) == Some('\t') {
-                        // fast path, delete one char
-                        (graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos)
-                    } else {
-                        let width: usize = fragment
-                            .chars()
-                            .map(|ch| {
-                                if ch == '\t' {
-                                    tab_width
-                                } else {
-                                    // it can be none if it still meet control characters other than '\t'
-                                    // here just set the width to 1 (or some value better?).
-                                    ch.width().unwrap_or(1)
-                                }
-                            })
-                            .sum();
-                        let mut drop = width % indent_width; // round down to nearest unit
-                        if drop == 0 {
-                            drop = indent_width
-                        }; // if it's already at a unit, consume a whole unit
-                        let mut chars = fragment.chars().rev();
-                        let mut start = pos;
-                        for _ in 0..drop {
-                            // delete up to `drop` spaces
-                            match chars.next() {
-                                Some(' ') => start -= 1,
-                                _ => break,
-                            }
-                        }
-                        (start, pos) // delete!
-                    }
-                } else if range.is_single_grapheme(text) {
-                    if let Some(bs) = bracket_set {
-                        if let Some(del) = auto_pairs::detect_pair_for_deletion(full_doc, pos, bs) {
-                            return (pos - del.delete_before, pos + del.delete_after);
-                        }
-                    }
-                    (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
-                } else {
-                    (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos)
-                }
-            });
-        let (view, doc) = current!(cx.editor);
+
+                dedent(doc, range)
+                    .map(|dedent| (dedent, None))
+                    .or_else(|| {
+                        let bs = bracket_set?;
+                        delete_auto_pair(full_doc, text, range, bs)
+                            .map(|(delete, new_range)| (delete, Some(new_range)))
+                    })
+                    .unwrap_or_else(|| {
+                        (
+                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
+                            None,
+                        )
+                    })
+            },
+        );
+
+        log::debug!("delete_char_backward transaction: {:?}", transaction);
+
+        let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
     }
 
