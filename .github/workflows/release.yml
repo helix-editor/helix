@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos] #, x86_64-win-gnu, win32-msvc
+        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos, aarch64-windows, riscv64-linux] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
           # WARN: When changing this to a newer version, make sure that the GLIBC isnt too new, as this can cause issues
@@ -88,11 +88,25 @@ jobs:
           rust: stable
           target: aarch64-apple-darwin
           cross: false
-        # - build: riscv64-linux
-        #   os: ubuntu-22.04
-        #   rust: stable
-        #   target: riscv64gc-unknown-linux-gnu
-        #   cross: true
+        - build: aarch64-windows
+          os: windows-11-arm
+          rust: stable
+          target: aarch64-pc-windows-msvc
+          cross: false
+        - build: riscv64-linux
+          # This is provided by the RISE Project: https://riseproject.dev/2026/03/24/announcing-the-rise-risc-v-runners-free-native-risc-v-ci-on-github/
+          #
+          # There is only the ubuntu-24.04 version, and is inherently limited
+          # compared with the GitHub provided ubuntu versions.
+          #
+          # This includes the GLIBC version, which can cause issues if the version
+          # provided here is too new compared to what a user might have.
+          # Considering that RISC-V as a desktop is still fairly new, we will
+          # considered support to be best effort.
+          os: ubuntu-24.04-riscv
+          rust: stable
+          target: riscv64gc-unknown-linux-gnu
+          cross: false
         # - build: x86_64-win-gnu
         #   os: windows-2019
         #   rust: stable-x86_64-gnu
@@ -214,7 +228,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [ "${{ runner.os }}" = "Windows" ]; then
             cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
           else
             cp "target/${{ matrix.target }}/opt/hx" "dist/"
@@ -256,6 +270,7 @@ jobs:
 
           for dir in bins-* ; do
               platform=${dir#"bins-"}
+              exe=""
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
