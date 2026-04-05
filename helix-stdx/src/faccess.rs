@@ -1,4 +1,4 @@
-//! Functions for managine file metadata.
+//! Functions for managing file metadata.
 //! From <https://github.com/Freaky/faccess>
 
 use std::io;
@@ -93,6 +93,15 @@ mod imp {
         std::fs::set_permissions(to, perms)?;
 
         Ok(())
+    }
+
+    pub fn write_with_perms(path: &Path, contents: &[u8], perms: u32) -> io::Result<()> {
+        use std::io::Write;
+        let mut f = std::fs::File::create(path)?;
+        let mut p = f.metadata()?.permissions();
+        p.set_mode(perms);
+        std::fs::set_permissions(path, p)?;
+        f.write_all(contents)
     }
 
     pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
@@ -503,6 +512,18 @@ pub fn readonly(p: &Path) -> bool {
 
 pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
+}
+
+/// Same [`fs::write`][std::fs::write], but sets mode bits on Unix targets
+pub fn write_with_perms<P: AsRef<Path>, C: AsRef<[u8]>>(
+    path: P,
+    contents: C,
+    perms: u32,
+) -> io::Result<()> {
+    #[cfg(unix)]
+    return imp::write_with_perms(path.as_ref(), contents.as_ref(), perms);
+    #[cfg(not(unix))]
+    return std::fs::write(path.as_ref(), contents.as_ref());
 }
 
 pub fn hardlink_count(p: &Path) -> io::Result<u64> {
