@@ -7,6 +7,7 @@ use helix_lsp::{
     LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
+use crossterm::tty::IsTty;
 use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
@@ -231,12 +232,12 @@ impl Application {
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
-        } else if stdin().is_terminal() || cfg!(feature = "integration") {
-            editor.new_file(Action::VerticalSplit);
+        } else if stdin().is_tty() || cfg!(feature = "integration") {
+            editor.new_file_welcome();
         } else {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+                .unwrap_or_else(|_| editor.new_file_welcome());
         }
 
         #[cfg(windows)]
