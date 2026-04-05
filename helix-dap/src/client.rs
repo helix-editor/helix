@@ -2,7 +2,7 @@ use crate::{
     registry::DebugAdapterId,
     requests::{DisconnectArguments, TerminateArguments},
     transport::{Payload, Request, Response, Transport},
-    Error, Result,
+    Error, ProgressMap, ProgressState, Result,
 };
 use helix_core::syntax::config::{DebugAdapterConfig, DebuggerQuirks};
 use helix_dap_types::*;
@@ -40,6 +40,7 @@ pub struct Client {
     // thread_id -> frames
     pub stack_frames: HashMap<ThreadId, Vec<StackFrame>>,
     pub thread_states: ThreadStates,
+    pub progress: ProgressMap,
     pub thread_id: Option<ThreadId>,
     /// Currently active frame for the current thread.
     pub active_frame: Option<usize>,
@@ -89,6 +90,7 @@ impl Client {
             socket: None,
             stack_frames: HashMap::new(),
             thread_states: HashMap::new(),
+            progress: HashMap::new(),
             thread_id: None,
             active_frame: None,
             quirks: DebuggerQuirks::default(),
@@ -348,6 +350,24 @@ impl Client {
         self.caps.as_ref().expect("debugger not yet initialized!")
     }
 
+    pub fn progress_start(&mut self, event: events::ProgressStartBody) -> String {
+        let status = ProgressState::new(event.title, event.message, event.percentage);
+        let status_line = status.status_line();
+        self.progress.insert(event.progress_id, status);
+        status_line
+    }
+
+    pub fn progress_update(&mut self, event: events::ProgressUpdateBody) -> Option<String> {
+        let status = self.progress.get_mut(&event.progress_id)?;
+        status.update(event.message, event.percentage);
+        Some(status.status_line())
+    }
+
+    pub fn progress_end(&mut self, event: events::ProgressEndBody) -> Option<String> {
+        let status = self.progress.remove(&event.progress_id)?;
+        Some(status.end_status_line(event.message.as_deref()))
+    }
+
     pub async fn initialize(&mut self, adapter_id: String) -> Result<()> {
         let args = requests::InitializeArguments {
             client_id: Some("hx".to_owned()),
@@ -361,7 +381,7 @@ impl Client {
             supports_variable_paging: Some(false),
             supports_run_in_terminal_request: Some(true),
             supports_memory_references: Some(false),
-            supports_progress_reporting: Some(false),
+            supports_progress_reporting: Some(true),
             supports_invalidated_event: Some(false),
         };
 
