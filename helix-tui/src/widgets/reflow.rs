@@ -320,8 +320,7 @@ mod test {
         let width = 20;
         let text =
             "abcd efghij klmnopabcd efgh ijklmnopabcdefg hijkl mnopab c d e f g h i j k l m n o";
-        let text_multi_space =
-            "abcd efghij    klmnopabcd efgh     ijklmnopabcdefg hijkl mnopab c d e f g h i j k l \
+        let text_multi_space = "abcd efghij    klmnopabcd efgh     ijklmnopabcdefg hijkl mnopab c d e f g h i j k l \
              m n o";
         let (word_wrapper_single_space, _) =
             run_composer(Composer::WordWrapper { trim: true }, text, width as u16);

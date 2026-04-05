@@ -1,13 +1,13 @@
 use std::{collections::HashSet, time::Duration};
 
-use futures_util::{stream::FuturesUnordered, StreamExt};
-use helix_core::{syntax::config::LanguageServerFeature, Assoc};
+use futures_util::{StreamExt, stream::FuturesUnordered};
+use helix_core::{Assoc, syntax::config::LanguageServerFeature};
 use helix_event::{cancelable_future, register_hook};
 use helix_view::{
+    DocumentId, Editor,
     document::DocumentLink,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
-    handlers::{lsp::DocumentLinksEvent, Handlers},
-    DocumentId, Editor,
+    handlers::{Handlers, lsp::DocumentLinksEvent},
 };
 use tokio::time::Instant;
 

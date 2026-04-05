@@ -185,8 +185,8 @@ pub struct InlineValueWorkspaceClientCapabilities {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::test_serialization;
     use crate::Position;
+    use crate::tests::test_serialization;
 
     #[test]
     fn inline_values() {

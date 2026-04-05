@@ -2,9 +2,9 @@ use std::{collections::HashSet, path::PathBuf};
 
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
-    quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
+    TrustUntrustStatus, WorkspaceTrust, quick_query_workspace_with_explicit_untrust,
 };
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
+use helix_view::{DocumentId, events::DocumentDidOpen, handlers::Handlers};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 

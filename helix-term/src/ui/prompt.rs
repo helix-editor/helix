@@ -12,13 +12,13 @@ use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{
+    Position,
     unicode::segmentation::{GraphemeCursor, UnicodeSegmentation},
     unicode::width::UnicodeWidthStr,
-    Position,
 };
 use helix_view::{
-    graphics::{CursorKind, Margin, Rect},
     Editor,
+    graphics::{CursorKind, Margin, Rect},
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
