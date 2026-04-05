@@ -155,6 +155,7 @@ ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
 vale-ls = { command = "vale-ls" }
+varlink-language-server = { command = "varlink-language-server" }
 verible-verilog-ls = { command = "verible-verilog-ls" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v-analyzer" }
@@ -5453,3 +5454,16 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+[[language]]
+name = "varlink"
+scope = "source.varlink"
+file-types = ["varlink"]
+injection-regex = "varlink"
+indent = { tab-width = 2, unit = "  " }
+comment-token = "#"
+language-servers = ["varlink-language-server"]
+
+[[grammar]]
+name = "varlink"
+source = { git = "https://github.com/bachorp/tree-sitter-varlink", rev = "ed315c9ef87cdfbbfa4fb8b7d1f20c0ce9f23418" }
