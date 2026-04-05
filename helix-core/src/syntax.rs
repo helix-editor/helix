@@ -1615,7 +1615,7 @@ mod test {
         assert_eq!(tree.root_node().kind(), "document");
 
         // Check context is Code (not Comment)
-        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        let context = layer_lang.bracket_context_at(tree, source.slice(..), pos, &LOADER);
         assert_eq!(context, crate::auto_pairs::BracketContext::Code);
 
         // Test auto-pair with backtick
@@ -1667,7 +1667,7 @@ mod test {
         let tree = syntax.tree_for_byte_range(pos_byte, pos_byte);
 
         // Check context is Code (not Comment)
-        let context = layer_lang.bracket_context_at(&tree, source.slice(..), pos, &LOADER);
+        let context = layer_lang.bracket_context_at(tree, source.slice(..), pos, &LOADER);
         assert_eq!(context, crate::auto_pairs::BracketContext::Code);
 
         // Test auto-pair with asterisk

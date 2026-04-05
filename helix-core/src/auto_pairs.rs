@@ -169,12 +169,12 @@ impl BracketPair {
 
     fn next_is_not_alpha(doc: &Rope, range: &Range) -> bool {
         let cursor = range.cursor(doc.slice(..));
-        doc.get_char(cursor).map_or(true, |c| !c.is_alphanumeric())
+        doc.get_char(cursor).is_none_or(|c| !c.is_alphanumeric())
     }
 
     fn prev_is_not_alpha(doc: &Rope, range: &Range) -> bool {
         let cursor = range.cursor(doc.slice(..));
-        prev_char(doc, cursor).map_or(true, |c| !c.is_alphanumeric())
+        prev_char(doc, cursor).is_none_or(|c| !c.is_alphanumeric())
     }
 }
 
@@ -540,9 +540,10 @@ pub fn detect_pair_for_deletion(
             && doc.slice(cursor..cursor + close_len) == pair.close
         {
             // Prefer longer matches for nested pairs like `{%` inside `{`
-            if best_match.as_ref().map_or(true, |m| {
-                open_len + close_len > m.delete_before + m.delete_after
-            }) {
+            if best_match
+                .as_ref()
+                .is_none_or(|m| open_len + close_len > m.delete_before + m.delete_after)
+            {
                 best_match = Some(DeletePairResult {
                     delete_before: open_len,
                     delete_after: close_len,
@@ -635,7 +636,7 @@ impl<'a> AutoPairState<'a> {
 fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<Transaction> {
     let mut end_ranges = SmallVec::with_capacity(state.selection.len());
     let mut offs = 0;
-    let mut made_changes = false;
+    let mut did_autopair = false;
 
     let transaction = Transaction::change_by_selection(state.doc, state.selection, |start_range| {
         let cursor = start_range.cursor(state.doc.slice(..));
@@ -664,7 +665,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
             let next_range = get_next_range(state.doc, start_range, offs, 1);
             end_ranges.push(next_range);
             offs += 1;
-            made_changes = true;
+            did_autopair = true;
             return (cursor, cursor, Some(t));
         }
 
@@ -682,7 +683,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let next_range = get_next_range(state.doc, start_range, offs, 1);
                 end_ranges.push(next_range);
                 offs += 1;
-                made_changes = true;
+                did_autopair = true;
                 return (cursor, cursor, Some(t));
             }
 
@@ -699,7 +700,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 if full_close_ahead {
                     let next_range = get_next_range(state.doc, start_range, offs, 0);
                     end_ranges.push(next_range);
-                    made_changes = true;
+                    did_autopair = true;
                     return (cursor, cursor, None);
                 }
             }
@@ -750,7 +751,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                                 if net_change >= 0 {
                                     offs += net_change as usize;
                                 }
-                                made_changes = true;
+                                did_autopair = true;
 
                                 return (delete_start, delete_end, Some(pair_str));
                             }
@@ -789,7 +790,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let next_range = get_next_range(state.doc, start_range, offs, cursor_advance);
                 end_ranges.push(next_range);
                 offs += net_inserted;
-                made_changes = true;
+                did_autopair = true;
                 return (delete_start, delete_end, Some(pair_str));
             } else {
                 let mut t = Tendril::new();
@@ -797,7 +798,7 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
                 let next_range = get_next_range(state.doc, start_range, offs, 1);
                 end_ranges.push(next_range);
                 offs += 1;
-                made_changes = true;
+                did_autopair = true;
                 return (cursor, cursor, Some(t));
             }
         }
@@ -806,17 +807,33 @@ fn hook_core(state: &AutoPairState<'_>, ch: char, use_context: bool) -> Option<T
             if !pair.same() {
                 let next_range = get_next_range(state.doc, start_range, offs, 0);
                 end_ranges.push(next_range);
-                made_changes = true;
+                did_autopair = true;
                 return (cursor, cursor, None);
             }
         }
 
-        let next_range = get_next_range(state.doc, start_range, offs, 0);
+        // If we're directly between a matched pair, mirror inserted whitespace.
+        if ch.is_whitespace() && detect_pair_for_deletion(state.doc, cursor, state.pairs).is_some()
+        {
+            let mut t = Tendril::new();
+            t.push(ch);
+            t.push(ch);
+            let next_range = get_next_range(state.doc, start_range, offs, 2);
+            end_ranges.push(next_range);
+            offs += 2;
+            did_autopair = true;
+            return (cursor, cursor, Some(t));
+        }
+
+        let mut t = Tendril::new();
+        t.push(ch);
+        let next_range = get_next_range(state.doc, start_range, offs, 1);
         end_ranges.push(next_range);
-        (cursor, cursor, None)
+        offs += 1;
+        (cursor, cursor, Some(t))
     });
 
-    if made_changes {
+    if did_autopair {
         Some(
             transaction.with_selection(Selection::new(end_ranges, state.selection.primary_index())),
         )
@@ -2147,7 +2164,6 @@ mod tests {
         let selection = Selection::single(0, 1);
         let pairs = create_overlapping_quote_pairs();
 
-        let state = AutoPairState::new(&doc, &selection, &pairs);
         let result = hook_multi(&doc, &selection, '"', &pairs);
 
         assert!(result.is_some());
