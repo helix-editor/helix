@@ -1,3 +1,4 @@
+use globset::{Glob, GlobSetBuilder};
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
@@ -141,17 +142,13 @@ pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
     }
 
     let workspace = crate::find_workspace().0;
-    match fs::read_to_string(workspace_trust_file()) {
-        Ok(workspace_trust_file) => {
-            for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustStatus::Trusted;
-                }
-            }
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace file couldn't be read: {err:?}"),
-    };
+
+    if is_path_matching_globfile(&workspace, &workspace_trust_file()) {
+        log::info!("Trusting workspace {workspace:?}");
+        return TrustStatus::Trusted;
+    }
+
+    log::info!("Denying trust for workspace {workspace:?}: Workspace is not matching trust file");
     TrustStatus::Untrusted
 }
 
@@ -161,28 +158,51 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     }
 
     let workspace = crate::find_workspace().0;
-    match fs::read_to_string(workspace_trust_file()) {
+
+    // Order is important here: quick_query_workspace() only checks the trust
+    // file. So if both match, priorizing the trust file over the exclude file
+    // results in consistant behavior.
+    if is_path_matching_globfile(&workspace, &workspace_trust_file()) {
+        log::info!("Trusting workspace {workspace:?}");
+        return TrustUntrustStatus::AllowAlways;
+    }
+
+    if is_path_matching_globfile(&workspace, &workspace_exclude_file()) {
+        log::info!("Denying trust for workspace {workspace:?}: Workspace is listed in exclude file");
+        return TrustUntrustStatus::DenyAlways;
+    }
+
+    log::info!("Denying trust for workspace {workspace:?}: Workspace is matching neither trust nor exclude file");
+    TrustUntrustStatus::DenyOnce
+}
+
+fn is_path_matching_globfile(path: &PathBuf, globfile: &PathBuf) -> bool {
+    match fs::read_to_string(globfile) {
         Ok(workspace_trust_file) => {
+            let mut trusted = GlobSetBuilder::new();
             for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustUntrustStatus::AllowAlways;
+                match Glob::new(&line) {
+                    Ok(glob) => {
+                        trusted.add(glob);
+                    }
+                    Err(err) => {
+                        log::error!("failed to parse glob \"{line}\" from {globfile:?}: {err:?}");
+                    }
+                }
+            }
+
+            match trusted.build() {
+                Ok(globset) => {
+                    return globset.is_match(path);
+                }
+                Err(err) => {
+                    log::error!("failed to build globset from {globfile:?}: {err:?}");
                 }
             }
         }
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace_trust file couldn't be read: {err:?}"),
+        Err(err) => log::error!("globfile {globfile:?} couldn't be read: {err:?}"),
     };
 
-    match fs::read_to_string(workspace_exclude_file()) {
-        Ok(workspace_untrust_file) => {
-            for line in workspace_untrust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustUntrustStatus::DenyAlways;
-                }
-            }
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace_untrust file couldn't be read: {err:?}"),
-    };
-    TrustUntrustStatus::DenyOnce
+    return false;
 }
