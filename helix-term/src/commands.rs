@@ -5109,7 +5109,11 @@ fn format_selections(cx: &mut Context) {
         return;
     };
 
-    let Some(language_server) = cx.editor.language_servers.get_by_id(language_server_id).cloned()
+    let Some(language_server) = cx
+        .editor
+        .language_servers
+        .get_by_id(language_server_id)
+        .cloned()
     else {
         cx.editor
             .set_error("No configured language server supports range formatting");
@@ -5158,8 +5162,12 @@ fn format_selections(cx: &mut Context) {
             .flatten()
             .collect();
 
-        let all_edits =
-            filter_overlapping_format_edits(&text, all_edits, offset_encoding, /* keep_last */ true);
+        let all_edits = filter_overlapping_format_edits(
+            &text,
+            all_edits,
+            offset_encoding,
+            /* keep_last */ true,
+        );
 
         let transaction =
             helix_lsp::util::generate_transaction_from_edits(&text, all_edits, offset_encoding);
@@ -5202,8 +5210,7 @@ fn filter_overlapping_format_edits(
     let mut dropped = 0;
 
     for edit in edits {
-        let Some(start) =
-            helix_lsp::util::lsp_pos_to_pos(text, edit.range.start, offset_encoding)
+        let Some(start) = helix_lsp::util::lsp_pos_to_pos(text, edit.range.start, offset_encoding)
         else {
             continue;
         };
@@ -5284,8 +5291,7 @@ mod tests {
             },
         ];
 
-        let filtered =
-            filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, false);
+        let filtered = filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, false);
         assert_eq!(filtered.len(), 2);
         assert_eq!(filtered[0].new_text, "x");
         assert_eq!(filtered[1].new_text, "z");
@@ -5311,8 +5317,7 @@ mod tests {
             },
         ];
 
-        let filtered =
-            filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, true);
+        let filtered = filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, true);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].new_text, "y");
     }
