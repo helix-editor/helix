@@ -22,10 +22,11 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::lsp::SymbolKind;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{BreadcrumbPathOptions, BufferLine, CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -703,6 +704,145 @@ impl EditorView {
 
             if x >= surface.area.right() {
                 break;
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    pub fn render_breadcrumb(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        let style = editor
+            .theme
+            .try_get_exact("ui.breadcrumb")
+            .unwrap_or_else(|| editor.theme.get("ui.text"));
+
+        surface.clear_with(viewport, style);
+
+        let (view, _) = current_ref!(editor);
+
+        let Some(doc) = editor.document(view.doc) else {
+            return;
+        };
+
+        let separator = " > ";
+        let separator_style = editor.theme.get("ui.breadcrumb.separator");
+        let separator_width = separator.width();
+
+        let mut x = viewport.x;
+
+        let config = editor.config();
+
+        let mut is_first = true;
+
+        if matches!(
+            config.breadcrumb.path,
+            BreadcrumbPathOptions::Full | BreadcrumbPathOptions::File
+        ) {
+            if let Some(path) = doc.relative_path() {
+                let mut components = path.components().peekable();
+
+                if matches!(config.breadcrumb.path, BreadcrumbPathOptions::File) {
+                    // Drain all but the filename component.
+                    //
+                    // NOTE:
+                    // We could use `next_back`, but this keeps our logic simpler.
+                    while components.clone().nth(1).is_some() {
+                        components.next();
+                    }
+                }
+
+                while let Some(component) = components.next() {
+                    if x >= viewport.right() {
+                        break;
+                    }
+
+                    if !is_first {
+                        if x + separator_width as u16 >= viewport.right() {
+                            break;
+                        }
+                        x = surface
+                            .set_stringn(x, viewport.y, separator, separator_width, separator_style)
+                            .0;
+                    }
+
+                    let segment = component.as_os_str().to_string_lossy();
+                    let is_directory = components.peek().is_some();
+
+                    let style = if is_directory {
+                        editor.theme.get("ui.text.directory")
+                    } else {
+                        style
+                    };
+
+                    let remaining = viewport.right().saturating_sub(x) as usize;
+                    x = surface
+                        .set_stringn(x, viewport.y, segment, remaining, style)
+                        .0;
+                    is_first = false;
+                }
+            } else {
+                // Handle `[scratch]`
+                let remaining = viewport.right().saturating_sub(x) as usize;
+                x = surface
+                    .set_stringn(x, viewport.y, SCRATCH_BUFFER_NAME, remaining, style)
+                    .0;
+            }
+        }
+
+        // Draw symbols, if any.
+        if let Some(breadcrumb) = doc.breadcrumbs.get(&view.id) {
+            for symbol in breadcrumb.iter() {
+                if !is_first {
+                    if x + separator_width as u16 >= viewport.right() {
+                        break;
+                    }
+                    x = surface
+                        .set_stringn(x, viewport.y, separator, separator_width, separator_style)
+                        .0;
+                }
+
+                if x >= viewport.right() {
+                    break;
+                }
+
+                let style = match symbol.kind {
+                    SymbolKind::MODULE
+                    | SymbolKind::NAMESPACE
+                    | SymbolKind::PACKAGE => editor.theme.get("namespace"),
+
+                    SymbolKind::OBJECT // impl Block
+                    | SymbolKind::STRUCT
+                    | SymbolKind::INTERFACE
+                    | SymbolKind::CLASS => editor.theme.get("type"),
+
+                    SymbolKind::METHOD => editor.theme.get("function.method"),
+                    SymbolKind::FUNCTION => editor.theme.get("function"),
+
+                    SymbolKind::ENUM => editor.theme.get("type.enum"),
+                    SymbolKind::ENUM_MEMBER => editor.theme.get("type.enum.variant"),
+
+                   SymbolKind::FIELD | SymbolKind::PROPERTY => {
+                        editor.theme.get("variable.other.member")
+                    }
+
+                    SymbolKind::VARIABLE => editor.theme.get("variable"),
+                    SymbolKind::CONSTANT => editor.theme.get("constant"),
+                    SymbolKind::CONSTRUCTOR => editor.theme.get("constructor"),
+                    SymbolKind::STRING => editor.theme.get("string"),
+                    SymbolKind::NUMBER => editor.theme.get("constant.numeric"),
+                    SymbolKind::BOOLEAN => editor.theme.get("constant.builtin.boolean"),
+                    SymbolKind::ARRAY => editor.theme.get("punctuation.bracket"),
+                    SymbolKind::KEY => editor.theme.get("label"),
+                    SymbolKind::NULL => editor.theme.get("constant.builtin"),
+                    SymbolKind::TYPE_PARAMETER => editor.theme.get("type.parameter"),
+                    _ => style,
+                };
+
+                let text = symbol.name.as_str();
+
+                let remaining = viewport.right().saturating_sub(x) as usize;
+                x = surface.set_stringn(x, viewport.y, text, remaining, style).0;
+
+                is_first = false;
             }
         }
     }
@@ -1602,16 +1742,21 @@ impl Component for EditorView {
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
         let use_bufferline = match config.bufferline {
             BufferLine::Always => true,
             BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
         };
 
+        let render_breadcrumb = config.breadcrumb.enabled;
+
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
         if use_bufferline {
+            editor_area = editor_area.clip_top(1);
+        }
+
+        if render_breadcrumb {
             editor_area = editor_area.clip_top(1);
         }
 
@@ -1620,6 +1765,16 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
+        }
+
+        if render_breadcrumb {
+            let area = area
+                .with_height(1)
+                // Position it at y=1 if bufferline is used, otherwise y=0
+                .with_y(if use_bufferline { area.y + 1 } else { area.y })
+                // Adds padding to the start of the breadcrumb.
+                .clip_left(1);
+            Self::render_breadcrumb(cx.editor, area, surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {

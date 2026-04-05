@@ -13,6 +13,7 @@ use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
+use helix_lsp::lsp::DocumentSymbol;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -149,13 +150,19 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
+    /// update from the LSP
+    pub inlay_hints_oudated: bool,
     /// Jump label overlays for each view.
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// LSP document highlights for each view, stored as char ranges.
     pub(crate) document_highlights: HashMap<ViewId, DocumentHighlights>,
-    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
-    /// update from the LSP
-    pub inlay_hints_oudated: bool,
+
+    // Stores all the symbols of the Document.
+    pub(crate) symbols: Option<DocumentSymbolCache>,
+
+    /// Breadcrumb trail for each view showing this document.
+    pub breadcrumbs: HashMap<ViewId, Breadcrumb>,
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
@@ -220,11 +227,65 @@ pub struct Document {
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
+    pub symbols_controller: TaskController,
 
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+}
+
+pub struct DocumentSymbolCache {
+    pub tree: Vec<DocumentSymbol>,
+    pub offset_encoding: OffsetEncoding,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Breadcrumb(Vec<ThinDocumentSymbol>);
+
+impl Breadcrumb {
+    #[inline]
+    pub fn push(&mut self, symbol: &DocumentSymbol) {
+        self.0.push(ThinDocumentSymbol::from(symbol));
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn depth(&self) -> usize {
+        self.0.len()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &ThinDocumentSymbol> {
+        self.0.iter()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ThinDocumentSymbol {
+    pub name: String,
+    pub kind: lsp::SymbolKind,
+}
+
+impl From<&DocumentSymbol> for ThinDocumentSymbol {
+    #[inline]
+    fn from(symbol: &DocumentSymbol) -> Self {
+        Self {
+            name: symbol.name.clone(),
+            kind: symbol.kind,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -706,7 +767,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
+use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName, OffsetEncoding};
 use url::Url;
 
 impl Document {
@@ -764,6 +825,9 @@ impl Document {
             previous_diagnostic_id: None,
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
+            symbols: None,
+            symbols_controller: TaskController::new(),
+            breadcrumbs: HashMap::new(),
         }
     }
 
@@ -1416,6 +1480,7 @@ impl Document {
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
+    #[allow(clippy::too_many_lines)]
     fn apply_impl(
         &mut self,
         transaction: &Transaction,
@@ -2350,6 +2415,65 @@ impl Document {
 
     pub fn remove_jump_labels(&mut self, view_id: ViewId) {
         self.jump_labels.remove(&view_id);
+    }
+
+    pub fn set_document_symbols(
+        &mut self,
+        symbols: Vec<DocumentSymbol>,
+        offset_encoding: OffsetEncoding,
+    ) {
+        self.symbols = Some(DocumentSymbolCache {
+            tree: symbols,
+            offset_encoding,
+        });
+    }
+
+    pub fn clear_document_symbols(&mut self) {
+        self.symbols = None;
+    }
+
+    pub fn update_breadcrumbs_for_view(&mut self, view_id: ViewId) {
+        #[inline(always)]
+        const fn position_is_in_range(pos: lsp::Position, range: lsp::Range) -> bool {
+            if pos.line < range.start.line || pos.line > range.end.line {
+                return false;
+            }
+            if pos.line == range.start.line && pos.character < range.start.character {
+                return false;
+            }
+            if pos.line == range.end.line && pos.character > range.end.character {
+                return false;
+            }
+            true
+        }
+
+        let Some(symbols) = self.symbols.as_ref() else {
+            self.breadcrumbs.remove(&view_id);
+            return;
+        };
+
+        let position = self.position(view_id, symbols.offset_encoding);
+
+        let breadcrumb = self.breadcrumbs.entry(view_id).or_default();
+
+        breadcrumb.clear();
+
+        let mut current = symbols.tree.as_slice();
+
+        while let Some(symbol) = current
+            .iter()
+            .find(|symbol| position_is_in_range(position, symbol.range))
+        {
+            breadcrumb.push(symbol);
+            match symbol.children.as_deref() {
+                Some(children) => current = children,
+                _ => break,
+            }
+        }
+
+        if breadcrumb.is_empty() {
+            self.breadcrumbs.remove(&view_id);
+        }
     }
 
     pub fn set_document_highlights(
