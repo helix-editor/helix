@@ -1012,6 +1012,7 @@ pub struct IndentGuidesConfig {
     pub render: bool,
     pub character: char,
     pub skip_levels: u8,
+    pub rainbow: bool,
 }
 
 impl Default for IndentGuidesConfig {
@@ -1020,6 +1021,7 @@ impl Default for IndentGuidesConfig {
             skip_levels: 0,
             render: false,
             character: '│',
+            rainbow: false,
         }
     }
 }
