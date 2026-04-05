@@ -292,6 +292,7 @@ pub fn test_editor_config() -> helix_view::editor::Config {
     helix_view::editor::Config {
         lsp: LspConfig {
             enable: false,
+            auto_document_highlight: false,
             ..Default::default()
         },
         ..Default::default()
