@@ -8,6 +8,7 @@ use helix_view::{
     document::DocumentColorSwatches,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
     handlers::{lsp::DocumentColorsEvent, Handlers},
+    icons::ICONS,
     DocumentId, Editor, Theme,
 };
 use tokio::time::Instant;
@@ -124,9 +125,11 @@ fn attach_document_colors(
     let mut color_swatches_padding = Vec::with_capacity(doc_colors.len());
     let mut colors = Vec::with_capacity(doc_colors.len());
 
+    let icons = ICONS.load();
+
     for (pos, color) in doc_colors {
         color_swatches_padding.push(InlineAnnotation::new(pos, " "));
-        color_swatches.push(InlineAnnotation::new(pos, "■"));
+        color_swatches.push(InlineAnnotation::new(pos, icons.kind().color().glyph()));
         colors.push(Theme::rgb_highlight(
             (color.red * 255.) as u8,
             (color.green * 255.) as u8,
