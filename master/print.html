@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-d06ea6ed.js";
+            window.path_to_searchindex_js = "searchindex-5eddd67c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-887400e0.js"></script>
@@ -1427,6 +1427,7 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 <ul>
 <li>Unicode <code>%u{..}</code>. The contents may contain up to six hexadecimal numbers corresponding to a Unicode codepoint value. For example <code>:echo %u{25CF}</code> prints <code>●</code> to the statusline.</li>
 <li>Shell <code>%sh{..}</code>. The contents are passed to the configured shell command. For example <code>:echo %sh{echo "20 * 5" | bc}</code> may print <code>100</code> on the statusline on when using a shell with <code>echo</code> and the <code>bc</code> calculator installed. Shell expansions are evaluated recursively. <code>%sh{echo '%{buffer_name}:%{cursor_line}'}</code> for example executes a command like <code>echo 'README.md:1'</code>: the variables within the <code>%sh{..}</code> expansion are evaluated before executing the shell command.</li>
+<li>Register <code>%reg{..}</code>. The contents should be a single character representing the register name. For example, <code>:set-register a hello world</code> followed by <code>echo %reg{a}</code> prints <code>hello world</code> to the statusline.</li>
 </ul>
 <p>As mentioned above, double quotes can be used to surround arguments containing spaces but also support expansions within the quoted content unlike single quotes or backticks. For example <code>:echo "circle: %u{25CF}"</code> prints <code>circle: ●</code> to the statusline while <code>:echo 'circle: %u{25CF}'</code> prints <code>circle: %u{25CF}</code>.</p>
 <p>Note that expansions are only evaluated once the Enter key is pressed in command mode.</p>
