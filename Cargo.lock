@@ -67,6 +67,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
+name = "base62"
+version = "2.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd637ac531c60eb7fbc4684dc061c2d7d90d73d758181aa02eeff0464b9eee4b"
+
+[[package]]
+name = "bitflags"
+version = "1.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+
+[[package]]
 name = "bitflags"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -242,7 +254,7 @@ version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "crossterm_winapi",
  "futures-core",
  "mio",
@@ -672,7 +684,7 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "441a300bc3645a1f45cba495b9175f90f47256ce43f2ee161da0031e3ac77c92"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "bstr",
  "gix-path",
  "libc",
@@ -821,7 +833,7 @@ version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b03e6cd88cc0dc1eafa1fddac0fb719e4e74b6ea58dd016e71125fde4a326bee"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "bstr",
  "gix-features",
  "gix-path",
@@ -869,7 +881,7 @@ version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13b28482b86662c8b78160e0750b097a35fd61185803a960681351b3a07de07e"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "bstr",
  "filetime",
  "fnv",
@@ -993,7 +1005,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40e7636782b35bb1d3ade19ea7387278e96fd49f6963ab41bfca81cef4b61b20"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "bstr",
  "gix-attributes",
  "gix-config-value",
@@ -1108,7 +1120,7 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e014df75f3d7f5c98b18b45c202422da6236a1c0c0a50997c3f41e601f3ad511"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "gix-path",
  "libc",
  "windows-sys 0.61.2",
@@ -1206,7 +1218,7 @@ version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c99b3cf9dc87c13f1404e7b0e8c5e4bff4975d6f788831c02d6c006f3c76b4a0"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "gix-commitgraph",
  "gix-date",
  "gix-hash",
@@ -1268,6 +1280,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "globset"
 version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1278,6 +1296,17 @@ dependencies = [
  "log",
  "regex-automata",
  "regex-syntax",
+]
+
+[[package]]
+name = "globwalk"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93e3af942408868f6934a7b85134a3230832b9977cf66125df2f9edcfce4ddcc"
+dependencies = [
+ "bitflags 1.3.2",
+ "ignore",
+ "walkdir",
 ]
 
 [[package]]
@@ -1376,7 +1405,7 @@ version = "25.7.1"
 dependencies = [
  "anyhow",
  "arc-swap",
- "bitflags",
+ "bitflags 2.11.0",
  "chrono",
  "encoding_rs",
  "foldhash 0.2.0",
@@ -1400,7 +1429,7 @@ dependencies = [
  "smallvec",
  "smartstring",
  "textwrap",
- "toml",
+ "toml 1.1.1+spec-1.1.0",
  "tree-house",
  "unicode-general-category",
  "unicode-segmentation",
@@ -1464,7 +1493,7 @@ dependencies = [
  "serde",
  "tempfile",
  "threadpool",
- "toml",
+ "toml 1.1.1+spec-1.1.0",
  "tree-house",
 ]
 
@@ -1496,7 +1525,7 @@ dependencies = [
 name = "helix-lsp-types"
 version = "0.95.1"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "serde",
  "serde_json",
  "url",
@@ -1510,7 +1539,7 @@ version = "25.7.1"
 name = "helix-stdx"
 version = "25.7.1"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "dunce",
  "etcetera",
  "once_cell",
@@ -1558,6 +1587,7 @@ dependencies = [
  "open",
  "parking_lot",
  "pulldown-cmark",
+ "rust-i18n",
  "same-file",
  "serde",
  "serde_json",
@@ -1570,7 +1600,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "toml",
+ "toml 1.1.1+spec-1.1.0",
  "url",
 ]
 
@@ -1578,7 +1608,7 @@ dependencies = [
 name = "helix-tui"
 version = "25.7.1"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "cassowary",
  "crossterm",
  "helix-core",
@@ -1612,7 +1642,7 @@ version = "25.7.1"
 dependencies = [
  "anyhow",
  "arc-swap",
- "bitflags",
+ "bitflags 2.11.0",
  "chardetng",
  "clipboard-win",
  "crossterm",
@@ -1639,7 +1669,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "toml",
+ "toml 1.1.1+spec-1.1.0",
  "url",
 ]
 
@@ -1902,6 +1932,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1968,6 +2007,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy_static"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+
+[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1995,7 +2040,7 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "libc",
  "redox_syscall",
 ]
@@ -2097,6 +2142,15 @@ name = "nonempty"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9737e026353e5cd0736f98eddae28665118eb6f6600902a7f50db585621fecb6"
+
+[[package]]
+name = "normpath"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf23ab2b905654b4cb177e30b629937b3868311d4e1cba859f899c041046e69b"
+dependencies = [
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "nucleo"
@@ -2265,7 +2319,7 @@ version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c3a14896dfa883796f1cb410461aef38810ea05f2b2c33c5aded3649095fdad"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "memchr",
  "unicase",
 ]
@@ -2345,7 +2399,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a908a6e00f1fdd0dfd9c0eb08ce85126f6d8bbda50017e74bc4a4b7d4a926a4"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
 ]
 
 [[package]]
@@ -2456,12 +2510,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-i18n"
+version = "3.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fda2551fdfaf6cc5ee283adc15e157047b92ae6535cf80f6d4962d05717dc332"
+dependencies = [
+ "globwalk",
+ "once_cell",
+ "regex",
+ "rust-i18n-macro",
+ "rust-i18n-support",
+ "smallvec",
+]
+
+[[package]]
+name = "rust-i18n-macro"
+version = "3.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22baf7d7f56656d23ebe24f6bb57a5d40d2bce2a5f1c503e692b5b2fa450f965"
+dependencies = [
+ "glob",
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "rust-i18n-support",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "syn",
+]
+
+[[package]]
+name = "rust-i18n-support"
+version = "3.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "940ed4f52bba4c0152056d771e563b7133ad9607d4384af016a134b58d758f19"
+dependencies = [
+ "arc-swap",
+ "base62",
+ "globwalk",
+ "itertools",
+ "lazy_static",
+ "normpath",
+ "once_cell",
+ "proc-macro2",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "siphasher",
+ "toml 0.8.23",
+ "triomphe",
+]
+
+[[package]]
 name = "rustix"
 version = "0.38.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
@@ -2474,7 +2582,7 @@ version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
@@ -2486,6 +2594,12 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "ryu"
+version = "1.0.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "same-file"
@@ -2553,11 +2667,33 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
+version = "0.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_spanned"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "serde_yaml"
+version = "0.9.34+deprecated"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
 ]
 
 [[package]]
@@ -2650,6 +2786,12 @@ name = "simdutf8"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
+name = "siphasher"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
 name = "slab"
@@ -2800,7 +2942,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a49b3d294d994319c4cd8c30f2172aab3217db673bb057912dc383677372830"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "futures-core",
  "parking_lot",
  "rustix 1.1.4",
@@ -2923,17 +3065,38 @@ dependencies = [
 
 [[package]]
 name = "toml"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
+dependencies = [
+ "serde",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "994b95d9e7bae62b34bab0e2a4510b801fa466066a6a8b2b57361fa1eba068ee"
 dependencies = [
  "indexmap",
  "serde_core",
- "serde_spanned",
- "toml_datetime",
+ "serde_spanned 1.1.1",
+ "toml_datetime 1.1.1+spec-1.1.0",
  "toml_parser",
  "toml_writer",
  "winnow 1.0.0",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -2946,6 +3109,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml_edit"
+version = "0.22.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned 0.6.9",
+ "toml_datetime 0.6.11",
+ "toml_write",
+ "winnow 0.7.14",
+]
+
+[[package]]
 name = "toml_parser"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2953,6 +3130,12 @@ checksum = "39ca317ebc49f06bd748bfba29533eac9485569dc9bf80b849024b025e814fb9"
 dependencies = [
  "winnow 1.0.0",
 ]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "toml_writer"
@@ -2988,6 +3171,17 @@ dependencies = [
  "regex-cursor",
  "ropey",
  "thiserror",
+]
+
+[[package]]
+name = "triomphe"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd69c5aa8f924c7519d6372789a74eac5b94fb0f8fcf0d4a97eb0bfc3e785f39"
+dependencies = [
+ "arc-swap",
+ "serde",
+ "stable_deref_trait",
 ]
 
 [[package]]
@@ -3070,6 +3264,12 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "url"
@@ -3241,7 +3441,7 @@ version = "0.244.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b807c72e1bac69382b3a6fb3dbe8ea4c0ed87ff5629b8685ae6b9a611028fe"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
@@ -3498,7 +3698,7 @@ version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3268f3d866458b787f390cf61f4bbb563b922d091359f9608842999eaee3943c"
 dependencies = [
- "bitflags",
+ "bitflags 2.11.0",
 ]
 
 [[package]]
@@ -3539,7 +3739,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d66ea20e9553b30172b5e831994e35fbde2d165325bec84fc43dbf6f4eb9cb2"
 dependencies = [
  "anyhow",
- "bitflags",
+ "bitflags 2.11.0",
  "indexmap",
  "log",
  "serde",
@@ -3589,7 +3789,7 @@ dependencies = [
  "helix-loader",
  "helix-term",
  "helix-view",
- "toml",
+ "toml 1.1.1+spec-1.1.0",
 ]
 
 [[package]]

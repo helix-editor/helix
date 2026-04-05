@@ -160,7 +160,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     let Some(syntax) = doc.syntax() else {
         cx.editor
-            .set_error("Syntax tree is not available on this buffer");
+            .set_error(crate::i18n::tr("Syntax tree is not available on this buffer"));
         return;
     };
     let doc_id = doc.id();
@@ -410,7 +410,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                     Ok(id) => id,
                     Err(e) => {
                         cx.editor
-                            .set_error(format!("Failed to open file '{uri:?}': {e}"));
+                            .set_error(crate::i18n::tr("Failed to open file '{uri:?}': {e}").replace("{uri:?}", &format!("{uri:?}")).replace("{e}", &e.to_string()));
                         return;
                     }
                 }
@@ -419,7 +419,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             let view = view_mut!(cx.editor);
             let len_chars = doc.text().len_chars();
             if tag.start >= len_chars || tag.end > len_chars {
-                cx.editor.set_error("The location you jumped to does not exist anymore because the file has changed.");
+                cx.editor.set_error(crate::i18n::tr("The location you jumped to does not exist anymore because the file has changed."));
                 return;
             }
             doc.set_selection(view.id, Selection::single(tag.start, tag.end));

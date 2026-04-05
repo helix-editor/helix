@@ -1,0 +1,935 @@
+' 1 sel ': ' 1 个选区 '
+' W ': ' W '
+' [readonly] ': ' [只读] '
+' char': ' 字符'
+' chars': ' 字符'
+' reg={} ': ' 寄存器={} '
+' sel ': ' 选区 '
+' sels ': ' 选区 '
+' set to ': ' 设为 '
+' space': ' 空格'
+' spaces': ' 空格'
+' tabs ': ' 制表符 '
+'''{key}'' is now set to {value}': '''{key}'' 现已设为 {value}'
+'''{}'' not found in $PATH': '''{}'' 未在 $PATH 中找到'
+'''{}'' written, {lines}L {size}': '''{}'' 已写入，{lines} 行 {size}'
+(X)HTML element (tree-sitter): (X)HTML 元素 (tree-sitter)
+'... or any character acting as a pair': '... 或任何作为配对符的字符'
+1 space: 1 个空格
+<Binary file>: <二进制文件>
+<File not found>: <文件未找到>
+<File too large to preview>: <文件太大无法预览>
+<Invalid directory location>: <无效目录位置>
+<Invalid file location>: <无效文件位置>
+Add current workspace to the list of trusted workspaces.: 将当前工作空间添加到受信任工作空间列表。
+Add newline above: 在上方添加换行
+Add newline below: 在下方添加换行
+Add next search match to selection: 添加下一个搜索结果到选区
+Add previous search match to selection: 添加上一个搜索结果到选区
+Align selections in column: 对齐选区到列
+Align view bottom: 视图底部对齐
+Align view center: 视图居中对齐
+Align view middle: 视图居中对齐
+Align view top: 视图顶部对齐
+All registers cleared: 所有寄存器已清除
+Already at line end: 已在行尾
+Already at line start: 已在行首
+Already at newest change: 已在最新的更改处
+Already at oldest change: 已在最旧的更改处
+Always: 始终
+Append after selection: 在选区后追加
+Append an interactively-chosen char: 交互式追加字符
+Append shell command output after selections: 在选区后追加 shell 命令输出
+Argument/parameter (tree-sitter): 参数 (tree-sitter)
+Auto-save failed: 自动保存失败
+'Bad arguments. For boolean configurations use: `:toggle {key}`': 参数错误。布尔配置请使用：`:toggle {key}`
+'Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`': 参数错误。字符串配置请使用：`:toggle {key} val1 val2 ...`
+Block comment/uncomment selections: 块注释/取消注释选区
+Buffer not modified: 缓冲区未修改
+'Can''t set breakpoint: document has no path': 无法设置断点：文档没有路径
+Cannot abort: 无法中止
+Cannot accept: 无法接受
+Cannot access variables while target is running.: 目标运行时无法访问变量。
+Cannot acquire: 无法获取
+Cannot add: 无法添加
+Cannot add hook: 无法添加钩子
+Cannot allocate: 无法分配
+Cannot apply: 无法应用
+Cannot authenticate: 无法认证
+Cannot authorize: 无法授权
+Cannot backup: 无法备份
+Cannot begin: 无法开始
+Cannot benchmark: 无法基准测试
+Cannot bind: 无法绑定
+Cannot blame: 无法追溯
+Cannot block: 无法阻塞
+Cannot branch: 无法创建分支
+Cannot bridge: 无法桥接
+Cannot broadcast: 无法广播
+Cannot buffer: 无法缓冲
+Cannot calculate: 无法计算
+Cannot cancel: 无法取消
+Cannot capture: 无法捕获
+Cannot catch: 无法捕获
+Cannot change directory: 无法更改目录
+Cannot check: 无法检查
+Cannot checkout: 无法检出
+Cannot cherry-pick: 无法拣选
+Cannot clear state: 无法清除状态
+Cannot clock: 无法时钟
+Cannot clone: 无法克隆
+Cannot close: 无法关闭
+Cannot close connection: 无法关闭连接
+Cannot commit: 无法提交
+Cannot complete: 无法完成
+Cannot compress: 无法压缩
+Cannot compute: 无法计算
+Cannot connect: 无法连接
+Cannot connect to server: 无法连接到服务器
+Cannot convert: 无法转换
+Cannot create: 无法创建
+Cannot create directory: 无法创建目录
+Cannot deallocate: 无法释放
+Cannot decode: 无法解码
+Cannot decompress: 无法解压缩
+Cannot decrypt: 无法解密
+Cannot default: 无法默认
+Cannot delete file: 无法删除文件
+Cannot deliver: 无法投递
+Cannot dequeue: 无法出队
+Cannot describe: 无法描述
+Cannot destroy: 无法销毁
+Cannot detect: 无法检测
+Cannot determine: 无法确定
+Cannot diff: 无法比较
+Cannot disconnect: 无法断开
+Cannot disconnect from server: 无法断开服务器连接
+Cannot dispatch: 无法分发
+Cannot download: 无法下载
+Cannot emit hook: 无法发射钩子
+Cannot encode: 无法编码
+Cannot encrypt: 无法加密
+Cannot end: 无法结束
+Cannot enqueue: 无法入队
+Cannot epoll: 无法 epoll
+Cannot evaluate: 无法评估
+Cannot eventfd: 无法 eventfd
+Cannot exec: 无法 exec
+Cannot execute: 无法执行
+Cannot execute command: 无法执行命令
+Cannot execute macro because the [@] register is already playing a macro: 无法执行宏，因为 [@] 寄存器已在回放宏
+Cannot fetch: 无法获取
+Cannot finalize: 无法完成
+Cannot find: 无法查找
+Cannot find current stack frame to access variables: 找不到当前栈帧来访问变量
+Cannot find current stack frame to access variables.: 找不到当前栈帧来访问变量。
+Cannot finish: 无法完成
+Cannot fire hook: 无法触发钩子
+Cannot flush connection: 无法刷新连接
+Cannot fork: 无法 fork
+Cannot format: 无法格式化
+Cannot forward: 无法转发
+Cannot free: 无法释放
+Cannot fsevents: 无法 fsevents
+Cannot get handler: 无法获取处理器
+Cannot grep: 无法搜索
+Cannot handle: 无法处理
+Cannot handle notification: 无法处理通知
+Cannot handle request: 无法处理请求
+Cannot identify: 无法识别
+Cannot ignore: 无法忽略
+Cannot init: 无法初始化
+Cannot initialize: 无法初始化
+Cannot initialize connection: 无法初始化连接
+Cannot inotify: 无法 inotify
+Cannot invoke hook: 无法调用钩子
+Cannot iocp: 无法 iocp
+Cannot kill: 无法 kill
+Cannot kqueue: 无法 kqueue
+Cannot lex: 无法词法分析
+Cannot listen: 无法监听
+Cannot listen hook: 无法监听钩子
+Cannot load state: 无法加载状态
+Cannot locate: 无法定位
+Cannot lock: 无法锁定
+Cannot log: 无法查看日志
+Cannot lookup: 无法查找
+Cannot match: 无法匹配
+Cannot measure: 无法测量
+Cannot merge: 无法合并
+Cannot monitor: 无法监控
+Cannot notify: 无法通知
+Cannot notify hook: 无法通知钩子
+Cannot observe: 无法观察
+Cannot open: 无法打开
+Cannot open connection: 无法打开连接
+Cannot open document: 无法打开文档
+Cannot parse: 无法解析
+Cannot parse response: 无法解析响应
+Cannot pause: 无法暂停
+Cannot peek: 无法查看
+Cannot play: 无法播放
+Cannot poll: 无法轮询
+Cannot pop: 无法弹出
+Cannot process response: 无法处理响应
+Cannot profile: 无法分析
+Cannot proxy: 无法代理
+Cannot publish hook: 无法发布钩子
+Cannot pull: 无法拉取
+Cannot push: 无法推入
+Cannot query: 无法查询
+Cannot queue: 无法入队
+Cannot raise: 无法 raise
+Cannot read connection: 无法读取连接
+Cannot read file: 无法读取文件
+Cannot rebase: 无法变基
+Cannot receive: 无法接收
+Cannot receive response: 无法接收响应
+Cannot reconnect: 无法重新连接
+Cannot record: 无法录制
+Cannot recover: 无法恢复
+Cannot redirect: 无法重定向
+Cannot register handler: 无法注册处理器
+Cannot relay: 无法中继
+Cannot release: 无法释放
+Cannot remove: 无法移除
+Cannot remove hook: 无法移除钩子
+Cannot rename: 无法重命名
+Cannot repeat: 无法重复
+Cannot replace: 无法替换
+Cannot replay: 无法重播
+Cannot replay from register [: 无法从寄存器 [ 回放
+Cannot reserve: 无法预留
+Cannot reset: 无法重置
+Cannot reset connection: 无法重置连接
+Cannot reset state: 无法重置状态
+Cannot resolve: 无法解析
+Cannot restore: 无法还原
+Cannot resume: 无法恢复
+Cannot retry: 无法重试
+Cannot revert: 无法还原
+Cannot route: 无法路由
+Cannot run: 无法运行
+Cannot save: 无法保存
+Cannot save state: 无法保存状态
+Cannot scan: 无法扫描
+Cannot schedule: 无法调度
+Cannot search: 无法搜索
+Cannot select: 无法选择
+Cannot send: 无法发送
+Cannot send notification: 无法发送通知
+Cannot send request: 无法发送请求
+Cannot send response: 无法发送响应
+Cannot serialize request: 无法序列化请求
+Cannot set handler: 无法设置处理器
+Cannot show: 无法显示
+Cannot shutdown connection: 无法关闭连接
+Cannot sign: 无法签名
+Cannot signal: 无法发信号
+Cannot signalfd: 无法 signalfd
+Cannot spawn: 无法派生
+Cannot split: 无法分割
+Cannot start: 无法启动
+Cannot stash: 无法储藏
+Cannot status: 无法查看状态
+Cannot stop: 无法停止
+Cannot stream: 无法流式传输
+Cannot subscribe hook: 无法订阅钩子
+Cannot substitute: 无法替代
+Cannot sync: 无法同步
+Cannot tag: 无法打标签
+Cannot terminate: 无法终止
+Cannot terminate connection: 无法终止连接
+Cannot test: 无法测试
+Cannot time: 无法计时
+Cannot timerfd: 无法 timerfd
+Cannot tokenize: 无法分词
+Cannot trace: 无法追踪
+Cannot track: 无法跟踪
+Cannot transform: 无法转换
+Cannot translate: 无法翻译
+Cannot transmit: 无法传输
+Cannot trigger hook: 无法触发钩子
+Cannot tunnel: 无法隧道
+Cannot unblock: 无法解除阻塞
+Cannot unlock: 无法解锁
+Cannot unregister handler: 无法注销处理器
+Cannot unsubscribe hook: 无法取消订阅钩子
+Cannot unwatch: 无法取消监视
+Cannot upload: 无法上传
+Cannot validate: 无法验证
+Cannot validate response: 无法验证响应
+Cannot verify: 无法验证
+Cannot wait: 无法等待
+Cannot waitpid: 无法 waitpid
+Cannot watch: 无法监视
+Cannot write connection: 无法写入连接
+Cannot write file: 无法写入文件
+Cannot write to file: 无法写入文件
+Cannot yield: 无法让出
+Change: 更改
+Change selection: 修改选区
+Change selection without yanking: 修改选区（不复制）
+Change the current working directory.: 更改当前工作目录。
+Change the editor theme (show current theme if no name specified).: 更改编辑器主题（不指定名称则显示当前主题）。
+Checking config: 检查配置
+'Checking language: {lang}': 检查语言：{lang}
+Clear and re-render the whole UI: 清除并重新渲染整个 UI
+Clear given register. If no argument is provided, clear all registers.: 清除指定寄存器。如果不提供参数，清除所有寄存器。
+Close all buffers but the currently focused one.: 关闭除当前聚焦缓冲区外的所有缓冲区。
+Close all buffers without quitting.: 关闭所有缓冲区但不退出。
+Close all views.: 关闭所有视图。
+Close the current buffer forcefully, ignoring unsaved changes.: 强制关闭当前缓冲区，忽略未保存的更改。
+Close the current buffer.: 关闭当前缓冲区。
+Close the current view.: 关闭当前视图。
+Close window: 关闭窗口
+Close windows except current: 仅保留当前窗口
+Closest surrounding pair (tree-sitter): 最近的包围对 (tree-sitter)
+Collapse selection into single cursor: 折叠选区为单个光标
+Command run: 命令已执行
+Comment (tree-sitter): 注释 (tree-sitter)
+Comment/uncomment selections: 注释/取消注释选区
+Commit changes to new checkpoint: 提交更改到新检查点
+'Config directory: {path}': 配置目录：{path}
+'Config file: default': 配置文件：默认
+'Config file: {path}': 配置文件：{path}
+Config refreshed: 配置已刷新
+Configuration file malformed: 配置文件格式错误
+'Configured language server: {name}': 已配置的语言服务器：{name}
+Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.: 通过 TCP 地址连接到调试适配器，并从给定模板和参数启动调试会话。
+Continue program execution: 继续执行程序
+Copy between two registers: 在两个寄存器之间复制
+Copy selection on next line: 在下一行复制选区
+Copy selection on previous line: 在上一行复制选区
+'Could not change working directory to ''{}'': {err}': '无法切换工作目录到 ''{}'': {err}'
+Could not parse field `{}`: 无法解析字段 `{}`
+Create a new scratch buffer.: 创建新的空白缓冲区。
+Current buffer has no parent and current working directory does not exist: 当前缓冲区没有父目录且当前工作目录不存在
+Current buffer has no parent, opening file explorer in current working directory: 当前缓冲区没有父目录，在当前工作目录打开文件浏览器
+Current buffer has no parent, opening file picker in current working directory: 当前缓冲区没有父目录，在当前工作目录打开文件选择器
+Current working directory does not exist: 当前工作目录不存在
+Current working directory is now {}: 当前工作目录现在是 {}
+Current working directory is {}: 当前工作目录是 {}
+Currently active thread is not stopped. Switch the thread.: 当前线程未停止。请切换线程。
+'Data directory: {path}': 数据目录：{path}
+Data structure entry (tree-sitter): 数据结构条目 (tree-sitter)
+Debug (experimental): 调试（实验性）
+Debug session failed: 调试会话失败
+Debugger does not support session restarts: 调试器不支持会话重启
+Debugger is already running: 调试器已在运行
+Debugger is not running: 调试器未运行
+Debugging session restarted: 调试会话已重启
+Dec {}: 十进制 {}
+Decrement item under cursor: 递减光标下的值
+Delete next char: 删除下一个字符
+Delete next word: 删除下一个词
+Delete previous char: 删除前一个字符
+Delete previous word: 删除前一个词
+Delete selection: 删除选区
+Delete selection without yanking: 删除选区（不复制）
+Delete surrounding pair of: 删除包围对
+Delete till end of line: 删除到行尾
+Delete till start of line: 删除到行首
+'Diagnostic provider: {provider}': 诊断提供者：{provider}
+'Did you mean one of these: {} ?': 你是指以下之一：{} ？
+Diff is not available in current buffer: 当前缓冲区没有差异信息
+Diff is not available in the current buffer: 当前缓冲区没有差异信息
+Directory not found: 目录未找到
+Disable exception breakpoints: 禁用异常断点
+Discard changes and reload all documents from the source files.: 丢弃所有更改并从源文件重新加载所有文档。
+Discard changes and reload from the source file.: 丢弃更改并从源文件重新加载。
+Display language names of tree-sitter injection layers under the cursor.: 显示光标下 tree-sitter 注入层的语言名称。
+Display name of tree-sitter highlight scope under the cursor.: 显示光标下 tree-sitter 高亮作用域的名称。
+Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.: 显示覆盖主选区的最小 tree-sitter 子树，主要用于调试查询。
+Display tree sitter scopes, primarily for theming and development.: 显示 tree-sitter 作用域，主要用于主题开发和调试。
+Do nothing: 无操作
+Does nothing.: 无操作。
+Edit breakpoint condition on current line: 编辑当前行断点条件
+Edit breakpoint log message on current line: 编辑当前行断点日志消息
+Enable exception breakpoints: 启用异常断点
+End debug session: 结束调试会话
+Ensure all selections face forward: 确保所有选区方向向前
+Enter command mode: 进入命令模式
+Enter normal mode: 进入普通模式
+Enter selection extend mode: 进入选择扩展模式
+Error parsing user language config: 解析用户语言配置出错
+Error saving: 保存出错
+Evaluate expression in current debug context.: 在当前调试上下文中计算表达式。
+Exit selection mode: 退出选择模式
+Expand selection to parent syntax node: 扩展到父语法节点
+Extend down: 向下扩展
+Extend left: 向左扩展
+Extend right: 向右扩展
+Extend selection to line bounds: 扩展到行边界
+Extend till next occurrence of char: 扩展到字符前
+Extend till previous occurrence of char: 扩展到前一个字符前
+Extend to a two-character label: 扩展到双字符标签
+Extend to beginning of the parent node: 扩展到父节点开头
+Extend to column: 扩展到指定列
+Extend to end of next long word: 扩展到下一个长词尾
+Extend to end of next sub word: 扩展到下一个子词尾
+Extend to end of next word: 扩展到下一个词尾
+Extend to end of prev long word: 扩展到上一个长词尾
+Extend to end of prev sub word: 扩展到上一个子词尾
+Extend to end of previous word: 扩展到上一个词尾
+Extend to end of the parent node: 扩展到父节点末尾
+Extend to file end: 扩展到文件末尾
+Extend to first non-blank in line: 扩展到行首第一个非空白字符
+Extend to last line: 扩展到最后一行
+Extend to line end: 扩展到行尾
+Extend to line number <n> else file start: 扩展到第 <n> 行或文件开头
+Extend to line start: 扩展到行首
+Extend to next occurrence of char: 扩展到下一个字符
+Extend to previous occurrence of char: 扩展到前一个字符
+Extend to start of next long word: 扩展到下一个长词首
+Extend to start of next sub word: 扩展到下一个子词首
+Extend to start of next word: 扩展到下一个词首
+Extend to start of previous long word: 扩展到上一个长词首
+Extend to start of previous sub word: 扩展到上一个子词首
+Extend to start of previous word: 扩展到上一个词首
+Extend up: 向上扩展
+'Failed to get scopes: {}': 获取作用域失败：{}
+'Failed to get stack frame for thread: {thread_id}': 获取线程 {thread_id} 的栈帧失败
+'Failed to open file ': '打开文件失败 '
+'Failed to open file ''{uri:?}'': {e}': 打开文件 '{uri:?}' 失败：{e}
+'Failed to pause: {}': 暂停失败：{}
+'Failed to set breakpoints: {}': 设置断点失败：{}
+File not found: 文件未找到
+Filter selections with shell predicate: 用 shell 谓词过滤选区
+Flip selection cursor and anchor: 翻转选区光标和锚点
+For troubleshooting system clipboard issues, refer: 排查系统剪贴板问题，请参考
+Force close all buffers but the currently focused one.: 强制关闭除当前聚焦缓冲区外的所有缓冲区。
+Force close all buffers ignoring unsaved changes without quitting.: 强制关闭所有缓冲区（忽略未保存的更改）但不退出。
+Force close all views ignoring unsaved changes.: 强制关闭所有视图，忽略未保存的更改。
+Force close the current view, ignoring unsaved changes.: 强制关闭当前视图，忽略未保存的更改。
+Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).: 强制以退出码退出（默认 1），忽略未保存的更改。可接受可选整数退出码 (:cq! 2)。
+? Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)
+: 强制写入磁盘（创建必要的子目录）并关闭缓冲区。可接受可选路径 (:write-buffer-close! some/path.txt)
+Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt): 强制写入磁盘（创建必要的子目录）。可接受可选路径 (:write! some/path.txt)
+? Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).
+: 强制写入磁盘（创建必要的子目录），如果缓冲区已修改则退出。可接受可选路径 (:exit! some/path.txt)。
+Forcefully write changes from all buffers to disk creating necessary subdirectories.: 强制将所有缓冲区的更改写入磁盘（创建必要的子目录）。
+? Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).
+: 强制将所有缓冲区的更改写入磁盘（创建必要的子目录）并关闭所有视图（忽略未保存的更改）。
+Format failed: 格式化失败
+Format selection: 格式化选区
+Format the file using an external formatter or language server.: 使用外部格式化工具或语言服务器格式化文件。
+'Found language server: {name}': 找到语言服务器：{name}
+Function (tree-sitter): 函数 (tree-sitter)
+Get info about the character under the primary cursor.: 获取主光标下字符的信息。
+Get the current value of a config option.: 获取配置选项的当前值。
+Global search in workspace folder: 全局搜索工作区
+Goto: 跳转
+Goto column: 跳转到指定列
+Goto declaration: 跳转到声明
+Goto definition: 跳转到定义
+Goto file end: 跳转到文件末尾
+Goto files in selections (hsplit): 跳转到选区中的文件（水平分割）
+Goto files in selections (vsplit): 跳转到选区中的文件（垂直分割）
+Goto files/URLs in selections: 跳转到选区中的文件/URL
+Goto first change: 跳转到第一个更改
+Goto first diagnostic: 跳转到第一个诊断
+Goto first non-blank in line: 跳转到行首第一个非空白字符
+Goto implementation: 跳转到实现
+Goto last accessed file: 跳转到上次访问的文件
+Goto last change: 跳转到最后一个更改
+Goto last diagnostic: 跳转到最后一个诊断
+Goto last line: 跳转到最后一行
+Goto last modification: 跳转到上次修改位置
+Goto last modified file: 跳转到上次修改的文件
+Goto line: 跳转到指定行
+Goto line end: 跳转到行尾
+Goto line number <n> else file start: 跳转到第 <n> 行或文件开头
+Goto line number.: 跳转到行号。
+Goto line start: 跳转到行首
+Goto matching bracket: 跳转到匹配括号
+Goto newline at line end: 跳转到行尾换行符
+Goto next (X)HTML element: 跳转到下一个 (X)HTML 元素
+Goto next buffer: 跳转到下一个缓冲区
+Goto next buffer.: 跳转到下一个缓冲区。
+Goto next change: 跳转到下一个更改
+Goto next comment: 跳转到下一个注释
+Goto next diagnostic: 跳转到下一个诊断
+Goto next function: 跳转到下一个函数
+Goto next pairing: 跳转到下一个配对
+Goto next paragraph: 跳转到下一个段落
+Goto next parameter: 跳转到下一个参数
+Goto next snippet placeholder: 跳转到上一个代码片段占位符
+Goto next test: 跳转到下一个测试
+Goto next type definition: 跳转到下一个类型定义
+Goto next window: 跳转到下一个窗口
+Goto previous (X)HTML element: 跳转到上一个 (X)HTML 元素
+Goto previous buffer: 跳转到上一个缓冲区
+Goto previous buffer.: 跳转到上一个缓冲区。
+Goto previous change: 跳转到上一个更改
+Goto previous comment: 跳转到上一个注释
+Goto previous diagnostic: 跳转到上一个诊断
+Goto previous function: 跳转到上一个函数
+Goto previous pairing: 跳转到上一个配对
+Goto previous paragraph: 跳转到上一个段落
+Goto previous parameter: 跳转到上一个参数
+Goto previous test: 跳转到上一个测试
+Goto previous type definition: 跳转到上一个类型定义
+Goto previous window: 跳转到上一个窗口
+Goto references: 跳转到引用
+Goto type definition: 跳转到类型定义
+Goto window bottom: 跳转到窗口底部
+Goto window center: 跳转到窗口中部
+Goto window top: 跳转到窗口顶部
+Hard-wrap the current selection of lines to a given width.: 将当前选中的行硬包装到指定宽度。
+'Highlight provider: {name}': 高亮提供者：{name}
+Horizontal bottom split: 水平底部分割
+Horizontal bottom split scratch buffer: 水平底部分割新建缓冲区
+Increment item under cursor: 递增光标下的值
+Indent selection: 缩进选区
+Insert an interactively-chosen char: 交互式插入字符
+Insert at end of line: 在行尾插入
+Insert at start of line: 在行首插入
+Insert before selection: 在选区前插入
+Insert mode: 插入模式
+Insert newline char: 插入换行符
+Insert register: 插入寄存器
+Insert shell command output before selections: 在选区前插入 shell 命令输出
+Insert tab char: 插入制表符
+Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.: 如果所有光标左侧都是空白则插入制表符，否则执行单独的命令
+Invalid encoding: 无效编码
+Invalid indent style: 无效缩进样式
+Invalid language: 无效语言
+Invalid line ending: 无效行尾
+Invalid macro: 无效宏
+Invalid option: 无效选项
+Invalid register: 无效寄存器
+Invalid register {s}: 无效寄存器 {s}
+Invalid register {}: 无效寄存器 {}
+Invalid theme: 无效主题
+Invalid value: 无效值
+Invoke completion popup: 触发补全弹出
+Join and yank selections: 连接并复制选区
+Join and yank selections to clipboard: 连接并复制选区到剪贴板
+Join and yank selections to primary clipboard: 连接并复制选区到主剪贴板
+Join lines inside selection: 合并选区内的行
+Join lines inside selection and select spaces: 合并选区内的行并选择空格
+Jump back to an earlier point in edit history. Accepts a number of steps or a time span.: 回退到编辑历史的较早时间点。可接受步数或时间段。
+Jump backward on jumplist: 向后跳转
+Jump forward on jumplist: 向前跳转
+Jump to a later point in edit history. Accepts a number of steps or a time span.: 前进到编辑历史的较晚时间点。可接受步数或时间段。
+Jump to a two-character label: 跳转到双字符标签
+Jump to left split: 跳转到左侧分割
+Jump to right split: 跳转到右侧分割
+Jump to split above: 跳转到上方分割
+Jump to split below: 跳转到下方分割
+Keep primary selection: 保留主选区
+Keep selections matching regex: 保留匹配正则的选区
+Language '{lang}' not found: 未找到语言 '{lang}'
+Language '{}' not found: 语言 '{}' 未找到
+Language Server disappeared: 语言服务器已消失
+Language server exited: 语言服务器已退出
+'Language server not configured for: {lang}': 未配置语言服务器：{lang}
+'Language server not found: {name}': 未找到语言服务器：{name}
+'Language server not running: {name}': 语言服务器未运行：{name}
+'Language server running: {name}': 语言服务器运行中：{name}
+Language servers: 语言服务器
+Launch debug target: 启动调试目标
+Left bracket: 左括号
+Line comment/uncomment selections: 行注释/取消注释选区
+List variables: 列出变量
+Load a file into buffer: 将文件加载到缓冲区
+Loaded {} file{}.: 已加载 {} 个文件{}。
+Make the first selection your primary one: 将第一个选区设为主选区
+Make the last selection your primary one: 将最后一个选区设为主选区
+'Malformed method call: {}': 格式错误的方法调用：{}
+Match: 匹配
+Match around: 匹配外部
+Match inside: 匹配内部
+Merge consecutive selections: 合并连续选区
+Merge selections: 合并选区
+'Method not found: {}': 方法未找到：{}
+Modify current search to make it word bounded: 使当前搜索变为词边界匹配
+Move backward in history: 回退到历史
+Move down: 下移
+Move forward in history: 前进到历史
+Move half page down: 下翻半页
+Move half page up: 上翻半页
+Move left: 左移
+Move page and cursor down: 页面下移，光标跟随
+Move page and cursor half down: 页面下移半页，光标跟随
+Move page and cursor half up: 页面上移半页，光标跟随
+Move page and cursor up: 页面上移，光标跟随
+Move page down: 下翻一页
+Move page up: 上翻一页
+Move right: 右移
+Move the current buffer and its corresponding file to a different path: 将当前缓冲区及其对应文件移动到其他路径
+Move the current buffer and its corresponding file to a different path creating necessary subdirectories: 将当前缓冲区及其对应文件移动到其他路径（创建必要的子目录）
+Move till next occurrence of char: 移动到字符前
+Move till previous occurrence of char: 移动到前一个字符前
+Move to beginning of the parent node: 移到父节点开头
+Move to end of next long word: 移到下一个长词尾
+Move to end of next sub word: 移到下一个子词尾
+Move to end of next word: 移到下一个词尾
+Move to end of previous long word: 移到上一个长词尾
+Move to end of previous sub word: 移到上一个子词尾
+Move to end of previous word: 移到上一个词尾
+Move to end of the parent node: 移到父节点末尾
+Move to next occurrence of char: 移动到下一个字符
+Move to previous occurrence of char: 移动到前一个字符
+Move to start of next long word: 移到下一个长词首
+Move to start of next sub word: 移到下一个子词首
+Move to start of next word: 移到下一个词首
+Move to start of previous long word: 移到上一个长词首
+Move to start of previous sub word: 移到上一个子词首
+Move to start of previous word: 移到上一个词首
+Move up: 上移
+Neither a dir, nor a file: 既不是目录也不是文件
+Never: 从不
+New split scratch buffer: 新建分割空白缓冲区
+No LSP server for this document: 此文档没有 LSP 服务器
+No arguments found with which to restart the sessions: 找不到用于重启会话的参数
+No breakpoints: 没有断点
+No changes to save: 没有要保存的更改
+No code actions available: 没有可用的代码操作
+No completions: 没有补全
+No configured language server supports code actions: 没有已配置的语言服务器支持代码操作
+No configured language server supports document symbols: 没有已配置的语言服务器支持文档符号
+No configured language server supports hover: 没有已配置的语言服务器支持悬停
+No configured language server supports range formatting: 没有已配置的语言服务器支持范围格式化
+No configured language server supports signature-help: 没有已配置的语言服务器支持签名帮助
+No configured language server supports symbol renaming: 没有已配置的语言服务器支持符号重命名
+No configured language server supports workspace symbols: 没有已配置的语言服务器支持工作区符号
+No configured language server supports {}: 没有已配置的语言服务器支持 {}
+No configured languages: 没有已配置的语言
+No debug adapter: 没有调试适配器
+No debug adapter available for language: 没有可用于该语言的调试适配器
+No declaration found: 未找到声明
+No declaration found.: 未找到声明。
+No definition found: 未找到定义
+No definition found.: 未找到定义。
+No diagnostics: 没有诊断信息
+No diagnostics under primary selection: 主选区下没有诊断信息
+No hover information: 没有悬停信息
+No hover results available.: 没有可用的悬停结果。
+No implementation found: 未找到实现
+No implementation found.: 未找到实现。
+No language server: 没有语言服务器
+No language server supporting document symbols or syntax info available: 没有支持文档符号或语法信息的语言服务器
+No location found.: 未找到位置。
+No more buffers: 没有更多缓冲区
+No more files: 没有更多文件
+No more jumps: 没有更多跳转
+No more matches: 没有更多匹配
+No previous working directory: 没有上一个工作目录
+No references found: 未找到引用
+No references found.: 未找到引用。
+No selections remaining: 没有剩余选区
+No signature help: 没有签名帮助
+No stack frames: 没有堆栈帧
+No symbol found: 未找到符号
+No threads: 没有线程
+No type definition found: 未找到类型定义
+No type definition found.: 未找到类型定义。
+No variables: 没有变量
+Normal mode: 普通模式
+Not now: 暂不
+Open a file from disk into the current view.: 从磁盘打开文件到当前视图。
+Open a scratch buffer in a horizontal split.: 在水平分割中打开空白缓冲区。
+Open a scratch buffer in a vertical split.: 在垂直分割中打开空白缓冲区。
+Open buffer picker: 打开缓冲区选择器
+Open changed file picker: 打开已更改文件选择器
+Open command palette: 打开命令面板
+Open diagnostic picker: 打开诊断选择器
+Open file explorer at current buffer's directory: 在当前缓冲区目录打开文件浏览器
+Open file explorer at current working directory: 在当前工作目录打开文件浏览器
+Open file explorer in workspace root: 在工作区根目录打开文件浏览器
+Open file failed: 打开文件失败
+Open file picker: 打开文件选择器
+Open file picker at current buffer's directory: 在当前缓冲区目录打开文件选择器
+Open file picker at current working directory: 在当前工作目录打开文件选择器
+Open jumplist picker: 打开跳转列表选择器
+Open last picker: 打开上次选择器
+Open new line above selection: 在选区上方打开新行
+Open new line below selection: 在选区下方打开新行
+Open symbol picker: 打开符号选择器
+Open symbol picker from LSP or syntax information: 从 LSP 或语法信息打开符号选择器
+Open symbol picker from syntax information: 从语法信息打开符号选择器
+Open the file in a horizontal split.: 在水平分割中打开文件。
+Open the file in a vertical split.: 在垂直分割中打开文件。
+Open the helix log file.: 打开 helix 日志文件。
+Open the tutorial.: 打开教程。
+Open the user config.toml file.: 打开用户 config.toml 文件。
+Open the workspace config.toml file.: 打开工作区 config.toml 文件。
+Open workspace command picker: 打开工作区命令选择器
+Open workspace diagnostic picker: 打开工作区诊断选择器
+Open workspace symbol picker: 打开工作区符号选择器
+Open workspace symbol picker from LSP or syntax information: 从 LSP 或语法信息打开工作区符号选择器
+Open workspace symbol picker from syntax information: 从语法信息打开工作区符号选择器
+Opening URL in external program failed: 在外部程序中打开 URL 失败
+Paragraph: 段落
+Paste after selection: 在选区后粘贴
+Paste before selection: 在选区前粘贴
+Paste clipboard after selections: 在选区后粘贴剪贴板
+Paste clipboard before selections: 在选区前粘贴剪贴板
+Paste primary clipboard after selections: 在选区后粘贴主剪贴板
+Paste primary clipboard after selections.: 在选区后粘贴主剪贴板。
+Paste primary clipboard before selections: 在选区前粘贴主剪贴板
+Paste primary clipboard before selections.: 在选区前粘贴主剪贴板。
+Paste system clipboard after selections.: 在选区后粘贴系统剪贴板。
+Paste system clipboard before selections.: 在选区前粘贴系统剪贴板。
+Pause program execution: 暂停程序执行
+Perform code action: 执行代码操作
+Pipe each selection to the shell command, ignoring output.: 将每个选区管道到 shell 命令，忽略输出。
+Pipe each selection to the shell command.: 将每个选区管道到 shell 命令。
+Pipe selections into shell command ignoring output: 将选区输入 shell 命令并忽略输出
+Pipe selections through shell command: 通过 shell 命令管道选区
+Press <ENTER> to continue with default config: 按 <ENTER> 继续使用默认配置
+Prints the given arguments to the statusline.: 将给定的参数打印到状态栏。
+Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).: 以退出码退出（默认 1）。可接受可选整数退出码 (:cq 2)。
+Record macro: 录制宏
+Recorded to register [: 已录制到寄存器 [
+Recording to register [: 正在录制到寄存器 [
+Redo change: 重做
+Refresh user config.: 刷新用户配置。
+Register [: 寄存器 [
+Register {} cleared: 寄存器 {} 已清除
+Register {} not found: 寄存器 {} 未找到
+Remove current workspace from the list of trusted workspaces.: 从受信任工作空间列表中移除当前工作空间。
+Remove primary selection: 移除主选区
+Remove selections matching regex: 移除匹配正则的选区
+Remove the top entry from the directory stack, and cd to the new top directory..: 从目录栈中移除顶部条目，并跳转到新的顶部目录。
+Rename failed: 重命名失败
+Rename symbol: 重命名符号
+Repeat last motion: 重复上次动作
+Replace selections by clipboard content: 用剪贴板内容替换选区
+Replace selections by primary clipboard: 用主剪贴板内容替换选区
+Replace selections with content of system clipboard.: 用系统剪贴板内容替换选区。
+Replace selections with content of system primary clipboard.: 用系统主剪贴板内容替换选区。
+Replace surrounding pair of: 替换包围对
+Replace with a pair of: 替换为一对
+Replace with new char: 替换为新字符
+Replace with yanked text: 用复制的文本替换
+Replay macro: 回放宏
+Reset the diff change at the cursor position.: 重置光标位置的 diff 更改。
+Reset {changes} change{}: 已重置 {changes} 个更改{}
+Restart debugging session: 重新启动调试会话
+? Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied
+: 重启指定的语言服务器，或在不提供参数时重启当前文件使用的所有语言服务器
+Reverse search for regex pattern: 反向搜索正则表达式
+Reverse selections contents: 反转选区内容
+Right bracket: 右括号
+Rotate selection contents forward: 向前轮换选区内容
+Rotate selections backward: 向后轮换选区
+Rotate selections contents backward: 向后轮换选区内容
+Rotate selections forward: 向前轮换选区
+Run a shell command: 运行 shell 命令
+Run shell command, appending output after each selection.: 运行 shell 命令，在每个选区后追加输出。
+Run shell command, inserting output before each selection.: 运行 shell 命令，在每个选区前插入输出。
+Runtime directory: 运行时目录
+Runtime directory does not exist: 运行时目录不存在
+Runtime directory is empty: 运行时目录为空
+'Runtime directory: {path}': 运行时目录：{path}
+Save and then change the current directory.: 保存并更改当前目录。
+Save current selection to jumplist: 保存当前选区到跳转列表
+Scroll view down: 向下滚动视图
+Scroll view up: 向上滚动视图
+Search for regex pattern: 搜索正则表达式
+Select all children of the current node: 选择当前节点的所有子节点
+Select all regex matches inside selections: 选择所有正则匹配
+Select all siblings of the current node: 选择当前节点的所有兄弟节点
+Select around object: 选择外部对象
+Select current line, if already selected, extend or shrink line above based on the anchor: 选择当前行，已选则根据锚点扩展或收缩到上一行
+Select current line, if already selected, extend or shrink line below based on the anchor: 选择当前行，已选则根据锚点扩展或收缩到下一行
+Select current line, if already selected, extend to another line based on the anchor: 选择当前行，已选则根据锚点扩展
+Select current line, if already selected, extend to next line: 选择当前行，已选则扩展到下一行
+Select current line, if already selected, extend to previous line: 选择当前行，已选则扩展到上一行
+Select inside object: 选择内部对象
+Select mode: 选择模式
+Select next search match: 选择下一个搜索结果
+Select next sibling in the syntax tree: 选择语法树中的下一个兄弟节点
+Select previous search match: 选择上一个搜索结果
+Select previous sibling the in syntax tree: 选择语法树中的上一个兄弟节点
+Select register: 选择寄存器
+Select symbol references: 选择符号引用
+Select whole document: 全选文档
+Selection saved to jumplist: 选区已保存到跳转列表
+? 'Set a config option at runtime.
+
+  For example to disable smart case search, use `:set search.smart-case false`.'
+: '在运行时设置配置选项。
+
+  例如要禁用智能大小写搜索，使用 `:set search.smart-case false`。'
+Set contents of the given register.: 设置指定寄存器的内容。
+Set encoding. Based on https://encoding.spec.whatwg.org: 设置编码。基于 https://encoding.spec.whatwg.org
+'Set the document''s default line ending. Options: crlf, lf, cr, ff, nel.': 设置文档的默认行尾。选项：crlf, lf, cr, ff, nel。
+'Set the document''s default line ending. Options: crlf, lf.': 设置文档的默认行尾。选项：crlf, lf。
+Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.): 设置缩进样式。（'t' 表示制表符，1-16 表示空格数。）
+Set the language of current buffer (show current language if no value specified).: 设置当前缓冲区的语言（不指定值则显示当前语言）。
+Shell command failed: Shell 命令失败
+Show clipboard provider name in status bar.: 在状态栏显示剪贴板提供者名称。
+Show docs for item under cursor: 显示光标下项目的文档
+Show signature help: 显示签名帮助
+Show the current working directory.: 显示当前工作目录。
+Show the directory stack as a <space> delimited string.: 显示目录栈。
+Shrink selection to line bounds: 收缩到行边界
+Shrink selection to previously expanded syntax node: 收缩到上次扩展的语法节点
+Sort ranges in selection.: 对选区中的范围进行排序。
+'Sorting requires multiple selections. Hint: split selection first': 排序需要多个选区。提示：先分割选区
+Space: 空格
+Split selection on newlines: 按换行符分割选区
+Split selections on regex matches: 按正则分割选区
+Stack is empty: 栈为空
+Start a debug session from a given template with given parameters.: 从给定模板和参数启动调试会话。
+Step in: 步入
+Step out: 步出
+Step to next: 步过
+Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied: 停止指定的语言服务器，或在不提供参数时停止当前文件使用的所有语言服务器
+Surround add: 添加包围符
+Surround delete: 删除包围符
+Surround replace: 替换包围符
+Suspend and return to shell: 挂起并返回 shell
+Swap with left split: 与左侧分割交换
+Swap with right split: 与右侧分割交换
+Swap with split above: 与上方分割交换
+Swap with split below: 与下方分割交换
+Switch: 切换
+Switch (toggle) case: 切换大小写
+Switch current thread: 切换当前线程
+Switch stack frame: 切换堆栈帧
+Switch to lowercase: 转为小写
+Switch to uppercase: 转为大写
+Syntax tree is not available on this buffer: 此缓冲区没有语法树
+Syntax-tree is not available in current buffer: 当前缓冲区没有语法树
+'System clipboard provider: Not installed': 系统剪贴板提供者：未安装
+Terminating debug session...: 正在终止调试会话...
+Test (tree-sitter): 测试 (tree-sitter)
+'Text doc sync: {sync}': 文本文档同步：{sync}
+The line you jumped to does not exist anymore because the file has changed.: 你跳转到的行已不存在，因为文件已更改。
+The location you jumped to does not exist anymore because the file has changed.: 你跳转到的位置已不存在，因为文件已更改。
+There are no changes under any selection: 任何选区下都没有更改
+This list is filtered according to the 'use-grammars' option in languages.toml file.: 此列表根据 languages.toml 文件中的 'use-grammars' 选项进行了过滤。
+To see the full list, use the '--health all' or '--health all-languages' option.: 查看完整列表，请使用 '--health all' 或 '--health all-languages' 选项。
+? 'Toggle a config option at runtime.
+
+  For example to toggle smart case search, use `:toggle search.smart-case`.'
+: '在运行时切换配置选项。
+
+  例如要切换智能大小写搜索，使用 `:toggle search.smart-case`。'
+Toggle breakpoint: 切换断点
+Transpose splits: 转置分割
+Trim whitespace from selections: 修剪选区中的空白
+Trust this workspace?: 信任此工作空间？
+Type definition (tree-sitter): 类型定义 (tree-sitter)
+Undo change: 撤销
+Unindent selection: 减少缩进
+Unknown key `{}`: 未知键 `{}`
+'Unknown language server{s}: {}': 未知语言服务器{s}：{}
+'Unsupported theme: theme requires true color support': 不支持的主题：主题需要真彩色支持
+Use current selection as search pattern: 使用当前选区作为搜索模式
+Use current selection as the search pattern, automatically wrapping with \b on word boundaries: 使用当前选区作为搜索模式，自动添加词边界 \b
+Using default language config: 使用默认语言配置
+Vertical right split: 垂直右分割
+Vertical right split scratch buffer: 垂直右分割新建缓冲区
+View: 视图
+WORD: 大词
+Window: 窗口
+Word: 词
+Workspace directory does not exist: 工作区目录不存在
+Wrapped around document: 已环绕文档
+Write changes from all buffers to disk and close all views.: 将所有缓冲区的更改写入磁盘并关闭所有视图。
+Write changes from all buffers to disk.: 将所有缓冲区的更改写入磁盘。
+Write changes only if the file has been modified.: 仅在文件已修改时写入更改。
+Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt): 写入磁盘并强制关闭当前视图。可接受可选路径 (:wq! some/path.txt)
+Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt): 写入磁盘并关闭当前视图。可接受可选路径 (:wq some/path.txt)
+Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt): 写入磁盘并关闭缓冲区。可接受可选路径 (:write-buffer-close some/path.txt)
+Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).: 如果缓冲区已修改则写入磁盘并退出。可接受可选路径 (:exit some/path.txt)。
+Write changes to disk. Accepts an optional path (:write some/path.txt): 写入更改到磁盘。可接受可选路径 (:write some/path.txt)
+Yank diagnostic(s) under primary cursor to register, or clipboard by default: 复制主光标下的诊断信息到寄存器，默认为剪贴板
+Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.: 复制连接的选区到系统剪贴板。可将分隔符作为第一个参数提供。默认值为换行符。
+? Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.
+: 复制连接的选区到系统主剪贴板。可将分隔符作为第一个参数提供。默认值为换行符。
+Yank joined selections. A separator can be provided as first argument. Default value is newline.: 复制连接的选区。可将分隔符作为第一个参数提供。默认值为换行符。
+Yank main selection into system clipboard.: 复制主选区到系统剪贴板。
+Yank main selection into system primary clipboard.: 复制主选区到系统主剪贴板。
+Yank main selection to clipboard: 复制主选区到剪贴板
+Yank main selection to primary clipboard: 复制主选区到主剪贴板
+Yank selection: 复制选区
+Yank selections to clipboard: 复制选区到剪贴板
+Yank selections to primary clipboard: 复制选区到主剪贴板
+Yanked {n} diagnostic{} to register {reg}: 已复制 {n} 个诊断{}到寄存器 {reg}
+'[+]': '[+]'
+'] because already replaying from same register': '] 因为已在从同一寄存器回放'
+'] empty': '] 为空'
+'`{command}` is not supported for any language server': '`{command}` 不被任何语言服务器支持'
+'`{command}` supported by multiple language servers': '`{command}` 被多个语言服务器支持'
+align cannot work with multi line selections: align 不能处理多行选区
+can't move file, parent directory does not exist (use :mv! to create it): 无法移动文件，父目录不存在（使用 :mv! 创建）
+'cannot close non-existent buffers: {}': 无法关闭不存在的缓冲区：{}
+carriage return: 回车
+class: 类
+color: '颜色 '
+'color ': '颜色 '
+conflict: 冲突
+constant: 常量
+constructor: 构造函数
+crlf: crlf
+deleted: 已删除
+enum: 枚举
+enum member: 枚举成员
+error: 错误
+'error opening file: {}': 打开文件出错：{}
+'error reading file: {}': 读取文件出错：{}
+event: 事件
+field: 字段
+file: 文件
+folder: 文件夹
+form feed: 换页
+format_selections only supports a single selection for now: format_selections 目前只支持单个选区
+from register: 从寄存器
+function: 函数
+inserting multiple newlines not yet supported: 尚不支持插入多个换行
+interface: 接口
+is empty: 为空
+'is symlinked to: {}': 符号链接到：{}
+joined and: 连接并
+keyword: 关键字
+line feed: 换行
+method: 方法
+modified: 已修改
+module: 模块
+next line: 下一行
+no last accessed buffer: 没有上次访问的缓冲区
+no last modified buffer: 没有上次修改的缓冲区
+no last picker: 没有上次选择器
+no selections remaining: 没有剩余选区
+no snippet is currently active: 当前没有活动的代码片段
+'no such command: ''{cmd}''': 没有此命令：'{cmd}'
+nothing selected: 没有选中任何内容
+operator: 运算符
+'path is not a file: {:?}': 路径不是文件：{:?}
+primary selection: 主选区
+property: 属性
+reference: 引用
+register: 寄存器
+'register ': '寄存器 '
+renamed: 已重命名
+selection: 选区
+skip auto-formatting: 跳过自动格式化
+snippet: 代码片段
+sort ranges in reverse order: 反向排序
+sort the ranges case-insensitively: 不区分大小写排序
+struct: 结构体
+tabs: 制表符
+text: 文本
+to: 到
+to register: 到寄存器
+type parameter: 类型参数
+'unable to convert URI to filepath: {:?}': 无法将 URI 转换为文件路径：{:?}
+unable to open: 无法打开
+unit: 单位
+untracked: 未跟踪
+value: 值
+variable: 变量
+version: 1
+yanked: 已复制
+'{:?} cannot be mapped to {}': '{:?} 无法映射到 {}'
+'{} (deleted)': '{}（已删除）'
+'{} spaces': '{} 个空格'
+'{} unsaved buffer{} remaining: {:?}': 剩余 {} 个未保存的缓冲区{}：{:?}
+▸ {}: ▸ {}

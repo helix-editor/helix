@@ -269,7 +269,7 @@ impl MappableCommand {
                 // Protect against recursive macros.
                 if cx.editor.macro_replaying.contains(&'@') {
                     cx.editor.set_error(
-                        "Cannot execute macro because the [@] register is already playing a macro",
+                        crate::i18n::tr("Cannot execute macro because the [@] register is already playing a macro"),
                     );
                     return;
                 }
@@ -293,11 +293,11 @@ impl MappableCommand {
         }
     }
 
-    pub fn doc(&self) -> &str {
+    pub fn doc(&self) -> std::borrow::Cow<'static, str> {
         match &self {
-            Self::Typable { doc, .. } => doc,
-            Self::Static { doc, .. } => doc,
-            Self::Macro { name, .. } => name,
+            Self::Typable { doc, .. } => std::borrow::Cow::Owned(doc.clone()),
+            Self::Static { doc, .. } => crate::i18n::tr(*doc),
+            Self::Macro { name, .. } => std::borrow::Cow::Owned(name.clone()),
         }
     }
 
@@ -1078,7 +1078,7 @@ fn align_selections(cx: &mut Context) {
 
         if coords.row != anchor_coords.row {
             cx.editor
-                .set_error("align cannot work with multi line selections");
+                .set_error(crate::i18n::tr("align cannot work with multi line selections"));
             return;
         }
 
@@ -1456,7 +1456,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             let picker = ui::file_picker(cx.editor, path.into());
             cx.push_layer(Box::new(overlaid(picker)));
         } else if let Err(e) = cx.editor.open(path, action) {
-            cx.editor.set_error(format!("Open file failed: {:?}", e));
+                cx.editor.set_error(format!("{}: {:?}", crate::i18n::tr("Open file failed"), e));
         }
     }
 }
@@ -1493,7 +1493,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
                 let picker = ui::file_picker(cx.editor, path.into());
                 cx.push_layer(Box::new(overlaid(picker)));
             } else if let Err(e) = cx.editor.open(path, action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
+            cx.editor.set_error(format!("{}: {:?}", crate::i18n::tr("Open file failed"), e));
             }
         }
     }
@@ -2120,7 +2120,7 @@ fn select_regex(cx: &mut Context) {
             {
                 doc.set_selection(view.id, selection);
             } else if event == PromptEvent::Validate {
-                cx.editor.set_error("nothing selected");
+                cx.editor.set_error(crate::i18n::tr("nothing selected"));
             }
         },
     );
@@ -2213,9 +2213,9 @@ fn search_impl(
         }
         if show_warnings {
             if wrap_around && mat.is_some() {
-                editor.set_status("Wrapped around document");
+                editor.set_status(crate::i18n::tr("Wrapped around document"));
             } else {
-                editor.set_error("No more matches");
+                editor.set_error(crate::i18n::tr("No more matches"));
             }
         }
     }
@@ -2423,7 +2423,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
         .collect::<Vec<_>>()
         .join("|");
 
-    let msg = format!("register '{}' set to '{}'", register, &regex);
+    let msg = format!("{}'{}'{}'{}'", crate::i18n::tr("register "), register, crate::i18n::tr(" set to "), &regex);
     match cx.editor.registers.push(register, regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;
@@ -2463,7 +2463,7 @@ fn make_search_word_bounded(cx: &mut Context) {
         new_regex.push_str("\\b");
     }
 
-    let msg = format!("register '{}' set to '{}'", register, &new_regex);
+    let msg = format!("{}'{}'{}'{}'", crate::i18n::tr("register "), register, crate::i18n::tr(" set to "), &new_regex);
     match cx.editor.registers.push(register, new_regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;
@@ -2683,7 +2683,7 @@ fn global_search(cx: &mut Context) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
                     cx.editor
-                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+                        .set_error(format!("{}'{}': {}", crate::i18n::tr("Failed to open file "), path.display(), e));
                     return;
                 }
             };
@@ -2694,7 +2694,7 @@ fn global_search(cx: &mut Context) {
             let text = doc.text();
             if line_start >= text.len_lines() {
                 cx.editor.set_error(
-                    "The line you jumped to does not exist anymore because the file has changed.",
+                    crate::i18n::tr("The line you jumped to does not exist anymore because the file has changed."),
                 );
                 return;
             }
@@ -3103,7 +3103,7 @@ fn append_mode(cx: &mut Context) {
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
+        cx.editor.set_error(crate::i18n::tr("Workspace directory does not exist"));
         return;
     }
     let picker = ui::file_picker(cx.editor, root);
@@ -3121,12 +3121,12 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
             let cwd = helix_stdx::env::current_working_dir();
             if !cwd.exists() {
                 cx.editor.set_error(
-                    "Current buffer has no parent and current working directory does not exist",
+                    crate::i18n::tr("Current buffer has no parent and current working directory does not exist"),
                 );
                 return;
             }
             cx.editor.set_error(
-                "Current buffer has no parent, opening file picker in current working directory",
+                crate::i18n::tr("Current buffer has no parent, opening file picker in current working directory"),
             );
             cwd
         }
@@ -3140,7 +3140,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
-            .set_error("Current working directory does not exist");
+            .set_error(crate::i18n::tr("Current working directory does not exist"));
         return;
     }
     let picker = ui::file_picker(cx.editor, cwd);
@@ -3150,7 +3150,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 fn file_explorer(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
+        cx.editor.set_error(crate::i18n::tr("Workspace directory does not exist"));
         return;
     }
 
@@ -3170,12 +3170,12 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
             let cwd = helix_stdx::env::current_working_dir();
             if !cwd.exists() {
                 cx.editor.set_error(
-                    "Current buffer has no parent and current working directory does not exist",
+                    crate::i18n::tr("Current buffer has no parent and current working directory does not exist"),
                 );
                 return;
             }
             cx.editor.set_error(
-                "Current buffer has no parent, opening file explorer in current working directory",
+                crate::i18n::tr("Current buffer has no parent, opening file explorer in current working directory"),
             );
             cwd
         }
@@ -3190,7 +3190,7 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
-            .set_error("Current working directory does not exist");
+            .set_error(crate::i18n::tr("Current working directory does not exist"));
         return;
     }
 
@@ -3385,7 +3385,7 @@ fn changed_file_picker(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
-            .set_error("Current working directory does not exist");
+            .set_error(crate::i18n::tr("Current working directory does not exist"));
         return;
     }
 
@@ -3398,11 +3398,11 @@ fn changed_file_picker(cx: &mut Context) {
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
             match change {
-                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
-                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
-                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
-                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
-                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
+                FileChange::Untracked { .. } => Span::styled(format!("+ {}", crate::i18n::tr("untracked")), data.style_untracked),
+                FileChange::Modified { .. } => Span::styled(format!("~ {}", crate::i18n::tr("modified")), data.style_modified),
+                FileChange::Conflict { .. } => Span::styled(format!("x {}", crate::i18n::tr("conflict")), data.style_conflict),
+                FileChange::Deleted { .. } => Span::styled(format!("- {}", crate::i18n::tr("deleted")), data.style_deleted),
+                FileChange::Renamed { .. } => Span::styled(format!("> {}", crate::i18n::tr("renamed")), data.style_renamed),
             }
             .into()
         }),
@@ -3444,7 +3444,7 @@ fn changed_file_picker(cx: &mut Context) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
                 } else {
-                    format!("unable to open \"{}\"", path_to_open.display())
+                    format!("{} \"{}\"", crate::i18n::tr("unable to open"), path_to_open.display())
                 };
                 cx.editor.set_error(err);
             }
@@ -3482,7 +3482,7 @@ pub fn command_palette(cx: &mut Context) {
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
                         args: String::new(),
-                        doc: cmd.doc.to_owned(),
+                        doc: crate::i18n::tr(cmd.doc).into_owned(),
                     }),
             );
 
@@ -3554,7 +3554,7 @@ fn last_picker(cx: &mut Context) {
         if let Some(picker) = compositor.last_picker.take() {
             compositor.push(picker);
         } else {
-            cx.editor.set_error("no last picker")
+            cx.editor.set_error(crate::i18n::tr("no last picker"))
         }
     }));
 }
@@ -3689,7 +3689,7 @@ async fn make_format_callback(
         if let Some((path, force)) = write {
             let id = doc.id();
             if let Err(err) = editor.save(id, path, force) {
-                editor.set_error(format!("Error saving: {}", err));
+                editor.set_error(format!("{}: {}", crate::i18n::tr("Error saving"), err));
             }
         }
     }));
@@ -3943,7 +3943,7 @@ fn goto_last_accessed_file(cx: &mut Context) {
     if let Some(alt) = view.docs_access_history.pop() {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last accessed buffer")
+        cx.editor.set_error(crate::i18n::tr("no last accessed buffer"))
     }
 }
 
@@ -3971,7 +3971,7 @@ fn goto_last_modified_file(cx: &mut Context) {
     if let Some(alt) = alternate_file {
         cx.editor.switch(alt, Action::Replace);
     } else {
-        cx.editor.set_error("no last modified buffer")
+        cx.editor.set_error(crate::i18n::tr("no last modified buffer"))
     }
 }
 
@@ -4319,7 +4319,7 @@ pub mod insert {
                 key!(Enter) => {
                     if count != 1 {
                         cx.editor
-                            .set_error("inserting multiple newlines not yet supported");
+                            .set_error(crate::i18n::tr("inserting multiple newlines not yet supported"));
                         return;
                     }
                     insert_newline(cx)
@@ -4626,7 +4626,7 @@ fn undo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         if !doc.undo(view) {
-            cx.editor.set_status("Already at oldest change");
+            cx.editor.set_status(crate::i18n::tr("Already at oldest change"));
             break;
         }
     }
@@ -4637,7 +4637,7 @@ fn redo(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     for _ in 0..count {
         if !doc.redo(view) {
-            cx.editor.set_status("Already at newest change");
+            cx.editor.set_status(crate::i18n::tr("Already at newest change"));
             break;
         }
     }
@@ -4649,7 +4649,7 @@ fn earlier(cx: &mut Context) {
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
         if !doc.earlier(view, UndoKind::Steps(1)) {
-            cx.editor.set_status("Already at oldest change");
+            cx.editor.set_status(crate::i18n::tr("Already at oldest change"));
             break;
         }
     }
@@ -4661,7 +4661,7 @@ fn later(cx: &mut Context) {
     for _ in 0..count {
         // rather than doing in batch we do this so get error halfway
         if !doc.later(view, UndoKind::Steps(1)) {
-            cx.editor.set_status("Already at newest change");
+            cx.editor.set_status(crate::i18n::tr("Already at newest change"));
             break;
         }
     }
@@ -4706,8 +4706,11 @@ fn yank_impl(editor: &mut Editor, register: char) {
 
     match editor.registers.write(register, values) {
         Ok(_) => editor.set_status(format!(
-            "yanked {selections} selection{} to register {register}",
-            if selections == 1 { "" } else { "s" }
+            "{} {selections} {}{}{} {register}",
+            crate::i18n::tr("yanked"),
+            crate::i18n::tr("selection"),
+            if selections == 1 { "" } else { "s" },
+            crate::i18n::tr("to register"),
         )),
         Err(err) => editor.set_error(err.to_string()),
     }
@@ -4731,8 +4734,12 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
     match editor.registers.write(register, vec![joined]) {
         Ok(_) => editor.set_status(format!(
-            "joined and yanked {selections} selection{} to register {register}",
-            if selections == 1 { "" } else { "s" }
+            "{}{} {selections} {}{}{} {register}",
+            crate::i18n::tr("joined and"),
+            crate::i18n::tr("yanked"),
+            crate::i18n::tr("selection"),
+            if selections == 1 { "" } else { "s" },
+            crate::i18n::tr("to register"),
         )),
         Err(err) => editor.set_error(err.to_string()),
     }
@@ -4768,7 +4775,7 @@ pub(crate) fn yank_main_selection_to_register(editor: &mut Editor, register: cha
     let selection = doc.selection(view.id).primary().fragment(text).to_string();
 
     match editor.registers.write(register, vec![selection]) {
-        Ok(_) => editor.set_status(format!("yanked primary selection to register {register}",)),
+        Ok(_) => editor.set_status(format!("{} {} {} {register}", crate::i18n::tr("yanked"), crate::i18n::tr("primary selection"), crate::i18n::tr("to register"))),
         Err(err) => editor.set_error(err.to_string()),
     }
 }
@@ -5100,7 +5107,7 @@ fn format_selections(cx: &mut Context) {
 
     if doc.selection(view_id).len() != 1 {
         cx.editor
-            .set_error("format_selections only supports a single selection for now");
+            .set_error(crate::i18n::tr("format_selections only supports a single selection for now"));
         return;
     }
 
@@ -5116,7 +5123,7 @@ fn format_selections(cx: &mut Context) {
         })
     else {
         cx.editor
-            .set_error("No configured language server supports range formatting");
+            .set_error(crate::i18n::tr("No configured language server supports range formatting"));
         return;
     };
 
@@ -5291,7 +5298,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             {
                 doc.set_selection(view.id, selection);
             } else if event == PromptEvent::Validate {
-                cx.editor.set_error("no selections remaining");
+                cx.editor.set_error(crate::i18n::tr("no selections remaining"));
             }
         },
     )
@@ -5327,7 +5334,7 @@ fn remove_primary_selection(cx: &mut Context) {
 
     let selection = doc.selection(view.id);
     if selection.len() == 1 {
-        cx.editor.set_error("no selections remaining");
+        cx.editor.set_error(crate::i18n::tr("no selections remaining"));
         return;
     }
     let index = selection.primary_index();
@@ -5746,7 +5753,7 @@ fn jump_backward(cx: &mut Context) {
 fn save_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     push_jump(view, doc);
-    cx.editor.set_status("Selection saved to jumplist");
+    cx.editor.set_status(crate::i18n::tr("Selection saved to jumplist"));
 }
 
 fn rotate_view(cx: &mut Context) {
@@ -5900,7 +5907,7 @@ fn copy_between_registers(cx: &mut Context) {
         };
 
         let Some(values) = cx.editor.registers.read(source, cx.editor) else {
-            cx.editor.set_error(format!("register {source} is empty"));
+            cx.editor.set_error(format!("{} {source} {}", crate::i18n::tr("register"), crate::i18n::tr("is empty")));
             return;
         };
         let values: Vec<_> = values.map(|value| value.to_string()).collect();
@@ -5919,8 +5926,12 @@ fn copy_between_registers(cx: &mut Context) {
             let n_values = values.len();
             match cx.editor.registers.write(dest, values) {
                 Ok(_) => cx.editor.set_status(format!(
-                    "yanked {n_values} value{} from register {source} to {dest}",
-                    if n_values == 1 { "" } else { "s" }
+                    "{} {n_values} {}{} {} {source} {} {dest}",
+                    crate::i18n::tr("yanked"),
+                    crate::i18n::tr("value"),
+                    if n_values == 1 { "" } else { "s" },
+                    crate::i18n::tr("from register"),
+                    crate::i18n::tr("to"),
                 )),
                 Err(err) => cx.editor.set_error(err.to_string()),
             }
@@ -6007,7 +6018,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
             push_jump(view, doc);
             doc.set_selection(view.id, selection);
         } else {
-            editor.set_status("Syntax-tree is not available in current buffer");
+            editor.set_status(crate::i18n::tr("Syntax-tree is not available in current buffer"));
         }
     };
     cx.editor.apply_motion(motion);
@@ -6098,7 +6109,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 };
 
                 if ch == 'g' && doc.diff_handle().is_none() {
-                    editor.set_status("Diff is not available in current buffer");
+                    editor.set_status(crate::i18n::tr("Diff is not available in current buffer"));
                     return;
                 }
 
@@ -6157,24 +6168,24 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     });
 
     let title = match objtype {
-        textobject::TextObject::Inside => "Match inside",
-        textobject::TextObject::Around => "Match around",
+        textobject::TextObject::Inside => crate::i18n::tr("Match inside"),
+        textobject::TextObject::Around => crate::i18n::tr("Match around"),
         _ => return,
     };
     let help_text = [
-        ("w", "Word"),
-        ("W", "WORD"),
-        ("p", "Paragraph"),
-        ("t", "Type definition (tree-sitter)"),
-        ("f", "Function (tree-sitter)"),
-        ("a", "Argument/parameter (tree-sitter)"),
-        ("c", "Comment (tree-sitter)"),
-        ("T", "Test (tree-sitter)"),
-        ("e", "Data structure entry (tree-sitter)"),
-        ("m", "Closest surrounding pair (tree-sitter)"),
-        ("g", "Change"),
-        ("x", "(X)HTML element (tree-sitter)"),
-        (" ", "... or any character acting as a pair"),
+        ("w", crate::i18n::tr("Word")),
+        ("W", crate::i18n::tr("WORD")),
+        ("p", crate::i18n::tr("Paragraph")),
+        ("t", crate::i18n::tr("Type definition (tree-sitter)")),
+        ("f", crate::i18n::tr("Function (tree-sitter)")),
+        ("a", crate::i18n::tr("Argument/parameter (tree-sitter)")),
+        ("c", crate::i18n::tr("Comment (tree-sitter)")),
+        ("T", crate::i18n::tr("Test (tree-sitter)")),
+        ("e", crate::i18n::tr("Data structure entry (tree-sitter)")),
+        ("m", crate::i18n::tr("Closest surrounding pair (tree-sitter)")),
+        ("g", crate::i18n::tr("Change")),
+        ("x", crate::i18n::tr("(X)HTML element (tree-sitter)")),
+        (" ", crate::i18n::tr("... or any character acting as a pair")),
     ];
 
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
@@ -6188,6 +6199,20 @@ static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
     ("[ or ]", "Square brackets"),
     (" ", "... or any character"),
 ];
+
+fn surround_help_text() -> Vec<(&'static str, Cow<'static, str>)> {
+    SURROUND_HELP_TEXT
+        .iter()
+        .map(|(key, val)| (*key, crate::i18n::tr(*val)))
+        .collect()
+}
+
+fn surround_help_text_without_m() -> Vec<(&'static str, Cow<'static, str>)> {
+    SURROUND_HELP_TEXT[1..]
+        .iter()
+        .map(|(key, val)| (*key, crate::i18n::tr(*val)))
+        .collect()
+}
 
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
@@ -6300,14 +6325,14 @@ fn surround_replace(cx: &mut Context) {
         });
 
         cx.editor.autoinfo = Some(Info::new(
-            "Replace with a pair of",
-            &SURROUND_HELP_TEXT[1..],
+            crate::i18n::tr("Replace with a pair of"),
+            &surround_help_text_without_m(),
         ));
     });
 
     cx.editor.autoinfo = Some(Info::new(
-        "Replace surrounding pair of",
-        &SURROUND_HELP_TEXT,
+        crate::i18n::tr("Replace surrounding pair of"),
+        &surround_help_text(),
     ));
 }
 
@@ -6339,7 +6364,7 @@ fn surround_delete(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new("Delete surrounding pair of", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new(crate::i18n::tr("Delete surrounding pair of"), &surround_help_text()));
 }
 
 #[derive(Eq, PartialEq)]
@@ -6390,7 +6415,7 @@ fn shell_keep_pipe(cx: &mut Context) {
         }
 
         if ranges.is_empty() {
-            cx.editor.set_error("No selections remaining");
+            cx.editor.set_error(crate::i18n::tr("No selections remaining"));
             return;
         }
 
@@ -6710,7 +6735,7 @@ fn goto_next_tabstop_impl(cx: &mut Context, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
     let Some(mut snippet) = doc.active_snippet.take() else {
-        cx.editor.set_error("no snippet is currently active");
+        cx.editor.set_error(crate::i18n::tr("no snippet is currently active"));
         return;
     };
     let tabstop = match direction {
@@ -6757,14 +6782,14 @@ fn record_macro(cx: &mut Context) {
         match cx.editor.registers.write(reg, vec![s]) {
             Ok(_) => cx
                 .editor
-                .set_status(format!("Recorded to register [{}]", reg)),
+                .set_status(format!("{}{}]", crate::i18n::tr("Recorded to register ["), reg)),
             Err(err) => cx.editor.set_error(err.to_string()),
         }
     } else {
         let reg = cx.register.take().unwrap_or('@');
         cx.editor.macro_recording = Some((reg, Vec::new()));
         cx.editor
-            .set_status(format!("Recording to register [{}]", reg));
+            .set_status(format!("{}{}]", crate::i18n::tr("Recording to register ["), reg));
     }
 }
 
@@ -6773,8 +6798,10 @@ fn replay_macro(cx: &mut Context) {
 
     if cx.editor.macro_replaying.contains(&reg) {
         cx.editor.set_error(format!(
-            "Cannot replay from register [{}] because already replaying from same register",
-            reg
+            "{}{}{}",
+            crate::i18n::tr("Cannot replay from register ["),
+            reg,
+            crate::i18n::tr("] because already replaying from same register"),
         ));
         return;
     }
@@ -6789,12 +6816,12 @@ fn replay_macro(cx: &mut Context) {
         match helix_view::input::parse_macro(&keys) {
             Ok(keys) => keys,
             Err(err) => {
-                cx.editor.set_error(format!("Invalid macro: {}", err));
+                cx.editor.set_error(format!("{}: {}", crate::i18n::tr("Invalid macro"), err));
                 return;
             }
         }
     } else {
-        cx.editor.set_error(format!("Register [{}] empty", reg));
+        cx.editor.set_error(format!("{}{}{}", crate::i18n::tr("Register ["), reg, crate::i18n::tr("] empty")));
         return;
     };
 
@@ -7026,7 +7053,7 @@ fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
         syntax_symbol_picker(cx);
     } else {
         cx.editor
-            .set_error("No language server supporting document symbols or syntax info available");
+            .set_error(crate::i18n::tr("No language server supporting document symbols or syntax info available"));
     }
 }
 

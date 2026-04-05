@@ -94,17 +94,26 @@ pub fn general() -> std::io::Result<()> {
     for rt_dir in rt_dirs.iter() {
         if let Ok(path) = std::fs::read_link(rt_dir) {
             let msg = format!(
-                "Runtime directory {} is symlinked to: {}",
+                "{} {} {}",
+                crate::i18n::tr("Runtime directory"),
                 rt_dir.display(),
-                path.display()
+                crate::i18n::tr("is symlinked to: {}").replace("{}", &path.display().to_string())
             );
             writeln!(stdout, "{}", msg.yellow())?;
         }
         if !rt_dir.exists() {
-            let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
+            let msg = format!(
+                "{}: {}",
+                crate::i18n::tr("Runtime directory does not exist"),
+                rt_dir.display()
+            );
             writeln!(stdout, "{}", msg.yellow())?;
         } else if rt_dir.read_dir().ok().map(|it| it.count()) == Some(0) {
-            let msg = format!("Runtime directory is empty: {}", rt_dir.display());
+            let msg = format!(
+                "{}: {}",
+                crate::i18n::tr("Runtime directory is empty"),
+                rt_dir.display()
+            );
             writeln!(stdout, "{}", msg.yellow())?;
         }
     }
@@ -122,7 +131,11 @@ pub fn clipboard() -> std::io::Result<()> {
             Config::default()
         }
         Err(err) => {
-            writeln!(stdout, "{}", "Configuration file malformed".red())?;
+            writeln!(
+                stdout,
+                "{}",
+                crate::i18n::tr("Configuration file malformed").red()
+            )?;
             writeln!(stdout, "{}", err)?;
             return Ok(());
         }
@@ -133,12 +146,12 @@ pub fn clipboard() -> std::io::Result<()> {
             writeln!(
                 stdout,
                 "{}",
-                "System clipboard provider: Not installed".red()
+                crate::i18n::tr("System clipboard provider: Not installed").red()
             )?;
             writeln!(
                 stdout,
                 "    {}",
-                "For troubleshooting system clipboard issues, refer".red()
+                crate::i18n::tr("For troubleshooting system clipboard issues, refer").red()
             )?;
             writeln!(stdout, "    {}",
                 "https://github.com/helix-editor/helix/wiki/Troubleshooting#copypaste-fromto-system-clipboard-not-working"
@@ -172,10 +185,14 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
             writeln!(
                 stderr,
                 "{}: {}",
-                "Error parsing user language config".red(),
+                crate::i18n::tr("Error parsing user language config").red(),
                 err
             )?;
-            writeln!(stderr, "{}", "Using default language config".yellow())?;
+            writeln!(
+                stderr,
+                "{}",
+                crate::i18n::tr("Using default language config").yellow()
+            )?;
             default_lang_config()
         }
     };
@@ -269,8 +286,9 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     if selection.is_some() {
         writeln!(
             stdout,
-            "\nThis list is filtered according to the 'use-grammars' option in languages.toml file.\n\
-            To see the full list, use the '--health all' or '--health all-languages' option."
+            "\n{}\n{}",
+            crate::i18n::tr("This list is filtered according to the 'use-grammars' option in languages.toml file."),
+            crate::i18n::tr("To see the full list, use the '--health all' or '--health all-languages' option.")
         )?;
     }
 
@@ -307,7 +325,10 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     {
         Some(l) => l,
         None => {
-            let msg = format!("Language '{}' not found", lang_str);
+            let msg = format!(
+                "{}",
+                crate::i18n::tr("Language '{}' not found").replace("{}", &lang_str)
+            );
             writeln!(stdout, "{}", msg.red())?;
             let suggestions: Vec<&str> = syn_loader_conf
                 .language
@@ -319,8 +340,14 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
                 let suggestions = suggestions.join(", ");
                 writeln!(
                     stdout,
-                    "Did you mean one of these: {} ?",
-                    suggestions.yellow()
+                    "{}",
+                    format!(
+                        "{} {}",
+                        crate::i18n::tr("Did you mean one of these: {} ?")
+                            .replace("{}", &suggestions),
+                        ""
+                    )
+                    .yellow()
                 )?;
             }
             return Ok(());
@@ -389,7 +416,14 @@ fn probe_protocols<'a, I: Iterator<Item = (&'a str, &'a str)> + 'a>(
     for (name, cmd) in server_cmds {
         let (diag, icon) = match helix_stdx::env::which(cmd) {
             Ok(path) => (path.display().to_string().green(), "✓".green()),
-            Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+            Err(_) => (
+                format!(
+                    "{}",
+                    crate::i18n::tr("'{}' not found in $PATH").replace("{}", cmd)
+                )
+                .red(),
+                "✘".red(),
+            ),
         };
         writeln!(stdout, "  {} {}: {}", icon, name, diag)?;
     }
@@ -411,7 +445,14 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
 
     let (diag, icon) = match helix_stdx::env::which(&cmd) {
         Ok(path) => (path.display().to_string().green(), "✓".green()),
-        Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+        Err(_) => (
+            format!(
+                "{}",
+                crate::i18n::tr("'{}' not found in $PATH").replace("{}", &cmd)
+            )
+            .red(),
+            "✘".red(),
+        ),
     };
     writeln!(stdout, "  {} {}", icon, diag)?;
 

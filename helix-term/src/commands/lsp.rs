@@ -46,10 +46,7 @@ macro_rules! language_server_with_feature {
         match language_server {
             Some(language_server) => language_server,
             None => {
-                $editor.set_error(format!(
-                    "No configured language server supports {}",
-                    $feature
-                ));
+                $editor.set_error(crate::i18n::tr("No configured language server supports {}").replace("{}", &$feature.to_string()));
                 return;
             }
         }
@@ -114,7 +111,7 @@ fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     push_jump(view, doc);
 
     let Some(path) = location.uri.as_path() else {
-        let err = format!("unable to convert URI to filepath: {:?}", location.uri);
+        let err = crate::i18n::tr("unable to convert URI to filepath: {:?}").replace("{:?}", &format!("{:?}", location.uri));
         editor.set_error(err);
         return;
     };
@@ -392,7 +389,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     if futures.is_empty() {
         cx.editor
-            .set_error("No configured language server supports document symbols");
+            .set_error(crate::i18n::tr("No configured language server supports document symbols"));
         return;
     }
 
@@ -453,7 +450,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         == 0
     {
         cx.editor
-            .set_error("No configured language server supports workspace symbols");
+            .set_error(crate::i18n::tr("No configured language server supports workspace symbols"));
         return;
     }
 
@@ -504,7 +501,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             .collect();
 
         if futures.is_empty() {
-            editor.set_error("No configured language server supports workspace symbols");
+            editor.set_error(crate::i18n::tr("No configured language server supports workspace symbols"));
         }
 
         let injector = injector.clone();
@@ -748,7 +745,7 @@ pub fn code_action(cx: &mut Context) {
 
     if futures.is_empty() {
         cx.editor
-            .set_error("No configured language server supports code actions");
+            .set_error(crate::i18n::tr("No configured language server supports code actions"));
         return;
     }
 
@@ -764,7 +761,7 @@ pub fn code_action(cx: &mut Context) {
 
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if actions.is_empty() {
-                editor.set_error("No code actions available");
+                editor.set_error(crate::i18n::tr("No code actions available"));
                 return;
             }
             let mut picker = ui::Menu::new(actions, (), move |editor, action, event| {
@@ -776,7 +773,7 @@ pub fn code_action(cx: &mut Context) {
                 let action = action.unwrap();
                 let Some(language_server) = editor.language_server_by_id(action.language_server_id)
                 else {
-                    editor.set_error("Language Server disappeared");
+                    editor.set_error(crate::i18n::tr("Language Server disappeared"));
                     return;
                 };
                 let offset_encoding = language_server.offset_encoding();
@@ -936,11 +933,11 @@ where
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
                 editor.set_error(match feature {
-                    LanguageServerFeature::GotoDeclaration => "No declaration found.",
-                    LanguageServerFeature::GotoDefinition => "No definition found.",
-                    LanguageServerFeature::GotoTypeDefinition => "No type definition found.",
-                    LanguageServerFeature::GotoImplementation => "No implementation found.",
-                    _ => "No location found.",
+                    LanguageServerFeature::GotoDeclaration => crate::i18n::tr("No declaration found."),
+                    LanguageServerFeature::GotoDefinition => crate::i18n::tr("No definition found."),
+                    LanguageServerFeature::GotoTypeDefinition => crate::i18n::tr("No type definition found."),
+                    LanguageServerFeature::GotoImplementation => crate::i18n::tr("No implementation found."),
+                    _ => crate::i18n::tr("No location found."),
                 });
             } else {
                 goto_impl(editor, compositor, locations);
@@ -1018,7 +1015,7 @@ pub fn goto_reference(cx: &mut Context) {
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if locations.is_empty() {
-                editor.set_error("No references found.");
+                editor.set_error(crate::i18n::tr("No references found."));
             } else {
                 goto_impl(editor, compositor, locations);
             }
@@ -1043,7 +1040,7 @@ pub fn hover(cx: &mut Context) {
         == 0
     {
         cx.editor
-            .set_error("No configured language server supports hover");
+            .set_error(crate::i18n::tr("No configured language server supports hover"));
         return;
     }
 
@@ -1076,7 +1073,7 @@ pub fn hover(cx: &mut Context) {
 
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if hovers.is_empty() {
-                editor.set_status("No hover results available.");
+                editor.set_status(crate::i18n::tr("No hover results available."));
                 return;
             }
 
@@ -1149,7 +1146,7 @@ pub fn rename_symbol(cx: &mut Context) {
                     .find(|ls| language_server_id.is_none_or(|id| id == ls.id()))
                 else {
                     cx.editor
-                        .set_error("No configured language server supports symbol renaming");
+                        .set_error(crate::i18n::tr("No configured language server supports symbol renaming"));
                     return;
                 };
 
@@ -1183,7 +1180,7 @@ pub fn rename_symbol(cx: &mut Context) {
         .is_none()
     {
         cx.editor
-            .set_error("No configured language server supports symbol renaming");
+            .set_error(crate::i18n::tr("No configured language server supports symbol renaming"));
         return;
     }
 

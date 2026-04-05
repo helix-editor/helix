@@ -45,67 +45,149 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
+        let kind_text;
         let kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text".into(),
-                Some(lsp::CompletionItemKind::METHOD) => "method".into(),
-                Some(lsp::CompletionItemKind::FUNCTION) => "function".into(),
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor".into(),
-                Some(lsp::CompletionItemKind::FIELD) => "field".into(),
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable".into(),
-                Some(lsp::CompletionItemKind::CLASS) => "class".into(),
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface".into(),
-                Some(lsp::CompletionItemKind::MODULE) => "module".into(),
-                Some(lsp::CompletionItemKind::PROPERTY) => "property".into(),
-                Some(lsp::CompletionItemKind::UNIT) => "unit".into(),
-                Some(lsp::CompletionItemKind::VALUE) => "value".into(),
-                Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
-                Some(lsp::CompletionItemKind::COLOR) => item
-                    .documentation
-                    .as_ref()
-                    .and_then(|docs| {
-                        let text = match docs {
-                            lsp::Documentation::String(text) => text,
-                            lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                                value, ..
-                            }) => value,
-                        };
-                        // Language servers which send Color completion items tend to include a 6
-                        // digit hex code at the end for the color. The extra 1 digit is for the '#'
-                        text.get(text.len().checked_sub(7)?..)
-                    })
-                    .and_then(|c| Color::from_hex(c).ok())
-                    .map_or("color".into(), |color| {
-                        Spans::from(vec![
-                            Span::raw("color "),
-                            Span::styled("■", Style::default().fg(color)),
-                        ])
-                    }),
-                Some(lsp::CompletionItemKind::FILE) => "file".into(),
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
-                Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member".into(),
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant".into(),
-                Some(lsp::CompletionItemKind::STRUCT) => "struct".into(),
-                Some(lsp::CompletionItemKind::EVENT) => "event".into(),
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator".into(),
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param".into(),
+                Some(lsp::CompletionItemKind::TEXT) => {
+                    kind_text = "text";
+                    crate::i18n::tr("text").into()
+                }
+                Some(lsp::CompletionItemKind::METHOD) => {
+                    kind_text = "method";
+                    crate::i18n::tr("method").into()
+                }
+                Some(lsp::CompletionItemKind::FUNCTION) => {
+                    kind_text = "function";
+                    crate::i18n::tr("function").into()
+                }
+                Some(lsp::CompletionItemKind::CONSTRUCTOR) => {
+                    kind_text = "constructor";
+                    crate::i18n::tr("constructor").into()
+                }
+                Some(lsp::CompletionItemKind::FIELD) => {
+                    kind_text = "field";
+                    crate::i18n::tr("field").into()
+                }
+                Some(lsp::CompletionItemKind::VARIABLE) => {
+                    kind_text = "variable";
+                    crate::i18n::tr("variable").into()
+                }
+                Some(lsp::CompletionItemKind::CLASS) => {
+                    kind_text = "class";
+                    crate::i18n::tr("class").into()
+                }
+                Some(lsp::CompletionItemKind::INTERFACE) => {
+                    kind_text = "interface";
+                    crate::i18n::tr("interface").into()
+                }
+                Some(lsp::CompletionItemKind::MODULE) => {
+                    kind_text = "module";
+                    crate::i18n::tr("module").into()
+                }
+                Some(lsp::CompletionItemKind::PROPERTY) => {
+                    kind_text = "property";
+                    crate::i18n::tr("property").into()
+                }
+                Some(lsp::CompletionItemKind::UNIT) => {
+                    kind_text = "unit";
+                    crate::i18n::tr("unit").into()
+                }
+                Some(lsp::CompletionItemKind::VALUE) => {
+                    kind_text = "value";
+                    crate::i18n::tr("value").into()
+                }
+                Some(lsp::CompletionItemKind::ENUM) => {
+                    kind_text = "enum";
+                    crate::i18n::tr("enum").into()
+                }
+                Some(lsp::CompletionItemKind::KEYWORD) => {
+                    kind_text = "keyword";
+                    crate::i18n::tr("keyword").into()
+                }
+                Some(lsp::CompletionItemKind::SNIPPET) => {
+                    kind_text = "snippet";
+                    crate::i18n::tr("snippet").into()
+                }
+                Some(lsp::CompletionItemKind::COLOR) => {
+                    kind_text = "color";
+                    item.documentation
+                        .as_ref()
+                        .and_then(|docs| {
+                            let text = match docs {
+                                lsp::Documentation::String(text) => text,
+                                lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                    value,
+                                    ..
+                                }) => value,
+                            };
+                            text.get(text.len().checked_sub(7)?..)
+                        })
+                        .and_then(|c| Color::from_hex(c).ok())
+                        .map(|color| {
+                            Spans::from(vec![
+                                Span::raw(crate::i18n::tr("color ").into_owned()),
+                                Span::styled("■", Style::default().fg(color)),
+                            ])
+                        })
+                        .unwrap_or_else(|| Span::raw(crate::i18n::tr("color").into_owned()).into())
+                }
+                Some(lsp::CompletionItemKind::FILE) => {
+                    kind_text = "file";
+                    crate::i18n::tr("file").into()
+                }
+                Some(lsp::CompletionItemKind::REFERENCE) => {
+                    kind_text = "reference";
+                    crate::i18n::tr("reference").into()
+                }
+                Some(lsp::CompletionItemKind::FOLDER) => {
+                    kind_text = "folder";
+                    crate::i18n::tr("folder").into()
+                }
+                Some(lsp::CompletionItemKind::ENUM_MEMBER) => {
+                    kind_text = "enum_member";
+                    crate::i18n::tr("enum member").into()
+                }
+                Some(lsp::CompletionItemKind::CONSTANT) => {
+                    kind_text = "constant";
+                    crate::i18n::tr("constant").into()
+                }
+                Some(lsp::CompletionItemKind::STRUCT) => {
+                    kind_text = "struct";
+                    crate::i18n::tr("struct").into()
+                }
+                Some(lsp::CompletionItemKind::EVENT) => {
+                    kind_text = "event";
+                    crate::i18n::tr("event").into()
+                }
+                Some(lsp::CompletionItemKind::OPERATOR) => {
+                    kind_text = "operator";
+                    crate::i18n::tr("operator").into()
+                }
+                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => {
+                    kind_text = "type parameter";
+                    crate::i18n::tr("type parameter").into()
+                }
                 Some(kind) => {
                     log::error!("Received unknown completion item kind: {:?}", kind);
-                    "".into()
+                    kind_text = "";
+                    Spans::default()
                 }
-                None => "".into(),
+                None => {
+                    kind_text = "";
+                    Spans::default()
+                }
             },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => {
+                kind_text = kind.as_ref();
+                Spans::from(kind.clone().into_owned())
+            }
         };
 
         let label = Span::styled(
             label,
             if deprecated {
                 Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.0[0].content == "folder" {
+            } else if kind_text == "folder" {
                 *dir_style
             } else {
                 Style::default()
