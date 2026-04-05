@@ -194,10 +194,10 @@ pub fn expand_register<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow
         chars.next().is_none(),
         "Invalid register `{content}`: should only be a single character"
     );
-    let Some(values) = editor.registers.read(r, editor) else {
-        return Ok(Cow::Owned(String::new()));
-    };
-    Ok(Cow::Owned(values.collect::<String>()))
+    match editor.registers.read(r, editor) {
+        Some(values) => Ok(Cow::Owned(values.collect())),
+        None => Ok(Cow::Borrowed("")),
+    }
 }
 
 /// Expand a token's contents recursively.
