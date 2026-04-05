@@ -13,7 +13,6 @@ pub struct Args {
     pub load_tutor: bool,
     pub fetch_grammars: bool,
     pub build_grammars: bool,
-    pub verbose_grammars: bool,
     pub split: Option<Layout>,
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
@@ -67,7 +66,6 @@ impl Args {
                         anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
                     }
                 },
-                "-v" | "--verbose" => args.verbose_grammars = true,
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),

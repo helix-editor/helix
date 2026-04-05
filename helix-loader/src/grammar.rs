@@ -88,7 +88,7 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-pub fn fetch_grammars(verbose: bool) -> Result<()> {
+pub fn fetch_grammars() -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
@@ -104,12 +104,10 @@ pub fn fetch_grammars(verbose: bool) -> Result<()> {
     let results = run_parallel(grammars, move |grammar| {
         let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
 
-        if verbose {
-            println!(
-                "Fetching grammars ({}/{}): {}",
-                current, total, grammar.grammar_id
-            );
-        };
+        println!(
+            "Fetching grammars ({}/{}): {}",
+            current, total, grammar.grammar_id
+        );
         fetch_grammar(grammar)
     });
 
@@ -164,7 +162,7 @@ pub fn fetch_grammars(verbose: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>, verbose: bool) -> Result<()> {
+pub fn build_grammars(target: Option<String>) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
@@ -178,12 +176,10 @@ pub fn build_grammars(target: Option<String>, verbose: bool) -> Result<()> {
     let results = run_parallel(grammars, move |grammar| {
         let current = counter.fetch_add(1, Ordering::Relaxed) + 1;
 
-        if verbose {
-            println!(
-                "Building grammars ({}/{}): {}",
-                current, total, grammar.grammar_id
-            );
-        };
+        println!(
+            "Building grammars ({}/{}): {}",
+            current, total, grammar.grammar_id
+        );
         build_grammar(grammar, target.as_deref())
     });
 

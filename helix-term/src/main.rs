@@ -105,12 +105,12 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars(args.verbose_grammars)?;
+        helix_loader::grammar::fetch_grammars()?;
         return Ok(0);
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars(None, args.verbose_grammars)?;
+        helix_loader::grammar::build_grammars(None)?;
         return Ok(0);
     }
 
