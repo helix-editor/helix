@@ -1097,7 +1097,7 @@ impl Default for Config {
             mouse: true,
             mouse_yank_register: '*',
             shell: if cfg!(windows) {
-                vec!["cmd".to_owned(), "/C".to_owned()]
+                vec!["powershell".to_owned(), "-c".to_owned()]
             } else {
                 vec!["sh".to_owned(), "-c".to_owned()]
             },
