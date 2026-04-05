@@ -287,11 +287,10 @@ fn default_config_file() -> PathBuf {
 }
 
 fn ensure_parent_dir(path: &Path) {
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
+    if let Some(parent) = path.parent()
+        && !parent.exists() {
             std::fs::create_dir_all(parent).ok();
         }
-    }
 }
 
 #[cfg(test)]

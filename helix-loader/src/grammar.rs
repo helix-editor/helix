@@ -632,11 +632,10 @@ fn needs_recompile(
     if mtime(parser_c_path)? > lib_mtime {
         return Ok(true);
     }
-    if let Some(scanner_path) = scanner_path {
-        if mtime(scanner_path)? > lib_mtime {
+    if let Some(scanner_path) = scanner_path
+        && mtime(scanner_path)? > lib_mtime {
             return Ok(true);
         }
-    }
     Ok(false)
 }
 

@@ -1413,11 +1413,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                     if lsp_targets_seen.insert(target.clone()) {
                         lsp_targets.push(target);
                     }
-                } else if unresolved_links.insert((link.start, link.end, link.language_server_id)) {
-                    if let Some(request) = resolve_document_link_request(cx.editor, link) {
+                } else if unresolved_links.insert((link.start, link.end, link.language_server_id))
+                    && let Some(request) = resolve_document_link_request(cx.editor, link) {
                         resolve_requests.push(request);
                     }
-                }
             }
             if !matched {
                 fallback_ranges.push(*selection);
@@ -1440,11 +1439,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             for request in resolve_requests {
                 match request.await {
                     Ok(link) => {
-                        if let Some(target) = link.target {
-                            if seen.insert(target.clone()) {
+                        if let Some(target) = link.target
+                            && seen.insert(target.clone()) {
                                 targets.push(target);
                             }
-                        }
                     }
                     Err(err) => log::warn!("Failed to resolve document link: {err}"),
                 }
@@ -5914,12 +5912,11 @@ fn vsplit_new(cx: &mut Context) {
 }
 
 fn wclose(cx: &mut Context) {
-    if cx.editor.tree.views().count() == 1 {
-        if let Err(err) = typed::buffers_remaining_impl(cx.editor) {
+    if cx.editor.tree.views().count() == 1
+        && let Err(err) = typed::buffers_remaining_impl(cx.editor) {
             cx.editor.set_error(err.to_string());
             return;
         }
-    }
     let view_id = view!(cx.editor).id;
     // close current split
     cx.editor.close(view_id);

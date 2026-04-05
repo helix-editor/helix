@@ -1031,14 +1031,13 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview()?;
-            } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
+            } else if let Some(theme_name) = args.first()
+                && let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
                     cx.editor.set_theme_preview(theme)?;
-                };
-            };
+                }
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
@@ -2747,9 +2746,9 @@ fn move_buffer_impl(
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
 
-    if old_path.exists() {
-        if let Some(parent) = new_path.parent() {
-            if !parent.exists() {
+    if old_path.exists()
+        && let Some(parent) = new_path.parent()
+            && !parent.exists() {
                 if options.force {
                     std::fs::DirBuilder::new().recursive(true).create(parent)?;
                 } else {
@@ -2758,8 +2757,6 @@ fn move_buffer_impl(
                     )
                 }
             }
-        }
-    }
 
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");

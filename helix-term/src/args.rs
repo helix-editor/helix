@@ -118,15 +118,14 @@ impl Args {
             insert_file_with_position(&arg);
         }
 
-        if line_number != 0 {
-            if let Some(first_position) = args
+        if line_number != 0
+            && let Some(first_position) = args
                 .files
                 .first_mut()
                 .and_then(|(_, positions)| positions.first_mut())
             {
                 first_position.row = line_number;
             }
-        }
 
         Ok(args)
     }

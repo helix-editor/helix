@@ -66,11 +66,10 @@ impl WorkspaceTrust {
             }
         }
         // let chains aren't supported in current MSRV
-        if let Ok(false) = fs::exists(data_dir()) {
-            if let Err(e) = fs::create_dir_all(data_dir()) {
+        if let Ok(false) = fs::exists(data_dir())
+            && let Err(e) = fs::create_dir_all(data_dir()) {
                 log::error!("Couldn't create helix's data directory: {:?}", e);
             };
-        }
         if let Err(e) = fs::write(workspace_trust_file(), trust_text) {
             log::error!("Error during write of workspace_trust file: {:?}", e);
         }
@@ -85,11 +84,10 @@ impl WorkspaceTrust {
                 }
             }
             // let chains aren't supported in current MSRV
-            if let Ok(false) = fs::exists(data_dir()) {
-                if let Err(e) = fs::create_dir_all(data_dir()) {
+            if let Ok(false) = fs::exists(data_dir())
+                && let Err(e) = fs::create_dir_all(data_dir()) {
                     log::error!("Couldn't create helix's data directory: {:?}", e);
                 };
-            }
             if let Err(e) = fs::write(workspace_exclude_file(), trust_text) {
                 log::error!("Error during write of workspace_trust file: {:?}", e);
             }

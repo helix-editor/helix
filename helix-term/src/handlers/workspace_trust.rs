@@ -21,14 +21,13 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         let doc = doc!(event.editor, &event.doc);
 
         // If there is no servers to be loaded, then the workspace might not be trusted yet
-        if doc.language_servers().next().is_none() {
-            if let TrustUntrustStatus::DenyOnce =
+        if doc.language_servers().next().is_none()
+            && let TrustUntrustStatus::DenyOnce =
                 quick_query_workspace_with_explicit_untrust(event.editor.config().insecure)
             {
                 let (workspace, _) = helix_loader::find_workspace();
                 job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
             }
-        }
         Ok(())
     });
 }

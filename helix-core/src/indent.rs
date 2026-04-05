@@ -295,11 +295,10 @@ fn add_indent_level(
 fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>) -> bool {
     let line = text.byte_to_line(node.start_byte() as usize);
     let mut line_start_byte_pos = text.line_to_byte(line) as u32;
-    if let Some(pos) = new_line_byte_pos {
-        if line_start_byte_pos < pos && pos <= node.start_byte() {
+    if let Some(pos) = new_line_byte_pos
+        && line_start_byte_pos < pos && pos <= node.start_byte() {
             line_start_byte_pos = pos;
         }
-    }
     text.byte_slice(line_start_byte_pos as usize..node.start_byte() as usize)
         .chars()
         .all(|c| c.is_whitespace())
@@ -1020,8 +1019,8 @@ pub fn indent_for_newline(
         indent_heuristic,
         syntax.and_then(|syntax| loader.indent_query(syntax.root_language())),
         syntax,
-    ) {
-        if let Some(indent) = treesitter_indent_for_pos(
+    )
+        && let Some(indent) = treesitter_indent_for_pos(
             query,
             syntax,
             tab_width,
@@ -1080,7 +1079,6 @@ pub fn indent_for_newline(
             }
             return indent.to_string(indent_style, tab_width);
         };
-    }
     // Fallback in case we either don't have indent queries or they failed for some reason
     let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)

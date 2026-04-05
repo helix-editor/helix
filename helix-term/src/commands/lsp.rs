@@ -790,13 +790,11 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         // we support lsp "codeAction/resolve" for `edit` and `command` fields
                         let mut resolved_code_action = None;
-                        if code_action.edit.is_none() || code_action.command.is_none() {
-                            if let Some(future) = language_server.resolve_code_action(code_action) {
-                                if let Ok(code_action) = helix_lsp::block_on(future) {
+                        if (code_action.edit.is_none() || code_action.command.is_none())
+                            && let Some(future) = language_server.resolve_code_action(code_action)
+                                && let Ok(code_action) = helix_lsp::block_on(future) {
                                     resolved_code_action = Some(code_action);
                                 }
-                            }
-                        }
                         let resolved_code_action =
                             resolved_code_action.as_ref().unwrap_or(code_action);
 

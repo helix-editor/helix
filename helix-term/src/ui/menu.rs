@@ -376,8 +376,8 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let render_borders = cx.editor.menu_border();
 
-        if !render_borders {
-            if let Some(cursor) = self.cursor {
+        if !render_borders
+            && let Some(cursor) = self.cursor {
                 let offset_from_top = cursor - scroll;
                 let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
                 left.set_style(selected);
@@ -387,7 +387,6 @@ impl<T: Item + 'static> Component for Menu<T> {
                 )];
                 right.set_style(selected);
             }
-        }
 
         let fits = len <= win_height;
 
