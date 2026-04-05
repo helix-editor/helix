@@ -772,13 +772,25 @@ impl Client {
         Ok(())
     }
 
-    /// Forcefully shuts down the language server ignoring any errors.
-    pub async fn force_shutdown(&self) -> Result<()> {
-        if let Err(e) = self.shutdown().await {
-            log::warn!("language server failed to terminate gracefully - {}", e);
-        }
+    /// Sends the LSP shutdown request followed immediately by the exit
+    /// notification, without waiting for the shutdown response. The server
+    /// receives both messages in order and exits gracefully (code 0 per LSP
+    /// spec). Any late shutdown response is silently discarded.
+    pub fn force_shutdown(&self) {
+        let id = self.next_request_id();
+        let request = jsonrpc::MethodCall {
+            jsonrpc: Some(jsonrpc::Version::V2),
+            id,
+            method: <lsp::request::Shutdown as lsp::request::Request>::METHOD.to_string(),
+            params: jsonrpc::Params::None,
+        };
+        // The response receiver is dropped immediately; we do not wait for a reply.
+        let (chan, _) = tokio::sync::mpsc::channel(1);
+        let _ = self.server_tx.send(Payload::Request {
+            chan,
+            value: request,
+        });
         self.exit();
-        Ok(())
     }
 
     // -------------------------------------------------------------------------------------------

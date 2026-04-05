@@ -8,6 +8,7 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -44,6 +45,8 @@ pub struct Transport {
     id: LanguageServerId,
     name: String,
     pending_requests: Mutex<HashMap<jsonrpc::Id, Sender<Result<Value>>>>,
+    shutdown_requested: AtomicBool,
+    inject_tx: UnboundedSender<Payload>,
 }
 
 impl Transport {
@@ -60,12 +63,15 @@ impl Transport {
     ) {
         let (client_tx, rx) = unbounded_channel();
         let (tx, client_rx) = unbounded_channel();
+        let (inject_tx, inject_rx) = unbounded_channel();
         let notify = Arc::new(Notify::new());
 
         let transport = Self {
             id,
             name,
             pending_requests: Mutex::new(HashMap::default()),
+            shutdown_requested: AtomicBool::new(false),
+            inject_tx,
         };
 
         let transport = Arc::new(transport);
@@ -81,6 +87,7 @@ impl Transport {
             server_stdin,
             client_tx,
             client_rx,
+            inject_rx,
             notify.clone(),
         ));
 
@@ -210,11 +217,30 @@ impl Transport {
                 self.process_request_response(output, language_server_name)
                     .await?
             }
+            ServerMessage::Call(jsonrpc::Call::MethodCall(ref method_call))
+                if self.shutdown_requested.load(Ordering::Acquire) =>
+            {
+                // After helix sends shutdown the application event loop is no longer
+                // consuming server-to-client requests. Respond with null success so the
+                // server is not left waiting for a reply before it sends the shutdown
+                // response. Sending an error is intentionally avoided: servers based on
+                // vscode-languageserver-node (including gopls) treat an error response to
+                // client/registerCapability as fatal and abort rather than completing the
+                // handshake.
+                let _ = self
+                    .inject_tx
+                    .send(Payload::Response(jsonrpc::Output::Success(
+                        jsonrpc::Success {
+                            jsonrpc: Some(jsonrpc::Version::V2),
+                            id: method_call.id.clone(),
+                            result: serde_json::Value::Null,
+                        },
+                    )));
+            }
             ServerMessage::Call(call) => {
                 client_tx
                     .send((self.id, call))
                     .context("failed to send a message to server")?;
-                // let notification = Notification::parse(&method, params);
             }
         };
         Ok(())
@@ -236,8 +262,8 @@ impl Transport {
         if let Some(tx) = self.pending_requests.lock().await.remove(&id) {
             match tx.send(result).await {
                 Ok(_) => (),
-                Err(_) => error!(
-                    "Tried sending response into a closed channel (id={:?}), original request likely timed out",
+                Err(_) => log::debug!(
+                    "Tried sending response into a closed channel (id={:?}), likely a fire-and-forget shutdown",
                     id
                 ),
             };
@@ -340,6 +366,7 @@ impl Transport {
         mut server_stdin: BufWriter<ChildStdin>,
         client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
         mut client_rx: UnboundedReceiver<Payload>,
+        mut inject_rx: UnboundedReceiver<Payload>,
         initialize_notify: Arc<Notify>,
     ) {
         let mut pending_messages: Vec<Payload> = Vec::new();
@@ -419,6 +446,15 @@ impl Transport {
                             log::info!("Language server not initialized, delaying request");
                             pending_messages.push(msg);
                         } else {
+                            let is_shutdown_msg = is_shutdown(&msg);
+                            // Set the flag *before* flushing to stdin so that the recv task
+                            // cannot observe an unanswered server request in the window between
+                            // the kernel delivering the bytes to the server and this store.
+                            if is_shutdown_msg {
+                                transport
+                                    .shutdown_requested
+                                    .store(true, Ordering::Release);
+                            }
                             match transport.send_payload_to_server(&mut server_stdin, msg).await {
                                 Ok(_) => {}
                                 Err(err) => {
@@ -429,6 +465,16 @@ impl Transport {
                     } else {
                         // channel closed
                         break;
+                    }
+                }
+                msg = inject_rx.recv() => {
+                    if let Some(msg) = msg {
+                        match transport.send_payload_to_server(&mut server_stdin, msg).await {
+                            Ok(_) => {}
+                            Err(err) => {
+                                error!("{} inject err: <- {err:?}", transport.name);
+                            }
+                        }
                     }
                 }
             }
