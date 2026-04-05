@@ -6,54 +6,19 @@ use helix_view::editor::{Config as EditorConfig, KittyKeyboardProtocolConfig};
 use helix_view::graphics::{CursorKind, Rect};
 use std::io;
 
-#[derive(Debug, Clone, PartialEq)]
-/// UNSTABLE
-enum ResizeBehavior {
-    Fixed,
-    Auto,
-}
+mod resize;
+use resize::ResizeBehavior;
 
-#[derive(Debug, Clone, PartialEq)]
-/// UNSTABLE
-pub struct Viewport {
-    area: Rect,
-    resize_behavior: ResizeBehavior,
-}
+mod viewport;
+pub use viewport::Viewport;
 
-/// Terminal configuration
-#[derive(Debug)]
-pub struct Config {
-    pub enable_mouse_capture: bool,
-    pub force_enable_extended_underlines: bool,
-    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
-}
-
-impl From<&EditorConfig> for Config {
-    fn from(config: &EditorConfig) -> Self {
-        Self {
-            enable_mouse_capture: config.mouse,
-            force_enable_extended_underlines: config.undercurl,
-            kitty_keyboard_protocol: config.kitty_keyboard_protocol,
-        }
-    }
-}
-
-impl Viewport {
-    /// UNSTABLE
-    pub fn fixed(area: Rect) -> Viewport {
-        Viewport {
-            area,
-            resize_behavior: ResizeBehavior::Fixed,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-/// Options to pass to [`Terminal::with_options`]
-pub struct TerminalOptions {
-    /// Viewport used to draw to the terminal
-    pub viewport: Viewport,
-}
+/// Default terminal size: 80 columns, 24 lines
+pub const DEFAULT_TERMINAL_SIZE: Rect = Rect {
+    x: 0,
+    y: 0,
+    width: 80,
+    height: 24,
+};
 
 /// Interface to the terminal backed by crossterm
 #[derive(Debug)]
@@ -73,13 +38,30 @@ where
     viewport: Viewport,
 }
 
-/// Default terminal size: 80 columns, 24 lines
-pub const DEFAULT_TERMINAL_SIZE: Rect = Rect {
-    x: 0,
-    y: 0,
-    width: 80,
-    height: 24,
-};
+#[derive(Debug, Clone, PartialEq)]
+/// Options to pass to [`Terminal::with_options`]
+pub struct TerminalOptions {
+    /// Viewport used to draw to the terminal
+    pub viewport: Viewport,
+}
+
+/// Terminal configuration
+#[derive(Debug)]
+pub struct Config {
+    pub enable_mouse_capture: bool,
+    pub force_enable_extended_underlines: bool,
+    pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+}
+
+impl From<&EditorConfig> for Config {
+    fn from(config: &EditorConfig) -> Self {
+        Self {
+            enable_mouse_capture: config.mouse,
+            force_enable_extended_underlines: config.undercurl,
+            kitty_keyboard_protocol: config.kitty_keyboard_protocol,
+        }
+    }
+}
 
 impl<B> Terminal<B>
 where
