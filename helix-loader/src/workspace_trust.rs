@@ -1,4 +1,16 @@
-use std::{collections::HashSet, fs, io::BufRead, io::BufReader, path::Path, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+};
+
+use parking_lot::Mutex;
+
+pub static WORKSPACE_TRUST_CACHE: Lazy<Mutex<HashMap<std::path::PathBuf, TrustUntrustStatus>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+use once_cell::sync::Lazy;
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -101,15 +113,21 @@ impl WorkspaceTrust {
     /// Mark current workspace trusted
     pub fn trust_workspace(&mut self) {
         let workspace = crate::find_workspace().0;
-        self.trusted.insert(workspace);
+        self.trusted.insert(workspace.clone());
         self.write_trust_to_file();
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
     }
 
     /// Remove trusted mark from current workspace
     pub fn untrust_workspace(&mut self) {
         let workspace = crate::find_workspace().0;
-        self.trusted.remove(&workspace);
-        self.write_trust_to_file();
+        if self.trusted.remove(&workspace) {
+            // only update the file if there was a change
+            self.write_trust_to_file();
+        }
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::DenyOnce);
     }
 
     /// Mark current workspace excluded.
@@ -124,6 +142,9 @@ impl WorkspaceTrust {
         } else {
             log::error!("Called untrust_workspace_permanent() when self.untrusted is None");
         }
+        let workspace = crate::find_workspace().0;
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
     }
 }
 
@@ -168,31 +189,42 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
 }
 
 pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
-    if insecure {
-        return TrustStatus::Trusted;
+    match quick_query_workspace_with_explicit_untrust(insecure) {
+        Some(TrustUntrustStatus::AllowAlways) => TrustStatus::Trusted,
+        _ => TrustStatus::Untrusted,
     }
-
-    let workspace = crate::find_workspace().0;
-    if is_path_in_file(&workspace, &workspace_trust_file()) {
-        return TrustStatus::Trusted;
-    }
-
-    TrustStatus::Untrusted
 }
 
-pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntrustStatus {
+pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> Option<TrustUntrustStatus> {
     if insecure {
-        return TrustUntrustStatus::AllowAlways;
+        return Some(TrustUntrustStatus::AllowAlways);
     }
 
     let workspace = crate::find_workspace().0;
+    let mut cache = WORKSPACE_TRUST_CACHE.lock();
+    if let Some(trust) = cache.get(&workspace) {
+        return Some(*trust);
+    }
+
     if is_path_in_file(&workspace, &workspace_trust_file()) {
-        return TrustUntrustStatus::AllowAlways;
+        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
+        return Some(TrustUntrustStatus::AllowAlways);
     }
 
     if is_path_in_file(&workspace, &workspace_exclude_file()) {
-        return TrustUntrustStatus::DenyAlways;
+        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
+        return Some(TrustUntrustStatus::DenyAlways);
     }
 
-    TrustUntrustStatus::DenyOnce
+    // NOTE: Eagerly caching DenyOnce here, so that we only return None on the
+    //       very first call. This allows helix_loader to not have a separate
+    //       cache to trace whether a prompt has already been shown.
+    cache.insert(workspace, TrustUntrustStatus::DenyOnce);
+
+    None
+}
+
+pub fn clear_trust_cache() {
+    let mut cache = WORKSPACE_TRUST_CACHE.lock();
+    cache.clear();
 }
