@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::Path, path::PathBuf};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -135,23 +135,34 @@ pub enum TrustUntrustStatus {
     AllowAlways,
 }
 
+fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
+    match fs::read_to_string(haystack_path) {
+        Ok(opened_file) => {
+            for line in opened_file.split('\n') {
+                if PathBuf::from(line) == needle {
+                    return true;
+                }
+            }
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            log::debug!("workspace trust file {haystack_path:?} does not exist")
+        }
+        Err(err) => log::error!("workspace trust file {haystack_path:?} couldn't be read: {err:?}"),
+    };
+
+    false
+}
+
 pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
     if insecure {
         return TrustStatus::Trusted;
     }
 
     let workspace = crate::find_workspace().0;
-    match fs::read_to_string(workspace_trust_file()) {
-        Ok(workspace_trust_file) => {
-            for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustStatus::Trusted;
-                }
-            }
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace file couldn't be read: {err:?}"),
-    };
+    if is_path_in_file(&workspace, &workspace_trust_file()) {
+        return TrustStatus::Trusted;
+    }
+
     TrustStatus::Untrusted
 }
 
@@ -161,28 +172,13 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     }
 
     let workspace = crate::find_workspace().0;
-    match fs::read_to_string(workspace_trust_file()) {
-        Ok(workspace_trust_file) => {
-            for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustUntrustStatus::AllowAlways;
-                }
-            }
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace_trust file couldn't be read: {err:?}"),
-    };
+    if is_path_in_file(&workspace, &workspace_trust_file()) {
+        return TrustUntrustStatus::AllowAlways;
+    }
 
-    match fs::read_to_string(workspace_exclude_file()) {
-        Ok(workspace_untrust_file) => {
-            for line in workspace_untrust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
-                    return TrustUntrustStatus::DenyAlways;
-                }
-            }
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
-        Err(err) => log::error!("workspace_untrust file couldn't be read: {err:?}"),
-    };
+    if is_path_in_file(&workspace, &workspace_exclude_file()) {
+        return TrustUntrustStatus::DenyAlways;
+    }
+
     TrustUntrustStatus::DenyOnce
 }
