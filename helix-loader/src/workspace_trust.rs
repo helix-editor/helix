@@ -156,7 +156,10 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
                 }
             }
             Err(err) => {
-                log::error!("workspace trust file {haystack_path:?}:{} couldn't be read: {err:?}", lineno + 1)
+                log::error!(
+                    "workspace trust file {haystack_path:?}:{} couldn't be read: {err:?}",
+                    lineno + 1
+                )
             }
         }
     }
