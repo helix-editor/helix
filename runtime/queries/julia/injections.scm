@@ -1,42 +1,53 @@
 (
-  (source_file
-    (string_literal) @injection.content
-    .
-    [
-      (module_definition)
-      (function_definition)
-      (macro_definition)
-      (primitive_definition)
-      (abstract_definition)
-      (struct_definition)
-      (short_function_definition)
-      (assignment)
-      (const_statement)
-    ])
+  [
+    (compound_statement (block (string_literal (content) @injection.content)))
+    (macrocall_expression
+      (macro_identifier "@" (identifier) @doc (#eq? @doc "doc"))
+      (macro_argument_list (string_literal (content) @injection.content)))
+    (module_definition (block (string_literal (content) @injection.content)))
+    (source_file (string_literal (content) @injection.content))
+    (prefixed_string_literal
+      (identifier) @markdown
+      (content) @injection.content
+      (#eq? @markdown "md"))
+  ]
   (#set! injection.language "markdown"))
 
 (
-  [
-    (line_comment) 
-    (block_comment)
-  ] @injection.content
+  (#set! injection.language "markdown"))
+
+(
+  [(line_comment) (block_comment)] @injection.content
   (#set! injection.language "comment"))
 
 (
-  [
-    (command_literal)
-    (prefixed_command_literal)
-  ] @injection.content
-  (#set! injection.language "sh"))
+  (prefixed_string_literal
+    (identifier) @html
+    (content) @injection.content
+    (#eq? @html "html"))
+  (#set! injection.language "html"))
 
 (
   (prefixed_string_literal
-    prefix: (identifier) @function.macro) @injection.content
-  (#eq? @function.macro "r")
+    (identifier) @regex
+    (content) @injection.content
+    (#eq? @regex "r"))
   (#set! injection.language "regex"))
 
-(
-  (prefixed_string_literal
-    prefix: (identifier) @function.macro) @injection.content
-  (#eq? @function.macro "md")
-  (#set! injection.language "markdown"))
+((command_literal (content) @injection.content (#set! injection.language "bash")))
+
+; Latexify.jl
+; (
+;   (prefixed_string_literal
+;     (identifier) @latex
+;     (content) @injection.content
+;     (#eq? @latex "L"))
+;   (#set! injection.language "latex"))
+
+; Typstry.jl
+; (
+;   (prefixed_string_literal
+;     (identifier) @typst
+;     (content) @injection.content
+;     (#eq? @typst "typst"))
+;   (#set! injection.language "typst"))
