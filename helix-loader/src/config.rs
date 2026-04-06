@@ -14,11 +14,14 @@ pub fn user_lang_config(insecure: bool) -> Result<toml::Value, toml::de::Error> 
     let global_config = crate::lang_config_file();
     let workspace_config = crate::workspace_lang_config_file();
 
-    let files = if quick_query_workspace(insecure) == TrustStatus::Trusted {
-        vec![global_config, workspace_config]
-    } else {
-        vec![global_config]
-    };
+    let workspace_config_exists = std::fs::exists(&workspace_config).unwrap_or(false);
+
+    let files =
+        if workspace_config_exists && quick_query_workspace(insecure) == TrustStatus::Trusted {
+            vec![global_config, workspace_config]
+        } else {
+            vec![global_config]
+        };
 
     let config = files
         .iter()
