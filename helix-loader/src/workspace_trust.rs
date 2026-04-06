@@ -1,13 +1,16 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    sync::Mutex,
 };
 
-static WORKSPACE_TRUST_CACHE: Mutex<Option<(std::path::PathBuf, TrustUntrustStatus)>> =
-    Mutex::new(None);
+use parking_lot::Mutex;
+
+pub static WORKSPACE_TRUST_CACHE: Lazy<Mutex<HashMap<std::path::PathBuf, TrustUntrustStatus>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+use once_cell::sync::Lazy;
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -109,18 +112,22 @@ impl WorkspaceTrust {
 
     /// Mark current workspace trusted
     pub fn trust_workspace(&mut self) {
-        wipe_trust_cache();
         let workspace = crate::find_workspace().0;
         self.trusted.insert(workspace);
         self.write_trust_to_file();
+        let workspace = crate::find_workspace().0;
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
     }
 
     /// Remove trusted mark from current workspace
     pub fn untrust_workspace(&mut self) {
-        wipe_trust_cache();
         let workspace = crate::find_workspace().0;
         self.trusted.remove(&workspace);
         self.write_trust_to_file();
+        let workspace = crate::find_workspace().0;
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::DenyOnce);
     }
 
     /// Mark current workspace excluded.
@@ -135,6 +142,9 @@ impl WorkspaceTrust {
         } else {
             log::error!("Called untrust_workspace_permanent() when self.untrusted is None");
         }
+        let workspace = crate::find_workspace().0;
+        let mut cache = WORKSPACE_TRUST_CACHE.lock();
+        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
     }
 }
 
@@ -178,41 +188,33 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
     false
 }
 
-fn wipe_trust_cache() {
-    let mut cache = WORKSPACE_TRUST_CACHE.lock().unwrap();
-    *cache = None;
-}
-
 pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
     match quick_query_workspace_with_explicit_untrust(insecure) {
-        TrustUntrustStatus::AllowAlways => TrustStatus::Trusted,
+        Some(TrustUntrustStatus::AllowAlways) => TrustStatus::Trusted,
         _ => TrustStatus::Untrusted,
     }
 }
 
-pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntrustStatus {
+pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> Option<TrustUntrustStatus> {
     if insecure {
-        return TrustUntrustStatus::AllowAlways;
+        return Some(TrustUntrustStatus::AllowAlways);
     }
 
     let workspace = crate::find_workspace().0;
-    let mut cache = WORKSPACE_TRUST_CACHE.lock().unwrap();
-    if let Some((cached_workspace, cached_result)) = cache.as_ref() {
-        if cached_workspace.as_path() == workspace {
-            return *cached_result;
-        }
+    let mut cache = WORKSPACE_TRUST_CACHE.lock();
+    if let Some(trust) = cache.get(&workspace) {
+        return Some(*trust);
     }
 
     if is_path_in_file(&workspace, &workspace_trust_file()) {
-        *cache = Some((workspace, TrustUntrustStatus::AllowAlways));
-        return TrustUntrustStatus::AllowAlways;
+        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
+        return Some(TrustUntrustStatus::AllowAlways);
     }
 
     if is_path_in_file(&workspace, &workspace_exclude_file()) {
-        *cache = Some((workspace, TrustUntrustStatus::DenyAlways));
-        return TrustUntrustStatus::DenyAlways;
+        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
+        return Some(TrustUntrustStatus::DenyAlways);
     }
 
-    *cache = Some((workspace, TrustUntrustStatus::DenyOnce));
-    TrustUntrustStatus::DenyOnce
+    None
 }
