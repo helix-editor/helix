@@ -1,4 +1,13 @@
-use std::{collections::HashSet, fs, io::BufRead, io::BufReader, path::Path, path::PathBuf};
+use std::{
+    collections::HashSet,
+    fs,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+
+static WORKSPACE_TRUST_CACHE: Mutex<Option<(std::path::PathBuf, TrustUntrustStatus)>> =
+    Mutex::new(None);
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -100,6 +109,7 @@ impl WorkspaceTrust {
 
     /// Mark current workspace trusted
     pub fn trust_workspace(&mut self) {
+        wipe_trust_cache();
         let workspace = crate::find_workspace().0;
         self.trusted.insert(workspace);
         self.write_trust_to_file();
@@ -107,6 +117,7 @@ impl WorkspaceTrust {
 
     /// Remove trusted mark from current workspace
     pub fn untrust_workspace(&mut self) {
+        wipe_trust_cache();
         let workspace = crate::find_workspace().0;
         self.trusted.remove(&workspace);
         self.write_trust_to_file();
@@ -167,17 +178,16 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
     false
 }
 
+fn wipe_trust_cache() {
+    let mut cache = WORKSPACE_TRUST_CACHE.lock().unwrap();
+    *cache = None;
+}
+
 pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
-    if insecure {
-        return TrustStatus::Trusted;
+    match quick_query_workspace_with_explicit_untrust(insecure) {
+        TrustUntrustStatus::AllowAlways => TrustStatus::Trusted,
+        _ => TrustStatus::Untrusted,
     }
-
-    let workspace = crate::find_workspace().0;
-    if is_path_in_file(&workspace, &workspace_trust_file()) {
-        return TrustStatus::Trusted;
-    }
-
-    TrustStatus::Untrusted
 }
 
 pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntrustStatus {
@@ -186,13 +196,23 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     }
 
     let workspace = crate::find_workspace().0;
+    let mut cache = WORKSPACE_TRUST_CACHE.lock().unwrap();
+    if let Some((cached_workspace, cached_result)) = cache.as_ref() {
+        if cached_workspace.as_path() == workspace {
+            return *cached_result;
+        }
+    }
+
     if is_path_in_file(&workspace, &workspace_trust_file()) {
+        *cache = Some((workspace, TrustUntrustStatus::AllowAlways));
         return TrustUntrustStatus::AllowAlways;
     }
 
     if is_path_in_file(&workspace, &workspace_exclude_file()) {
+        *cache = Some((workspace, TrustUntrustStatus::DenyAlways));
         return TrustUntrustStatus::DenyAlways;
     }
 
+    *cache = Some((workspace, TrustUntrustStatus::DenyOnce));
     TrustUntrustStatus::DenyOnce
 }
