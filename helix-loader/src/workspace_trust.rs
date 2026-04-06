@@ -148,7 +148,7 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
         }
     };
 
-    for line in BufReader::new(file).lines() {
+    for (lineno, line) in BufReader::new(file).lines().enumerate() {
         match line {
             Ok(line) => {
                 if PathBuf::from(line) == needle {
@@ -156,7 +156,7 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
                 }
             }
             Err(err) => {
-                log::error!("workspace trust file {haystack_path:?} couldn't be read: {err:?}")
+                log::error!("workspace trust file {haystack_path:?}:{} couldn't be read: {err:?}", lineno + 1)
             }
         }
     }
