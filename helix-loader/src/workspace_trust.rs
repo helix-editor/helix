@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fs, path::Path, path::PathBuf};
+use std::{collections::HashSet, fs, io::BufRead, io::BufReader, path::Path, path::PathBuf};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -136,19 +136,30 @@ pub enum TrustUntrustStatus {
 }
 
 fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
-    match fs::read_to_string(haystack_path) {
-        Ok(opened_file) => {
-            for line in opened_file.split('\n') {
+    let file = match fs::File::open(haystack_path) {
+        Ok(file) => file,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            log::debug!("workspace trust file {haystack_path:?} does not exist");
+            return false;
+        }
+        Err(err) => {
+            log::error!("workspace trust file {haystack_path:?} couldn't be read: {err:?}");
+            return false;
+        }
+    };
+
+    for line in BufReader::new(file).lines() {
+        match line {
+            Ok(line) => {
                 if PathBuf::from(line) == needle {
                     return true;
                 }
             }
+            Err(err) => {
+                log::error!("workspace trust file {haystack_path:?} couldn't be read: {err:?}")
+            }
         }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            log::debug!("workspace trust file {haystack_path:?} does not exist")
-        }
-        Err(err) => log::error!("workspace trust file {haystack_path:?} couldn't be read: {err:?}"),
-    };
+    }
 
     false
 }
