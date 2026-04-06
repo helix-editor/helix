@@ -68,6 +68,7 @@
 | `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
 | `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
+| `workspace-trust-level` | `none` implies no trust, `lsp` allows starting language servers, `all` additionally allows loading local configuration files. | `"none"` |
 
 [^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
 

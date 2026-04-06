@@ -4,7 +4,9 @@ use helix_event::register_hook;
 use helix_loader::workspace_trust::{
     quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
 };
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
+use helix_view::{
+    editor::WorkspaceTrustLevelConfig, events::DocumentDidOpen, handlers::Handlers, DocumentId,
+};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
@@ -22,8 +24,9 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
 
         // If there is no servers to be loaded, then the workspace might not be trusted yet
         if doc.language_servers().next().is_none() {
-            if let TrustUntrustStatus::DenyOnce =
-                quick_query_workspace_with_explicit_untrust(event.editor.config().insecure)
+            if quick_query_workspace_with_explicit_untrust(
+                event.editor.config().workspace_trust_level == WorkspaceTrustLevelConfig::All,
+            ) == TrustUntrustStatus::DenyOnce
             {
                 let (workspace, _) = helix_loader::find_workspace();
                 job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
@@ -46,7 +49,9 @@ pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
 
 const TRUST_MESSAGE: &str = "Trust this workspace?
 
-Trusted workspaces may load local config files and auto-start language servers. Config and language servers can execute arbitrary code. Only trust workspaces which you know contain harmless config and code.";
+Trusted workspaces may load local config files and auto-start language servers. Config and language servers can execute arbitrary code. Only trust workspaces which you know contain harmless config and code.
+
+This prompt can be disabled by setting `editor.workspace-trust-level` to \"lsp\" to always allow starting language servers, or \"all\" to always allow all insecure features.";
 
 fn select() -> ui::Select<TrustUntrustStatus> {
     ui::Select::new(

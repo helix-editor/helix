@@ -7,7 +7,7 @@ pub struct WorkspaceTrust {
     excluded: Option<HashSet<PathBuf>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum TrustStatus {
     Untrusted,
     Trusted,
@@ -127,7 +127,7 @@ impl WorkspaceTrust {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TrustUntrustStatus {
     DenyAlways,
     #[default]

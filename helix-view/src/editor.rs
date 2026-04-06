@@ -432,8 +432,7 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
-    /// Whether to implicitly trust every workspace or not
-    pub insecure: bool,
+    pub workspace_trust_level: WorkspaceTrustLevelConfig,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -469,6 +468,15 @@ pub enum KittyKeyboardProtocolConfig {
     Auto,
     Disabled,
     Enabled,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum WorkspaceTrustLevelConfig {
+    #[default]
+    None,
+    Lsp,
+    All,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1156,7 +1164,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
-            insecure: false,
+            workspace_trust_level: WorkspaceTrustLevelConfig::None,
         }
     }
 }
@@ -1652,8 +1660,9 @@ impl Editor {
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        if let TrustStatus::Untrusted =
-            helix_loader::workspace_trust::quick_query_workspace(self.config.load().insecure)
+        if helix_loader::workspace_trust::quick_query_workspace(
+            config.workspace_trust_level >= WorkspaceTrustLevelConfig::Lsp,
+        ) != TrustStatus::Trusted
         {
             self.set_status(
                 "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",

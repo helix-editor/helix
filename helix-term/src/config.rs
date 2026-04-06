@@ -1,7 +1,7 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
-use helix_view::{document::Mode, theme};
+use helix_view::{document::Mode, editor::WorkspaceTrustLevelConfig, theme};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -125,8 +125,9 @@ impl Config {
 
         let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
-        if let helix_loader::workspace_trust::TrustStatus::Trusted =
-            helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
+        if helix_loader::workspace_trust::quick_query_workspace(
+            global_parsed.editor.workspace_trust_level == WorkspaceTrustLevelConfig::All,
+        ) == helix_loader::workspace_trust::TrustStatus::Trusted
         {
             Config::load(Ok(&global_config), local_config)
         } else {

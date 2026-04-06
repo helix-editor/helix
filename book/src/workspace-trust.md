@@ -15,9 +15,10 @@ Lists of trusted and excluded workspaces, delimited by newline characters, are s
 
 # Configuration
 
-You can return to the old behaviour of loading every local `.helix/config.toml` and `.helix/languages.toml` and starting LSP's without an explicit permission by setting following option:
+You can return to the old behaviour of starting language servers and optionally loading every local `.helix/config.toml` and `.helix/languages.toml` by setting the following option to one of these values:
 
 ```toml
 [editor]
-insecure = true
+workspace-trust-level = "lsp" # for starting language servers only
+workspace-trust-level = "all" # for all features
 ```
