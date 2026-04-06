@@ -1419,6 +1419,7 @@ dependencies = [
  "helix-core",
  "helix-dap-types",
  "helix-stdx",
+ "libc",
  "log",
  "serde",
  "serde_json",
