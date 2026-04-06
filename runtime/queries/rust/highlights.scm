@@ -431,6 +431,11 @@
   ((identifier) @constructor)
   (#match? @constructor "^[A-Z]"))
 
+(match_pattern
+  (scoped_identifier
+    name: ((identifier) @type.enum.variant
+      (#match? @type.enum.variant "^[A-Z]"))))
+
 ; ---
 ; Macros
 ; ---
