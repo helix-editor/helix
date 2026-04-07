@@ -19,7 +19,7 @@ use crate::LineEnding;
 
 // 64KB table, created once on first call.
 // O(1) lookups for codepoints <= 0xFFFF, falls back to binary search for others.
-static WC_TABLE: LazyLock<WcLookupTable> = LazyLock::new(|| WcLookupTable::new());
+static WC_TABLE: LazyLock<WcLookupTable> = LazyLock::new(WcLookupTable::new);
 static MODE_2027_ACTIVE: OnceLock<bool> = OnceLock::new();
 
 pub fn set_mode_2027(active: bool) {
