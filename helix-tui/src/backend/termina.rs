@@ -52,7 +52,7 @@ fn vte_version() -> Option<usize> {
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
     synchronized_output: bool,
-    grapheme_clustering: bool,
+    grapheme_clustering: GraphemeClusteringSupport,
     true_color: bool,
     extended_underlines: bool,
     /// OSC11 / OSC111 - change the terminal's background color.
@@ -72,6 +72,17 @@ enum KittyKeyboardSupport {
     Partial,
     /// The terminal supports all flags require.
     Full,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum GraphemeClusteringSupport {
+    /// The terminal doesn't support the protocol.
+    #[default]
+    None,
+    /// The terminal supports mode 2027 but it's off
+    Disabled,
+    /// The terminal supports & enables mode 2027
+    Enabled,
 }
 
 #[derive(Debug)]
@@ -170,10 +181,16 @@ impl TerminaBackend {
                     }
                     Event::Csi(Csi::Mode(csi::Mode::ReportDecPrivateMode {
                         mode: csi::DecPrivateMode::Code(csi::DecPrivateModeCode::GraphemeClustering),
-                        setting: csi::DecModeSetting::Set | csi::DecModeSetting::Reset,
-                    })) => {
-                        capabilities.grapheme_clustering = true;
-                    }
+                        setting: settings,
+                    })) => match settings {
+                        csi::DecModeSetting::Set | csi::DecModeSetting::PermanentlySet => {
+                            capabilities.grapheme_clustering = GraphemeClusteringSupport::Enabled;
+                        }
+                        csi::DecModeSetting::Reset => {
+                            capabilities.grapheme_clustering = GraphemeClusteringSupport::Disabled;
+                        }
+                        _ => (),
+                    },
                     Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
                         capabilities.theme_mode = Some(mode.into());
                     }
@@ -260,7 +277,9 @@ impl TerminaBackend {
         });
 
         // Notify helix-core of the terminal's Unicode width behavior.
-        graphemes::set_mode_2027(capabilities.grapheme_clustering);
+        if capabilities.grapheme_clustering != GraphemeClusteringSupport::None {
+            graphemes::set_mode_2027(true);
+        }
 
         Ok(Self {
             terminal,
@@ -374,6 +393,10 @@ impl TerminaBackend {
             }
         }
 
+        if self.capabilities.grapheme_clustering == GraphemeClusteringSupport::Disabled {
+            write!(self.terminal, "{}", decset!(GraphemeClustering))?;
+        }
+
         if self.capabilities.theme_mode.is_some() {
             // Enable mode 2031 theme mode notifications:
             write!(self.terminal, "{}", decset!(Theme))?;
@@ -389,6 +412,10 @@ impl TerminaBackend {
                 "{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1))
             )?;
+        }
+
+        if self.capabilities.grapheme_clustering == GraphemeClusteringSupport::Disabled {
+            write!(self.terminal, "{}", decreset!(GraphemeClustering))?;
         }
 
         if self.capabilities.theme_mode.is_some() {
