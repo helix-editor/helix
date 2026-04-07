@@ -1,8 +1,12 @@
+use arc_swap::access::Access;
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
-    quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
+    clear_trust_cache, quick_query_workspace_with_explicit_untrust, TrustUntrustStatus,
+    WorkspaceTrust,
 };
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
+use helix_view::{
+    events::ConfigDidChange, events::DocumentDidOpen, handlers::Handlers, DocumentId,
+};
 
 use crate::{compositor::Compositor, job, ui};
 
@@ -14,9 +18,19 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
 
         // If there is no servers to be loaded, then the workspace might not be trusted yet
         if doc.language_servers().next().is_none()
-            && quick_query_workspace_with_explicit_untrust(event.editor.config().insecure).is_none()
+            && quick_query_workspace_with_explicit_untrust(&event.editor.config.load().trust)
+                .is_none()
         {
             job::dispatch_blocking(|_editor, compositor| prompt(compositor));
+        }
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut ConfigDidChange<'_>| {
+        if event.old.trust != event.new.trust {
+            clear_trust_cache();
+            // TODO: restart LSP, so that no `:lsp-restart` is needed after
+            // reloading the config
         }
         Ok(())
     });

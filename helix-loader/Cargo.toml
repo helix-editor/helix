@@ -9,6 +9,7 @@ rust-version.workspace = true
 categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
+globset.workspace = true
 
 [[bin]]
 name = "hx-loader"
@@ -33,3 +34,5 @@ threadpool = { version = "1.0" }
 tempfile.workspace = true
 
 tree-house.workspace = true
+globset.workspace = true
+arc-swap.workspace = true

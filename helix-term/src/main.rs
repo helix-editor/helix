@@ -141,7 +141,7 @@ FLAGS:
     };
 
     let lang_loader =
-        helix_core::config::user_lang_loader(config.editor.insecure).unwrap_or_else(|err| {
+        helix_core::config::user_lang_loader(&config.editor.trust).unwrap_or_else(|err| {
             eprintln!("{}", err);
             eprintln!("Press <ENTER> to continue with default language config");
             use std::io::Read;
