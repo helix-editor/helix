@@ -59,6 +59,10 @@ impl WorkspaceTrust {
         let mut trust_text = String::new();
         for workspace in self.trusted.iter() {
             if let Some(path_str) = workspace.to_str() {
+                if path_str.contains('\n') {
+                    log::error!("Unsupported path (contains \\n): {:?}", path_str);
+                    continue;
+                }
                 trust_text += path_str;
                 trust_text += "\n";
             }
@@ -80,6 +84,10 @@ impl WorkspaceTrust {
             let mut trust_text = String::new();
             for workspace in untrusted.iter() {
                 if let Some(path_str) = workspace.to_str() {
+                    if path_str.contains('\n') {
+                        log::error!("Unsupported path (contains \\n): {:?}", path_str);
+                        continue;
+                    }
                     trust_text += path_str;
                     trust_text += "\n";
                 }
