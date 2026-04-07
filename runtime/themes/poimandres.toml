@@ -50,6 +50,7 @@ string = { fg = "brightMint" }
 "ui.cursor.match" = { bg = "focus" }
 "ui.cursorline" = { bg = "#242837" }
 
+"ui.help" = { bg = "#20232d" }
 "ui.popup" = { bg = "#20232d" }
 "ui.window" = "gray"
 

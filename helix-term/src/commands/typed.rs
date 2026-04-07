@@ -1025,18 +1025,18 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
     let true_color = cx.editor.config.load().true_color || crate::true_color();
     match event {
         PromptEvent::Abort => {
-            cx.editor.unset_theme_preview();
+            cx.editor.unset_theme_preview()?;
         }
         PromptEvent::Update => {
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
-                cx.editor.unset_theme_preview();
+                cx.editor.unset_theme_preview()?;
             } else if let Some(theme_name) = args.first() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
-                    cx.editor.set_theme_preview(theme);
+                    cx.editor.set_theme_preview(theme)?;
                 };
             };
         }
@@ -1050,7 +1050,7 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
-                cx.editor.set_theme(theme);
+                cx.editor.set_theme(theme)?;
             } else {
                 let name = cx.editor.theme.name().to_string();
 
@@ -1071,7 +1071,7 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_main_selection_to_register(cx.editor, '+');
     Ok(())
 }
 
@@ -1116,7 +1116,7 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_main_selection_to_register(cx.editor, '*');
     Ok(())
 }
 
@@ -1197,7 +1197,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    replace_selections_with_register(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1210,7 +1210,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    replace_selections_with_register(cx.editor, '*', 1);
     Ok(())
 }
 
@@ -1228,26 +1228,20 @@ fn show_clipboard_provider(
     Ok(())
 }
 
-fn change_current_directory(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+/// Helper function to parse the first argument as a directory
+#[inline]
+fn parse_first_arg_as_dir(args: &Args, last_cwd: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+    match args.first().map(AsRef::as_ref) {
+        Some("-") => last_cwd.ok_or_else(|| anyhow!("No previous working directory")),
+        Some(path) => Ok(helix_stdx::path::expand_tilde(Path::new(path)).into_owned()),
+        None => Ok(home_dir()?),
     }
+}
 
-    let dir = match args.first().map(AsRef::as_ref) {
-        Some("-") => cx
-            .editor
-            .get_last_cwd()
-            .map(|path| Cow::Owned(path.to_path_buf()))
-            .ok_or_else(|| anyhow!("No previous working directory"))?,
-        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
-        None => Cow::Owned(home_dir()?),
-    };
-
-    cx.editor.set_cwd(&dir).map_err(|err| {
+/// Helper function to apply a directory change for an already-parsed Path ref
+#[inline]
+fn apply_directory_change(cx: &mut compositor::Context, dir: &Path) -> anyhow::Result<()> {
+    cx.editor.set_cwd(dir).map_err(|err| {
         anyhow!(
             "Could not change working directory to '{}': {err}",
             dir.display()
@@ -1258,6 +1252,85 @@ fn change_current_directory(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
+    Ok(())
+}
+
+fn change_current_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let dir = parse_first_arg_as_dir(&args, cx.editor.get_last_cwd().map(|p| p.to_path_buf()))?;
+
+    apply_directory_change(cx, &dir)
+}
+
+fn show_directory_stack(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let serialized_stack = cx
+        .editor
+        .dir_stack
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if !serialized_stack.is_empty() {
+        cx.editor.set_status(serialized_stack);
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
+
+    Ok(())
+}
+
+fn push_directory(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // avoid an unbounded directory stack and reallocs for perf
+    if cx.editor.dir_stack.len() == cx.editor.dir_stack.capacity() {
+        cx.editor.dir_stack.pop_back();
+    }
+
+    cx.editor
+        .dir_stack
+        .push_front(helix_stdx::env::current_working_dir());
+
+    change_current_directory(cx, args, event)
+}
+
+fn pop_directory(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if let Some(dir) = cx.editor.dir_stack.pop_front() {
+        apply_directory_change(cx, &dir)?;
+    } else {
+        cx.editor.set_error("Stack is empty");
+    }
 
     Ok(())
 }
@@ -3349,6 +3422,39 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
+        name: "show-directory-stack",
+        aliases: &[],
+        doc: "Show the directory stack as a <space> delimited string.",
+        fun: show_directory_stack,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "push-directory",
+        aliases: &["pushd"],
+        doc: "Save and then change the current directory.",
+        fun: push_directory,
+        completer: CommandCompleter::positional(&[completers::directory]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "pop-directory",
+        aliases: &["popd"],
+        doc: "Remove the top entry from the directory stack, and cd to the new top directory..",
+        fun: pop_directory,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "show-directory",
         aliases: &["pwd"],
         doc: "Show the current working directory.",
@@ -3870,6 +3976,22 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             ..Signature::DEFAULT
         },
     },
+    TypableCommand {
+        name: "workspace-trust",
+        aliases: &[],
+        doc: "Add current workspace to the list of trusted workspaces.",
+        fun: trust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-untrust",
+        aliases: &[],
+        doc: "Remove current workspace from the list of trusted workspaces.",
+        fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -4139,6 +4261,9 @@ pub fn complete_command_args(
             complete_variable_expansion(&token.content, offset + token.content_start)
         }
         TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
+        TokenKind::Expansion(ExpansionKind::Register) => {
+            complete_register_expansion(editor, &token.content, offset + token.content_start)
+        }
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
         }
@@ -4264,6 +4389,22 @@ fn complete_variable_expansion(content: &str, offset: usize) -> Vec<ui::prompt::
     .collect()
 }
 
+fn complete_register_expansion(
+    editor: &Editor,
+    content: &str,
+    offset: usize,
+) -> Vec<ui::prompt::Completion> {
+    let register_names: Vec<String> = editor
+        .registers
+        .iter_preview()
+        .map(|(ch, _)| ch.to_string())
+        .collect();
+    fuzzy_match(content, register_names, false)
+        .into_iter()
+        .map(|(name, _)| (offset.., name.to_string().into()))
+        .collect()
+}
+
 fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Completion> {
     use command_line::ExpansionKind;
 
@@ -4279,4 +4420,33 @@ fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Comp
     .into_iter()
     .map(|(name, _)| (offset.., (*name).into()))
     .collect()
+}
+
+fn trust_workspace(
+    cx: &mut compositor::Context,
+    args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    helix_loader::workspace_trust::WorkspaceTrust::load(false).trust_workspace();
+
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    // HACK
+    lsp_restart(cx, args, event)
+}
+
+fn untrust_workspace(
+    _cx: &mut compositor::Context,
+    _args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    helix_loader::workspace_trust::WorkspaceTrust::load(false).untrust_workspace();
+    Ok(())
 }

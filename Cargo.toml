@@ -42,21 +42,21 @@ tree-house = { version = "0.3.0", default-features = false }
 nucleo = "0.5.0"
 slotmap = "1.1.1"
 thiserror = "2.0"
-tempfile = "3.26.0"
+tempfile = "3.27.0"
 bitflags = "2.11"
-unicode-segmentation = "1.2"
+unicode-segmentation = "1.13"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.18"
-toml = "1.0"
-termina = "0.1"
+toml = "1.1"
+termina = "0.3"
 sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
-arc-swap = "1.8"
+arc-swap = "1.9"
 
 [workspace.package]
 version = "25.7.1"
@@ -66,4 +66,4 @@ categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.87"
+rust-version = "1.90"

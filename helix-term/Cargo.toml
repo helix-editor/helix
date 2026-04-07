@@ -61,7 +61,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap.workspace = true
 termini = "1"
-indexmap = "2.13"
+indexmap = { version = "2.13", features = ["serde"] }
 
 # Logging
 fern = "0.7"
@@ -92,12 +92,14 @@ serde = { version = "1.0", features = ["derive"] }
 
 dashmap = "6.0"
 
+parking_lot.workspace = true
+
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream"] }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
-libc = "0.2.182"
+libc = "0.2.183"
 
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }
