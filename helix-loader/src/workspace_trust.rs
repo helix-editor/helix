@@ -113,9 +113,8 @@ impl WorkspaceTrust {
     /// Mark current workspace trusted
     pub fn trust_workspace(&mut self) {
         let workspace = crate::find_workspace().0;
-        self.trusted.insert(workspace);
+        self.trusted.insert(workspace.clone());
         self.write_trust_to_file();
-        let workspace = crate::find_workspace().0;
         let mut cache = WORKSPACE_TRUST_CACHE.lock();
         cache.insert(workspace, TrustUntrustStatus::AllowAlways);
     }
@@ -123,9 +122,10 @@ impl WorkspaceTrust {
     /// Remove trusted mark from current workspace
     pub fn untrust_workspace(&mut self) {
         let workspace = crate::find_workspace().0;
-        self.trusted.remove(&workspace);
-        self.write_trust_to_file();
-        let workspace = crate::find_workspace().0;
+        if self.trusted.remove(&workspace) {
+            // only update the file if there was a change
+            self.write_trust_to_file();
+        }
         let mut cache = WORKSPACE_TRUST_CACHE.lock();
         cache.insert(workspace, TrustUntrustStatus::DenyOnce);
     }
