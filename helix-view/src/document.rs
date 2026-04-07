@@ -1067,18 +1067,19 @@ impl Document {
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 // Ignore ENOTSUP/EOPNOTSUPP (Operation not supported) errors from sync_all()
                 // This is known to occur on SMB filesystems on macOS where fsync is not supported
-                if let Err(e) = dst.sync_all().await {
-                    #[cfg(target_os = "macos")]
-                    {
-                        match e.raw_os_error() {
-                            Some(45) | Some(102) => {} // ENOTSUP or EOPNOTSUPP - ignore
-                            _ => return Err(e.into()),
-                        }
+                match dst.sync_all().await {
+                    Ok(_) => (),
+                    Err(err) if err.kind() == io::ErrorKind::Unsupported => (),
+                    // Some extra OS errors are thrown on macOS for example if fsync is not
+                    // available for this filesystem. NOTE: on macOS, ENOTSUP and EOPNOTSUPP are
+                    // not the same code, so we need to suppress the unreachable_patterns lint on
+                    // Unix generally.
+                    #[allow(unreachable_patterns)]
+                    #[cfg(unix)]
+                    Err(err)
+                        if matches!(err.raw_os_error(), Some(libc::ENOTSUP | libc::EOPNOTSUPP)) => {
                     }
-                    #[cfg(not(target_os = "macos"))]
-                    {
-                        return Err(e.into());
-                    }
+                    Err(err) => return Err(err.into()),
                 }
                 Ok(())
             }
