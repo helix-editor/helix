@@ -2,7 +2,7 @@ use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 use globset::GlobBuilder;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     env, fs,
@@ -233,69 +233,15 @@ fn is_path_matching_glob_test() {
         ),
         (
             PathBuf::from("/home/user/repo"),
-            "/home/user/repo2",
-            PathBuf::from("/home/user"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo"),
             "~/repo",
             PathBuf::from("/home/user"),
             true,
         ),
         (
-            PathBuf::from("/home/user/repo"),
-            "~/repo2",
-            PathBuf::from("/home/user"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo"),
-            "~/repo",
-            PathBuf::from("/home/user2"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo/branch_a"),
+            PathBuf::from("/home/user2/repo"),
             "~/repo",
             PathBuf::from("/home/user"),
             false,
-        ),
-        (
-            PathBuf::from("/home/user/repo"),
-            "~/repo/*",
-            PathBuf::from("/home/user"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo/branch_a"),
-            "~/repo/*",
-            PathBuf::from("/home/user"),
-            true,
-        ),
-        (
-            PathBuf::from("/home/user/repo/remote_a/branch_a"),
-            "~/repo/*",
-            PathBuf::from("/home/user"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo"),
-            "~/repo/**",
-            PathBuf::from("/home/user"),
-            false,
-        ),
-        (
-            PathBuf::from("/home/user/repo/branch_a"),
-            "~/repo/**",
-            PathBuf::from("/home/user"),
-            true,
-        ),
-        (
-            PathBuf::from("/home/user/repo/remote_a/branch_a"),
-            "~/repo/**",
-            PathBuf::from("/home/user"),
-            true,
         ),
     ];
 
@@ -354,19 +300,38 @@ fn trust_from_globs_test() {
         );
     }
 
+    // This matches the examples given in the documentation, see
+    // book/src/workspace-trust.md
     let globs: Vec<String> = vec![
-        "~/repos/helix/*".to_string(),
-        "!~/repos/helix/untrusted".to_string(),
+        "~/repos/helix".to_string(),
+        "~/repos/foo/*".to_string(),
+        "~/repos/bar/**".to_string(),
+        "!~/repos/bar/untrusted".to_string(),
     ];
     let cases = vec![
-        ("/foo/bar", None),
-        ("/home/user/repos/helix", None),
+        ("/home/user/foobar", None),
         (
-            "/home/user/repos/helix/branch_a",
+            "/home/user/repos/helix",
+            Some(TrustUntrustStatus::AllowAlways),
+        ),
+        ("/home/other/repos/helix", None),
+        ("/home/user/repos/helix/branch_a", None),
+        ("/home/user/repos/foo", None),
+        (
+            "/home/user/repos/foo/branch_a",
+            Some(TrustUntrustStatus::AllowAlways),
+        ),
+        ("/home/user/repos/foo/remote_a/branch_a", None),
+        (
+            "/home/user/repos/bar/branch_a",
             Some(TrustUntrustStatus::AllowAlways),
         ),
         (
-            "/home/user/repos/helix/untrusted",
+            "/home/user/repos/bar/remote_a/branch_a",
+            Some(TrustUntrustStatus::AllowAlways),
+        ),
+        (
+            "/home/user/repos/bar/untrusted",
             Some(TrustUntrustStatus::DenyAlways),
         ),
     ];
