@@ -63,7 +63,11 @@
           platformRustFlagsEnv = lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
         in
           pkgs.mkShell {
-            inputsFrom = [self.checks.${system}.helix];
+            inputsFrom = [
+              (self.checks.${system}.helix.override {
+                includeGrammarIf = _: false;
+              })
+            ];
             nativeBuildInputs = with pkgs;
               [
                 lld

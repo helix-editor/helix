@@ -9,11 +9,11 @@
 
 (using_declaration ("using" "namespace" (identifier) @namespace))
 (using_declaration ("using" "namespace" (qualified_identifier name: (identifier) @namespace)))
+(qualified_identifier name: (identifier) @type.enum.variant)
 (namespace_definition name: (namespace_identifier) @namespace)
 (namespace_identifier) @namespace
 
-(auto) @type
-"decltype" @type
+(auto) @type.builtin
 
 (ref_qualifier ["&" "&&"] @type.builtin)
 (reference_declarator ["&" "&&"] @type.builtin)
@@ -162,6 +162,7 @@
 
 ; Modifiers that aren't plausibly type/storage related.
 [
+  "decltype"
   "explicit"
   "friend"
   "virtual"

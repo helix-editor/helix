@@ -421,7 +421,7 @@ impl Application {
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader()?;
+            let lang_loader = helix_core::config::user_lang_loader(default_config.editor.insecure)?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,
@@ -496,13 +496,7 @@ impl Application {
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
-        let background_color = theme
-            .try_get_exact("ui.background")
-            .and_then(|style| style.bg);
-        editor.set_theme(theme);
-        let _ = terminal
-            .backend_mut()
-            .set_background_color(background_color);
+        let _ = editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -757,6 +751,8 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
+            #[cfg(not(windows))]
+            event if event.is_escape() => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
