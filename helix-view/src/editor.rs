@@ -564,6 +564,8 @@ pub struct LspConfig {
     pub display_color_swatches: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
+    /// Enable LSP linked editing ranges (e.g. synchronized tag editing)
+    pub linked_editing: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
 }
@@ -580,6 +582,7 @@ impl Default for LspConfig {
             auto_document_highlight: false,
             inlay_hints_length_limit: None,
             snippets: true,
+            linked_editing: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
         }
@@ -1664,7 +1667,13 @@ impl Editor {
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(
+                    language,
+                    path.as_ref(),
+                    root_dirs,
+                    config.lsp.snippets,
+                    config.lsp.linked_editing,
+                )
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
