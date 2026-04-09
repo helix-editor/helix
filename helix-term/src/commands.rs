@@ -3541,16 +3541,18 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
-    cx.editor
-        .diff_providers
-        .clone()
-        .for_each_changed_file(cwd, move |change| match change {
+    let insecure = cx.editor.config().insecure;
+    cx.editor.diff_providers.clone().for_each_changed_file(
+        cwd,
+        insecure,
+        move |change| match change {
             Ok(change) => injector.push(change).is_ok(),
             Err(err) => {
                 status::report_blocking(err);
                 true
             }
-        });
+        },
+    );
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

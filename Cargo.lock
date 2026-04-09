@@ -1610,6 +1610,7 @@ dependencies = [
  "gix",
  "helix-core",
  "helix-event",
+ "helix-loader",
  "imara-diff 0.2.0",
  "log",
  "parking_lot",
