@@ -30,10 +30,10 @@ pub struct DiffProviderRegistry {
 impl DiffProviderRegistry {
     /// Get the given file from the VCS. This provides the unedited document as a "base"
     /// for a diff to be created.
-    pub fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
+    pub fn get_diff_base(&self, file: &Path, insecure: bool) -> Option<Vec<u8>> {
         self.providers
             .iter()
-            .find_map(|provider| match provider.get_diff_base(file) {
+            .find_map(|provider| match provider.get_diff_base(file, insecure) {
                 Ok(res) => Some(res),
                 Err(err) => {
                     log::debug!("{err:#?}");
@@ -44,17 +44,21 @@ impl DiffProviderRegistry {
     }
 
     /// Get the current name of the current [HEAD](https://stackoverflow.com/questions/2304087/what-is-head-in-git).
-    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
-        self.providers
-            .iter()
-            .find_map(|provider| match provider.get_current_head_name(file) {
+    pub fn get_current_head_name(
+        &self,
+        file: &Path,
+        insecure: bool,
+    ) -> Option<Arc<ArcSwap<Box<str>>>> {
+        self.providers.iter().find_map(|provider| {
+            match provider.get_current_head_name(file, insecure) {
                 Ok(res) => Some(res),
                 Err(err) => {
                     log::debug!("{err:#?}");
                     log::debug!("failed to obtain current head name for {}", file.display());
                     None
                 }
-            })
+            }
+        })
     }
 
     /// Fire-and-forget changed file iteration. Runs everything in a background task. Keeps
@@ -62,13 +66,14 @@ impl DiffProviderRegistry {
     pub fn for_each_changed_file(
         self,
         cwd: PathBuf,
+        insecure: bool,
         f: impl Fn(Result<FileChange>) -> bool + Send + 'static,
     ) {
         tokio::task::spawn_blocking(move || {
             if self
                 .providers
                 .iter()
-                .find_map(|provider| provider.for_each_changed_file(&cwd, &f).ok())
+                .find_map(|provider| provider.for_each_changed_file(&cwd, insecure, &f).ok())
                 .is_none()
             {
                 f(Err(anyhow!("no diff provider returns success")));
@@ -102,18 +107,18 @@ enum DiffProvider {
 }
 
 impl DiffProvider {
-    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
+    fn get_diff_base(&self, file: &Path, insecure: bool) -> Result<Vec<u8>> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::get_diff_base(file),
+            Self::Git => git::get_diff_base(file, insecure),
             Self::None => bail!("No diff support compiled in"),
         }
     }
 
-    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+    fn get_current_head_name(&self, file: &Path, insecure: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::get_current_head_name(file),
+            Self::Git => git::get_current_head_name(file, insecure),
             Self::None => bail!("No diff support compiled in"),
         }
     }
@@ -121,11 +126,12 @@ impl DiffProvider {
     fn for_each_changed_file(
         &self,
         cwd: &Path,
+        insecure: bool,
         f: impl Fn(Result<FileChange>) -> bool,
     ) -> Result<()> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::for_each_changed_file(cwd, f),
+            Self::Git => git::for_each_changed_file(cwd, insecure, f),
             Self::None => bail!("No diff support compiled in"),
         }
     }
