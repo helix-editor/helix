@@ -1072,30 +1072,23 @@ impl Document {
                 Err(err) => return Err(err.into()),
             };
             let must_copy = is_hardlink || is_symlink;
-            let backup = if path.exists() && atomic_save {
+            let file_exists = path.exists();
+
+            let temp_data = if file_exists && atomic_save {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
                 // the whole automatically delete path on drop thing
                 // since the path doesn't exist yet, we just want
                 // the path
-                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
+                tokio::task::spawn_blocking(move || -> Option<(std::fs::File, PathBuf)> {
                     let mut builder = tempfile::Builder::new();
-                    builder.prefix(path_.file_name()?).suffix(".bck");
+                    builder.prefix(path_.file_name()?).suffix(".tmp");
 
-                    let backup_path = if must_copy {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
-                    } else {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
-                    };
-
-                    backup_path.keep().ok()
+                    let temp = builder.tempfile_in(path_.parent()?).ok()?;
+                    // Extract both the securely opened file handle and the path
+                    let (file, temp_path) = temp.into_parts();
+                    Some((file, temp_path.keep().ok()?))
                 })
                 .await
                 .ok()
@@ -1104,8 +1097,29 @@ impl Document {
                 None
             };
 
+            let (mut temp_file_handle, temp_path) = match temp_data {
+                Some((f, p)) => (Some(f), Some(p)),
+                None => (None, None),
+            };
+
             let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&write_path).await?;
+                // If we have a temp file descriptor (already opened with O_EXCL), wrap it in Tokio.
+                // Otherwise, open the target file directly.
+                let mut dst = if let Some(std_file) = temp_file_handle.take() {
+                    tokio::fs::File::from_std(std_file)
+                } else {
+                    let mut options = tokio::fs::OpenOptions::new();
+                    options.write(true);
+
+                    if !file_exists {
+                        // Safe creation of a new file with O_CREAT | O_EXCL
+                        options.create_new(true);
+                    } else {
+                        options.create(true).truncate(true);
+                    }
+                    options.open(&write_path).await?
+                };
+
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 // Ignore ENOTSUP/EOPNOTSUPP (Operation not supported) errors from sync_all()
                 // This is known to occur on SMB filesystems on macOS where fsync is not supported
@@ -1132,37 +1146,37 @@ impl Document {
                 Err(_) => SystemTime::now(),
             };
 
-            if let Some(backup) = backup {
-                if must_copy {
-                    let mut delete = true;
-                    if write_result.is_err() {
-                        // Restore backup
-                        let _ = tokio::fs::copy(&backup, &write_path).await.map_err(|e| {
-                            delete = false;
-                            log::error!("Failed to restore backup on write failure: {e}")
-                        });
-                    }
-
-                    if delete {
-                        // Delete backup
-                        let _ = tokio::fs::remove_file(backup)
-                            .await
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
-                    }
-                } else if write_result.is_err() {
-                    // restore backup
-                    let _ = tokio::fs::rename(&backup, &write_path)
-                        .await
-                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
-                } else {
-                    // copy metadata and delete backup
-                    let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
-                        let _ = std::fs::remove_file(backup)
-                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+            if let Some(tmp) = &temp_path {
+                if write_result.is_ok() {
+                    let _ = tokio::task::spawn_blocking({
+                        let tmp = tmp.clone();
+                        let write_path = write_path.clone();
+                        move || {
+                            let _ = copy_metadata(&write_path, &tmp)
+                                .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
+                        }
                     })
                     .await;
+
+                    if must_copy {
+                        // For hardlinks/symlinks, copy contents back instead of renaming to preserve inode links
+                        let _ = tokio::fs::copy(&tmp, &write_path)
+                            .await
+                            .map_err(|e| log::error!("Failed to copy temp file to original: {e}"));
+                        let _ = tokio::fs::remove_file(&tmp)
+                            .await
+                            .map_err(|e| log::error!("Failed to remove temp file: {e}"));
+                    } else {
+                        // Atomically replace the original file
+                        let _ = tokio::fs::rename(&tmp, &write_path)
+                            .await
+                            .map_err(|e| log::error!("Failed to rename temp file: {e}"));
+                    }
+                } else {
+                    // Clean up temp file on failure
+                    let _ = tokio::fs::remove_file(tmp)
+                        .await
+                        .map_err(|e| log::error!("Failed to remove temp file on write error: {e}"));
                 }
             }
 
