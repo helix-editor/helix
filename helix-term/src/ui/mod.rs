@@ -126,10 +126,7 @@ pub fn raw_regex_prompt(
                         false
                     };
 
-                    let is_crlf = {
-                        let (_, doc) = current!(cx.editor);
-                        doc.line_ending == helix_core::LineEnding::Crlf
-                    };
+                    let is_crlf = doc!(cx.editor).line_ending == helix_core::LineEnding::Crlf;
                     match rope::RegexBuilder::new()
                         .syntax(
                             rope::Config::new()

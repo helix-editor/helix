@@ -1169,7 +1169,7 @@ mod test {
             ))
         );
     }
-    
+
     #[test]
     fn test_select_on_matches_crlf() {
         let r = Rope::from_str("This\r\nString\r\n\r\ncontains multiple\r\nlines");
