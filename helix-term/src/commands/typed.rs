@@ -2524,6 +2524,14 @@ fn insert_output(
     Ok(())
 }
 
+fn append_pipe(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::AppendPipe)
+}
+
+fn insert_pipe(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::InsertPipe)
+}
+
 fn pipe_to(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
@@ -3854,6 +3862,22 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand  {
+        name: "insert-pipe",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command, insert output before selection.",
+        fun: insert_pipe,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand  {
+        name: "append-pipe",
+        aliases: &[],
+        doc: "Pipe each selection to the shell command, append output after selection.",
+        fun: append_pipe,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
     },

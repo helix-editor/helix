@@ -271,6 +271,38 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // insert-pipe
+    test((
+        indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "},
+        ":insert-pipe cat<ret>",
+        indoc! {"\
+            #[|lorem]#lorem
+            #(|ipsum)#ipsum
+            #(|dolor)#dolor
+            "},
+    ))
+    .await?;
+
+    // append-pipe
+    test((
+        indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "},
+        ":append-pipe cat<ret>",
+        indoc! {"\
+            lorem#[|lorem]#
+            ipsum#(|ipsum)#
+            dolor#(|dolor)#
+            "},
+    ))
+    .await?;
+
     Ok(())
 }
 
