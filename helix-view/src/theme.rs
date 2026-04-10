@@ -388,6 +388,16 @@ fn build_theme_values(
         highlights.push(style);
     }
 
+    // the @embedded capture is reserved for correctly highlighting
+    // interpolated strings and must be present in the highlights
+    if !styles.contains_key("embedded") {
+        let name = "embedded".to_string();
+        let style = Style::default();
+        styles.insert(name.clone(), style);
+        scopes.push(name);
+        highlights.push(style);
+    };
+
     (styles, scopes, highlights, rainbow_length, warnings)
 }
 

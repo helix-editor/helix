@@ -102,7 +102,13 @@ pub fn highlighted_code_block<'a>(
             .iter()
             .chain(overlay_highlight_stack.iter())
             .fold(text_style, |acc, highlight| {
-                acc.patch(theme.highlight(*highlight))
+                // @embedded capture (string interpolation) resets syntax boundary
+                // so that the style from the parent (string) is not inherited
+                if theme.scope(*highlight) == "embedded" {
+                    Style::default()
+                } else {
+                    acc.patch(theme.highlight(*highlight))
+                }
             });
 
         let mut slice = &text[start as usize..pos as usize];

@@ -529,7 +529,13 @@ impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
         };
 
         self.style = highlights.fold(base, |acc, highlight| {
-            acc.patch(self.theme.highlight(highlight))
+            // @embedded capture (string interpolation) resets syntax boundary
+            // so that the style from the parent (string) is not inherited
+            if self.theme.scope(highlight) == "embedded" {
+                Style::default()
+            } else {
+                acc.patch(self.theme.highlight(highlight))
+            }
         });
         self.update_pos();
     }
