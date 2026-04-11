@@ -23,10 +23,12 @@
 "special" = { fg = "blue" }
 "string" = { fg = "green" }
 "type" = { fg = "yellow" }
-# "variable" = { fg = "blue" }
+"variable" = { fg = "white" }
 "variable.builtin" = { fg = "blue" }
 "variable.parameter" = { fg = "red" }
 "variable.other.member" = { fg = "red" }
+"punctuation" = { fg = "white" }
+"punctuation.special" = { fg = "purple" }
 
 "markup.heading" = { fg = "red" }
 "markup.raw.inline" = { fg = "green" }
