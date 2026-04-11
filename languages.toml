@@ -34,6 +34,7 @@ cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", 
 csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cue", args = ["lsp", "serve"] }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
+deno = { command = "deno", args = ["lsp"], config.deno.enable = true }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 djlsp = { command = "djlsp" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
