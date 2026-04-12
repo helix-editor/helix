@@ -1986,6 +1986,10 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         });
         drop(annotations);
         doc.set_selection(view.id, selection);
+
+        // Sync scroll to partner view if in a diff session
+        let focus = cx.editor.tree.focus;
+        cx.editor.sync_diff_scroll(focus);
         return;
     }
 
@@ -2037,6 +2041,10 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     sel = sel.replace(idx, prim_sel);
     drop(annotations);
     doc.set_selection(view.id, sel);
+
+    // Sync scroll to partner view if in a diff session
+    let focus = cx.editor.tree.focus;
+    cx.editor.sync_diff_scroll(focus);
 }
 
 fn page_up(cx: &mut Context) {
