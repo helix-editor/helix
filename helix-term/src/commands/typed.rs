@@ -2582,6 +2582,46 @@ fn run_shell_command(
     Ok(())
 }
 
+fn diff_open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let args: Vec<_> = args.into_iter().collect();
+    if args.len() != 2 {
+        bail!("Expected exactly 2 file paths: :diff-open file1 file2");
+    }
+
+    let (path_a, _) = crate::args::parse_file(&args[0]);
+    let (path_b, _) = crate::args::parse_file(&args[1]);
+    let path_a = helix_stdx::path::expand_tilde(path_a);
+    let path_b = helix_stdx::path::expand_tilde(path_b);
+
+    // Open first file in the current view
+    let doc_a = cx.editor.open(&path_a, Action::Replace)?;
+    let view_a = cx.editor.tree.focus;
+
+    // Open second file in a vertical split
+    let doc_b = cx.editor.open(&path_b, Action::VerticalSplit)?;
+    let view_b = cx.editor.tree.focus;
+
+    // Compute hunks between the two documents
+    let rope_a = cx.editor.documents[&doc_a].text().clone();
+    let rope_b = cx.editor.documents[&doc_b].text().clone();
+
+    let mut session = helix_view::diff_session::DiffSession::new(view_a, view_b, doc_a, doc_b);
+    session.compute_hunks(&rope_a, &rope_b);
+
+    cx.editor.diff_sessions.push(session);
+    cx.editor.set_status(format!(
+        "Diff: {} vs {}",
+        path_a.display(),
+        path_b.display()
+    ));
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3864,6 +3904,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "diff-open",
+        aliases: &["diffs"],
+        doc: "Open two files side-by-side in diff mode with aligned hunks.",
+        fun: diff_open,
+        completer: CommandCompleter::positional(&[completers::filename, completers::filename]),
+        signature: Signature {
+            positionals: (2, Some(2)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "reset-diff-change",

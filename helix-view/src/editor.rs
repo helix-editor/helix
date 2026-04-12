@@ -1208,6 +1208,7 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
+    pub diff_sessions: Vec<crate::diff_session::DiffSession>,
 
     pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -1356,6 +1357,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
+            diff_sessions: Vec::new(),
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -2154,7 +2156,8 @@ impl Editor {
         let config = self.config();
         let view = self.tree.get(id);
         let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff);
+        self.sync_diff_scroll(id);
     }
 
     #[inline]
@@ -2185,6 +2188,62 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
+    /// Returns the DiffSession containing the given view, if one exists.
+    pub fn diff_session_for(&self, view_id: ViewId) -> Option<&crate::diff_session::DiffSession> {
+        self.diff_sessions
+            .iter()
+            .find(|s: &&crate::diff_session::DiffSession| s.contains_view(view_id))
+    }
+
+    /// Returns a mutable reference to the DiffSession containing the given view.
+    pub fn diff_session_for_mut(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<&mut crate::diff_session::DiffSession> {
+        self.diff_sessions
+            .iter_mut()
+            .find(|s: &&mut crate::diff_session::DiffSession| s.contains_view(view_id))
+    }
+
+    /// Synchronize the partner view's scroll position to match the source view.
+    /// Copies the source view's anchor line to the partner view's document.
+    pub fn sync_diff_scroll(&mut self, source_view_id: ViewId) {
+        let session = self
+            .diff_sessions
+            .iter()
+            .find(|s: &&crate::diff_session::DiffSession| s.contains_view(source_view_id));
+        let Some(session) = session else {
+            return;
+        };
+        let partner_id = match session.partner_view(source_view_id) {
+            Some(id) => id,
+            None => return,
+        };
+
+        let source_view = self.tree.get(source_view_id);
+        let source_doc_id = source_view.doc;
+        let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
+
+        // Get the line number at the source view's anchor
+        let source_text = self.documents[&source_doc_id].text().slice(..);
+        let source_line = source_text.char_to_line(source_offset.anchor);
+
+        // Set the partner view's anchor to the same line in its document
+        let partner_view = self.tree.get(partner_id);
+        let partner_doc_id = partner_view.doc;
+        let partner_text = self.documents[&partner_doc_id].text().slice(..);
+        let partner_line = source_line.min(partner_text.len_lines().saturating_sub(1));
+        let partner_anchor = partner_text.line_to_char(partner_line);
+
+        let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
+        partner_offset.anchor = partner_anchor;
+        partner_offset.vertical_offset = source_offset.vertical_offset;
+        self.documents
+            .get_mut(&partner_doc_id)
+            .unwrap()
+            .set_view_offset(partner_id, partner_offset);
     }
 
     /// Returns all supported diagnostics for the document

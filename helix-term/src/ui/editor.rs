@@ -91,7 +91,22 @@ impl EditorView {
 
         let view_offset = doc.view_offset(view.id);
 
-        let text_annotations = view.text_annotations(doc, Some(theme));
+        let mut text_annotations = view.text_annotations(doc, Some(theme));
+
+        // Add DiffAlignment line annotation if this view is part of a diff session.
+        // This must be added last so it can account for other virtual text when aligning.
+        if let Some(session) = editor.diff_session_for(view.id) {
+            let side = if view.id == session.view_a() {
+                helix_view::diff_session::DiffSide::A
+            } else {
+                helix_view::diff_session::DiffSide::B
+            };
+            let hunks = std::sync::Arc::new(session.hunks().to_vec());
+            text_annotations.add_line_annotation(Box::new(
+                helix_view::diff_session::DiffAlignment::new(hunks, side),
+            ));
+        }
+
         let mut decorations = DecorationManager::default();
 
         if is_focused && config.cursorline {
@@ -100,6 +115,58 @@ impl EditorView {
 
         if is_focused && config.cursorcolumn {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
+        }
+
+        // Set diff line background highlighting if this view is part of a diff session.
+        // Intra-line char-level highlighting is added later via OverlayHighlights.
+        if let Some(session) = editor.diff_session_for(view.id) {
+            let side = if view.id == session.view_a() {
+                helix_view::diff_session::DiffSide::A
+            } else {
+                helix_view::diff_session::DiffSide::B
+            };
+            let hunks: Vec<_> = session.hunks().to_vec();
+
+            // Use diff theme fg as bg (most themes only set fg for diff.plus/delta/minus).
+            let fg_to_bg = |style: Style| -> Style {
+                if let Some(bg) = style.bg {
+                    Style::default().bg(bg)
+                } else if let Some(fg) = style.fg {
+                    Style::default().bg(fg)
+                } else {
+                    style
+                }
+            };
+            let style_added = fg_to_bg(theme.get("diff.plus"));
+            let style_modified = fg_to_bg(theme.get("diff.delta"));
+
+            let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
+                let doc_line = pos.doc_line as u32;
+                for hunk in &hunks {
+                    let (my_range, other_range) = match side {
+                        helix_view::diff_session::DiffSide::A => {
+                            (hunk.before.clone(), hunk.after.clone())
+                        }
+                        helix_view::diff_session::DiffSide::B => {
+                            (hunk.after.clone(), hunk.before.clone())
+                        }
+                    };
+                    if my_range.contains(&doc_line) {
+                        let style = if other_range.is_empty() {
+                            style_added
+                        } else {
+                            style_modified
+                        };
+                        renderer
+                            .set_style(Rect::new(inner.x, pos.visual_line, inner.width, 1), style);
+                        return;
+                    }
+                    if my_range.start > doc_line {
+                        break;
+                    }
+                }
+            };
+            decorations.add_decoration(line_decoration);
         }
 
         // Set DAP highlights, if needed.
@@ -144,6 +211,49 @@ impl EditorView {
         }
 
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+
+        // Intra-line diff highlighting via OverlayHighlights.
+        // Uses the "diff.delta" theme scope (which every theme with diff.delta defined
+        // registers as a highlight). Applies that fg color to the changed char ranges,
+        // making them visually distinct from the line-level bg.
+        if let Some(session) = editor.diff_session_for(view.id) {
+            if let Some(highlight) = theme.find_highlight_exact("diff.delta") {
+                let side = if view.id == session.view_a() {
+                    helix_view::diff_session::DiffSide::A
+                } else {
+                    helix_view::diff_session::DiffSide::B
+                };
+                let (doc_a_id, doc_b_id) = session.doc_ids();
+                let rope_a = editor.documents[&doc_a_id].text().clone();
+                let rope_b = editor.documents[&doc_b_id].text().clone();
+                let my_rope = match side {
+                    helix_view::diff_session::DiffSide::A => &rope_a,
+                    helix_view::diff_session::DiffSide::B => &rope_b,
+                };
+
+                let mut char_ranges = Vec::new();
+                for hunk in session.hunks() {
+                    if hunk.before.is_empty() || hunk.after.is_empty() {
+                        continue;
+                    }
+                    let (changes_a, changes_b) =
+                        helix_view::diff_session::intra_line_changes(&rope_a, &rope_b, hunk);
+                    let my_changes = match side {
+                        helix_view::diff_session::DiffSide::A => changes_a,
+                        helix_view::diff_session::DiffSide::B => changes_b,
+                    };
+                    for change in my_changes {
+                        char_ranges.push(change.to_char_range(my_rope));
+                    }
+                }
+                if !char_ranges.is_empty() {
+                    overlays.push(OverlayHighlights::Homogeneous {
+                        highlight,
+                        ranges: char_ranges,
+                    });
+                }
+            }
+        }
 
         if is_focused {
             if config.lsp.auto_document_highlight {
@@ -1621,6 +1731,19 @@ impl Component for EditorView {
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
         }
+
+        // Recompute diff session hunks if either document changed
+        for session in &mut cx.editor.diff_sessions {
+            let version_a = cx.editor.documents[&session.doc_a()].version();
+            let version_b = cx.editor.documents[&session.doc_b()].version();
+            let rope_a = cx.editor.documents[&session.doc_a()].text().clone();
+            let rope_b = cx.editor.documents[&session.doc_b()].text().clone();
+            session.update_if_changed(version_a, version_b, &rope_a, &rope_b);
+        }
+
+        // Sync scroll position from the focused view to its diff partner
+        let focus = cx.editor.tree.focus;
+        cx.editor.sync_diff_scroll(focus);
 
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
