@@ -1977,6 +1977,11 @@ impl Editor {
             doc.remove_view(id);
         }
         self.tree.remove(id);
+        // Prune any diff sessions whose view or pending marker matches the closed view.
+        self.diff_sessions.retain(|s| !s.contains_view(id));
+        if self.pending_diff_this == Some(id) {
+            self.pending_diff_this = None;
+        }
         self._refresh();
     }
 
@@ -1991,6 +1996,8 @@ impl Editor {
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
+        // Prune any diff sessions that reference the document being closed.
+        self.diff_sessions.retain(|s| !s.contains_doc(doc_id));
 
         enum Action {
             Close(ViewId),
