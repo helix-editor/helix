@@ -52,6 +52,11 @@ pub struct DiffSession {
     /// Shared hunk list. Stored as Arc so callers can take a cheap reference-counted
     /// snapshot for closures and annotations without cloning the full Vec each frame.
     hunks: Arc<Vec<Hunk>>,
+    /// Character-level diff results cached per hunk, parallel to `hunks`.
+    /// Stored as Arc so render closures can take a cheap snapshot without cloning.
+    /// Populated in `compute_hunks` and replaced on each recomputation.
+    /// Pure insertions/deletions store empty vecs (no character diff needed).
+    intra_line_cache: Arc<Vec<(Vec<InlineChange>, Vec<InlineChange>)>>,
     version_a: Option<i32>,
     version_b: Option<i32>,
 }
@@ -64,6 +69,7 @@ impl DiffSession {
             doc_a,
             doc_b,
             hunks: Arc::new(Vec::new()),
+            intra_line_cache: Arc::new(Vec::new()),
             version_a: None,
             version_b: None,
         }
@@ -121,6 +127,13 @@ impl DiffSession {
         Arc::clone(&self.hunks)
     }
 
+    /// Returns a cheap reference-counted snapshot of the intra-line cache.
+    /// Render closures should use this to capture the cache without cloning it,
+    /// mirroring the `hunks_arc` pattern.
+    pub fn intra_line_cache_arc(&self) -> Arc<Vec<(Vec<InlineChange>, Vec<InlineChange>)>> {
+        Arc::clone(&self.intra_line_cache)
+    }
+
     /// Returns true if the given view is part of this diff session.
     pub fn contains_view(&self, view_id: ViewId) -> bool {
         self.view_a == view_id || self.view_b == view_id
@@ -133,6 +146,7 @@ impl DiffSession {
 
     /// Computes line-level hunks between two Ropes using the Histogram diff algorithm.
     /// `rope_a` corresponds to the left/before side, `rope_b` to the right/after side.
+    /// Also rebuilds the intra-line character diff cache, indexed parallel to `hunks`.
     pub fn compute_hunks(&mut self, rope_a: &Rope, rope_b: &Rope) {
         let input = InternedInput::new(RopeLines(rope_a.slice(..)), RopeLines(rope_b.slice(..)));
         let mut diff = Diff::compute(Algorithm::Histogram, &input);
@@ -144,6 +158,30 @@ impl DiffSession {
             }),
         );
         self.hunks = Arc::new(diff.hunks().collect());
+        // Rebuild cache parallel to hunks. Pure insertions/deletions get empty entries
+        // (nothing to diff at the character level when one side is empty).
+        self.intra_line_cache = Arc::new(
+            self.hunks
+                .iter()
+                .map(|hunk| {
+                    if hunk.before.is_empty() || hunk.after.is_empty() {
+                        (Vec::new(), Vec::new())
+                    } else {
+                        intra_line_changes(rope_a, rope_b, hunk)
+                    }
+                })
+                .collect(),
+        );
+    }
+
+    /// Returns the cached intra-line character diff for the hunk at `index`,
+    /// or `None` if the index is out of range.
+    /// The tuple is `(changes_a, changes_b)` as produced by `intra_line_changes`.
+    pub fn intra_line_changes_for(
+        &self,
+        index: usize,
+    ) -> Option<&(Vec<InlineChange>, Vec<InlineChange>)> {
+        self.intra_line_cache.get(index)
     }
 
     /// Returns the documents in this session.
@@ -271,7 +309,7 @@ pub fn build_put_transaction(
 }
 
 /// A per-line column range that should be highlighted for intra-line changes.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct InlineChange {
     pub doc_line: usize,
     pub col_start: usize,
@@ -841,5 +879,73 @@ mod tests {
         let session = DiffSession::new(view_a, view_b, doc_a, doc_b);
 
         assert!(!session.contains_doc(unrelated));
+    }
+
+    #[test]
+    fn intra_line_cache_is_populated_after_compute_hunks() {
+        let (view_a, view_b) = make_view_ids();
+        let mut session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        let rope_a = Rope::from("line1\nold\nline3\n");
+        let rope_b = Rope::from("line1\nnew\nline3\n");
+
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // One modified hunk; cache entry must be present.
+        assert_eq!(session.hunks().len(), 1);
+        assert!(session.intra_line_changes_for(0).is_some());
+    }
+
+    #[test]
+    fn intra_line_cache_matches_free_function() {
+        let (view_a, view_b) = make_view_ids();
+        let mut session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        let rope_a = Rope::from("line1\nold\nline3\n");
+        let rope_b = Rope::from("line1\nnew\nline3\n");
+
+        session.compute_hunks(&rope_a, &rope_b);
+
+        let hunk = &session.hunks()[0];
+        let expected = intra_line_changes(&rope_a, &rope_b, hunk);
+        let cached = session.intra_line_changes_for(0).unwrap();
+
+        assert_eq!(cached.0, expected.0);
+        assert_eq!(cached.1, expected.1);
+    }
+
+    #[test]
+    fn intra_line_cache_is_empty_for_pure_addition() {
+        let (view_a, view_b) = make_view_ids();
+        let mut session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        let rope_a = Rope::from("line1\nline3\n");
+        let rope_b = Rope::from("line1\nnew\nline3\n");
+
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // Pure insertion: before is empty, no character diff to compute.
+        assert_eq!(session.hunks().len(), 1);
+        let cached = session.intra_line_changes_for(0).unwrap();
+        assert!(cached.0.is_empty());
+        assert!(cached.1.is_empty());
+    }
+
+    #[test]
+    fn intra_line_cache_refreshes_on_update_if_changed() {
+        let (view_a, view_b) = make_view_ids();
+        let mut session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        let rope_a = Rope::from("line1\nold\nline3\n");
+        let rope_b_v1 = Rope::from("line1\nnew\nline3\n");
+        let rope_b_v2 = Rope::from("line1\ncompletely different\nline3\n");
+
+        session.compute_hunks(&rope_a, &rope_b_v1);
+        let cached_v1 = session.intra_line_changes_for(0).unwrap().clone();
+
+        // Simulate a document edit: version changes, triggering recomputation.
+        session.update_if_changed(1, 1, &rope_a, &rope_b_v2);
+        let cached_v2 = session.intra_line_changes_for(0).unwrap();
+
+        assert_ne!(
+            cached_v1.1, cached_v2.1,
+            "cache must reflect updated content"
+        );
     }
 }

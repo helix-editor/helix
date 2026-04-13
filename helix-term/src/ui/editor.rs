@@ -96,14 +96,15 @@ impl EditorView {
         let diff_view_info = editor.diff_session_for(view.id).and_then(|session| {
             let side = session.side_for_view(view.id)?;
             let hunks = session.hunks_arc();
+            let intra_line_cache = session.intra_line_cache_arc();
             let doc_ids = session.doc_ids();
-            Some((side, hunks, doc_ids))
+            Some((side, hunks, intra_line_cache, doc_ids))
         });
 
         let mut text_annotations = view.text_annotations(doc, Some(theme));
 
         // Add DiffAlignment line annotation last so it can account for other virtual text.
-        if let Some((side, ref hunks, _)) = diff_view_info {
+        if let Some((side, ref hunks, _, _)) = diff_view_info {
             text_annotations.add_line_annotation(Box::new(
                 helix_view::diff_session::DiffAlignment::new(Arc::clone(hunks), side),
             ));
@@ -119,7 +120,7 @@ impl EditorView {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
         }
 
-        if let Some((side, ref hunks, _)) = diff_view_info {
+        if let Some((side, ref hunks, _, _)) = diff_view_info {
             let hunks = Arc::clone(hunks);
 
             // Use diff theme fg as bg (most themes only set fg for diff.plus/delta/minus).
@@ -210,7 +211,7 @@ impl EditorView {
         // Intra-line diff highlighting via OverlayHighlights.
         // Prefer diff.delta.text (explicit bg, makes whitespace changes visible) over
         // diff.delta (line-level scope whose bg matches the line background).
-        if let Some((side, ref hunks, (doc_a_id, doc_b_id))) = diff_view_info {
+        if let Some((side, _, ref intra_line_cache, (doc_a_id, doc_b_id))) = diff_view_info {
             let intra_highlight = theme
                 .find_highlight_exact("diff.delta.text")
                 .or_else(|| theme.find_highlight_exact("diff.delta"));
@@ -223,15 +224,11 @@ impl EditorView {
                 };
 
                 let mut char_ranges = Vec::new();
-                for hunk in hunks.iter() {
-                    if hunk.before.is_empty() || hunk.after.is_empty() {
-                        continue;
-                    }
-                    let (changes_a, changes_b) =
-                        helix_view::diff_session::intra_line_changes(&rope_a, &rope_b, hunk);
+                // Use the pre-computed per-hunk cache instead of running Myers diff per frame.
+                for cached in intra_line_cache.iter() {
                     let my_changes = match side {
-                        helix_view::diff_session::DiffSide::A => changes_a,
-                        helix_view::diff_session::DiffSide::B => changes_b,
+                        helix_view::diff_session::DiffSide::A => &cached.0,
+                        helix_view::diff_session::DiffSide::B => &cached.1,
                     };
                     for change in my_changes {
                         char_ranges.push(change.to_char_range(my_rope));
