@@ -217,7 +217,12 @@ impl EditorView {
         // registers as a highlight). Applies that fg color to the changed char ranges,
         // making them visually distinct from the line-level bg.
         if let Some(session) = editor.diff_session_for(view.id) {
-            if let Some(highlight) = theme.find_highlight_exact("diff.delta") {
+            // Prefer diff.delta.text (explicit bg, makes whitespace changes visible) over
+            // diff.delta (line-level scope whose bg matches the line background).
+            let intra_highlight = theme
+                .find_highlight_exact("diff.delta.text")
+                .or_else(|| theme.find_highlight_exact("diff.delta"));
+            if let Some(highlight) = intra_highlight {
                 let side = if view.id == session.view_a() {
                     helix_view::diff_session::DiffSide::A
                 } else {

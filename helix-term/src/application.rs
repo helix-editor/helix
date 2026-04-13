@@ -155,7 +155,12 @@ impl Application {
             doc_mut!(editor).set_path(None);
         } else if args.diff {
             // `hx --diff file1 file2`: open two files side-by-side in diff mode.
-            let files: Vec<_> = args.files.into_iter().collect();
+            // Filter out directory paths so `hx . --diff a b` works as expected.
+            let files: Vec<_> = args
+                .files
+                .into_iter()
+                .filter(|(p, _)| !p.is_dir())
+                .collect();
             if files.len() != 2 {
                 anyhow::bail!("--diff requires exactly two file paths");
             }
