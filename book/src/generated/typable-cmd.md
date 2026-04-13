@@ -87,7 +87,11 @@
 | `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
-| `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
+| `:diff-open`, `:diffs` | Open two files side-by-side in diff mode with aligned hunks. |
+| `:reset-diff-change`, `:diffget`, `:diffg` | In a diff session: pull changes from the partner buffer. Outside a diff session: reset the diff change at the cursor position to the VCS base. |
+| `:diff-put`, `:diffput`, `:diffp` | In a diff session: push changes from the current buffer to the partner buffer at the cursor position. |
+| `:diff-off`, `:diffoff` | End the diff session for the current view. Both views continue as independent buffers. |
+| `:diff-this`, `:diffthis` | Mark the current view as a diff participant. Run in two views to create a diff session between them. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |

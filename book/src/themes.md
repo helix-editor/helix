@@ -1,4 +1,4 @@
-## Themes
+# Themes
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
@@ -48,11 +48,7 @@ Color values must be either a [CSS hex RGB string](https://developer.mozilla.org
 
 > 💡 Note that Helix doesn't support transparency (alpha channel).
 
-For inspiration, you can find the default `theme.toml`
-[here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
-user-submitted themes
-[here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
-
+For inspiration, you can browse the [default theme.toml](https://github.com/helix-editor/helix/blob/master/theme.toml) and the [user-submitted themes](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
 ## The details of theme creation
 
@@ -79,7 +75,7 @@ are listed below. The `[palette]` section in the config file takes precedence
 over it and is merged into the default palette.
 
 | Color Name      |
-| ---             |
+| --------------- |
 | `default`       |
 | `black`         |
 | `red`           |
@@ -103,17 +99,17 @@ over it and is merged into the default palette.
 The following values may be used as modifier, provided they are supported by
 your terminal emulator.
 
-| Modifier             |
-| ---                  |
-| `bold`               |
-| `dim`                |
-| `italic`             |
-| `underlined`         |
-| `slow_blink`         |
-| `rapid_blink`        |
-| `reversed`           |
-| `hidden`             |
-| `crossed_out`        |
+| Modifier      |
+| ------------- |
+| `bold`        |
+| `dim`         |
+| `italic`      |
+| `underlined`  |
+| `slow_blink`  |
+| `rapid_blink` |
+| `reversed`    |
+| `hidden`      |
+| `crossed_out` |
 
 > 💡 The `underlined` modifier is deprecated and only available for backwards compatibility.
 > Its behavior is equivalent to setting `underline.style="line"`.
@@ -123,14 +119,13 @@ your terminal emulator.
 One of the following values may be used as a value for `underline.style`, providing it is
 supported by your terminal emulator.
 
-| Modifier       |
-| ---            |
-| `line`         |
-| `curl`         |
-| `dashed`       |
-| `dotted`       |
-| `double_line`  |
-
+| Modifier      |
+| ------------- |
+| `line`        |
+| `curl`        |
+| `dashed`      |
+| `dotted`      |
+| `double_line` |
 
 ### Inheritance
 
@@ -250,7 +245,7 @@ We use a similar set of scopes as
 - `namespace`
 
 - `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
-See also [#2380]
+  See also [#2380]
 
 - `markup`
   - `heading`
@@ -279,9 +274,10 @@ See also [#2380]
   - `minus` - deletions
     - `gutter` - gutter indicator
   - `delta` - modifications
-    - `moved` - renamed or moved files/changes
     - `conflict` - merge conflicts
     - `gutter` - gutter indicator
+    - `moved` - renamed or moved files/changes
+    - `text` - intra-line changed characters in diff mode
 
 #### Interface
 
@@ -299,9 +295,8 @@ These scopes are used for theming the editor interface:
       - `completion` - for completion doc popup UI
       - `hover` - for hover popup UI
 
-
 | Key                               | Notes                                                                                          |
-| ---                               | ---                                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `ui.background`                   |                                                                                                |
 | `ui.background.separator`         | Picker separator below input line                                                              |
 | `ui.cursor`                       |                                                                                                |
