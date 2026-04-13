@@ -4,7 +4,7 @@ use std::sync::Arc;
 use helix_core::text_annotations::LineAnnotation;
 use helix_core::{Position, Rope, RopeSlice, Tendril, Transaction};
 use helix_vcs::Hunk;
-use imara_diff::{Algorithm, Diff, InternedInput};
+use imara_diff::{Algorithm, Diff, InternedInput, TokenSource};
 
 use crate::{DocumentId, ViewId};
 
@@ -20,6 +20,23 @@ impl<'a> imara_diff::TokenSource for RopeLines<'a> {
 
     fn estimate_tokens(&self) -> u32 {
         self.0.len_lines() as u32
+    }
+}
+
+/// A `TokenSource` that yields individual chars, giving char-level token indices
+/// in imara-diff hunks. Used by `intra_line_changes` for per-character diff.
+struct CharSlice<'a>(&'a [char]);
+
+impl<'a> TokenSource for CharSlice<'a> {
+    type Token = char;
+    type Tokenizer = std::iter::Copied<std::slice::Iter<'a, char>>;
+
+    fn tokenize(&self) -> Self::Tokenizer {
+        self.0.iter().copied()
+    }
+
+    fn estimate_tokens(&self) -> u32 {
+        self.0.len() as u32
     }
 }
 
@@ -287,7 +304,10 @@ pub fn intra_line_changes(
     let text_a: String = rope_a.slice(a_start..a_end).into();
     let text_b: String = rope_b.slice(b_start..b_end).into();
 
-    let input = InternedInput::new(text_a.as_str(), text_b.as_str());
+    // Use char-level tokenization so hunk offsets are char indices, not line indices.
+    let chars_a: Vec<char> = text_a.chars().collect();
+    let chars_b: Vec<char> = text_b.chars().collect();
+    let input = InternedInput::new(CharSlice(&chars_a), CharSlice(&chars_b));
     let diff = Diff::compute(Algorithm::Myers, &input);
 
     let char_to_line_col = |base_char: usize, offset: u32, rope: &Rope| -> (usize, usize) {
