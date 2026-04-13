@@ -2,7 +2,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use helix_core::text_annotations::LineAnnotation;
-use helix_core::{Position, Rope, RopeSlice};
+use helix_core::{Position, Rope, RopeSlice, Tendril, Transaction};
 use helix_vcs::Hunk;
 use imara_diff::{Algorithm, Diff, InternedInput};
 
@@ -46,6 +46,26 @@ impl DiffSession {
             doc_a,
             doc_b,
             hunks: Vec::new(),
+            version_a: -1,
+            version_b: -1,
+        }
+    }
+
+    /// Creates a session with pre-computed hunks. Useful for calling transaction helpers
+    /// when the hunk data has already been cloned out of the live session.
+    pub fn new_with_hunks(
+        view_a: ViewId,
+        view_b: ViewId,
+        doc_a: DocumentId,
+        doc_b: DocumentId,
+        hunks: Vec<Hunk>,
+    ) -> Self {
+        Self {
+            view_a,
+            view_b,
+            doc_a,
+            doc_b,
+            hunks,
             version_a: -1,
             version_b: -1,
         }
@@ -124,6 +144,115 @@ impl DiffSession {
         } else {
             None
         }
+    }
+
+    /// Returns which side of the diff session the given view is on.
+    pub fn side_for_view(&self, view_id: ViewId) -> Option<DiffSide> {
+        if view_id == self.view_a {
+            Some(DiffSide::A)
+        } else if view_id == self.view_b {
+            Some(DiffSide::B)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the partner document ID for the given document.
+    pub fn partner_doc(&self, doc_id: DocumentId) -> Option<DocumentId> {
+        if doc_id == self.doc_a {
+            Some(self.doc_b)
+        } else if doc_id == self.doc_b {
+            Some(self.doc_a)
+        } else {
+            None
+        }
+    }
+
+    /// Returns an iterator over hunks whose range on `side` intersects any of the given line
+    /// ranges. Line ranges are (start_line, end_line) pairs (inclusive, 0-indexed).
+    ///
+    /// For empty ranges (pure deletions on this side), a hunk matches if its start position
+    /// is at or before the end of the selection range, mirroring VCS `hunks_intersecting_line_ranges`.
+    fn hunks_intersecting<'a>(
+        &'a self,
+        line_ranges: &'a [(usize, usize)],
+        side: DiffSide,
+    ) -> impl Iterator<Item = &'a Hunk> {
+        self.hunks.iter().filter(move |h| {
+            let curr_range = match side {
+                DiffSide::A => &h.before,
+                DiffSide::B => &h.after,
+            };
+            line_ranges.iter().any(|(start, end)| {
+                if curr_range.is_empty() {
+                    // Deletion on this side: the insertion point must be at or before selection end.
+                    curr_range.start as usize <= *end
+                } else {
+                    // Standard half-open range overlap.
+                    curr_range.start as usize <= *end && curr_range.end as usize > *start
+                }
+            })
+        })
+    }
+
+    /// Build a transaction on `curr_text` that replaces content at hunks under `line_ranges`
+    /// with content from `partner_text`. This is the `:diffget` operation: pull from partner.
+    /// Returns `(transaction, number_of_changes)`.
+    pub fn build_get_transaction(
+        &self,
+        side: DiffSide,
+        line_ranges: &[(usize, usize)],
+        curr_text: &Rope,
+        partner_text: &Rope,
+    ) -> (Transaction, usize) {
+        let mut changes = 0usize;
+        let transaction = Transaction::change(
+            curr_text,
+            self.hunks_intersecting(line_ranges, side).map(|h| {
+                let (curr_range, partner_range) = match side {
+                    DiffSide::A => (&h.before, &h.after),
+                    DiffSide::B => (&h.after, &h.before),
+                };
+                changes += 1;
+                let curr_start = curr_text.line_to_char(curr_range.start as usize);
+                let curr_end = curr_text.line_to_char(curr_range.end as usize);
+                let p_start = partner_text.line_to_char(partner_range.start as usize);
+                let p_end = partner_text.line_to_char(partner_range.end as usize);
+                let text: Tendril = partner_text.slice(p_start..p_end).chunks().collect();
+                (curr_start, curr_end, (!text.is_empty()).then_some(text))
+            }),
+        );
+        (transaction, changes)
+    }
+
+    /// Build a transaction on `partner_text` that replaces content at hunks under `line_ranges`
+    /// with content from `curr_text`. This is the `:diffput` operation: push to partner.
+    /// Returns `(transaction, number_of_changes)`.
+    pub fn build_put_transaction(
+        &self,
+        side: DiffSide,
+        line_ranges: &[(usize, usize)],
+        curr_text: &Rope,
+        partner_text: &Rope,
+    ) -> (Transaction, usize) {
+        let mut changes = 0usize;
+        let transaction = Transaction::change(
+            partner_text,
+            self.hunks_intersecting(line_ranges, side).map(|h| {
+                let (curr_range, partner_range) = match side {
+                    DiffSide::A => (&h.before, &h.after),
+                    DiffSide::B => (&h.after, &h.before),
+                };
+                changes += 1;
+                let p_start = partner_text.line_to_char(partner_range.start as usize);
+                let p_end = partner_text.line_to_char(partner_range.end as usize);
+                let c_start = curr_text.line_to_char(curr_range.start as usize);
+                let c_end = curr_text.line_to_char(curr_range.end as usize);
+                let text: Tendril = curr_text.slice(c_start..c_end).chunks().collect();
+                (p_start, p_end, (!text.is_empty()).then_some(text))
+            }),
+        );
+        (transaction, changes)
     }
 }
 
@@ -602,5 +731,79 @@ mod tests {
             assert_eq!(align_a.filler_lines_at(line), 0);
             assert_eq!(align_b.filler_lines_at(line), 0);
         }
+    }
+
+    // --- build_get_transaction / build_put_transaction tests ---
+
+    fn apply_tx(rope: &Rope, tx: Transaction) -> Rope {
+        let mut result = rope.clone();
+        tx.apply(&mut result);
+        result
+    }
+
+    #[test]
+    fn diffget_replaces_hunk_with_partner_content() {
+        let mut session = make_session();
+        let rope_a = Rope::from("line1\nold_content\nline3\n");
+        let rope_b = Rope::from("line1\nnew_content\nline3\n");
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // Cursor on line 1 (old_content line) in doc_a
+        let line_ranges = vec![(1usize, 1usize)];
+        let (tx, changes) =
+            session.build_get_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+
+        assert_eq!(changes, 1);
+        assert_eq!(apply_tx(&rope_a, tx), rope_b);
+    }
+
+    #[test]
+    fn diffput_replaces_partner_hunk_with_current_content() {
+        let mut session = make_session();
+        let rope_a = Rope::from("line1\nold_content\nline3\n");
+        let rope_b = Rope::from("line1\nnew_content\nline3\n");
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // Cursor on line 1 (old_content line) in doc_a: push doc_a's content to doc_b
+        let line_ranges = vec![(1usize, 1usize)];
+        let (tx, changes) =
+            session.build_put_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+
+        assert_eq!(changes, 1);
+        assert_eq!(apply_tx(&rope_b, tx), rope_a);
+    }
+
+    #[test]
+    fn diffget_no_change_when_no_intersecting_hunks() {
+        let mut session = make_session();
+        let rope_a = Rope::from("aaa\nbbb\nccc\nddd\n");
+        let rope_b = Rope::from("aaa\nBBB\nccc\nDDD\n");
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // Cursor on line 2 (ccc) which is unchanged
+        let line_ranges = vec![(2usize, 2usize)];
+        let (_, changes) =
+            session.build_get_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+
+        assert_eq!(changes, 0);
+    }
+
+    #[test]
+    fn diffget_handles_pure_deletion_from_side_b() {
+        // doc_a has line2 that doc_b is missing; hunk: before=1..2, after=1..1 (empty in B)
+        let mut session = make_session();
+        let rope_a = Rope::from("line1\nline2\nline3\n");
+        let rope_b = Rope::from("line1\nline3\n");
+        session.compute_hunks(&rope_a, &rope_b);
+
+        // On side B, the deletion hunk has after.start=1 (between line1 and line3).
+        // Cursor on line 1 (line3) in doc_b: after.start=1 <= end_line=1, so it matches.
+        let line_ranges = vec![(1usize, 1usize)];
+        let (tx, changes) =
+            session.build_get_transaction(DiffSide::B, &line_ranges, &rope_b, &rope_a);
+
+        assert_eq!(changes, 1);
+        // After diffget on side B: doc_b gains line2 back from doc_a.
+        assert_eq!(apply_tx(&rope_b, tx), rope_a);
     }
 }
