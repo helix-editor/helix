@@ -371,6 +371,33 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_scratch_to_new_path_force_creates_file() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let new_path = dir.path().join("new-file.txt");
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(format!("ihello<esc>:w! {}<ret>", new_path.to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(&path::normalize(&new_path)), doc.path());
+        }),
+        false,
+    )
+    .await?;
+
+    let file_content = std::fs::read_to_string(&new_path)?;
+    assert_eq!(file_content, LineFeedHandling::Native.apply("hello"));
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_scratch_no_path_fails() -> anyhow::Result<()> {
     helpers::test_key_sequence_with_input_text(
         None,

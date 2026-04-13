@@ -9,6 +9,7 @@
   - [Flatpak](#flatpak)
   - [Snap](#snap)
   - [AppImage](#appimage)
+  - [Linux Homebrew Core](#linux-homebrew-core)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
   - [MacPorts](#macports)
@@ -16,6 +17,7 @@
   - [Winget](#winget)
   - [Scoop](#scoop)
   - [Chocolatey](#chocolatey)
+  - [Packably](#packably)
   - [MSYS2](#msys2)
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
@@ -117,12 +119,24 @@ mv helix-*.AppImage "$HOME/.local/bin/hx"
 
 and make sure `~/.local/bin` is in your `PATH`.
 
+### Linux Homebrew Core
+
+Checkout the [macOS](#homebrew-core) instructions below.
+
 ## macOS
 
 ### Homebrew Core
 
+Install the latest release:
+
 ```sh
 brew install helix
+```
+
+Or, install the latest nightly version:
+
+```sh
+brew install --HEAD helix
 ```
 
 ### MacPorts
@@ -133,7 +147,7 @@ sudo port install helix
 
 ## Windows
 
-Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/)
+Install on Windows using [Winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/), [Scoop](https://scoop.sh/), [Chocolatey](https://chocolatey.org/), [Packably](https://www.packably.com.br/)
 or [MSYS2](https://msys2.org/).
 
 ### Winget
@@ -154,6 +168,12 @@ scoop install helix
 
 ```sh
 choco install helix
+```
+
+### Packably
+
+```sh
+packl install helix
 ```
 
 ### MSYS2
