@@ -2195,9 +2195,7 @@ impl Editor {
 
     /// Returns the DiffSession containing the given view, if one exists.
     pub fn diff_session_for(&self, view_id: ViewId) -> Option<&crate::diff_session::DiffSession> {
-        self.diff_sessions
-            .iter()
-            .find(|s| s.contains_view(view_id))
+        self.diff_sessions.iter().find(|s| s.contains_view(view_id))
     }
 
     /// Returns a mutable reference to the DiffSession containing the given view.

@@ -4187,7 +4187,8 @@ fn goto_last_change(cx: &mut Context) {
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let view_id = cx.editor.tree.focus;
 
-    let session_info = cx.editor
+    let session_info = cx
+        .editor
         .diff_sessions
         .iter()
         .find(|s| s.contains_view(view_id))
