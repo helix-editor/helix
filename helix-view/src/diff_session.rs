@@ -49,10 +49,11 @@ pub struct DiffSession {
     view_b: ViewId,
     doc_a: DocumentId,
     doc_b: DocumentId,
-    hunks: Vec<Hunk>,
-    /// Tracked document versions for change detection
-    version_a: i32,
-    version_b: i32,
+    /// Shared hunk list. Stored as Arc so callers can take a cheap reference-counted
+    /// snapshot for closures and annotations without cloning the full Vec each frame.
+    hunks: Arc<Vec<Hunk>>,
+    version_a: Option<i32>,
+    version_b: Option<i32>,
 }
 
 impl DiffSession {
@@ -62,30 +63,17 @@ impl DiffSession {
             view_b,
             doc_a,
             doc_b,
-            hunks: Vec::new(),
-            version_a: -1,
-            version_b: -1,
+            hunks: Arc::new(Vec::new()),
+            version_a: None,
+            version_b: None,
         }
     }
 
-    /// Creates a session with pre-computed hunks. Useful for calling transaction helpers
-    /// when the hunk data has already been cloned out of the live session.
-    pub fn new_with_hunks(
-        view_a: ViewId,
-        view_b: ViewId,
-        doc_a: DocumentId,
-        doc_b: DocumentId,
-        hunks: Vec<Hunk>,
-    ) -> Self {
-        Self {
-            view_a,
-            view_b,
-            doc_a,
-            doc_b,
-            hunks,
-            version_a: -1,
-            version_b: -1,
-        }
+    /// Returns true if the stored versions differ from the given ones, meaning
+    /// `update_if_changed` would recompute. Lets callers defer expensive Rope
+    /// clones until they are actually needed.
+    pub fn needs_update(&self, version_a: i32, version_b: i32) -> bool {
+        self.version_a != Some(version_a) || self.version_b != Some(version_b)
     }
 
     /// Recompute hunks if either document has changed since the last computation.
@@ -97,11 +85,11 @@ impl DiffSession {
         rope_a: &Rope,
         rope_b: &Rope,
     ) -> bool {
-        if version_a == self.version_a && version_b == self.version_b {
+        if !self.needs_update(version_a, version_b) {
             return false;
         }
-        self.version_a = version_a;
-        self.version_b = version_b;
+        self.version_a = Some(version_a);
+        self.version_b = Some(version_b);
         self.compute_hunks(rope_a, rope_b);
         true
     }
@@ -126,6 +114,13 @@ impl DiffSession {
         &self.hunks
     }
 
+    /// Returns a cheap reference-counted snapshot of the hunk list.
+    /// Callers that need to hold hunks across a borrow boundary (e.g. render closures)
+    /// should use this instead of `hunks().to_vec()`.
+    pub fn hunks_arc(&self) -> Arc<Vec<Hunk>> {
+        Arc::clone(&self.hunks)
+    }
+
     /// Returns true if the given view is part of this diff session.
     pub fn contains_view(&self, view_id: ViewId) -> bool {
         self.view_a == view_id || self.view_b == view_id
@@ -134,7 +129,6 @@ impl DiffSession {
     /// Computes line-level hunks between two Ropes using the Histogram diff algorithm.
     /// `rope_a` corresponds to the left/before side, `rope_b` to the right/after side.
     pub fn compute_hunks(&mut self, rope_a: &Rope, rope_b: &Rope) {
-        self.hunks.clear();
         let input = InternedInput::new(RopeLines(rope_a.slice(..)), RopeLines(rope_b.slice(..)));
         let mut diff = Diff::compute(Algorithm::Histogram, &input);
         diff.postprocess_with(
@@ -144,7 +138,7 @@ impl DiffSession {
                 imara_diff::IndentLevel::for_ascii_line(input.interner[token].bytes(), 4)
             }),
         );
-        self.hunks.extend(diff.hunks());
+        self.hunks = Arc::new(diff.hunks().collect());
     }
 
     /// Returns the documents in this session.
@@ -184,93 +178,91 @@ impl DiffSession {
             None
         }
     }
+}
 
-    /// Returns an iterator over hunks whose range on `side` intersects any of the given line
-    /// ranges. Line ranges are (start_line, end_line) pairs (inclusive, 0-indexed).
-    ///
-    /// For empty ranges (pure deletions on this side), a hunk matches if its start position
-    /// is at or before the end of the selection range, mirroring VCS `hunks_intersecting_line_ranges`.
-    fn hunks_intersecting<'a>(
-        &'a self,
-        line_ranges: &'a [(usize, usize)],
-        side: DiffSide,
-    ) -> impl Iterator<Item = &'a Hunk> {
-        self.hunks.iter().filter(move |h| {
-            let curr_range = match side {
-                DiffSide::A => &h.before,
-                DiffSide::B => &h.after,
-            };
-            line_ranges.iter().any(|(start, end)| {
-                if curr_range.is_empty() {
-                    // Deletion on this side: the insertion point must be at or before selection end.
-                    curr_range.start as usize <= *end
-                } else {
-                    // Standard half-open range overlap.
-                    curr_range.start as usize <= *end && curr_range.end as usize > *start
-                }
-            })
+/// Returns an iterator over hunks whose range on `side` intersects any of the given line
+/// ranges. Line ranges are (start_line, end_line) pairs (inclusive, 0-indexed).
+///
+/// For empty ranges (pure deletions on this side), a hunk matches if its start position
+/// is at or before the end of the selection range, mirroring VCS `hunks_intersecting_line_ranges`.
+fn hunks_intersecting<'a>(
+    hunks: &'a [Hunk],
+    line_ranges: &'a [(usize, usize)],
+    side: DiffSide,
+) -> impl Iterator<Item = &'a Hunk> {
+    hunks.iter().filter(move |h| {
+        let curr_range = match side {
+            DiffSide::A => &h.before,
+            DiffSide::B => &h.after,
+        };
+        line_ranges.iter().any(|(start, end)| {
+            if curr_range.is_empty() {
+                curr_range.start as usize <= *end
+            } else {
+                curr_range.start as usize <= *end && curr_range.end as usize > *start
+            }
         })
-    }
+    })
+}
 
-    /// Build a transaction on `curr_text` that replaces content at hunks under `line_ranges`
-    /// with content from `partner_text`. This is the `:diffget` operation: pull from partner.
-    /// Returns `(transaction, number_of_changes)`.
-    pub fn build_get_transaction(
-        &self,
-        side: DiffSide,
-        line_ranges: &[(usize, usize)],
-        curr_text: &Rope,
-        partner_text: &Rope,
-    ) -> (Transaction, usize) {
-        let mut changes = 0usize;
-        let transaction = Transaction::change(
-            curr_text,
-            self.hunks_intersecting(line_ranges, side).map(|h| {
-                let (curr_range, partner_range) = match side {
-                    DiffSide::A => (&h.before, &h.after),
-                    DiffSide::B => (&h.after, &h.before),
-                };
-                changes += 1;
-                let curr_start = curr_text.line_to_char(curr_range.start as usize);
-                let curr_end = curr_text.line_to_char(curr_range.end as usize);
-                let p_start = partner_text.line_to_char(partner_range.start as usize);
-                let p_end = partner_text.line_to_char(partner_range.end as usize);
-                let text: Tendril = partner_text.slice(p_start..p_end).chunks().collect();
-                (curr_start, curr_end, (!text.is_empty()).then_some(text))
-            }),
-        );
-        (transaction, changes)
-    }
+/// Build a transaction on `curr_text` that replaces content at hunks under `line_ranges`
+/// with content from `partner_text`. This is the `:diffget` operation: pull from partner.
+/// Returns `(transaction, number_of_changes)`.
+pub fn build_get_transaction(
+    hunks: &[Hunk],
+    side: DiffSide,
+    line_ranges: &[(usize, usize)],
+    curr_text: &Rope,
+    partner_text: &Rope,
+) -> (Transaction, usize) {
+    let mut changes = 0usize;
+    let transaction = Transaction::change(
+        curr_text,
+        hunks_intersecting(hunks, line_ranges, side).map(|h| {
+            let (curr_range, partner_range) = match side {
+                DiffSide::A => (&h.before, &h.after),
+                DiffSide::B => (&h.after, &h.before),
+            };
+            changes += 1;
+            let curr_start = curr_text.line_to_char(curr_range.start as usize);
+            let curr_end = curr_text.line_to_char(curr_range.end as usize);
+            let p_start = partner_text.line_to_char(partner_range.start as usize);
+            let p_end = partner_text.line_to_char(partner_range.end as usize);
+            let text: Tendril = partner_text.slice(p_start..p_end).chunks().collect();
+            (curr_start, curr_end, (!text.is_empty()).then_some(text))
+        }),
+    );
+    (transaction, changes)
+}
 
-    /// Build a transaction on `partner_text` that replaces content at hunks under `line_ranges`
-    /// with content from `curr_text`. This is the `:diffput` operation: push to partner.
-    /// Returns `(transaction, number_of_changes)`.
-    pub fn build_put_transaction(
-        &self,
-        side: DiffSide,
-        line_ranges: &[(usize, usize)],
-        curr_text: &Rope,
-        partner_text: &Rope,
-    ) -> (Transaction, usize) {
-        let mut changes = 0usize;
-        let transaction = Transaction::change(
-            partner_text,
-            self.hunks_intersecting(line_ranges, side).map(|h| {
-                let (curr_range, partner_range) = match side {
-                    DiffSide::A => (&h.before, &h.after),
-                    DiffSide::B => (&h.after, &h.before),
-                };
-                changes += 1;
-                let p_start = partner_text.line_to_char(partner_range.start as usize);
-                let p_end = partner_text.line_to_char(partner_range.end as usize);
-                let c_start = curr_text.line_to_char(curr_range.start as usize);
-                let c_end = curr_text.line_to_char(curr_range.end as usize);
-                let text: Tendril = curr_text.slice(c_start..c_end).chunks().collect();
-                (p_start, p_end, (!text.is_empty()).then_some(text))
-            }),
-        );
-        (transaction, changes)
-    }
+/// Build a transaction on `partner_text` that replaces content at hunks under `line_ranges`
+/// with content from `curr_text`. This is the `:diffput` operation: push to partner.
+/// Returns `(transaction, number_of_changes)`.
+pub fn build_put_transaction(
+    hunks: &[Hunk],
+    side: DiffSide,
+    line_ranges: &[(usize, usize)],
+    curr_text: &Rope,
+    partner_text: &Rope,
+) -> (Transaction, usize) {
+    let mut changes = 0usize;
+    let transaction = Transaction::change(
+        partner_text,
+        hunks_intersecting(hunks, line_ranges, side).map(|h| {
+            let (curr_range, partner_range) = match side {
+                DiffSide::A => (&h.before, &h.after),
+                DiffSide::B => (&h.after, &h.before),
+            };
+            changes += 1;
+            let p_start = partner_text.line_to_char(partner_range.start as usize);
+            let p_end = partner_text.line_to_char(partner_range.end as usize);
+            let c_start = curr_text.line_to_char(curr_range.start as usize);
+            let c_end = curr_text.line_to_char(curr_range.end as usize);
+            let text: Tendril = curr_text.slice(c_start..c_end).chunks().collect();
+            (p_start, p_end, (!text.is_empty()).then_some(text))
+        }),
+    );
+    (transaction, changes)
 }
 
 /// A per-line column range that should be highlighted for intra-line changes.
@@ -768,10 +760,9 @@ mod tests {
         let rope_b = Rope::from("line1\nnew_content\nline3\n");
         session.compute_hunks(&rope_a, &rope_b);
 
-        // Cursor on line 1 (old_content line) in doc_a
         let line_ranges = vec![(1usize, 1usize)];
         let (tx, changes) =
-            session.build_get_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+            build_get_transaction(session.hunks(), DiffSide::A, &line_ranges, &rope_a, &rope_b);
 
         assert_eq!(changes, 1);
         assert_eq!(apply_tx(&rope_a, tx), rope_b);
@@ -784,10 +775,9 @@ mod tests {
         let rope_b = Rope::from("line1\nnew_content\nline3\n");
         session.compute_hunks(&rope_a, &rope_b);
 
-        // Cursor on line 1 (old_content line) in doc_a: push doc_a's content to doc_b
         let line_ranges = vec![(1usize, 1usize)];
         let (tx, changes) =
-            session.build_put_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+            build_put_transaction(session.hunks(), DiffSide::A, &line_ranges, &rope_a, &rope_b);
 
         assert_eq!(changes, 1);
         assert_eq!(apply_tx(&rope_b, tx), rope_a);
@@ -800,10 +790,9 @@ mod tests {
         let rope_b = Rope::from("aaa\nBBB\nccc\nDDD\n");
         session.compute_hunks(&rope_a, &rope_b);
 
-        // Cursor on line 2 (ccc) which is unchanged
         let line_ranges = vec![(2usize, 2usize)];
         let (_, changes) =
-            session.build_get_transaction(DiffSide::A, &line_ranges, &rope_a, &rope_b);
+            build_get_transaction(session.hunks(), DiffSide::A, &line_ranges, &rope_a, &rope_b);
 
         assert_eq!(changes, 0);
     }
@@ -820,7 +809,7 @@ mod tests {
         // Cursor on line 1 (line3) in doc_b: after.start=1 <= end_line=1, so it matches.
         let line_ranges = vec![(1usize, 1usize)];
         let (tx, changes) =
-            session.build_get_transaction(DiffSide::B, &line_ranges, &rope_b, &rope_a);
+            build_get_transaction(session.hunks(), DiffSide::B, &line_ranges, &rope_b, &rope_a);
 
         assert_eq!(changes, 1);
         // After diffget on side B: doc_b gains line2 back from doc_a.
