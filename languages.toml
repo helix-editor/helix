@@ -5453,3 +5453,21 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+[[language]]
+name = "angular"
+scope = "source.angular"
+injection-regex = "html"
+file-types = ["component.html", "html"] # Angular 21+ updated the naming format
+block-comment-tokens = { start = "<!--", end = "-->" }
+language-servers = ["angular"]
+roots = ["angular.json"]
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "angular"
+source = { git = "https://github.com/dlvandenberg/tree-sitter-angular", rev = "f0d0685701b70883fa2dfe94ee7dc27965cab841" }
