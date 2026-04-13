@@ -153,6 +153,33 @@ impl Application {
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
+        } else if args.diff {
+            // `hx --diff file1 file2`: open two files side-by-side in diff mode.
+            let files: Vec<_> = args.files.into_iter().collect();
+            if files.len() != 2 {
+                anyhow::bail!("--diff requires exactly two file paths");
+            }
+            let (path_a, _) = &files[0];
+            let (path_b, _) = &files[1];
+
+            let doc_a = editor.open(path_a, Action::VerticalSplit)?;
+            let view_a = editor.tree.focus;
+            let doc_b = editor.open(path_b, Action::VerticalSplit)?;
+            let view_b = editor.tree.focus;
+
+            let rope_a = editor.documents[&doc_a].text().clone();
+            let rope_b = editor.documents[&doc_b].text().clone();
+
+            let mut session =
+                helix_view::diff_session::DiffSession::new(view_a, view_b, doc_a, doc_b);
+            session.compute_hunks(&rope_a, &rope_b);
+            editor.diff_sessions.push(session);
+
+            editor.set_status(format!(
+                "Diff: {} vs {}",
+                path_a.display(),
+                path_b.display()
+            ));
         } else if !args.files.is_empty() {
             let mut files_it = args.files.into_iter().peekable();
 

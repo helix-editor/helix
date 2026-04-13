@@ -1209,6 +1209,8 @@ pub struct Editor {
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
     pub diff_sessions: Vec<crate::diff_session::DiffSession>,
+    /// Holds the first view that called `:diffthis`, waiting for a second call to complete the pair.
+    pub pending_diff_this: Option<ViewId>,
 
     pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -1358,6 +1360,7 @@ impl Editor {
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
             diff_sessions: Vec::new(),
+            pending_diff_this: None,
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
