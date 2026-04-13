@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 pub struct Args {
     pub display_help: bool,
     pub display_version: bool,
+    pub diff: bool,
     pub health: bool,
     pub health_arg: Option<String>,
     pub load_tutor: bool,
@@ -49,6 +50,7 @@ impl Args {
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--strict" => args.strict = true,
+                "--diff" | "-d" => args.diff = true,
                 "--tutor" => args.load_tutor = true,
                 "--vsplit" => match args.split {
                     Some(_) => anyhow::bail!("can only set a split once of a specific type"),
