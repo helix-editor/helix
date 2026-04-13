@@ -1,6 +1,6 @@
 attribute = "lilac"
 keyword = "almond"
-"keyword.directive" = "lilac" # -- preprocessor comments (#if in C)
+"keyword.directive" = "lilac"        # -- preprocessor comments (#if in C)
 namespace = "lilac"
 punctuation = "lavender"
 "punctuation.delimiter" = "lavender"
@@ -13,7 +13,7 @@ variable = "lavender"
 "variable.parameter" = { fg = "lavender" }
 "variable.builtin" = "mint"
 type = "white"
-"type.builtin" = "white" # TODO: distinguish?
+"type.builtin" = "white"                   # TODO: distinguish?
 constructor = "lilac"
 function = "white"
 "function.macro" = "lilac"
@@ -40,6 +40,7 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 "diff.plus" = "#35bf86"
 "diff.minus" = "#f22c86"
 "diff.delta" = "#6f44f0"
+"diff.delta.text" = { fg = "revolver", bg = "honey" }
 
 # TODO: differentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
