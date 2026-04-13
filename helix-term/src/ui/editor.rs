@@ -136,9 +136,25 @@ impl EditorView {
             let style_added = fg_to_bg(theme.get("diff.plus"));
             let style_modified = fg_to_bg(theme.get("diff.delta"));
 
+            let mut cursor: usize = 0;
             let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
                 let doc_line = pos.doc_line as u32;
-                for hunk in hunks.iter() {
+                // Advance past hunks that ended before this line.
+                // Relies on decorate_line being called in ascending doc_line order
+                // within a single render pass. The closure is rebuilt each render_view
+                // call so cursor resets to 0 implicitly every frame.
+                while cursor < hunks.len() {
+                    let my_range = match side {
+                        helix_view::diff_session::DiffSide::A => hunks[cursor].before.clone(),
+                        helix_view::diff_session::DiffSide::B => hunks[cursor].after.clone(),
+                    };
+                    if my_range.end <= doc_line {
+                        cursor += 1;
+                    } else {
+                        break;
+                    }
+                }
+                if let Some(hunk) = hunks.get(cursor) {
                     let (my_range, other_range) = match side {
                         helix_view::diff_session::DiffSide::A => {
                             (hunk.before.clone(), hunk.after.clone())
@@ -155,10 +171,6 @@ impl EditorView {
                         };
                         renderer
                             .set_style(Rect::new(inner.x, pos.visual_line, inner.width, 1), style);
-                        return;
-                    }
-                    if my_range.start > doc_line {
-                        break;
                     }
                 }
             };
