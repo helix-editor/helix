@@ -2222,14 +2222,16 @@ impl Editor {
             return;
         };
 
-        let source_view = self.tree.get(source_view_id);
-        let source_doc_id = source_view.doc;
+        let Some(source_doc_id) = self.tree.try_get(source_view_id).map(|v| v.doc) else {
+            return;
+        };
         let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
         let source_text = self.documents[&source_doc_id].text().slice(..);
         let source_line = source_text.char_to_line(source_offset.anchor);
 
-        let partner_view = self.tree.get(partner_id);
-        let partner_doc_id = partner_view.doc;
+        let Some(partner_doc_id) = self.tree.try_get(partner_id).map(|v| v.doc) else {
+            return;
+        };
         let partner_text = self.documents[&partner_doc_id].text().slice(..);
         let partner_line = source_line.min(partner_text.len_lines().saturating_sub(1));
         let partner_anchor = partner_text.line_to_char(partner_line);
