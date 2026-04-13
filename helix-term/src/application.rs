@@ -154,7 +154,6 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if args.diff {
-            // `hx --diff file1 file2`: open two files side-by-side in diff mode.
             // Filter out directory paths so `hx . --diff a b` works as expected.
             let files: Vec<_> = args
                 .files

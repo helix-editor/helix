@@ -1986,7 +1986,6 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         drop(annotations);
         doc.set_selection(view.id, selection);
 
-        // Sync scroll to partner view if in a diff session
         let focus = cx.editor.tree.focus;
         cx.editor.sync_diff_scroll(focus);
         return;
@@ -2041,7 +2040,6 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     drop(annotations);
     doc.set_selection(view.id, sel);
 
-    // Sync scroll to partner view if in a diff session
     let focus = cx.editor.tree.focus;
     cx.editor.sync_diff_scroll(focus);
 }
@@ -4189,12 +4187,11 @@ fn goto_last_change(cx: &mut Context) {
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
     let view_id = cx.editor.tree.focus;
 
-    // Check for a diff session first; use session hunks if present.
     let session_info = cx.editor
         .diff_sessions
         .iter()
         .find(|s| s.contains_view(view_id))
-        .map(|s| (s.hunks().to_vec(), s.view_a() == view_id));
+        .map(|s| (s.hunks_arc(), s.view_a() == view_id));
 
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
@@ -4250,12 +4247,12 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let motion = move |editor: &mut Editor| {
         let view_id = editor.tree.focus;
 
-        // Check for a diff session first; clone the data to free the borrow.
+        // Clone the Arc to release the borrow on diff_sessions before touching documents.
         let session_info = editor
             .diff_sessions
             .iter()
             .find(|s| s.contains_view(view_id))
-            .map(|s| (s.hunks().to_vec(), s.view_a() == view_id));
+            .map(|s| (s.hunks_arc(), s.view_a() == view_id));
 
         let (view, doc) = current!(editor);
         let doc_text = doc.text().slice(..);

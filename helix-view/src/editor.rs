@@ -2197,7 +2197,7 @@ impl Editor {
     pub fn diff_session_for(&self, view_id: ViewId) -> Option<&crate::diff_session::DiffSession> {
         self.diff_sessions
             .iter()
-            .find(|s: &&crate::diff_session::DiffSession| s.contains_view(view_id))
+            .find(|s| s.contains_view(view_id))
     }
 
     /// Returns a mutable reference to the DiffSession containing the given view.
@@ -2207,33 +2207,27 @@ impl Editor {
     ) -> Option<&mut crate::diff_session::DiffSession> {
         self.diff_sessions
             .iter_mut()
-            .find(|s: &&mut crate::diff_session::DiffSession| s.contains_view(view_id))
+            .find(|s| s.contains_view(view_id))
     }
 
     /// Synchronize the partner view's scroll position to match the source view.
     /// Copies the source view's anchor line to the partner view's document.
     pub fn sync_diff_scroll(&mut self, source_view_id: ViewId) {
-        let session = self
+        let Some(partner_id) = self
             .diff_sessions
             .iter()
-            .find(|s: &&crate::diff_session::DiffSession| s.contains_view(source_view_id));
-        let Some(session) = session else {
+            .find(|s| s.contains_view(source_view_id))
+            .and_then(|s| s.partner_view(source_view_id))
+        else {
             return;
-        };
-        let partner_id = match session.partner_view(source_view_id) {
-            Some(id) => id,
-            None => return,
         };
 
         let source_view = self.tree.get(source_view_id);
         let source_doc_id = source_view.doc;
         let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
-
-        // Get the line number at the source view's anchor
         let source_text = self.documents[&source_doc_id].text().slice(..);
         let source_line = source_text.char_to_line(source_offset.anchor);
 
-        // Set the partner view's anchor to the same line in its document
         let partner_view = self.tree.get(partner_id);
         let partner_doc_id = partner_view.doc;
         let partner_text = self.documents[&partner_doc_id].text().slice(..);
@@ -2241,6 +2235,11 @@ impl Editor {
         let partner_anchor = partner_text.line_to_char(partner_line);
 
         let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
+        if partner_offset.anchor == partner_anchor
+            && partner_offset.vertical_offset == source_offset.vertical_offset
+        {
+            return;
+        }
         partner_offset.anchor = partner_anchor;
         partner_offset.vertical_offset = source_offset.vertical_offset;
         self.documents

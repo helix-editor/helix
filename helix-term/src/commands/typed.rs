@@ -2597,15 +2597,12 @@ fn diff_open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> an
     let path_a = helix_stdx::path::expand_tilde(path_a);
     let path_b = helix_stdx::path::expand_tilde(path_b);
 
-    // Open first file in the current view
     let doc_a = cx.editor.open(&path_a, Action::Replace)?;
     let view_a = cx.editor.tree.focus;
 
-    // Open second file in a vertical split
     let doc_b = cx.editor.open(&path_b, Action::VerticalSplit)?;
     let view_b = cx.editor.tree.focus;
 
-    // Compute hunks between the two documents
     let rope_a = cx.editor.documents[&doc_a].text().clone();
     let rope_b = cx.editor.documents[&doc_b].text().clone();
 
@@ -2634,22 +2631,17 @@ fn reset_diff_change(
     let scrolloff = cx.editor.config().scrolloff;
     let view_id = cx.editor.tree.focus;
 
-    // When in a diff session, pull content from the partner document.
     let session_info = cx.editor
         .diff_sessions
         .iter()
         .find(|s| s.contains_view(view_id))
-        .map(|s| {
-            let side = if s.view_a() == view_id {
-                helix_view::diff_session::DiffSide::A
-            } else {
-                helix_view::diff_session::DiffSide::B
-            };
+        .and_then(|s| {
+            let side = s.side_for_view(view_id)?;
             let (doc_curr_id, doc_partner_id) = match side {
                 helix_view::diff_session::DiffSide::A => (s.doc_a(), s.doc_b()),
                 helix_view::diff_session::DiffSide::B => (s.doc_b(), s.doc_a()),
             };
-            (s.hunks().to_vec(), side, doc_curr_id, doc_partner_id)
+            Some((s.hunks_arc(), side, doc_curr_id, doc_partner_id))
         });
 
     if let Some((hunks, side, doc_curr_id, doc_partner_id)) = session_info {
@@ -2662,15 +2654,13 @@ fn reset_diff_change(
                 .collect()
         };
 
-        let session_ref = helix_view::diff_session::DiffSession::new_with_hunks(
-            view_id,
-            view_id,
-            doc_curr_id,
-            doc_partner_id,
-            hunks,
+        let (transaction, changes) = helix_view::diff_session::build_get_transaction(
+            &hunks,
+            side,
+            &line_ranges,
+            &curr_text,
+            &partner_text,
         );
-        let (transaction, changes) =
-            session_ref.build_get_transaction(side, &line_ranges, &curr_text, &partner_text);
 
         if changes == 0 {
             bail!("No diff hunks under selection");
@@ -2689,8 +2679,6 @@ fn reset_diff_change(
         ));
         return Ok(());
     }
-
-    // VCS fallback: reset current selection to the diff base.
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
     let Some(handle) = doc.diff_handle() else {
@@ -2747,21 +2735,14 @@ fn diff_put(
         .diff_sessions
         .iter()
         .find(|s| s.contains_view(view_id))
-        .map(|s| {
-            let side = if s.view_a() == view_id {
-                helix_view::diff_session::DiffSide::A
-            } else {
-                helix_view::diff_session::DiffSide::B
-            };
+        .and_then(|s| {
+            let side = s.side_for_view(view_id)?;
             let (doc_curr_id, doc_partner_id) = match side {
                 helix_view::diff_session::DiffSide::A => (s.doc_a(), s.doc_b()),
                 helix_view::diff_session::DiffSide::B => (s.doc_b(), s.doc_a()),
             };
-            let partner_view_id = match side {
-                helix_view::diff_session::DiffSide::A => s.view_b(),
-                helix_view::diff_session::DiffSide::B => s.view_a(),
-            };
-            (s.hunks().to_vec(), side, doc_curr_id, doc_partner_id, partner_view_id)
+            let partner_view_id = s.partner_view(view_id)?;
+            Some((s.hunks_arc(), side, doc_curr_id, doc_partner_id, partner_view_id))
         });
 
     let Some((hunks, side, doc_curr_id, doc_partner_id, partner_view_id)) = session_info else {
@@ -2777,15 +2758,13 @@ fn diff_put(
             .collect()
     };
 
-    let session_ref = helix_view::diff_session::DiffSession::new_with_hunks(
-        view_id,
-        partner_view_id,
-        doc_curr_id,
-        doc_partner_id,
-        hunks,
+    let (transaction, changes) = helix_view::diff_session::build_put_transaction(
+        &hunks,
+        side,
+        &line_ranges,
+        &curr_text,
+        &partner_text,
     );
-    let (transaction, changes) =
-        session_ref.build_put_transaction(side, &line_ranges, &curr_text, &partner_text);
 
     if changes == 0 {
         bail!("No diff hunks under selection");
@@ -2840,24 +2819,20 @@ fn diff_this(
 
     let view_id = cx.editor.tree.focus;
 
-    // If current view is already in a session, report it.
     if cx.editor.diff_session_for(view_id).is_some() {
         bail!("This view is already part of a diff session. Use :diff-off first.");
     }
 
     match cx.editor.pending_diff_this {
         None => {
-            // First call: mark this view as the first participant.
             cx.editor.pending_diff_this = Some(view_id);
             cx.editor.set_status("Diff: marked first view. Run :diffthis in the second view.");
         }
         Some(other_view_id) if other_view_id == view_id => {
-            // Called on the same view twice: cancel.
             cx.editor.pending_diff_this = None;
             cx.editor.set_status("Diff: cancelled (same view selected twice).");
         }
         Some(other_view_id) => {
-            // Second call on a different view: create the session.
             cx.editor.pending_diff_this = None;
 
             let other_doc_id = cx.editor.tree.get(other_view_id).doc;
