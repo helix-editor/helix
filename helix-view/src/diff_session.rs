@@ -126,6 +126,11 @@ impl DiffSession {
         self.view_a == view_id || self.view_b == view_id
     }
 
+    /// Returns true if the given document is part of this diff session.
+    pub fn contains_doc(&self, doc_id: DocumentId) -> bool {
+        self.doc_a == doc_id || self.doc_b == doc_id
+    }
+
     /// Computes line-level hunks between two Ropes using the Histogram diff algorithm.
     /// `rope_a` corresponds to the left/before side, `rope_b` to the right/after side.
     pub fn compute_hunks(&mut self, rope_a: &Rope, rope_b: &Rope) {
@@ -814,5 +819,27 @@ mod tests {
         assert_eq!(changes, 1);
         // After diffget on side B: doc_b gains line2 back from doc_a.
         assert_eq!(apply_tx(&rope_b, tx), rope_a);
+    }
+
+    #[test]
+    fn contains_doc_returns_true_for_session_members() {
+        let (view_a, view_b) = make_view_ids();
+        let doc_a = make_doc_id(1);
+        let doc_b = make_doc_id(2);
+        let session = DiffSession::new(view_a, view_b, doc_a, doc_b);
+
+        assert!(session.contains_doc(doc_a));
+        assert!(session.contains_doc(doc_b));
+    }
+
+    #[test]
+    fn contains_doc_returns_false_for_non_members() {
+        let (view_a, view_b) = make_view_ids();
+        let doc_a = make_doc_id(1);
+        let doc_b = make_doc_id(2);
+        let unrelated = make_doc_id(3);
+        let session = DiffSession::new(view_a, view_b, doc_a, doc_b);
+
+        assert!(!session.contains_doc(unrelated));
     }
 }
