@@ -46,7 +46,7 @@ pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
 
 const TRUST_MESSAGE: &str = "Trust this workspace?
 
-Trusted workspaces may load local config files and auto-start language servers. Config and language servers can execute arbitrary code. Only trust workspaces which you know contain harmless config and code.";
+Trusted workspaces can load local Helix config files and automatically start language servers, both of which may execute arbitrary code. Only trust workspaces you know are safe.";
 
 fn select() -> ui::Select<TrustUntrustStatus> {
     ui::Select::new(
