@@ -1019,11 +1019,13 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "set-configuration-for-file!",
             set_configuration_for_file,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "get-language-config",
             HelixConfiguration::get_language_config,
         )
-        .register_fn(
+        .register_fn_with_ctx(
+            CONFIG,
             "set-language-config!",
             HelixConfiguration::update_individual_language_config,
         )
