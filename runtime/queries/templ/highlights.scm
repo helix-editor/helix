@@ -47,6 +47,37 @@
 
 (dynamic_class_attribute_value) @function.method
 
+; Special Elements and Attributes
+
+((attribute
+  name: (attribute_name) @attribute
+  value: (quoted_attribute_value (attribute_value) @markup.link.url))
+ (#any-of? @attribute "href" "src"))
+
+((element
+  (tag_start
+    name: (_) @tag)
+  (element_text) @markup.link.label)
+  (#eq? @tag "a"))
+
+((element
+  (tag_start
+    name: (_) @tag)
+  (element_text) @markup.bold)
+  (#any-of? @tag "strong" "b"))
+
+((element
+  (tag_start
+    name: (_) @tag)
+  (element_text) @markup.italic)
+  (#any-of? @tag "em" "i"))
+
+((element
+  (tag_start
+    name: (_) @tag)
+  (element_text) @markup.strikethrough)
+  (#any-of? @tag "s" "del"))
+
 ; Extra Features
 
 (component_import
