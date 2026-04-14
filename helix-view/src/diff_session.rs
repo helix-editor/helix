@@ -23,21 +23,85 @@ impl<'a> imara_diff::TokenSource for RopeLines<'a> {
     }
 }
 
-/// A `TokenSource` that yields individual chars, giving char-level token indices
-/// in imara-diff hunks. Used by `intra_line_changes` for per-character diff.
-struct CharSlice<'a>(&'a [char]);
+/// Iterator that yields word-level tokens from a string slice.
+/// Alphanumeric + underscore runs are emitted as a single token; all other chars
+/// (whitespace, punctuation, newlines) are emitted individually. This gives
+/// coarser intra-line diffs than char-level: only whole words are marked as changed.
+struct WordTokenIter<'a> {
+    text: &'a str,
+    byte_pos: usize,
+}
 
-impl<'a> TokenSource for CharSlice<'a> {
-    type Token = char;
-    type Tokenizer = std::iter::Copied<std::slice::Iter<'a, char>>;
+impl<'a> Iterator for WordTokenIter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.byte_pos >= self.text.len() {
+            return None;
+        }
+        let rest = &self.text[self.byte_pos..];
+        let first = rest.chars().next()?;
+        let end_byte = if first.is_alphanumeric() || first == '_' {
+            rest.char_indices()
+                .take_while(|(_, c)| c.is_alphanumeric() || *c == '_')
+                .last()
+                .map(|(i, c)| i + c.len_utf8())
+                .unwrap_or(first.len_utf8())
+        } else {
+            first.len_utf8()
+        };
+        let token = &rest[..end_byte];
+        self.byte_pos += end_byte;
+        Some(token)
+    }
+}
+
+/// A `TokenSource` that yields word-level tokens from a `&str`.
+/// Used by `intra_line_changes` so the Myers diff operates on whole words
+/// rather than individual characters.
+struct WordSlice<'a>(&'a str);
+
+impl<'a> TokenSource for WordSlice<'a> {
+    type Token = &'a str;
+    type Tokenizer = WordTokenIter<'a>;
 
     fn tokenize(&self) -> Self::Tokenizer {
-        self.0.iter().copied()
+        WordTokenIter {
+            text: self.0,
+            byte_pos: 0,
+        }
     }
 
     fn estimate_tokens(&self) -> u32 {
-        self.0.len() as u32
+        (self.0.len() / 4).max(1) as u32
     }
+}
+
+/// Returns the char-index (within `text`) at which each word token starts.
+/// `result[i]` is the char start of token `i`; `result.len()` equals the token count.
+/// If `tok < result.len()`, the token starts at `result[tok]` and ends at
+/// `result[tok + 1]` (or at `text.chars().count()` for the last token).
+fn word_token_char_starts(text: &str) -> Vec<usize> {
+    let mut starts = Vec::new();
+    let mut char_pos = 0usize;
+    let mut byte_pos = 0usize;
+    while byte_pos < text.len() {
+        let rest = &text[byte_pos..];
+        let first = rest.chars().next().unwrap();
+        starts.push(char_pos);
+        let end_byte = if first.is_alphanumeric() || first == '_' {
+            rest.char_indices()
+                .take_while(|(_, c)| c.is_alphanumeric() || *c == '_')
+                .last()
+                .map(|(i, c)| i + c.len_utf8())
+                .unwrap_or(first.len_utf8())
+        } else {
+            first.len_utf8()
+        };
+        char_pos += rest[..end_byte].chars().count();
+        byte_pos += end_byte;
+    }
+    starts
 }
 
 /// A diff session pairs two views for side-by-side diff comparison.
@@ -52,7 +116,7 @@ pub struct DiffSession {
     /// Shared hunk list. Stored as Arc so callers can take a cheap reference-counted
     /// snapshot for closures and annotations without cloning the full Vec each frame.
     hunks: Arc<Vec<Hunk>>,
-    /// Character-level diff results cached per hunk, parallel to `hunks`.
+    /// Word-level intra-line diff results cached per hunk, parallel to `hunks`.
     /// Stored as Arc so render closures can take a cheap snapshot without cloning.
     /// Populated in `compute_hunks` and replaced on each recomputation.
     /// Pure insertions/deletions store empty vecs (no character diff needed).
@@ -324,8 +388,10 @@ impl InlineChange {
     }
 }
 
-/// Compute character-level diff for a single hunk.
-/// Returns per-line column ranges for each side indicating which characters changed.
+/// Compute word-level intra-line diff for a single hunk.
+/// Returns per-line column ranges for each side indicating which words (or
+/// non-word chars) changed. Whole alphanumeric+underscore runs are treated as
+/// one token, so only the changed words are highlighted rather than individual chars.
 pub fn intra_line_changes(
     rope_a: &Rope,
     rope_b: &Rope,
@@ -339,14 +405,24 @@ pub fn intra_line_changes(
     let text_a: String = rope_a.slice(a_start..a_end).into();
     let text_b: String = rope_b.slice(b_start..b_end).into();
 
-    // Use char-level tokenization so hunk offsets are char indices, not line indices.
-    let chars_a: Vec<char> = text_a.chars().collect();
-    let chars_b: Vec<char> = text_b.chars().collect();
-    let input = InternedInput::new(CharSlice(&chars_a), CharSlice(&chars_b));
+    // Precompute char-start of each word token so token indices can be mapped back
+    // to char-column ranges after the Myers diff produces token-level hunks.
+    let tok_starts_a = word_token_char_starts(&text_a);
+    let tok_starts_b = word_token_char_starts(&text_b);
+    let total_chars_a = text_a.chars().count();
+    let total_chars_b = text_b.chars().count();
+
+    let input = InternedInput::new(WordSlice(&text_a), WordSlice(&text_b));
     let diff = Diff::compute(Algorithm::Myers, &input);
 
-    let char_to_line_col = |base_char: usize, offset: u32, rope: &Rope| -> (usize, usize) {
-        let char_idx = base_char + offset as usize;
+    // Convert a token index into a char offset within the hunk text.
+    // `tok` == number of tokens means "end of text".
+    let tok_to_char = |starts: &[usize], total: usize, tok: u32| -> usize {
+        *starts.get(tok as usize).unwrap_or(&total)
+    };
+
+    let char_to_line_col = |base_char: usize, char_offset: usize, rope: &Rope| -> (usize, usize) {
+        let char_idx = base_char + char_offset;
         let line = rope.char_to_line(char_idx);
         let line_start = rope.line_to_char(line);
         (line, char_idx - line_start)
@@ -355,10 +431,12 @@ pub fn intra_line_changes(
     let mut changes_a = Vec::new();
     let mut changes_b = Vec::new();
 
-    for char_hunk in diff.hunks() {
-        if !char_hunk.before.is_empty() {
-            let (start_line, start_col) = char_to_line_col(a_start, char_hunk.before.start, rope_a);
-            let (end_line, end_col) = char_to_line_col(a_start, char_hunk.before.end, rope_a);
+    for tok_hunk in diff.hunks() {
+        if !tok_hunk.before.is_empty() {
+            let sc = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.start);
+            let ec = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.end);
+            let (start_line, start_col) = char_to_line_col(a_start, sc, rope_a);
+            let (end_line, end_col) = char_to_line_col(a_start, ec, rope_a);
             // Split across lines if the change spans multiple lines
             for line in start_line..=end_line {
                 let cs = if line == start_line { start_col } else { 0 };
@@ -374,9 +452,11 @@ pub fn intra_line_changes(
                 });
             }
         }
-        if !char_hunk.after.is_empty() {
-            let (start_line, start_col) = char_to_line_col(b_start, char_hunk.after.start, rope_b);
-            let (end_line, end_col) = char_to_line_col(b_start, char_hunk.after.end, rope_b);
+        if !tok_hunk.after.is_empty() {
+            let sc = tok_to_char(&tok_starts_b, total_chars_b, tok_hunk.after.start);
+            let ec = tok_to_char(&tok_starts_b, total_chars_b, tok_hunk.after.end);
+            let (start_line, start_col) = char_to_line_col(b_start, sc, rope_b);
+            let (end_line, end_col) = char_to_line_col(b_start, ec, rope_b);
             for line in start_line..=end_line {
                 let cs = if line == start_line { start_col } else { 0 };
                 let ce = if line == end_line {
@@ -946,6 +1026,51 @@ mod tests {
         assert_ne!(
             cached_v1.1, cached_v2.1,
             "cache must reflect updated content"
+        );
+    }
+
+    #[test]
+    fn intra_line_diff_uses_word_granularity() {
+        // "hello world\n" vs "hello earth\n": only the word "world"/"earth" differs.
+        // Word-level diff should highlight exactly col 6..11 on each side,
+        // not multiple sub-word spans as character-level diff would produce.
+        let rope_a = Rope::from("hello world\n");
+        let rope_b = Rope::from("hello earth\n");
+        let hunk = helix_vcs::Hunk {
+            before: 0..1,
+            after: 0..1,
+        };
+        let (changes_a, changes_b) = intra_line_changes(&rope_a, &rope_b, &hunk);
+
+        assert_eq!(
+            changes_a.len(),
+            1,
+            "expected one word-level change on A side"
+        );
+        assert_eq!(
+            changes_b.len(),
+            1,
+            "expected one word-level change on B side"
+        );
+
+        assert_eq!(changes_a[0].doc_line, 0);
+        assert_eq!(
+            changes_a[0].col_start, 6,
+            "change should start at 'w' of 'world'"
+        );
+        assert_eq!(
+            changes_a[0].col_end, 11,
+            "change should end after 'd' of 'world'"
+        );
+
+        assert_eq!(changes_b[0].doc_line, 0);
+        assert_eq!(
+            changes_b[0].col_start, 6,
+            "change should start at 'e' of 'earth'"
+        );
+        assert_eq!(
+            changes_b[0].col_end, 11,
+            "change should end after 'h' of 'earth'"
         );
     }
 }
