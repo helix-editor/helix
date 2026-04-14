@@ -18,7 +18,7 @@ You can always make the current workspace trusted by running the `:workspace-tru
 Lists of trusted and excluded workspaces, delimited by newline characters, are stored in:
 
 - Linux and macOS: `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces`
-- Windows: `%AppData%/Roaming/helix/trusted_workspaces` and `%AppData%/Roaming/helix/excluded_workspaces` 
+- Windows: `%AppData%\Roaming\helix\trusted_workspaces` and `%AppData%\Roaming\helix\excluded_workspaces`
 
 ## Configuration
 
