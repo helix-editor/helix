@@ -123,7 +123,9 @@ impl EditorView {
         if let Some((side, ref hunks, _, _)) = diff_view_info {
             let hunks = Arc::clone(hunks);
 
-            // Use diff theme fg as bg (most themes only set fg for diff.plus/delta/minus).
+            // Use diff theme bg as line background; fall back to fg if no bg is set
+            // (many themes only define fg on diff scopes). If neither is set,
+            // Style::default() is returned, which is a no-op on cell backgrounds.
             let fg_to_bg = |style: Style| -> Style {
                 if let Some(bg) = style.bg {
                     Style::default().bg(bg)
@@ -133,9 +135,23 @@ impl EditorView {
                     style
                 }
             };
-            let style_deleted = fg_to_bg(theme.get("diff.minus"));
-            let style_added = fg_to_bg(theme.get("diff.plus"));
-            let style_modified = fg_to_bg(theme.get("diff.delta"));
+            // Fall back to the default theme's diff colors when the active theme
+            // does not define these scopes at all.
+            let style_deleted = fg_to_bg(
+                theme
+                    .try_get("diff.minus")
+                    .unwrap_or_else(|| Style::default().fg(Color::Rgb(242, 44, 134))),
+            );
+            let style_added = fg_to_bg(
+                theme
+                    .try_get("diff.plus")
+                    .unwrap_or_else(|| Style::default().fg(Color::Rgb(53, 191, 134))),
+            );
+            let style_modified = fg_to_bg(
+                theme
+                    .try_get("diff.delta")
+                    .unwrap_or_else(|| Style::default().fg(Color::Rgb(111, 68, 240))),
+            );
 
             let mut cursor: usize = 0;
             let line_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
