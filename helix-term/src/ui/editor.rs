@@ -133,6 +133,7 @@ impl EditorView {
                     style
                 }
             };
+            let style_deleted = fg_to_bg(theme.get("diff.minus"));
             let style_added = fg_to_bg(theme.get("diff.plus"));
             let style_modified = fg_to_bg(theme.get("diff.delta"));
 
@@ -164,11 +165,13 @@ impl EditorView {
                         }
                     };
                     if my_range.contains(&doc_line) {
-                        let style = if other_range.is_empty() {
-                            style_added
-                        } else {
-                            style_modified
-                        };
+                        let style = diff_line_style(
+                            side,
+                            other_range.is_empty(),
+                            style_deleted,
+                            style_added,
+                            style_modified,
+                        );
                         renderer
                             .set_style(Rect::new(inner.x, pos.visual_line, inner.width, 1), style);
                     }
@@ -1845,5 +1848,65 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+/// Selects the diff line background style based on which side is being rendered
+/// and whether the opposite side has any content for this hunk.
+fn diff_line_style(
+    side: helix_view::diff_session::DiffSide,
+    other_range_empty: bool,
+    style_deleted: Style,
+    style_added: Style,
+    style_modified: Style,
+) -> Style {
+    if other_range_empty {
+        match side {
+            helix_view::diff_session::DiffSide::A => style_deleted,
+            helix_view::diff_session::DiffSide::B => style_added,
+        }
+    } else {
+        style_modified
+    }
+}
+
+#[cfg(test)]
+mod diff_coloring_tests {
+    use helix_view::{
+        diff_session::DiffSide,
+        graphics::{Color, Style},
+    };
+
+    use super::diff_line_style;
+
+    fn mk(r: u8, g: u8, b: u8) -> Style {
+        Style::default().bg(Color::Rgb(r, g, b))
+    }
+
+    #[test]
+    fn deletion_lines_use_minus_style() {
+        let deleted = mk(255, 0, 0); // red
+        let added = mk(0, 255, 0); // green
+        let modified = mk(255, 165, 0); // orange
+
+        // pure deletion on A side = red
+        assert_eq!(
+            diff_line_style(DiffSide::A, true, deleted, added, modified),
+            deleted
+        );
+        // pure addition on B side = green
+        assert_eq!(
+            diff_line_style(DiffSide::B, true, deleted, added, modified),
+            added
+        );
+        // modifications = orange regardless of side
+        assert_eq!(
+            diff_line_style(DiffSide::A, false, deleted, added, modified),
+            modified
+        );
+        assert_eq!(
+            diff_line_style(DiffSide::B, false, deleted, added, modified),
+            modified
+        );
     }
 }
