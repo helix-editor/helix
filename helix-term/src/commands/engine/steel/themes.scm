@@ -104,6 +104,7 @@
          ui.background
          ui.background.separator
          ui.cursor
+         ui.cursor.normal
          ui.cursor.insert
          ui.cursor.select
          ui.cursor.match
