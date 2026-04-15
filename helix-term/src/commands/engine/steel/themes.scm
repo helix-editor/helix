@@ -137,6 +137,7 @@
          ui.text.focus
          ui.text.inactive
          ui.text.info
+         ui.virtual
          ui.virtual.ruler
          ui.virtual.whitespace
          ui.virtual.indent-guide
@@ -355,6 +356,7 @@
 (theme-func ui.text.focus "The currently selected line in the picker")
 (theme-func ui.text.inactive "Same as ui.text but when the text is inactive (e.g. suggestions)")
 (theme-func ui.text.info "The key: command text in ui.popup.info boxes")
+(theme-func ui.virtual)
 (theme-func ui.virtual.ruler "Ruler columns (see the editor.rules config)")
 (theme-func ui.virtual.whitespace "Visible whitespace characters")
 (theme-func ui.virtual.indent-guide "Vertical indent width guides")
