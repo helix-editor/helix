@@ -133,6 +133,7 @@
          ui.window
          ui.help
          ui.text
+         ui.text.directory
          ui.text.focus
          ui.text.inactive
          ui.text.info
@@ -350,6 +351,7 @@
 (theme-func ui.window "Borderline separating splits")
 (theme-func ui.help "Description box for commands")
 (theme-func ui.text "Default text style, command prompts, popup text, etc.")
+(theme-func ui.text.directory "Directory names in prompt completion")
 (theme-func ui.text.focus "The currently selected line in the picker")
 (theme-func ui.text.inactive "Same as ui.text but when the text is inactive (e.g. suggestions)")
 (theme-func ui.text.info "The key: command text in ui.popup.info boxes")
