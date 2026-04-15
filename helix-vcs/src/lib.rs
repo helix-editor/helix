@@ -225,8 +225,13 @@ impl DiffProviderRegistry {
         match git::open_repo(repo_path, trust_full) {
             Ok(repo) => {
                 let key = Arc::from(repo_path);
-                self.providers
-                    .insert(Arc::clone(&key), DiffProvider::Git { repo, trust_full });
+                self.providers.insert(
+                    Arc::clone(&key),
+                    DiffProvider::Git {
+                        repo: Box::new(repo),
+                        trust_full,
+                    },
+                );
                 Ok((key, PossibleDiffProvider::Git))
             }
             Err(err) => Err(err),
@@ -242,7 +247,7 @@ impl DiffProviderRegistry {
 pub enum DiffProvider {
     #[cfg(feature = "git")]
     Git {
-        repo: gix::ThreadSafeRepository,
+        repo: Box<gix::ThreadSafeRepository>,
         trust_full: bool,
     },
 }
