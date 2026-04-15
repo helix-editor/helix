@@ -1,6 +1,6 @@
 ; tags and labels
 (label) @label
-(tag (identifier) @commment)
+(tag (identifier) @comment)
 (tag) @comment
 
 ; values

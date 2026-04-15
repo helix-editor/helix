@@ -429,10 +429,10 @@
 ; Fields
 
 (field_name
-  (variable) @variable.member)
+  (variable) @variable.other.member)
 
 (import_name
   (name)
   .
   (children
-    (variable) @variable.member))
+    (variable) @variable.other.member))
