@@ -100,11 +100,11 @@
 
 (string_value) @string
 
-(int_value) @constants.numeric.integer
+(int_value) @constant.numeric.integer
 
-(float_value) @constants.numeric.float
+(float_value) @constant.numeric.float
 
-(boolean_value) @constants.builtin.boolean
+(boolean_value) @constant.builtin.boolean
 
 ; Literals
 ;---------

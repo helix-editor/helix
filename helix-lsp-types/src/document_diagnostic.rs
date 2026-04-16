@@ -108,6 +108,7 @@ pub struct DocumentDiagnosticParams {
     pub identifier: Option<Arc<str>>,
 
     /// The result ID of a previous response if provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub previous_result_id: Option<String>,
 
     #[serde(flatten)]

@@ -72,7 +72,7 @@
 
 ["for" "in" "do"] @keyword.control.repeat
 
-(import) @include
+"import" @keyword.control.import
 
 ; Tokens
 

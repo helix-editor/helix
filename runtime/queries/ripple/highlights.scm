@@ -117,7 +117,7 @@
   "${" @punctuation.special
   "}" @punctuation.special)
 
-(number) @number
+(number) @constant.numeric
 (true) @constant.builtin.boolean
 (false) @constant.builtin.boolean
 (null) @constant.builtin

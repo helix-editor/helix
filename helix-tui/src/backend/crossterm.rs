@@ -330,6 +330,10 @@ where
     fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
         None
     }
+
+    fn set_background_color(&mut self, _color: Option<helix_view::theme::Color>) -> io::Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]

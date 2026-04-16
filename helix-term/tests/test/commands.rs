@@ -868,3 +868,25 @@ async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
+    test((
+        indoc! {r"
+            #[|]#I    I  II I
+            IIIIIIIII
+            IIIII
+            IIIIIIIII
+        "},
+        r"%sI<ret>&gg",
+        indoc! {r"
+            #[I|]#    I  II I
+            I    I  II IIIII
+            I    I  II I
+            I    I  II IIIII
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
