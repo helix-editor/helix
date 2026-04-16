@@ -205,6 +205,8 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
+    // A name separate from the file name
+    pub name: Option<String>,
     pub readonly: bool,
 
     pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
@@ -216,6 +218,9 @@ pub struct Document {
     // NOTE: ideally this would live on the handler for color swatches. This is blocked on a
     // large refactor that would make `&mut Editor` available on the `DocumentDidChange` event.
     pub color_swatch_controller: TaskController,
+
+    pub uri: Option<Box<Url>>,
+
     /// Per-view task controllers for canceling in-flight document highlight requests.
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
@@ -753,12 +758,14 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            name: None,
             readonly: false,
             jump_labels: HashMap::new(),
             document_highlights: HashMap::new(),
             color_swatches: None,
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
+            uri: None,
             document_highlight_controllers: HashMap::new(),
             syn_loader,
             previous_diagnostic_ids: HashMap::new(),
@@ -1236,6 +1243,10 @@ impl Document {
                 self.editor_config = EditorConfig::find(path);
             }
         }
+    }
+
+    pub fn last_saved_time(&self) -> SystemTime {
+        self.last_saved_time
     }
 
     pub fn pickup_last_saved_time(&mut self) {
@@ -1903,6 +1914,20 @@ impl Document {
             .unwrap_or_else(|| self.config.load().path_completion)
     }
 
+    #[cfg(feature = "steel")]
+    pub fn arc_language_servers(&self) -> impl Iterator<Item = Arc<helix_lsp::Client>> + use<'_> {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = self.language_servers.get(&features.name)?.clone();
+                if ls.is_initialized() {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
@@ -2021,7 +2046,10 @@ impl Document {
 
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
-        Url::from_file_path(self.path()?).ok()
+        self.uri
+            .as_ref()
+            .map(|x| *x.clone())
+            .or_else(|| Url::from_file_path(self.path()?).ok())
     }
 
     pub fn uri(&self) -> Option<helix_core::Uri> {
@@ -2077,7 +2105,9 @@ impl Document {
 
     pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
-            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
+            .map(|path| path.to_string_lossy().to_string().into())
+            .or_else(|| self.name.as_ref().map(|x| Cow::Owned(x.clone())))
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
     }
 
     // transact(Fn) ?
