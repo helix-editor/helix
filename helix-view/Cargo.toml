@@ -56,7 +56,7 @@ kstring = "2.0"
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
-crossterm = { version = "0.28", optional = true }
+crossterm = { version = "0.29", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

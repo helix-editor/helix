@@ -67,3 +67,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
 rust-version = "1.90"
+
+# Temporary patch until https://github.com/crossterm-rs/crossterm/pull/1030 is merged, fixes #9242
+[patch.crates-io]
+crossterm = { git = "https://github.com/eitsupi/crossterm", branch = "feature/windows-vt-input" }
