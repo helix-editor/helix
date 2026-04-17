@@ -28,3 +28,7 @@ log = "~0.4"
 
 [target.'cfg(windows)'.dependencies]
 crossterm = { version = "0.28", optional = true }
+
+# Temporary patch until https://github.com/crossterm-rs/crossterm/pull/1030 is merged, fixes #9242
+[patch.crates-io]
+crossterm = { git = "https://github.com/eitsupi/crossterm", branch = "feature/windows-vt-input" }
