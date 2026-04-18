@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use arc_swap::access::DynAccess;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
@@ -2557,16 +2558,20 @@ fn run_shell_command(
 
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
+    let format_shell_output = cx.editor.config.load().format_shell_output.clone();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.trim().is_empty() {
-                    let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output.trim_end()),
-                        editor.syn_loader.clone(),
-                    );
+                    let trimmed = output.trim_end();
+                    let output_formatted = if format_shell_output {
+                        format!("```sh\n{trimmed}\n```")
+                    } else {
+                        trimmed.to_string()
+                    };
+                    let contents = ui::Markdown::new(output_formatted, editor.syn_loader.clone());
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
