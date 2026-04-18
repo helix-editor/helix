@@ -2592,16 +2592,28 @@ fn diff_open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> an
         bail!("Expected exactly 2 file paths: :diff-open file1 file2");
     }
 
-    let (path_a, _) = crate::args::parse_file(&args[0]);
-    let (path_b, _) = crate::args::parse_file(&args[1]);
+    let (path_a, pos_a) = crate::args::parse_file(&args[0]);
+    let (path_b, pos_b) = crate::args::parse_file(&args[1]);
     let path_a = helix_stdx::path::expand_tilde(path_a);
     let path_b = helix_stdx::path::expand_tilde(path_b);
 
     let doc_a = cx.editor.open(&path_a, Action::Replace)?;
     let view_a = cx.editor.tree.focus;
+    {
+        let (view, doc) = current!(cx.editor);
+        let sel = Selection::point(pos_at_coords(doc.text().slice(..), pos_a, true));
+        doc.set_selection(view.id, sel);
+        align_view(doc, view, Align::Center);
+    }
 
     let doc_b = cx.editor.open(&path_b, Action::VerticalSplit)?;
     let view_b = cx.editor.tree.focus;
+    {
+        let (view, doc) = current!(cx.editor);
+        let sel = Selection::point(pos_at_coords(doc.text().slice(..), pos_b, true));
+        doc.set_selection(view.id, sel);
+        align_view(doc, view, Align::Center);
+    }
 
     let rope_a = cx.editor.documents[&doc_a].text().clone();
     let rope_b = cx.editor.documents[&doc_b].text().clone();
@@ -4088,7 +4100,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "diff-open",
         aliases: &["diffs"],
-        doc: "Open two files side-by-side in diff mode with aligned hunks.",
+        doc: "Open two files side-by-side in diff mode with aligned hunks. Each path accepts a file:line or file:line:col suffix.",
         fun: diff_open,
         completer: CommandCompleter::positional(&[completers::filename, completers::filename]),
         signature: Signature {

@@ -3,6 +3,195 @@ use super::*;
 use helix_stdx::path;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_diff_open_applies_line_numbers_to_both_sides() -> anyhow::Result<()> {
+    let file1 = helpers::temp_file_with_contents("a1\na2\na3\na4\na5\na6\n")?;
+    let file2 = helpers::temp_file_with_contents("b1\nb2\nb3\nb4\nb5\nb6\n")?;
+
+    let mut app = helpers::AppBuilder::new().build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                Some(&format!(
+                    ":diff-open {}:3 {}:5<ret>",
+                    file1.path().to_string_lossy(),
+                    file2.path().to_string_lossy()
+                )),
+                Some(&|app| {
+                    assert_eq!(1, app.editor.diff_sessions.len());
+                    helpers::assert_status_not_error(&app.editor);
+
+                    let norm1 = path::normalize(file1.path());
+                    let norm2 = path::normalize(file2.path());
+
+                    let cursor_line = |target: &std::path::Path| -> usize {
+                        for (view, _focused) in app.editor.tree.views() {
+                            let doc = &app.editor.documents[&view.doc];
+                            if doc.path() == Some(&path::normalize(target)) {
+                                let head = doc.selection(view.id).primary().head;
+                                return doc.text().char_to_line(head);
+                            }
+                        }
+                        panic!("no view for {}", target.display());
+                    };
+
+                    assert_eq!(
+                        2,
+                        cursor_line(&norm1),
+                        "file1 cursor should be on line 3 (0-indexed 2)"
+                    );
+                    assert_eq!(
+                        4,
+                        cursor_line(&norm2),
+                        "file2 cursor should be on line 5 (0-indexed 4)"
+                    );
+                }),
+            ),
+            (Some(":qa!<ret>"), None),
+        ],
+        true,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_diff_open_applies_line_number_on_only_one_side() -> anyhow::Result<()> {
+    let file1 = helpers::temp_file_with_contents("a1\na2\na3\na4\na5\na6\n")?;
+    let file2 = helpers::temp_file_with_contents("b1\nb2\nb3\nb4\nb5\nb6\n")?;
+
+    let mut app = helpers::AppBuilder::new().build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                Some(&format!(
+                    ":diff-open {}:3 {}<ret>",
+                    file1.path().to_string_lossy(),
+                    file2.path().to_string_lossy()
+                )),
+                Some(&|app| {
+                    assert_eq!(1, app.editor.diff_sessions.len());
+                    helpers::assert_status_not_error(&app.editor);
+
+                    let norm1 = path::normalize(file1.path());
+                    let norm2 = path::normalize(file2.path());
+
+                    let cursor_line = |target: &std::path::Path| -> usize {
+                        for (view, _focused) in app.editor.tree.views() {
+                            let doc = &app.editor.documents[&view.doc];
+                            if doc.path() == Some(&path::normalize(target)) {
+                                let head = doc.selection(view.id).primary().head;
+                                return doc.text().char_to_line(head);
+                            }
+                        }
+                        panic!("no view for {}", target.display());
+                    };
+
+                    assert_eq!(
+                        2,
+                        cursor_line(&norm1),
+                        "file1 with :3 suffix should be on line 3"
+                    );
+                    assert_eq!(
+                        0,
+                        cursor_line(&norm2),
+                        "file2 without suffix should stay at line 1"
+                    );
+                }),
+            ),
+            (Some(":qa!<ret>"), None),
+        ],
+        true,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_diff_cli_flag_applies_line_numbers_to_both_sides() -> anyhow::Result<()> {
+    let file1 = helpers::temp_file_with_contents("a1\na2\na3\na4\na5\na6\n")?;
+    let file2 = helpers::temp_file_with_contents("b1\nb2\nb3\nb4\nb5\nb6\n")?;
+
+    let app = helpers::AppBuilder::new()
+        .with_diff()
+        .with_file(file1.path(), Some(helix_core::Position::new(2, 0)))
+        .with_file(file2.path(), Some(helix_core::Position::new(4, 0)))
+        .build()?;
+
+    let norm1 = path::normalize(file1.path());
+    let norm2 = path::normalize(file2.path());
+
+    let cursor_line = |target: &std::path::Path| -> usize {
+        for (view, _focused) in app.editor.tree.views() {
+            let doc = &app.editor.documents[&view.doc];
+            if doc.path() == Some(&path::normalize(target)) {
+                let head = doc.selection(view.id).primary().head;
+                return doc.text().char_to_line(head);
+            }
+        }
+        panic!("no view for {}", target.display());
+    };
+
+    assert_eq!(
+        1,
+        app.editor.diff_sessions.len(),
+        "--diff should create one diff session"
+    );
+    assert_eq!(
+        2,
+        cursor_line(&norm1),
+        "file1 cursor should be on line 3 (0-indexed 2)"
+    );
+    assert_eq!(
+        4,
+        cursor_line(&norm2),
+        "file2 cursor should be on line 5 (0-indexed 4)"
+    );
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_diff_open_without_line_numbers_stays_at_start() -> anyhow::Result<()> {
+    let file1 = helpers::temp_file_with_contents("a1\na2\na3\n")?;
+    let file2 = helpers::temp_file_with_contents("b1\nb2\nb3\n")?;
+
+    let mut app = helpers::AppBuilder::new().build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                Some(&format!(
+                    ":diff-open {} {}<ret>",
+                    file1.path().to_string_lossy(),
+                    file2.path().to_string_lossy()
+                )),
+                Some(&|app| {
+                    helpers::assert_status_not_error(&app.editor);
+
+                    for (view, _focused) in app.editor.tree.views() {
+                        let doc = &app.editor.documents[&view.doc];
+                        if doc.path().is_none() {
+                            continue;
+                        }
+                        let head = doc.selection(view.id).primary().head;
+                        assert_eq!(
+                            0,
+                            doc.text().char_to_line(head),
+                            "unqualified :diff-open must leave both cursors at line 1 (0-indexed 0)"
+                        );
+                    }
+                }),
+            ),
+            (Some(":qa!<ret>"), None),
+        ],
+        true,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_diff_open_creates_session() -> anyhow::Result<()> {
     let file1 = helpers::temp_file_with_contents("one\ntwo\nthree\n")?;
     let file2 = helpers::temp_file_with_contents("one\nTWO\nthree\n")?;

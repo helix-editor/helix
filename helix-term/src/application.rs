@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Position, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -79,6 +79,27 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 
     theme_mode: Option<theme::Mode>,
+}
+
+fn apply_diff_positions(
+    editor: &mut Editor,
+    view_id: helix_view::ViewId,
+    doc_id: helix_view::DocumentId,
+    positions: &[Position],
+) {
+    if positions.is_empty() {
+        return;
+    }
+    let doc = doc_mut!(editor, &doc_id);
+    let selection = positions
+        .iter()
+        .map(|coords| Range::point(pos_at_coords(doc.text().slice(..), *coords, true)))
+        .collect();
+    doc.set_selection(view_id, selection);
+    if editor.tree.focus == view_id {
+        let (view, doc) = current!(editor);
+        align_view(doc, view, Align::Center);
+    }
 }
 
 #[cfg(feature = "integration")]
@@ -163,13 +184,16 @@ impl Application {
             if files.len() != 2 {
                 anyhow::bail!("--diff requires exactly two file paths");
             }
-            let (path_a, _) = &files[0];
-            let (path_b, _) = &files[1];
+            let (path_a, pos_a) = &files[0];
+            let (path_b, pos_b) = &files[1];
 
             let doc_a = editor.open(path_a, Action::VerticalSplit)?;
             let view_a = editor.tree.focus;
+            apply_diff_positions(&mut editor, view_a, doc_a, pos_a);
+
             let doc_b = editor.open(path_b, Action::VerticalSplit)?;
             let view_b = editor.tree.focus;
+            apply_diff_positions(&mut editor, view_b, doc_b, pos_b);
 
             let rope_a = editor.documents[&doc_a].text().clone();
             let rope_b = editor.documents[&doc_b].text().clone();

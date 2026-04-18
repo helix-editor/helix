@@ -72,7 +72,8 @@ FLAGS:
     --log <file>                   Specify a file to use for logging
                                    (default file: {})
     -V, --version                  Print version information
-    --diff, -d                     Open two files side-by-side in diff mode
+    --diff, -d                     Open two files side-by-side in diff mode.
+                                   Each path accepts a file:line or file:line:col suffix.
     --vsplit                       Split all given files vertically into different windows
     --hsplit                       Split all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
