@@ -87,7 +87,7 @@
 | `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
-| `:diff-open`, `:diffs` | Open two files side-by-side in diff mode with aligned hunks. |
+| `:diff-open`, `:diffs` | Open two files side-by-side in diff mode with aligned hunks. Each path accepts a file:line or file:line:col suffix. |
 | `:reset-diff-change`, `:diffget`, `:diffg` | In a diff session: pull changes from the partner buffer. Outside a diff session: reset the diff change at the cursor position to the VCS base. |
 | `:diff-put`, `:diffput`, `:diffp` | In a diff session: push changes from the current buffer to the partner buffer at the cursor position. |
 | `:diff-off`, `:diffoff` | End the diff session for the current view. Both views continue as independent buffers. |
