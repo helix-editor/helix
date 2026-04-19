@@ -179,28 +179,21 @@ impl Default for GutterLineNumbersConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
-    /// IgnoreOptions
-    /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file picker and global search results. Defaults to true.
     pub hidden: bool,
-    /// Enables following symlinks.
     /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to true.
     pub follow_symlinks: bool,
     /// Hides symlinks that point into the current directory. Defaults to true.
     pub deduplicate_links: bool,
-    /// Enables reading ignore files from parent directories. Defaults to true.
+    /// Read ignore files from parent directories. Defaults to true.
     pub parents: bool,
-    /// Enables reading `.ignore` files.
-    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to true.
+    /// Use `.ignore` files to omit entries from file picker and global search results. Defaults to true.
     pub ignore: bool,
-    /// Enables reading `.gitignore` files.
-    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to true.
+    /// Use `.gitignore` files to omit entries from file picker and global search results. Defaults to true.
     pub git_ignore: bool,
-    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
-    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to true.
+    /// Use global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option. Defaults to true.
     pub git_global: bool,
-    /// Enables reading `.git/info/exclude` files.
-    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to true.
+    /// Use `.git/info/exclude` to omit entries from file picker and global search results. Defaults to true.
     pub git_exclude: bool,
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
@@ -226,26 +219,19 @@ impl Default for FilePickerConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FileExplorerConfig {
-    /// IgnoreOptions
-    /// Enables ignoring hidden files.
     /// Whether to hide hidden files in file explorer and global search results. Defaults to false.
     pub hidden: bool,
-    /// Enables following symlinks.
-    /// Whether to follow symbolic links in file picker and file or directory completions. Defaults to false.
+    /// Whether to follow symbolic links in file explorer and file or directory completions. Defaults to false.
     pub follow_symlinks: bool,
-    /// Enables reading ignore files from parent directories. Defaults to false.
+    /// Read ignore files from parent directories. Defaults to false.
     pub parents: bool,
-    /// Enables reading `.ignore` files.
-    /// Whether to hide files listed in .ignore in file picker and global search results. Defaults to false.
+    /// Use `.ignore` files to omit entries from file explorer and global search results. Defaults to false.
     pub ignore: bool,
-    /// Enables reading `.gitignore` files.
-    /// Whether to hide files listed in .gitignore in file picker and global search results. Defaults to false.
+    /// Use `.gitignore` files to omit entries from file explorer and global search results. Defaults to false.
     pub git_ignore: bool,
-    /// Enables reading global .gitignore, whose path is specified in git's config: `core.excludefile` option.
-    /// Whether to hide files listed in global .gitignore in file picker and global search results. Defaults to false.
+    /// Use global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option. Defaults to false.
     pub git_global: bool,
-    /// Enables reading `.git/info/exclude` files.
-    /// Whether to hide files listed in .git/info/exclude in file picker and global search results. Defaults to false.
+    /// Use `.git/info/exclude` to omit entries from file explorer and global search results. Defaults to false.
     pub git_exclude: bool,
     /// Whether to flatten single-child directories in file explorer. Defaults to true.
     pub flatten_dirs: bool,
