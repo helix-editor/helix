@@ -117,8 +117,8 @@
 
 # --- UI ---
 
-"ui.background" = { bg = "bg" }
-"ui.background.separator" = { fg = "border" }
+"ui.background" = { fg = "chrome-border", bg = "bg" }
+"ui.background.separator" = { fg = "chrome-border" }
 
 "ui.text" = { fg = "fg" }
 "ui.text.focus" = { fg = "fg", bg = "menu-sel" }
@@ -161,8 +161,8 @@
 "ui.bufferline.background" = { bg = "sidebar" }
 
 "ui.popup" = { fg = "fg", bg = "bg" }
-"ui.popup.info" = { fg = "fg", bg = "peek-bg" }
-"ui.window" = { fg = "border" }
+"ui.popup.info" = { fg = "fg", bg = "bg" }
+"ui.window" = { fg = "chrome-border" }
 "ui.help" = { fg = "fg", bg = "bg" }
 
 "ui.picker.header" = { fg = "accent-dark", modifiers = ["bold"] }
@@ -250,6 +250,7 @@ match-bg = "#edc9d8"
 title-inactive = "#c4b7d7"
 sidebar = "#F2F2F2"
 border = "#d0d0d0"
+chrome-border = "#c9d0d9"
 ruler = "#ececec"
 indent-guide = "#d0d0d0"
 inlay-bg = "#ececec"
