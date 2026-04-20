@@ -352,6 +352,18 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         return Ok(FetchStatus::NonGit);
     };
 
+    // Require a full 40-character SHA-1 commit hash to prevent supply-chain
+    // attacks via mutable git references such as branch or tag names.
+    if !is_full_commit_sha(&revision) {
+        return Err(anyhow!(
+            "Grammar '{}' specifies an insecure revision '{}'. \
+             Only full 40-character SHA-1 commit hashes are accepted to \
+             prevent supply-chain attacks via mutable git references.",
+            grammar.grammar_id,
+            revision
+        ));
+    }
+
     let repo = VendoredGrammar::new(&grammar.grammar_id);
 
     // WARN: Must init before other operations are done.
@@ -364,7 +376,29 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     // Fetch the grammar if the revision doesn't match.
     repo.fetch(&remote, &revision)?;
 
+    // Verify the checked-out revision matches the expected commit hash to
+    // detect any tampering or unexpected content changes.
+    let actual_revision = repo.revision().ok_or_else(|| {
+        anyhow!(
+            "Could not determine the revision of fetched grammar '{}'",
+            grammar.grammar_id
+        )
+    })?;
+    if actual_revision != revision {
+        return Err(anyhow!(
+            "Grammar '{}' revision mismatch after fetch: expected '{}', got '{}'",
+            grammar.grammar_id,
+            revision,
+            actual_revision
+        ));
+    }
+
     Ok(FetchStatus::GitUpdated { revision })
+}
+
+/// Returns `true` if `rev` is a valid full 40-character git SHA-1 hex string.
+fn is_full_commit_sha(rev: &str) -> bool {
+    rev.len() == 40 && rev.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 // A wrapper around 'git' commands which returns stdout in success and a
