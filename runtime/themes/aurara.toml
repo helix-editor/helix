@@ -195,7 +195,7 @@
 
 'type' = { fg = "blue-aqua" } # Variable type, like integer or string, including program defined classes, structs etc..
   # NOTE: sometimes there's class / end, which looks odd not bolded like other control/end statements
-  # doesn't seperate declaration, parameters, instantiation (though there is constructor), so it's difficult to italicize
+  # doesn't separate declaration, parameters, instantiation (though there is constructor), so it's difficult to italicize
 'type.builtin' = { fg = "green-sea", modifiers = ["italic"] } # Primitive types of the language (string, int, float).
 'type.enum.variant' = { fg = "green-sea" } # A variant of an enum.
   # vs match constant color
@@ -276,7 +276,7 @@
 'keyword.operator' = { fg = "purple", modifiers = ["bold"] } # 'or', 'and', 'in'.
   # TODO: doesn't look like it's working..??
 'keyword.directive' = { fg = "purple", modifiers = ["italic"] } # Preprocessor directives (#if, #include in C).
-'keyword.function' = { fg = "purple", modifiers = ["bold"] } # The keyword to define a funtion: 'def', 'fun', 'fn'.
+'keyword.function' = { fg = "purple", modifiers = ["bold"] } # The keyword to define a function: 'def', 'fun', 'fn'.
 'keyword.storage' = { fg = "purple" } # let and var in rust.. these should be more visible..
 'keyword.storage.modifier' = { fg = "purple-dimmer", modifiers = ["italic"] } # function and type modifiers/accessors: public/private, mut, dyn, ref, &, internal, readonly, const, etc.
   # these should be less visible
