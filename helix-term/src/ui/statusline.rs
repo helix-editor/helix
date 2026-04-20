@@ -402,8 +402,9 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let enc = context.doc.encoding();
+    let config = context.editor.config();
 
-    if enc != encoding::UTF_8 {
+    if config.statusline.always_show_encoding || enc != encoding::UTF_8 {
         write(context, format!(" {} ", enc.name()).into());
     }
 }
