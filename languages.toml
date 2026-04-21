@@ -1594,7 +1594,7 @@ scope = "source.lua"
 file-types = ["lua", "rockspec"]
 shebangs = ["lua", "luajit"]
 roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
-comment-token = "--"
+comment-tokens = ["--", "---"]
 block-comment-tokens = { start = "--[[", end = "--]]" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "lua-language-server" ]
