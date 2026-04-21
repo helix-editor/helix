@@ -63,6 +63,8 @@ use arc_swap::{
     ArcSwap,
 };
 
+use mlua::{IntoLua, Lua, Value};
+
 pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 pub const DEFAULT_AUTO_RELOAD_INTERVAL: u64 = 3000;
@@ -334,6 +336,15 @@ where
 pub struct ScrolloffConfig {
     pub horizontal: usize,
     pub vertical: usize,
+}
+
+impl IntoLua for ScrolloffConfig {
+    fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
+        let table = lua.create_table()?;
+        table.set("horizontal", self.horizontal)?;
+        table.set("vertical", self.vertical)?;
+        Ok(Value::Table(table))
+    }
 }
 
 impl Default for ScrolloffConfig {
