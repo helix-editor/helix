@@ -86,7 +86,7 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
@@ -141,13 +141,15 @@ pub fn fetch_grammars() -> Result<()> {
         for (i, (grammar, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar} {error}", i + 1);
         }
-        bail!("{len} grammars failed to fetch");
+        if strict {
+            bail!("{len} grammars failed to fetch");
+        }
     }
 
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>) -> Result<()> {
+pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
@@ -184,7 +186,9 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
         for (i, (grammar_id, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar_id} {error}", i + 1);
         }
-        bail!("{len} grammars failed to build");
+        if strict {
+            bail!("{len} grammars failed to build");
+        }
     }
 
     Ok(())
