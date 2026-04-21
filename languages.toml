@@ -4111,7 +4111,7 @@ language-servers = [ "templ" ]
 
 [[grammar]]
 name = "templ"
-source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "47594c5cbef941e6a3ccf4ddb934a68cf4c68075" }
+source = { git = "https://github.com/vrischmann/tree-sitter-templ", rev = "68d6707ed20159ae7525241b8161c126dc1c620c" }
 
 [[language]]
 name = "dbml"
