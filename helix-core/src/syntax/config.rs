@@ -596,6 +596,8 @@ pub struct SoftWrap {
     ///
     /// Defaults to ↪
     pub wrap_indicator: Option<String>,
+    /// Show the indicator on the `line-numbers` gutter instead of as part of the document
+    pub indicator_on_gutter: Option<bool>,
     /// Softwrap at `text_width` instead of viewport width if it is shorter
     pub wrap_at_text_width: Option<bool>,
 }
