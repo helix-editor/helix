@@ -34,6 +34,7 @@ cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", 
 csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cue", args = ["lsp", "serve"] }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
+debian-lsp = { command = "debian-lsp" }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 djlsp = { command = "djlsp" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
@@ -4902,10 +4903,20 @@ scope = "text.debian"
 file-types = [
   "dsc",
   "changes",
-  { glob = "debian/**/control" },
-  { glob = "etc/apt/sources.list.d/*.sources"}
+  { glob = "debian/control" },
+  { glob = "debian/copyright" },
+  { glob = "debian/watch" },
+  { glob = "debian/changelog" },
+  { glob = "debian/source/format" },
+  { glob = "debian/source/options" },
+  { glob = "debian/source/local-options" },
+  { glob = "debian/tests/control" },
+  { glob = "debian/upstream/metadata" },
+  { glob = "debian/rules" },
+  { glob = "etc/apt/sources.list.d/*.sources" }
 ]
 comment-tokens = "#"
+language-servers = [ "debian-lsp" ]
 
 [[grammar]]
 name = "debian"
