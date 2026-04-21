@@ -178,6 +178,8 @@
 | `delete_char_forward` | Delete next char | insert: `` <C-d> ``, `` <del> `` |
 | `delete_word_backward` | Delete previous word | insert: `` <C-w> ``, `` <A-backspace> `` |
 | `delete_word_forward` | Delete next word | insert: `` <A-d> ``, `` <A-del> `` |
+| `delete_sub_word_backward` | Delete previous sub word |  |
+| `delete_sub_word_forward` | Delete next sub word |  |
 | `kill_to_line_start` | Delete till start of line | insert: `` <C-u> `` |
 | `kill_to_line_end` | Delete till end of line | insert: `` <C-k> `` |
 | `undo` | Undo change | normal: `` u ``, select: `` u `` |
