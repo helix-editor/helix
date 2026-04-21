@@ -236,7 +236,7 @@
 | qmv |  |  |  |  |  |  |
 | quarto | ✓ |  | ✓ |  |  |  |
 | quint | ✓ |  |  |  |  | `quint-language-server` |
-| r | ✓ |  |  |  |  | `R` |
+| r | ✓ | ✓ |  | ✓ | ✓ | `R` |
 | racket | ✓ |  | ✓ |  | ✓ | `racket` |
 | regex | ✓ |  |  |  | ✓ |  |
 | rego | ✓ |  |  |  |  | `regols` |
