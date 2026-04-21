@@ -4296,24 +4296,42 @@ pub mod insert {
         let selection = doc.selection(view.id);
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
-        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
-
-        let insert_char = |range: Range, ch: char| {
-            let cursor = range.cursor(text.slice(..));
-            let t = Tendril::from_iter([ch]);
-            ((cursor, cursor, Some(t)), None)
+        let insert_char = || {
+            Transaction::change_by_and_with_selection(text, selection, |range| {
+                let cursor = range.cursor(text.slice(..));
+                let t = Tendril::from_iter([c]);
+                ((cursor, cursor, Some(t)), None)
+            })
         };
 
-        let transaction = Transaction::change_by_and_with_selection(text, selection, |range| {
-            auto_pairs
-                .as_ref()
-                .and_then(|ap| {
-                    auto_pairs::hook_insert(text, range, c, ap)
-                        .map(|(change, range)| (change, Some(range)))
-                        .or_else(|| Some(insert_char(*range, c)))
-                })
-                .unwrap_or_else(|| insert_char(*range, c))
-        });
+        let bracket_set = doc.bracket_set(cx.editor, loader, view);
+        let transaction = bracket_set
+            .and_then(|bs| {
+                let syntax = doc.syntax();
+                let layer_language = syntax.map(|syn| {
+                    let primary = selection.primary();
+                    let cursor = primary.cursor(text.slice(..));
+                    let cursor_byte = text.slice(..).char_to_byte(cursor) as u32;
+                    let layer = syn.layer_for_byte_range(cursor_byte, cursor_byte);
+                    syn.layer(layer).language
+                });
+
+                let lang_data = layer_language
+                    .map(|lang| loader.language(lang))
+                    .or_else(|| {
+                        doc.language_name()
+                            .and_then(|name| loader.language_for_name(name))
+                            .map(|lang| loader.language(lang))
+                    });
+
+                match lang_data {
+                    Some(ld) => {
+                        auto_pairs::hook_with_syntax(text, selection, c, bs, syntax, ld, loader)
+                    }
+                    None => auto_pairs::hook_multi(text, selection, c, bs),
+                }
+            })
+            .unwrap_or_else(insert_char);
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
@@ -4488,9 +4506,16 @@ pub mod insert {
                 // insert an additional line which is indented one level
                 // more and place the cursor there
                 let on_auto_pair = doc
-                    .auto_pairs(cx.editor, loader, view)
-                    .and_then(|pairs| pairs.get(prev))
-                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
+                    .bracket_set(cx.editor, loader, view)
+                    .map(|bs| {
+                        bs.pairs().iter().any(|pair| {
+                            pair.open.len() == 1
+                                && pair.close.len() == 1
+                                && pair.open.starts_with(prev)
+                                && pair.close.starts_with(curr)
+                        })
+                    })
+                    .unwrap_or(false);
 
                 let local_offs = if let Some(token) = continue_comment_token {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);
@@ -4625,13 +4650,72 @@ pub mod insert {
         Some((start, pos)) // delete!
     }
 
+    fn delete_auto_pair(
+        doc: &Rope,
+        text: RopeSlice,
+        range: &Range,
+        set: &auto_pairs::BracketSet,
+    ) -> Option<(Deletion, Range)> {
+        let cursor = range.cursor(text);
+        let del = {
+            let mut best: Option<auto_pairs::DeletePairResult> = None;
+
+            if cursor > 0 && cursor < doc.len_chars() {
+                let prev = doc.get_char(cursor - 1)?;
+                let cur = doc.get_char(cursor)?;
+
+                // Mirror legacy behavior: when deleting in "(  )", remove both spaces.
+                if prev.is_whitespace() && cur.is_whitespace() {
+                    for pair in set.pairs() {
+                        let open_len = pair.open_len();
+                        let close_len = pair.close_len();
+
+                        if cursor <= open_len || cursor + 1 + close_len > doc.len_chars() {
+                            continue;
+                        }
+
+                        let open_start = cursor - 1 - open_len;
+                        if doc.slice(open_start..cursor - 1) == pair.open
+                            && doc.slice(cursor + 1..cursor + 1 + close_len) == pair.close
+                            && best.as_ref().is_none_or(|m| {
+                                open_len + close_len > m.delete_before + m.delete_after
+                            })
+                        {
+                            best = Some(auto_pairs::DeletePairResult {
+                                delete_before: 1,
+                                delete_after: 1,
+                            });
+                        }
+                    }
+                }
+            }
+
+            best.or_else(|| auto_pairs::detect_pair_for_deletion(doc, cursor, set))?
+        };
+
+        let delete = (cursor - del.delete_before, cursor + del.delete_after);
+        let size_delete = del.delete_before + del.delete_after;
+        let next_head =
+            graphemes::next_grapheme_boundary(text, range.head).saturating_sub(size_delete);
+
+        let next_anchor = match (range.direction(), range.is_single_grapheme(text)) {
+            (Direction::Forward, true) => range.anchor.saturating_sub(del.delete_after),
+            (Direction::Backward, true) => range.anchor.saturating_sub(del.delete_before),
+            (Direction::Forward, false) => range.anchor,
+            (Direction::Backward, false) => range.anchor.saturating_sub(size_delete),
+        };
+
+        Some((delete, Range::new(next_anchor, next_head)))
+    }
+
     pub fn delete_char_backward(cx: &mut Context) {
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
+        let full_doc = doc.text();
 
         let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
-        let auto_pairs = doc.auto_pairs(cx.editor, loader, view);
+        let bracket_set = doc.bracket_set(cx.editor, loader, view);
 
         let transaction = Transaction::delete_by_and_with_selection(
             doc.text(),
@@ -4648,9 +4732,8 @@ pub mod insert {
                 dedent(doc, range)
                     .map(|dedent| (dedent, None))
                     .or_else(|| {
-                        // [TODO] should this be fixed to get the auto pairs for
-                        // each selection after 46af40017c0704142516b5740cf1a000ba4fd7c1 ?
-                        auto_pairs::hook_delete(doc.text(), range, auto_pairs?)
+                        let bs = bracket_set?;
+                        delete_auto_pair(full_doc, text, range, bs)
                             .map(|(delete, new_range)| (delete, Some(new_range)))
                     })
                     .unwrap_or_else(|| {
@@ -6280,24 +6363,32 @@ static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        let (view, doc) = current!(cx.editor);
-        // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
             Some(ch) => {
-                let (o, c) = match_brackets::get_pair(ch);
-                let mut open = Tendril::new();
-                open.push(o);
-                let mut close = Tendril::new();
-                close.push(c);
-                (open, close, 2)
+                let loader = cx.editor.syn_loader.load();
+                let (view, doc) = current_ref!(cx.editor);
+                let (o, c) = doc
+                    .bracket_set(cx.editor, &loader, view)
+                    .map(|bs| bs.get_surround_strings(ch))
+                    .unwrap_or_else(|| {
+                        let (o, c) = match_brackets::get_pair(ch);
+                        (o.to_string(), c.to_string())
+                    });
+                let surround_len = o.chars().count() + c.chars().count();
+                (Tendril::from(o), Tendril::from(c), surround_len)
             }
-            None if event.code == KeyCode::Enter => (
-                doc.line_ending.as_str().into(),
-                doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
-            ),
+            None if event.code == KeyCode::Enter => {
+                let (_, doc) = current_ref!(cx.editor);
+                let line_ending = doc.line_ending;
+                (
+                    line_ending.as_str().into(),
+                    line_ending.as_str().into(),
+                    2 * line_ending.len_chars(),
+                )
+            }
             None => return,
         };
+        let (view, doc) = current!(cx.editor);
 
         let selection = doc.selection(view.id);
         let mut changes = Vec::with_capacity(selection.len() * 2);
@@ -6337,6 +6428,7 @@ fn surround_replace(cx: &mut Context) {
             Some(ch) => Some(ch),
             None => return,
         };
+
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
