@@ -125,10 +125,14 @@ impl<T: Component> Popup<T> {
 
     fn render_info(&mut self, viewport: Rect, editor: &Editor) -> RenderInfo {
         let mut position = editor.cursor().0.unwrap_or_default();
-        if let Some(old_position) = self
-            .position
-            .filter(|old_position| old_position.row == position.row)
-        {
+        let follow_cursor = editor.config().popup_follow_cursor;
+        if let Some(old_position) = self.position.filter(|old_position| {
+            if follow_cursor {
+                *old_position == position
+            } else {
+                old_position.row == position.row
+            }
+        }) {
             position = old_position;
         } else {
             self.position = Some(position);
