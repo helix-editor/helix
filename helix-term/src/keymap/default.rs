@@ -181,6 +181,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         ")" => rotate_selections_forward,
         "A-(" => rotate_selection_contents_backward,
         "A-)" => rotate_selection_contents_forward,
+        "A-h" => swap_selection_contents_backward,
+        "A-l" => swap_selection_contents_forward,
 
         "A-:" => ensure_selections_forward,
 
