@@ -375,6 +375,8 @@ impl MappableCommand {
         merge_consecutive_selections, "Merge consecutive selections",
         search, "Search for regex pattern",
         rsearch, "Reverse search for regex pattern",
+        search_literal, "Search for literal text (non-regex)",
+        rsearch_literal, "Reverse search for literal text (non-regex)",
         search_next, "Select next search match",
         search_prev, "Select previous search match",
         extend_search_next, "Add next search match to selection",
@@ -2209,6 +2211,7 @@ fn select_regex(cx: &mut Context) {
                 cx.editor.set_error("nothing selected");
             }
         },
+        false,
     );
 }
 
@@ -2228,6 +2231,7 @@ fn split_selection(cx: &mut Context) {
             let selection = selection::split_on_matches(text, doc.selection(view.id), &regex);
             doc.set_selection(view.id, selection);
         },
+        false,
     );
 }
 
@@ -2343,14 +2347,22 @@ fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
 }
 
 fn search(cx: &mut Context) {
-    searcher(cx, Direction::Forward)
+    searcher(cx, Direction::Forward, false)
 }
 
 fn rsearch(cx: &mut Context) {
-    searcher(cx, Direction::Backward)
+    searcher(cx, Direction::Backward, false)
 }
 
-fn searcher(cx: &mut Context, direction: Direction) {
+fn search_literal(cx: &mut Context) {
+    searcher(cx, Direction::Forward, true)
+}
+
+fn rsearch_literal(cx: &mut Context) {
+    searcher(cx, Direction::Backward, true)
+}
+
+fn searcher(cx: &mut Context, direction: Direction, literal_search: bool) {
     let reg = cx.register.unwrap_or('/');
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
@@ -2391,6 +2403,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 false,
             );
         },
+        literal_search,
     );
 }
 
@@ -5382,6 +5395,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 cx.editor.set_error("no selections remaining");
             }
         },
+        false,
     )
 }
 
