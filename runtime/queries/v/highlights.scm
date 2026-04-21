@@ -159,7 +159,7 @@
 
 [
   "fn"
-] @keyword.control.function
+] @keyword.function
 
 
 [

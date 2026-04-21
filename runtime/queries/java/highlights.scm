@@ -82,8 +82,8 @@
 [
   (true)
   (false)
-  (null_literal)
-] @constant.builtin
+] @constant.builtin.boolean
+(null_literal) @constant.builtin
 
 (line_comment) @comment
 (block_comment) @comment

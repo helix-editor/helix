@@ -72,7 +72,7 @@
 
 ["for" "in" "do"] @keyword.control.repeat
 
-(import) @include
+"import" @keyword.control.import
 
 ; Tokens
 
@@ -191,13 +191,13 @@
   "mut"
 ] @keyword
 
-[(true) (false)] @boolean
+[(true) (false)] @constant.builtin.boolean
 
 (number) @constant.numeric.integer
 (float) @constant.numeric.float
 
 (comment) @comment
-(char) @character
+(char) @constant.character
 (string) @string
 (interpolated_string) @string
 ; (escape_sequence) @string.escape

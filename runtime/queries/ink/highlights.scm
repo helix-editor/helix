@@ -1,12 +1,12 @@
 ; tags and labels
 (label) @label
-(tag (identifier) @commment)
+(tag (identifier) @comment)
 (tag) @comment
 
 ; values
 (identifier) @function
 (string) @string
-(boolean) @constant
+(boolean) @constant.builtin.boolean
 (number) @constant.numeric
 
 ; headers

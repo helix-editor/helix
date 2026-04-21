@@ -66,8 +66,8 @@
 ] @string
 (boolean) @constant.builtin.boolean
 (null) @constant.builtin
-(integer) @constant.builtin.integer
-(float) @constant.builtin.float
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (comment) @comment
 
 "$" @operator
