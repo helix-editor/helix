@@ -288,7 +288,7 @@
 | task | ✓ |  |  |  |  |  |
 | tcl | ✓ |  | ✓ |  |  |  |
 | teal | ✓ |  |  |  |  | `teal-language-server` |
-| templ | ✓ |  |  |  |  | `templ` |
+| templ | ✓ | ✓ |  | ✓ | ✓ | `templ` |
 | tera | ✓ |  |  |  |  |  |
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
