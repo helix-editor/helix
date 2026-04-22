@@ -1109,6 +1109,22 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     (self.callback_fn)(ctx, option, self.default_action);
                 }
             }
+            ctrl!(Enter) => {
+                for matched in self
+                    .matcher
+                    .snapshot()
+                    .matched_items(0..self.matcher.snapshot().matched_item_count())
+                    .map(|item| item.data)
+                    .rev()
+                {
+                    (self.callback_fn)(ctx, matched, self.default_action);
+                }
+                // Open selected again so it is the active view
+                if let Some(option) = self.selection() {
+                    (self.callback_fn)(ctx, option, self.default_action);
+                }
+                return close_fn(self);
+            }
             key!(Enter) => {
                 // If the prompt has a history completion and is empty, use enter to accept
                 // that completion

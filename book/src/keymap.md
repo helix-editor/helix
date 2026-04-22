@@ -465,6 +465,7 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `End`                        | Go to last entry                                           |
 | `Enter`                      | Open selected                                              |
 | `Alt-Enter`                  | Open selected in the background without closing the picker |
+| `Ctrl-Enter`                 | Open all matched entries (e.g. files) with selected active |
 | `Ctrl-s`                     | Open horizontally                                          |
 | `Ctrl-v`                     | Open vertically                                            |
 | `Ctrl-t`                     | Toggle preview                                             |
