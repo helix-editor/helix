@@ -1,6 +1,6 @@
 [package]
 name = "helix-dap-types"
-description = "Types for interaction with a debug adapaters, using Debug Adapter Protocol"
+description = "Types for interaction with a debug adapters, using Debug Adapter Protocol"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
