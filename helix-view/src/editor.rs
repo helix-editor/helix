@@ -178,6 +178,20 @@ impl Default for GutterLineNumbersConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PickerConfig {
+    /// Padding to keep between the vertical edges of the picker and the
+    /// selected element when scrolling. Defaults to 3.
+    pub scrolloff: usize,
+}
+
+impl Default for PickerConfig {
+    fn default() -> Self {
+        Self { scrolloff: 3 }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct FilePickerConfig {
     /// IgnoreOptions
     /// Enables ignoring hidden files.
@@ -364,6 +378,7 @@ pub struct Config {
     pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
+    pub picker: PickerConfig,
     pub file_picker: FilePickerConfig,
     pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
@@ -1118,6 +1133,7 @@ impl Default for Config {
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
+            picker: PickerConfig::default(),
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
