@@ -1,10 +1,12 @@
+use std::cmp;
 use std::fmt::Display;
 
 use ropey::RopeSlice;
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
-use crate::line_ending::rope_is_line_ending;
+use crate::indent::indent_level_for_line;
+use crate::line_ending::{get_line_ending, rope_is_line_ending};
 use crate::movement::Direction;
 use crate::syntax;
 use crate::Range;
@@ -195,6 +197,92 @@ pub fn textobject_paragraph(
     let anchor = slice.line_to_char(line_back);
     let head = slice.line_to_char(line);
     Range::new(anchor, head)
+}
+
+pub fn textobject_indentation_level(
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    count: usize,
+    indent_width: usize,
+    tab_width: usize,
+) -> Range {
+    let (mut line_start, mut line_end) = range.line_range(slice);
+    let mut min_indent: Option<usize> = None;
+
+    // Find the innermost indent represented by the current selection range.
+    // Range could be only on one line, so we need an inclusive range in the
+    // loop definition.
+    for i in line_start..=line_end {
+        let line = slice.line(i);
+
+        // Including empty lines leads to pathological behaviour, where having
+        // an empty line in a multi-line selection causes the entire buffer to
+        // be selected, which is not intuitively what we want.
+        if !rope_is_line_ending(line) {
+            let indent_level = indent_level_for_line(line, tab_width, indent_width);
+            min_indent = if let Some(prev_min_indent) = min_indent {
+                Some(cmp::min(indent_level, prev_min_indent))
+            } else {
+                Some(indent_level)
+            }
+        }
+    }
+
+    // It can happen that the selection consists of an empty line, so min_indent
+    // will be untouched, in which case we can skip the rest of the function
+    // and no-op.
+    if min_indent.is_none() {
+        return range;
+    }
+
+    let min_indent = min_indent.unwrap() + 1 - count;
+
+    // Traverse backwards until there are no more lines indented the same or
+    // greater, and extend the start of the range to it.
+    if line_start > 0 {
+        for line in slice.lines_at(line_start).reversed() {
+            let indent_level = indent_level_for_line(line, tab_width, indent_width);
+            let empty_line = rope_is_line_ending(line);
+            if (min_indent > 0 && indent_level >= min_indent)
+                || (min_indent == 0 && !empty_line)
+                || (textobject == TextObject::Around && empty_line)
+            {
+                line_start -= 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Traverse forwards until there are no more lines indented the same or
+    // greater, and extend the end of the range to it.
+    if line_end < slice.len_lines() {
+        for line in slice.lines_at(line_end + 1) {
+            let indent_level = indent_level_for_line(line, tab_width, indent_width);
+            let empty_line = rope_is_line_ending(line);
+            if (min_indent > 0 && indent_level >= min_indent)
+                || (min_indent == 0 && !empty_line)
+                || (textobject == TextObject::Around && empty_line)
+            {
+                line_end += 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    let new_char_start = slice.line_to_char(line_start);
+    let new_line_end_slice = slice.line(line_end);
+    let mut new_char_end = new_line_end_slice.chars().count() + slice.line_to_char(line_end);
+
+    // Unless the end of the new range is to the end of the buffer, we want to
+    // trim the final line ending from the selection.
+    if let Some(line_ending) = get_line_ending(&new_line_end_slice) {
+        new_char_end = new_char_end.saturating_sub(line_ending.len_chars());
+    }
+
+    Range::new(new_char_start, new_char_end).with_direction(range.direction())
 }
 
 pub fn textobject_pair_surround(
@@ -492,6 +580,160 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Around, 1));
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indentation_level_inside() {
+        let tests = [
+            ("#[|]#", "#[|]#", 1),
+            (
+                "unindented\n\t#[i|]#ndented once",
+                "unindented\n#[\tindented once|]#",
+                1,
+            ),
+            (
+                "unindented\n\t#[i|]#ndented once\n",
+                "unindented\n#[\tindented once|]#\n",
+                1,
+            ),
+            (
+                "unindented\n\t#[|in]#dented once\n",
+                "unindented\n#[|\tindented once]#\n",
+                1,
+            ),
+            (
+                "#[u|]#nindented\n\tindented once\n",
+                "#[unindented\n\tindented once|]#\n",
+                1,
+            ),
+            (
+                "unindented\n\n\t#[i|]#ndented once and separated\n",
+                "unindented\n\n#[\tindented once and separated|]#\n",
+                1,
+            ),
+            (
+                "#[u|]#nindented\n\n\tindented once and separated\n",
+                "#[unindented|]#\n\n\tindented once and separated\n",
+                1,
+            ),
+            (
+                "unindented\n\nunindented again\n\tindented #[once|]#\nunindented one more time",
+                "unindented\n\nunindented again\n#[\tindented once|]#\nunindented one more time",
+                1,
+            ),
+            (
+                "unindented\n\nunindented #[again\n\tindented|]# once\nunindented one more time\n",
+                "unindented\n\n#[unindented again\n\tindented once\nunindented one more time|]#\n",
+                1,
+            ),
+            (
+                "unindented\n\tindented #[once\n\n\tindented once|]# and separated\n\tindented once again\nunindented one more time\n",
+                "unindented\n#[\tindented once\n\n\tindented once and separated\n\tindented once again|]#\nunindented one more time\n",
+                1,
+            ),
+            (
+                "unindented\n\tindented once\n#[\n|]#\tindented once and separated\n\tindented once again\nunindented one more time\n",
+                "unindented\n\tindented once\n#[\n|]#\tindented once and separated\n\tindented once again\nunindented one more time\n",
+                1,
+            ),
+            (
+                "unindented\n\tindented once\n\t\tindented #[twice|]#\n\tindented once again\nunindented\n",
+                "unindented\n#[\tindented once\n\t\tindented twice\n\tindented once again|]#\nunindented\n",
+                2,
+            ),
+            (
+                "unindented\n\tindented once\n\t\tindented #[twice|]#\n\tindented once again\nunindented\n",
+                "#[unindented\n\tindented once\n\t\tindented twice\n\tindented once again\nunindented|]#\n",
+                3,
+            ),
+        ];
+
+        for (before, expected, count) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indentation_level(text.slice(..), r, TextObject::Inside, count, 4, 4)
+            });
+            let actual = crate::test::plain(s.as_ref(), &selection);
+            assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
+        }
+    }
+
+    #[test]
+    fn test_textobject_indentation_level_around() {
+        let tests = [
+            ("#[|]#", "#[|]#", 1),
+            (
+                "unindented\n\t#[i|]#ndented once",
+                "unindented\n#[\tindented once|]#",
+                1,
+            ),
+            (
+                "unindented\n\t#[i|]#ndented once\n",
+                "unindented\n#[\tindented once\n|]#",
+                1,
+            ),
+            (
+                "unindented\n\t#[|in]#dented once\n",
+                "unindented\n#[|\tindented once\n]#",
+                1,
+            ),
+            (
+                "#[u|]#nindented\n\tindented once\n",
+                "#[unindented\n\tindented once\n|]#",
+                1,
+            ),
+            (
+                "unindented\n\n\t#[i|]#ndented once and separated\n",
+                "unindented\n#[\n\tindented once and separated\n|]#",
+                1,
+            ),
+            (
+                "#[u|]#nindented\n\n\tindented once and separated\n",
+                "#[unindented\n\n\tindented once and separated\n|]#",
+                1,
+            ),
+            (
+                "unindented\n\nunindented again\n\tindented #[once|]#\nunindented one more time",
+                "unindented\n\nunindented again\n#[\tindented once|]#\nunindented one more time",
+                1,
+            ),
+            (
+                "unindented\n\nunindented #[again\n\tindented|]# once\nunindented one more time\n",
+                "#[unindented\n\nunindented again\n\tindented once\nunindented one more time\n|]#",
+                1,
+            ),
+            (
+                "unindented\n\tindented #[once\n\n\tindented once|]# and separated\n\tindented once again\nunindented one more time\n",
+                "unindented\n#[\tindented once\n\n\tindented once and separated\n\tindented once again|]#\nunindented one more time\n",
+                1,
+            ),
+            (
+                "unindented\n\tindented once\n#[\n|]#\tindented once and separated\n\tindented once again\nunindented one more time\n",
+                "unindented\n\tindented once\n#[\n|]#\tindented once and separated\n\tindented once again\nunindented one more time\n",
+                1,
+            ),
+            (
+                "unindented\n\tindented once\n\t\tindented #[twice|]#\n\tindented once again\nunindented\n",
+                "unindented\n#[\tindented once\n\t\tindented twice\n\tindented once again|]#\nunindented\n",
+                2,
+            ),
+            (
+                "unindented\n\tindented once\n\t\tindented #[twice|]#\n\tindented once again\nunindented\n",
+                "#[unindented\n\tindented once\n\t\tindented twice\n\tindented once again\nunindented\n|]#",
+                3,
+            ),
+        ];
+
+        for (before, expected, count) in tests {
+            let (s, selection) = crate::test::print(before);
+            let text = Rope::from(s.as_str());
+            let selection = selection.transform(|r| {
+                textobject_indentation_level(text.slice(..), r, TextObject::Around, count, 4, 4)
+            });
             let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
