@@ -690,7 +690,7 @@ impl Component for Prompt {
                             // store in history
                             if let Some(register) = self.history_register {
                                 if let Err(err) =
-                                    cx.editor.registers.push(register, self.line.clone())
+                                    cx.editor.registers.push_unique(register, self.line.clone())
                                 {
                                     cx.editor.set_error(err.to_string());
                                 }
