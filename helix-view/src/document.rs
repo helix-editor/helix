@@ -153,10 +153,6 @@ pub struct Document {
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// LSP document highlights for each view, stored as char ranges.
     pub(crate) document_highlights: HashMap<ViewId, DocumentHighlights>,
-    /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
-    /// update from the LSP
-    pub inlay_hints_oudated: bool,
-
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
@@ -218,6 +214,8 @@ pub struct Document {
     pub color_swatch_controller: TaskController,
     /// Per-view task controllers for canceling in-flight document highlight requests.
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
+    /// Per-view task controllers for canceling in-flight inlay hint requests.
+    pub inlay_hint_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
 
@@ -323,7 +321,6 @@ impl fmt::Debug for Document {
             .field("id", &self.id)
             .field("text", &self.text)
             .field("selections", &self.selections)
-            .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
             .field("view_data", &self.view_data)
             .field("path", &self.path)
@@ -731,7 +728,6 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
-            inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),
@@ -760,6 +756,7 @@ impl Document {
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
+            inlay_hint_controllers: HashMap::new(),
             syn_loader,
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
@@ -1427,6 +1424,7 @@ impl Document {
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
         self.document_highlights.remove(&view_id);
+        self.inlay_hint_controllers.remove(&view_id);
         self.document_highlight_controllers.remove(&view_id);
     }
 
@@ -1561,7 +1559,6 @@ impl Document {
             );
         };
 
-        self.inlay_hints_oudated = true;
         for text_annotation in self.inlay_hints.values_mut() {
             let DocumentInlayHints {
                 id: _,
@@ -2401,6 +2398,22 @@ impl Document {
             .or_default()
     }
 
+    pub fn inlay_hint_controller(&mut self, view_id: ViewId) -> &mut TaskController {
+        self.inlay_hint_controllers.entry(view_id).or_default()
+    }
+
+    pub fn cancel_inlay_hint_request(&mut self, view_id: ViewId) -> bool {
+        self.inlay_hint_controllers
+            .get_mut(&view_id)
+            .is_some_and(TaskController::cancel)
+    }
+
+    pub fn cancel_all_inlay_hint_requests(&mut self) {
+        for controller in self.inlay_hint_controllers.values_mut() {
+            controller.cancel();
+        }
+    }
+
     /// Get the inlay hints for this document and `view_id`.
     pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
         self.inlay_hints.get(&view_id)
@@ -2410,6 +2423,7 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+        self.inlay_hint_controllers.clear();
     }
 
     pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {
