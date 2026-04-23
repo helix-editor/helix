@@ -100,6 +100,19 @@ pub fn general() -> std::io::Result<()> {
             );
             writeln!(stdout, "{}", msg.yellow())?;
         }
+    }
+
+    Ok(())
+}
+
+/// Display warnings if runtime directories don't exist.
+pub fn runtime_warnings() -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let rt_dirs = helix_loader::runtime_dirs();
+
+    for rt_dir in rt_dirs.iter() {
         if !rt_dir.exists() {
             let msg = format!("Runtime directory does not exist: {}", rt_dir.display());
             writeln!(stdout, "{}", msg.yellow())?;
@@ -446,11 +459,16 @@ pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
         }
         Some("all") => {
             general()?;
+            runtime_warnings()?;
             clipboard()?;
             writeln!(std::io::stdout().lock())?;
             languages_all()?;
         }
-        Some(lang) => language(lang.to_string())?,
+        Some(lang) => {
+            language(lang.to_string())?;
+            writeln!(std::io::stdout().lock())?;
+            runtime_warnings()?;
+        }
     }
     Ok(())
 }
