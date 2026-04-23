@@ -145,7 +145,7 @@ svlangserver = { command = "svlangserver", args = [], config.systemverilog.inclu
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 superhtml = {  command = "superhtml", args = ["lsp"]}
 tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
-taplo = { command = "taplo", args = ["lsp", "stdio"] }
+taplo = { command = "taplo", args = ["lsp", "stdio"], config = {} }
 templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
