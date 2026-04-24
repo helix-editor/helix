@@ -398,7 +398,7 @@ fn write_impl(
     doc.append_changes_to_history(view);
 
     let (view, doc) = current_ref!(cx.editor);
-    let fmt = if config.auto_format && options.auto_format {
+    let fmt = if options.auto_format {
         doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -858,7 +858,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if options.auto_format && config.auto_format {
+        let fmt = if options.auto_format {
             let doc = doc!(cx.editor, &doc_id);
             doc.auto_format(cx.editor).map(|fmt| {
                 let callback = make_format_callback(
