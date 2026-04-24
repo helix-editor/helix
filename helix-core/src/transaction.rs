@@ -524,6 +524,10 @@ impl ChangeSet {
         ChangeIterator::new(self)
     }
 
+    pub fn into_changes_iter(self) -> OwningChangeIterator {
+        OwningChangeIterator::new(self)
+    }
+
     pub fn from_change(doc: &Rope, change: Change) -> Self {
         Self::from_changes(doc, std::iter::once(change))
     }
@@ -872,6 +876,10 @@ impl Transaction {
     pub fn changes_iter(&self) -> ChangeIterator<'_> {
         self.changes.changes_iter()
     }
+
+    pub fn into_changes_iter(self) -> OwningChangeIterator {
+        self.changes.into_changes_iter()
+    }
 }
 
 impl From<ChangeSet> for Transaction {
@@ -921,6 +929,52 @@ impl Iterator for ChangeIterator<'_> {
                         return Some((start, self.pos, Some(s.clone())));
                     } else {
                         return Some((start, start, Some(s.clone())));
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct OwningChangeIterator {
+    iter: std::iter::Peekable<std::vec::IntoIter<Operation>>,
+    pos: usize,
+}
+
+impl OwningChangeIterator {
+    fn new(changeset: ChangeSet) -> Self {
+        let iter = changeset.changes.into_iter().peekable();
+        Self { iter, pos: 0 }
+    }
+}
+
+impl Iterator for OwningChangeIterator {
+    type Item = Change;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use Operation::*;
+
+        loop {
+            match self.iter.next()? {
+                Retain(len) => {
+                    self.pos += len;
+                }
+                Delete(len) => {
+                    let start = self.pos;
+                    self.pos += len;
+                    return Some((start, self.pos, None));
+                }
+                Insert(s) => {
+                    let start = self.pos;
+                    // a subsequent delete means a replace, consume it
+                    if let Some(Delete(len)) = self.iter.peek() {
+                        let len = *len;
+                        self.iter.next();
+
+                        self.pos += len;
+                        return Some((start, self.pos, Some(s)));
+                    } else {
+                        return Some((start, start, Some(s)));
                     }
                 }
             }
@@ -1110,6 +1164,14 @@ mod test {
         let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
         let transaction = Transaction::change(&doc, changes.clone().into_iter());
         assert_eq!(transaction.changes_iter().collect::<Vec<_>>(), changes);
+    }
+
+    #[test]
+    fn into_changes_iter() {
+        let doc = Rope::from("hello world!\ntest 123");
+        let changes = vec![(6, 11, Some("void".into())), (12, 17, None)];
+        let transaction = Transaction::change(&doc, changes.clone().into_iter());
+        assert_eq!(transaction.into_changes_iter().collect::<Vec<_>>(), changes);
     }
 
     #[test]
