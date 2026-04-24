@@ -360,13 +360,13 @@ impl Loader {
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (idx, data) in self.languages.iter().enumerate() {
-            if let Some(injection_regex) = &data.config.injection_regex {
-                if let Some(mat) = injection_regex.find(text.regex_input()) {
-                    let length = mat.end() - mat.start();
-                    if length > best_match_length {
-                        best_match_position = Some(idx);
-                        best_match_length = length;
-                    }
+            if let Some(injection_regex) = &data.config.injection_regex
+                && let Some(mat) = injection_regex.find(text.regex_input())
+            {
+                let length = mat.end() - mat.start();
+                if length > best_match_length {
+                    best_match_position = Some(idx);
+                    best_match_length = length;
                 }
             }
         }
@@ -679,20 +679,17 @@ impl Syntax {
                     },
                     highlight: Highlight::new((scope_stack.len() % rainbow_length) as u32),
                 });
-            } else if capture == rainbow_query.bracket_capture {
-                if let Some(scope) = scope_stack.last() {
-                    if !scope
-                        .node
-                        .as_ref()
-                        .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
-                    {
-                        let start = source
-                            .byte_to_char(source.floor_char_boundary(byte_range.start as usize));
-                        let end =
-                            source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
-                        highlights.push((scope.highlight, start..end));
-                    }
-                }
+            } else if capture == rainbow_query.bracket_capture
+                && let Some(scope) = scope_stack.last()
+                && !scope
+                    .node
+                    .as_ref()
+                    .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
+            {
+                let start =
+                    source.byte_to_char(source.floor_char_boundary(byte_range.start as usize));
+                let end = source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
+                highlights.push((scope.highlight, start..end));
             }
         }
 
@@ -1036,20 +1033,20 @@ impl TextObjectQuery {
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        self.capture_nodes_any(&[capture_name], node, slice)
+        self.capture_nodes_any(iter::once(capture_name), node, slice)
     }
 
     /// Find the first capture that exists out of all given `capture_names`
     /// and return sub nodes that match this capture.
-    pub fn capture_nodes_any<'a>(
+    pub fn capture_nodes_any<'a, S: AsRef<str>, I: IntoIterator<Item = S>>(
         &'a self,
-        capture_names: &[&str],
+        capture_names: I,
         node: &Node<'a>,
         slice: RopeSlice<'a>,
     ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
         let capture = capture_names
-            .iter()
-            .find_map(|cap| self.query.get_capture(cap))?;
+            .into_iter()
+            .find_map(|cap| self.query.get_capture(cap.as_ref()))?;
 
         let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
             .execute_query(&self.query, node, RopeInput::new(slice));

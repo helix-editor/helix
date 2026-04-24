@@ -4,10 +4,10 @@ use helix_view::handlers::Handlers;
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut SelectionDidChange<'_>| {
-        if let Some(snippet) = &event.doc.active_snippet {
-            if !snippet.is_valid(event.doc.selection(event.view)) {
-                event.doc.active_snippet = None;
-            }
+        if let Some(snippet) = &event.doc.active_snippet
+            && !snippet.is_valid(event.doc.selection(event.view))
+        {
+            event.doc.active_snippet = None;
         }
         Ok(())
     });

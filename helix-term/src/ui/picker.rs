@@ -968,16 +968,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 .language_config()
                 .and_then(|config| config.rainbow_brackets)
                 .unwrap_or(config.rainbow_brackets)
-            {
-                if let Some(overlay) = EditorView::doc_rainbow_highlights(
+                && let Some(overlay) = EditorView::doc_rainbow_highlights(
                     doc,
                     offset.anchor,
                     area.height,
                     &cx.editor.theme,
                     &loader,
-                ) {
-                    overlay_highlights.push(overlay);
-                }
+                )
+            {
+                overlay_highlights.push(overlay);
             }
 
             EditorView::doc_diagnostics_highlights_into(
@@ -1132,14 +1131,13 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, self.default_action);
                     }
-                    if let Some(history_register) = self.prompt.history_register() {
-                        if let Err(err) = ctx
+                    if let Some(history_register) = self.prompt.history_register()
+                        && let Err(err) = ctx
                             .editor
                             .registers
                             .push(history_register, self.primary_query().to_string())
-                        {
-                            ctx.editor.set_error(err.to_string());
-                        }
+                    {
+                        ctx.editor.set_error(err.to_string());
                     }
                     return close_fn(self);
                 }

@@ -1036,14 +1036,12 @@ impl Document {
             }
 
             // Protect against overwriting changes made externally
-            if !force {
-                if let Ok(metadata) = fs::metadata(&path).await {
-                    if let Ok(mtime) = metadata.modified() {
-                        if last_saved_time < mtime {
-                            bail!("file modified by an external process, use :w! to overwrite");
-                        }
-                    }
-                }
+            if !force
+                && let Ok(metadata) = fs::metadata(&path).await
+                && let Ok(mtime) = metadata.modified()
+                && last_saved_time < mtime
+            {
+                bail!("file modified by an external process, use :w! to overwrite");
             }
             let write_path = tokio::fs::read_link(&path)
                 .await
@@ -1231,10 +1229,10 @@ impl Document {
     }
 
     pub fn detect_editor_config(&mut self) {
-        if self.config.load().editor_config {
-            if let Some(path) = self.path.as_ref() {
-                self.editor_config = EditorConfig::find(path);
-            }
+        if self.config.load().editor_config
+            && let Some(path) = self.path.as_ref()
+        {
+            self.editor_config = EditorConfig::find(path);
         }
     }
 
@@ -2143,12 +2141,11 @@ impl Document {
             }
         });
 
-        if let Some(lang_conf) = language_config {
-            if let Some(severity) = severity {
-                if severity < lang_conf.diagnostic_severity {
-                    return None;
-                }
-            }
+        if let Some(lang_conf) = language_config
+            && let Some(severity) = severity
+            && severity < lang_conf.diagnostic_severity
+        {
+            return None;
         };
         use helix_core::diagnostic::{DiagnosticTag, NumberOrString};
 
@@ -2161,16 +2158,13 @@ impl Document {
         };
 
         let tags = if let Some(tags) = &diagnostic.tags {
-            let new_tags = tags
-                .iter()
+            tags.iter()
                 .filter_map(|tag| match *tag {
                     lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
                     lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
                     _ => None,
                 })
-                .collect();
-
-            new_tags
+                .collect()
         } else {
             Vec::new()
         };

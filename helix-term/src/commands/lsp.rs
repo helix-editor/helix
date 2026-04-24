@@ -41,7 +41,7 @@ use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, pat
 /// will spam the "No configured language server supports \<feature>" status message confusingly.
 #[macro_export]
 macro_rules! language_server_with_feature {
-    ($editor:expr, $doc:expr, $feature:expr) => {{
+    ($editor:expr_2021, $doc:expr_2021, $feature:expr_2021) => {{
         let language_server = $doc.language_servers_with_feature($feature).next();
         match language_server {
             Some(language_server) => language_server,
@@ -790,12 +790,11 @@ pub fn code_action(cx: &mut Context) {
                         log::debug!("code action: {:?}", code_action);
                         // we support lsp "codeAction/resolve" for `edit` and `command` fields
                         let mut resolved_code_action = None;
-                        if code_action.edit.is_none() || code_action.command.is_none() {
-                            if let Some(future) = language_server.resolve_code_action(code_action) {
-                                if let Ok(code_action) = helix_lsp::block_on(future) {
-                                    resolved_code_action = Some(code_action);
-                                }
-                            }
+                        if (code_action.edit.is_none() || code_action.command.is_none())
+                            && let Some(future) = language_server.resolve_code_action(code_action)
+                            && let Ok(code_action) = helix_lsp::block_on(future)
+                        {
+                            resolved_code_action = Some(code_action);
                         }
                         let resolved_code_action =
                             resolved_code_action.as_ref().unwrap_or(code_action);
@@ -1289,7 +1288,9 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
-) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
+) -> Option<
+    std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>,
+> {
     let view_id = view.id;
     let doc_id = view.doc;
 

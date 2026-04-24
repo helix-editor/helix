@@ -688,12 +688,11 @@ impl Component for Prompt {
                     } else {
                         if last_item != self.line {
                             // store in history
-                            if let Some(register) = self.history_register {
-                                if let Err(err) =
+                            if let Some(register) = self.history_register
+                                && let Err(err) =
                                     cx.editor.registers.push(register, self.line.clone())
-                                {
-                                    cx.editor.set_error(err.to_string());
-                                }
+                            {
+                                cx.editor.set_error(err.to_string());
                             };
                         }
 

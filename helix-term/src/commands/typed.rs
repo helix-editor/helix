@@ -183,12 +183,9 @@ fn buffer_close_by_ids_impl(
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
-        .filter_map(|&doc_id| {
-            if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
-                Some((doc_id, name))
-            } else {
-                None
-            }
+        .filter_map(|&doc_id| match cx.editor.close_document(doc_id, force) {
+            Err(CloseError::BufferModified(name)) => Some((doc_id, name)),
+            _ => None,
         })
         .unzip();
 
@@ -1031,14 +1028,14 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview()?;
-            } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
-                    if !(true_color || theme.is_16_color()) {
-                        bail!("Unsupported theme: theme requires true color support");
-                    }
-                    cx.editor.set_theme_preview(theme)?;
-                };
-            };
+            } else if let Some(theme_name) = args.first()
+                && let Ok(theme) = cx.editor.theme_loader.load(theme_name)
+            {
+                if !(true_color || theme.is_16_color()) {
+                    bail!("Unsupported theme: theme requires true color support");
+                }
+                cx.editor.set_theme_preview(theme)?;
+            }
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
@@ -2223,14 +2220,14 @@ fn toggle_option(
     let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
 
     *value = match value {
-        Value::Bool(ref value) => {
+        &mut Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
                 "Bad arguments. For boolean configurations use: `:toggle {key}`"
             );
             Value::Bool(!value)
         }
-        Value::String(ref value) => {
+        &mut Value::String(ref value) => {
             ensure!(
                 args.len() == 2,
                 "Bad arguments. For string configurations use: `:toggle {key} val1 val2 ...`",
@@ -2747,17 +2744,14 @@ fn move_buffer_impl(
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
 
-    if old_path.exists() {
-        if let Some(parent) = new_path.parent() {
-            if !parent.exists() {
-                if options.force {
-                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
-                } else {
-                    bail!(
-                        "can't move file, parent directory does not exist (use :mv! to create it)"
-                    )
-                }
-            }
+    if old_path.exists()
+        && let Some(parent) = new_path.parent()
+        && !parent.exists()
+    {
+        if options.force {
+            std::fs::DirBuilder::new().recursive(true).create(parent)?;
+        } else {
+            bail!("can't move file, parent directory does not exist (use :mv! to create it)")
         }
     }
 

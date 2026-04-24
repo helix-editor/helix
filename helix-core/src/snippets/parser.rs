@@ -119,12 +119,12 @@ fn text<'a>(
         while let Some((i, c)) = chars.next() {
             match c {
                 '\\' => {
-                    if let Some(&(_, c)) = chars.peek() {
-                        if escape_chars.contains(&c) {
-                            chars.next();
-                            res.push(c);
-                            continue;
-                        }
+                    if let Some(&(_, c)) = chars.peek()
+                        && escape_chars.contains(&c)
+                    {
+                        chars.next();
+                        res.push(c);
+                        continue;
                     }
                     res.push('\\');
                 }

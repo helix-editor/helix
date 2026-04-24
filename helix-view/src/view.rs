@@ -478,20 +478,19 @@ impl View {
         };
         let config = doc.config.load();
 
-        if config.lsp.display_color_swatches {
-            if let Some(DocumentColorSwatches {
+        if config.lsp.display_color_swatches
+            && let Some(DocumentColorSwatches {
                 color_swatches,
                 colors,
                 color_swatches_padding,
             }) = &doc.color_swatches
-            {
-                for (color_swatch, color) in color_swatches.iter().zip(colors) {
-                    text_annotations
-                        .add_inline_annotations(std::slice::from_ref(color_swatch), Some(*color));
-                }
-
-                text_annotations.add_inline_annotations(color_swatches_padding, None);
+        {
+            for (color_swatch, color) in color_swatches.iter().zip(colors) {
+                text_annotations
+                    .add_inline_annotations(std::slice::from_ref(color_swatch), Some(*color));
             }
+
+            text_annotations.add_inline_annotations(color_swatches_padding, None);
         }
 
         let width = self.inner_width(doc);

@@ -577,10 +577,10 @@ pub fn goto_treesitter_object(
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
         let nodes = textobject_query?.capture_nodes_any(
-            &[
-                &cap_name(TextObject::Movement),
-                &cap_name(TextObject::Around),
-                &cap_name(TextObject::Inside),
+            [
+                cap_name(TextObject::Movement),
+                cap_name(TextObject::Around),
+                cap_name(TextObject::Inside),
             ],
             slice_tree,
             slice,
