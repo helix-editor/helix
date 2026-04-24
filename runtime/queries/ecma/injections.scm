@@ -7,7 +7,7 @@
     (member_expression
       property: (property_identifier) @injection.language)
   ]
-  arguments: (template_string) @injection.content
+  arguments: (template_string (string_fragment) @injection.content)
   (#any-of? @injection.language "html" "css" "json" "sql" "js" "ts" "bash"))
 
 ; Parse the contents of $ template literals as shell commands
@@ -18,7 +18,7 @@
     (member_expression
       property: (property_identifier) @_template_function_name)
   ]
-  arguments: (template_string) @injection.content
+  arguments: (template_string (string_fragment) @injection.content)
  (#eq? @_template_function_name "$")
  (#set! injection.language "bash"))
 
@@ -58,10 +58,13 @@
 
 ; Parse the contents of strings and tagged template literals with leading ECMAScript comments '/* GraphQL */'
 (
-  ((comment) @_ecma_comment [
+  ((comment) @_ecma_comment) . [
     (string (string_fragment) @injection.content)
     (template_string (string_fragment) @injection.content)
-  ])
+    (call_expression
+      arguments: (template_string (string_fragment) @injection.content)
+    )
+  ]
   (#eq? @_ecma_comment "/* GraphQL */")
   (#set! injection.language "graphql")
 )
