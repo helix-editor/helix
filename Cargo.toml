@@ -57,6 +57,10 @@ sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
 arc-swap = "1.9"
+ahash = "0.8"
+smartstring = { version = "1.0.1", features = ["serde"]}
+arrayvec =  { version =  "0.7", features = ["serde"] }
+serde  = { version = "1" }
 
 [workspace.package]
 version = "25.7.1"

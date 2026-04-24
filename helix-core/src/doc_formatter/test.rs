@@ -1,3 +1,5 @@
+use helix_stdx::string::StackString;
+
 use crate::doc_formatter::{DocumentFormatter, TextFormat};
 use crate::text_annotations::{InlineAnnotation, Overlay, TextAnnotations};
 
@@ -8,7 +10,7 @@ impl TextFormat {
             tab_width: 2,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indicator: ".".into(),
+            wrap_indicator: StackString::from("."),
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,

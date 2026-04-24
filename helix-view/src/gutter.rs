@@ -5,6 +5,7 @@ use helix_core::syntax::config::LanguageServerFeature;
 use crate::{
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
+    icons::ICONS,
     Document, Editor, Theme, View,
 };
 
@@ -60,12 +61,15 @@ pub fn diagnostic<'doc>(
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            use helix_core::diagnostic::Severity;
+
             if !first_visual_line {
                 return None;
             }
-            use helix_core::diagnostic::Severity;
+
             let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
-            let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
+
+            diagnostics[first_diag_idx_maybe_on_line..]
                 .iter()
                 .take_while(|d| {
                     d.line == line
@@ -73,16 +77,26 @@ pub fn diagnostic<'doc>(
                             doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
                                 .any(|ls| ls.id() == id)
                         })
-                });
-            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                }
-            })
+                })
+                .max_by_key(|d| d.severity)
+                .map(move |d| {
+                    let icons = ICONS.load();
+                    let (style, symbol) = match d.severity {
+                        Some(Severity::Error) => (error, icons.diagnostic().error()),
+                        Some(Severity::Warning) | None => (warning, icons.diagnostic().warning()),
+                        Some(Severity::Info) => (info, icons.diagnostic().info()),
+                        Some(Severity::Hint) => (hint, icons.diagnostic().hint()),
+                    };
+                    // NOTE: `GutterType::width` is hard_coded to `1`.
+                    //
+                    // Unsure if this means that only one width icons can be
+                    // used, or if this is just for spaces?
+                    //
+                    // For now we will strip any padding and see from there.
+                    write!(out, "{}", symbol.with_padding(0, 0)).unwrap();
+
+                    style
+                })
         },
     )
 }
@@ -97,10 +111,13 @@ pub fn diff<'doc>(
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
+
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
+
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
+
         Box::new(
             move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
                 // truncating the line is fine here because we don't compute diffs
@@ -119,18 +136,21 @@ pub fn diff<'doc>(
                     return None;
                 }
 
+                let icons = ICONS.load();
+
                 let (icon, style) = if hunk.is_pure_insertion() {
-                    ("▍", added)
+                    (icons.ui().gutter().added(), added)
                 } else if hunk.is_pure_removal() {
                     if !first_visual_line {
                         return None;
                     }
-                    ("▔", deleted)
+                    (icons.ui().gutter().removed(), deleted)
                 } else {
-                    ("▍", modified)
+                    (icons.ui().gutter().modified(), modified)
                 };
 
-                write!(out, "{}", icon).unwrap();
+                write!(out, "{icon}").unwrap();
+
                 Some(style)
             },
         )
@@ -264,8 +284,16 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
-            write!(out, "{}", sym).unwrap();
+            let icons = ICONS.load();
+
+            let icon = if breakpoint.verified {
+                icons.dap().verified()
+            } else {
+                icons.dap().unverified()
+            };
+
+            write!(out, "{icon}").unwrap();
+
             Some(style)
         },
     )
@@ -286,6 +314,7 @@ fn execution_pause_indicator<'doc>(
             .as_ref()
             .and_then(|source| source.path.as_ref())
     });
+
     let should_display_for_current_doc =
         doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
 
@@ -299,8 +328,10 @@ fn execution_pause_indicator<'doc>(
                 return None;
             }
 
-            let sym = "▶";
-            write!(out, "{}", sym).unwrap();
+            let icons = ICONS.load();
+
+            write!(out, "{}", icons.dap().play()).unwrap();
+
             Some(style)
         },
     )

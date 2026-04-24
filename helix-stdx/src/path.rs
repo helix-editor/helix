@@ -220,7 +220,7 @@ fn path_component_regex(windows: bool) -> String {
 
 /// Regex for delimited environment captures like `${HOME}`.
 fn braced_env_regex(windows: bool) -> String {
-    r"\$\{(?:".to_owned() + &path_component_regex(windows) + r"|[/:=])+\}"
+    r"\$\{(?:".to_owned() + path_component_regex(windows).as_str() + r"|[/:=])+\}"
 }
 
 fn compile_path_regex(

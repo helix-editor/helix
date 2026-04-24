@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Error};
-use arc_swap::access::DynAccess;
+use arc_swap::access::{DynAccess, DynGuard};
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
@@ -15,6 +15,7 @@ use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
+use helix_stdx::string::StackString;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 use once_cell::sync::OnceCell;
 use thiserror;
@@ -43,6 +44,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::icons::{Icons, ICONS};
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -2296,7 +2298,9 @@ impl Document {
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {
         let config = self.config.load();
+
         let text_width = self.text_width();
+
         let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
@@ -2307,47 +2311,62 @@ impl Document {
             })
             .or(config.soft_wrap.wrap_at_text_width)
             .unwrap_or(false);
+
         if soft_wrap_at_text_width {
-            // if the viewport is smaller than the specified
-            // width then this setting has no effcet
+            // If the viewport is smaller than the specified
+            // width then this setting has no effect.
             if text_width >= viewport_width as usize {
                 soft_wrap_at_text_width = false;
             } else {
                 viewport_width = text_width as u16;
             }
         }
-        let config = self.config.load();
+
         let editor_soft_wrap = &config.soft_wrap;
+
         let language_soft_wrap = self
             .language
             .as_ref()
             .and_then(|config| config.soft_wrap.as_ref());
+
         let enable_soft_wrap = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.enable)
             .or(editor_soft_wrap.enable)
             .unwrap_or(false);
+
         let max_wrap = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.max_wrap)
             .or(config.soft_wrap.max_wrap)
             .unwrap_or(20);
+
         let max_indent_retain = language_soft_wrap
             .and_then(|soft_wrap| soft_wrap.max_indent_retain)
             .or(editor_soft_wrap.max_indent_retain)
             .unwrap_or(40);
+
         let wrap_indicator = language_soft_wrap
-            .and_then(|soft_wrap| soft_wrap.wrap_indicator.clone())
-            .or_else(|| config.soft_wrap.wrap_indicator.clone())
-            .unwrap_or_else(|| "↪ ".into());
+            .and_then(|soft_wrap| {
+                soft_wrap
+                    .wrap_indicator
+                    .as_ref()
+                    .and_then(|indicator| StackString::try_from(indicator.as_str()).ok())
+            })
+            .unwrap_or_else(|| {
+                let icons: DynGuard<Icons> = ICONS.load();
+                icons.ui().r#virtual().wrap().glyph()
+            });
+
         let tab_width = self.tab_width() as u16;
+
         TextFormat {
             soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
             max_wrap: max_wrap.min(viewport_width / 4),
             max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
-            // avoid spinning forever when the window manager
-            // sets the size to something tiny
+            // Avoid spinning forever when the window
+            // manager sets the size to something tiny
             viewport_width,
-            wrap_indicator: wrap_indicator.into_boxed_str(),
+            wrap_indicator,
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_highlight("ui.virtual.wrap")),
             soft_wrap_at_text_width,
