@@ -1985,6 +1985,9 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         });
         drop(annotations);
         doc.set_selection(view.id, selection);
+
+        let focus = cx.editor.tree.focus;
+        cx.editor.sync_diff_scroll(focus);
         return;
     }
 
@@ -2036,6 +2039,9 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     sel = sel.replace(idx, prim_sel);
     drop(annotations);
     doc.set_selection(view.id, sel);
+
+    let focus = cx.editor.tree.focus;
+    cx.editor.sync_diff_scroll(focus);
 }
 
 fn page_up(cx: &mut Context) {
@@ -4179,8 +4185,38 @@ fn goto_last_change(cx: &mut Context) {
 }
 
 fn goto_first_change_impl(cx: &mut Context, reverse: bool) {
+    let view_id = cx.editor.tree.focus;
+
+    let session_info = cx
+        .editor
+        .diff_sessions
+        .iter()
+        .find(|s| s.contains_view(view_id))
+        .map(|s| (s.hunks_arc(), s.view_a() == view_id));
+
     let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
+
+    if let Some((hunks, is_side_a)) = session_info {
+        if hunks.is_empty() {
+            return;
+        }
+        let idx = if reverse { hunks.len() - 1 } else { 0 };
+        let hunk = &hunks[idx];
+        let line_range = if is_side_a { &hunk.before } else { &hunk.after };
+        let doc_text = doc.text().slice(..);
+        let anchor = doc_text.line_to_char(line_range.start as usize);
+        let head = if line_range.is_empty() {
+            anchor + 1
+        } else {
+            doc_text.line_to_char(line_range.end as usize)
+        };
+        push_jump(view, doc);
+        doc.set_selection(view.id, Selection::single(anchor, head));
+        return;
+    }
+
+    // VCS-based navigation.
     if let Some(handle) = doc.diff_handle() {
         let hunk = {
             let diff = handle.load();
@@ -4210,8 +4246,71 @@ fn goto_prev_change(cx: &mut Context) {
 fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count() as u32 - 1;
     let motion = move |editor: &mut Editor| {
+        let view_id = editor.tree.focus;
+
+        // Clone the Arc to release the borrow on diff_sessions before touching documents.
+        let session_info = editor
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(view_id))
+            .map(|s| (s.hunks_arc(), s.view_a() == view_id));
+
         let (view, doc) = current!(editor);
         let doc_text = doc.text().slice(..);
+
+        if let Some((hunks, is_side_a)) = session_info {
+            let count = count as usize;
+            let selection = doc.selection(view.id).clone().transform(|range| {
+                let cursor_line = range.cursor_line(doc_text) as u32;
+                let hunk_idx = match direction {
+                    Direction::Forward => {
+                        let base = hunks.iter().position(|h| {
+                            let r = if is_side_a { &h.before } else { &h.after };
+                            if r.is_empty() {
+                                r.start >= cursor_line
+                            } else {
+                                r.end > cursor_line
+                            }
+                        });
+                        base.map(|idx| (idx + count).min(hunks.len().saturating_sub(1)))
+                    }
+                    Direction::Backward => {
+                        let base = hunks.iter().rposition(|h| {
+                            let r = if is_side_a { &h.before } else { &h.after };
+                            r.start < cursor_line
+                        });
+                        base.map(|idx| idx.saturating_sub(count))
+                    }
+                };
+                let Some(hunk_idx) = hunk_idx else {
+                    return range;
+                };
+                let hunk = &hunks[hunk_idx];
+                let line_range = if is_side_a { &hunk.before } else { &hunk.after };
+                let anchor = doc_text.line_to_char(line_range.start as usize);
+                let head = if line_range.is_empty() {
+                    anchor + 1
+                } else {
+                    doc_text.line_to_char(line_range.end as usize)
+                };
+                let new_range = Range::new(anchor, head);
+                if editor.mode == Mode::Select {
+                    let head = if new_range.head < range.anchor {
+                        new_range.anchor
+                    } else {
+                        new_range.head
+                    };
+                    Range::new(range.anchor, head)
+                } else {
+                    new_range.with_direction(direction)
+                }
+            });
+            push_jump(view, doc);
+            doc.set_selection(view.id, selection);
+            return;
+        }
+
+        // VCS-based navigation.
         let diff_handle = if let Some(diff_handle) = doc.diff_handle() {
             diff_handle
         } else {

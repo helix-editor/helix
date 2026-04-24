@@ -1636,6 +1636,7 @@ dependencies = [
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
+ "imara-diff 0.2.0",
  "kstring",
  "libc",
  "log",

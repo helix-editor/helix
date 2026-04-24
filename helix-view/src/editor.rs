@@ -1208,6 +1208,9 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
+    pub diff_sessions: Vec<crate::diff_session::DiffSession>,
+    /// Holds the first view that called `:diffthis`, waiting for a second call to complete the pair.
+    pub pending_diff_this: Option<ViewId>,
 
     pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -1356,6 +1359,8 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
+            diff_sessions: Vec::new(),
+            pending_diff_this: None,
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -1972,6 +1977,11 @@ impl Editor {
             doc.remove_view(id);
         }
         self.tree.remove(id);
+        // Prune any diff sessions whose view or pending marker matches the closed view.
+        self.diff_sessions.retain(|s| !s.contains_view(id));
+        if self.pending_diff_this == Some(id) {
+            self.pending_diff_this = None;
+        }
         self._refresh();
     }
 
@@ -1986,6 +1996,8 @@ impl Editor {
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
+        // Prune any diff sessions that reference the document being closed.
+        self.diff_sessions.retain(|s| !s.contains_doc(doc_id));
 
         enum Action {
             Close(ViewId),
@@ -2154,7 +2166,8 @@ impl Editor {
         let config = self.config();
         let view = self.tree.get(id);
         let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff);
+        self.sync_diff_scroll(id);
     }
 
     #[inline]
@@ -2185,6 +2198,61 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+    }
+
+    /// Returns the DiffSession containing the given view, if one exists.
+    pub fn diff_session_for(&self, view_id: ViewId) -> Option<&crate::diff_session::DiffSession> {
+        self.diff_sessions.iter().find(|s| s.contains_view(view_id))
+    }
+
+    /// Returns a mutable reference to the DiffSession containing the given view.
+    pub fn diff_session_for_mut(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<&mut crate::diff_session::DiffSession> {
+        self.diff_sessions
+            .iter_mut()
+            .find(|s| s.contains_view(view_id))
+    }
+
+    /// Synchronize the partner view's scroll position to match the source view.
+    /// Copies the source view's anchor line to the partner view's document.
+    pub fn sync_diff_scroll(&mut self, source_view_id: ViewId) {
+        let Some(partner_id) = self
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(source_view_id))
+            .and_then(|s| s.partner_view(source_view_id))
+        else {
+            return;
+        };
+
+        let Some(source_doc_id) = self.tree.try_get(source_view_id).map(|v| v.doc) else {
+            return;
+        };
+        let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
+        let source_text = self.documents[&source_doc_id].text().slice(..);
+        let source_line = source_text.char_to_line(source_offset.anchor);
+
+        let Some(partner_doc_id) = self.tree.try_get(partner_id).map(|v| v.doc) else {
+            return;
+        };
+        let partner_text = self.documents[&partner_doc_id].text().slice(..);
+        let partner_line = source_line.min(partner_text.len_lines().saturating_sub(1));
+        let partner_anchor = partner_text.line_to_char(partner_line);
+
+        let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
+        if partner_offset.anchor == partner_anchor
+            && partner_offset.vertical_offset == source_offset.vertical_offset
+        {
+            return;
+        }
+        partner_offset.anchor = partner_anchor;
+        partner_offset.vertical_offset = source_offset.vertical_offset;
+        self.documents
+            .get_mut(&partner_doc_id)
+            .unwrap()
+            .set_view_offset(partner_id, partner_offset);
     }
 
     /// Returns all supported diagnostics for the document

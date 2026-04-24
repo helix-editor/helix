@@ -164,9 +164,10 @@ mod external {
                 Self::XSel
             } else if binary_exists("win32yank.exe") {
                 Self::Win32Yank
-            } else if cfg!(feature = "term") {
-                Self::Termcode
             } else {
+                #[cfg(feature = "term")]
+                return Self::Termcode;
+                #[cfg(not(feature = "term"))]
                 Self::None
             }
         }

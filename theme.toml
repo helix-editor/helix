@@ -1,6 +1,6 @@
 attribute = "lilac"
 keyword = "almond"
-"keyword.directive" = "lilac" # -- preprocessor comments (#if in C)
+"keyword.directive" = "lilac"        # -- preprocessor comments (#if in C)
 namespace = "lilac"
 punctuation = "lavender"
 "punctuation.delimiter" = "lavender"
@@ -13,7 +13,7 @@ variable = "lavender"
 "variable.parameter" = { fg = "lavender" }
 "variable.builtin" = "mint"
 type = "white"
-"type.builtin" = "white" # TODO: distinguish?
+"type.builtin" = "white"                   # TODO: distinguish?
 constructor = "lilac"
 function = "white"
 "function.macro" = "lilac"
@@ -37,9 +37,15 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 "markup.link.text" = "almond"
 "markup.raw" = "almond"
 
-"diff.plus" = "#35bf86"
-"diff.minus" = "#f22c86"
-"diff.delta" = "#6f44f0"
+"diff.plus" = { fg = "#35bf86", bg = "#408254" }
+"diff.minus" = { fg = "#f22c86", bg = "#6e3046" }
+"diff.delta" = { fg = "#6f44f0", bg = "#5a3870" }
+"diff.delta.text" = { fg = "revolver", bg = "honey" }
+"diff.delta.conflict" = { fg = "#f22c86", bg = "#6a2038" }
+
+"diff.plus.gutter" = { fg = "#35bf86" }
+"diff.minus.gutter" = { fg = "#f22c86" }
+"diff.delta.gutter" = { fg = "#6f44f0" }
 
 # TODO: differentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors

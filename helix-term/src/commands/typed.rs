@@ -2582,6 +2582,55 @@ fn run_shell_command(
     Ok(())
 }
 
+fn diff_open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let args: Vec<_> = args.into_iter().collect();
+    if args.len() != 2 {
+        bail!("Expected exactly 2 file paths: :diff-open file1 file2");
+    }
+
+    let (path_a, pos_a) = crate::args::parse_file(&args[0]);
+    let (path_b, pos_b) = crate::args::parse_file(&args[1]);
+    let path_a = helix_stdx::path::expand_tilde(path_a);
+    let path_b = helix_stdx::path::expand_tilde(path_b);
+
+    let doc_a = cx.editor.open(&path_a, Action::Replace)?;
+    let view_a = cx.editor.tree.focus;
+    {
+        let (view, doc) = current!(cx.editor);
+        let sel = Selection::point(pos_at_coords(doc.text().slice(..), pos_a, true));
+        doc.set_selection(view.id, sel);
+        align_view(doc, view, Align::Center);
+    }
+
+    let doc_b = cx.editor.open(&path_b, Action::VerticalSplit)?;
+    let view_b = cx.editor.tree.focus;
+    {
+        let (view, doc) = current!(cx.editor);
+        let sel = Selection::point(pos_at_coords(doc.text().slice(..), pos_b, true));
+        doc.set_selection(view.id, sel);
+        align_view(doc, view, Align::Center);
+    }
+
+    let rope_a = cx.editor.documents[&doc_a].text().clone();
+    let rope_b = cx.editor.documents[&doc_b].text().clone();
+
+    let mut session = helix_view::diff_session::DiffSession::new(view_a, view_b, doc_a, doc_b);
+    session.compute_hunks(&rope_a, &rope_b);
+
+    cx.editor.diff_sessions.push(session);
+    cx.editor.set_status(format!(
+        "Diff: {} vs {}",
+        path_a.display(),
+        path_b.display()
+    ));
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -2591,9 +2640,59 @@ fn reset_diff_change(
         return Ok(());
     }
 
-    let editor = &mut cx.editor;
-    let scrolloff = editor.config().scrolloff;
+    let scrolloff = cx.editor.config().scrolloff;
+    let view_id = cx.editor.tree.focus;
 
+    let session_info = cx
+        .editor
+        .diff_sessions
+        .iter()
+        .find(|s| s.contains_view(view_id))
+        .and_then(|s| {
+            let side = s.side_for_view(view_id)?;
+            let (doc_curr_id, doc_partner_id) = match side {
+                helix_view::diff_session::DiffSide::A => (s.doc_a(), s.doc_b()),
+                helix_view::diff_session::DiffSide::B => (s.doc_b(), s.doc_a()),
+            };
+            Some((s.hunks_arc(), side, doc_curr_id, doc_partner_id))
+        });
+
+    if let Some((hunks, side, doc_curr_id, doc_partner_id)) = session_info {
+        let curr_text = cx.editor.documents[&doc_curr_id].text().clone();
+        let partner_text = cx.editor.documents[&doc_partner_id].text().clone();
+        let line_ranges: Vec<(usize, usize)> = {
+            let doc = &cx.editor.documents[&doc_curr_id];
+            doc.selection(view_id)
+                .line_ranges(curr_text.slice(..))
+                .collect()
+        };
+
+        let (transaction, changes) = helix_view::diff_session::build_get_transaction(
+            &hunks,
+            side,
+            &line_ranges,
+            &curr_text,
+            &partner_text,
+        );
+
+        if changes == 0 {
+            bail!("No diff hunks under selection");
+        }
+
+        {
+            let view = cx.editor.tree.get_mut(view_id);
+            let doc = cx.editor.documents.get_mut(&doc_curr_id).unwrap();
+            doc.apply(&transaction, view_id);
+            doc.append_changes_to_history(view);
+            view.ensure_cursor_in_view(doc, scrolloff);
+        }
+        cx.editor.set_status(format!(
+            "Got {changes} change{}",
+            if changes == 1 { "" } else { "s" }
+        ));
+        return Ok(());
+    }
+    let editor = &mut cx.editor;
     let (view, doc) = current!(editor);
     let Some(handle) = doc.diff_handle() else {
         bail!("Diff is not available in the current buffer")
@@ -2631,6 +2730,139 @@ fn reset_diff_change(
         "Reset {changes} change{}",
         if changes == 1 { "" } else { "s" }
     ));
+    Ok(())
+}
+
+fn diff_put(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let view_id = cx.editor.tree.focus;
+
+    let session_info = cx
+        .editor
+        .diff_sessions
+        .iter()
+        .find(|s| s.contains_view(view_id))
+        .and_then(|s| {
+            let side = s.side_for_view(view_id)?;
+            let (doc_curr_id, doc_partner_id) = match side {
+                helix_view::diff_session::DiffSide::A => (s.doc_a(), s.doc_b()),
+                helix_view::diff_session::DiffSide::B => (s.doc_b(), s.doc_a()),
+            };
+            let partner_view_id = s.partner_view(view_id)?;
+            Some((
+                s.hunks_arc(),
+                side,
+                doc_curr_id,
+                doc_partner_id,
+                partner_view_id,
+            ))
+        });
+
+    let Some((hunks, side, doc_curr_id, doc_partner_id, partner_view_id)) = session_info else {
+        bail!("Not in a diff session");
+    };
+
+    let curr_text = cx.editor.documents[&doc_curr_id].text().clone();
+    let partner_text = cx.editor.documents[&doc_partner_id].text().clone();
+    let line_ranges: Vec<(usize, usize)> = {
+        let doc = &cx.editor.documents[&doc_curr_id];
+        doc.selection(view_id)
+            .line_ranges(curr_text.slice(..))
+            .collect()
+    };
+
+    let (transaction, changes) = helix_view::diff_session::build_put_transaction(
+        &hunks,
+        side,
+        &line_ranges,
+        &curr_text,
+        &partner_text,
+    );
+
+    if changes == 0 {
+        bail!("No diff hunks under selection");
+    }
+
+    {
+        let view = cx.editor.tree.get_mut(partner_view_id);
+        let doc = cx.editor.documents.get_mut(&doc_partner_id).unwrap();
+        doc.apply(&transaction, partner_view_id);
+        doc.append_changes_to_history(view);
+    }
+    cx.editor.set_status(format!(
+        "Put {changes} change{}",
+        if changes == 1 { "" } else { "s" }
+    ));
+    Ok(())
+}
+
+fn diff_off(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let view_id = cx.editor.tree.focus;
+    let idx = cx
+        .editor
+        .diff_sessions
+        .iter()
+        .position(|s| s.contains_view(view_id));
+
+    let Some(idx) = idx else {
+        bail!("Not in a diff session");
+    };
+
+    cx.editor.diff_sessions.remove(idx);
+    cx.editor.set_status("Diff session ended");
+    Ok(())
+}
+
+fn diff_this(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let view_id = cx.editor.tree.focus;
+
+    if cx.editor.diff_session_for(view_id).is_some() {
+        bail!("This view is already part of a diff session. Use :diff-off first.");
+    }
+
+    match cx.editor.pending_diff_this {
+        None => {
+            cx.editor.pending_diff_this = Some(view_id);
+            cx.editor
+                .set_status("Diff: marked first view. Run :diffthis in the second view.");
+        }
+        Some(other_view_id) if other_view_id == view_id => {
+            cx.editor.pending_diff_this = None;
+            cx.editor
+                .set_status("Diff: cancelled (same view selected twice).");
+        }
+        Some(other_view_id) => {
+            cx.editor.pending_diff_this = None;
+
+            let other_doc_id = cx.editor.tree.get(other_view_id).doc;
+            let this_doc_id = cx.editor.tree.get(view_id).doc;
+
+            let rope_a = cx.editor.documents[&other_doc_id].text().clone();
+            let rope_b = cx.editor.documents[&this_doc_id].text().clone();
+
+            let mut session = helix_view::diff_session::DiffSession::new(
+                other_view_id,
+                view_id,
+                other_doc_id,
+                this_doc_id,
+            );
+            session.compute_hunks(&rope_a, &rope_b);
+            cx.editor.diff_sessions.push(session);
+            cx.editor.set_status("Diff session started.");
+        }
+    }
+
     Ok(())
 }
 
@@ -3866,10 +4098,54 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: SHELL_SIGNATURE,
     },
     TypableCommand {
+        name: "diff-open",
+        aliases: &["diffs"],
+        doc: "Open two files side-by-side in diff mode with aligned hunks. Each path accepts a file:line or file:line:col suffix.",
+        fun: diff_open,
+        completer: CommandCompleter::positional(&[completers::filename, completers::filename]),
+        signature: Signature {
+            positionals: (2, Some(2)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
-        doc: "Reset the diff change at the cursor position.",
+        doc: "In a diff session: pull changes from the partner buffer. Outside a diff session: reset the diff change at the cursor position to the VCS base.",
         fun: reset_diff_change,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "diff-put",
+        aliases: &["diffput", "diffp"],
+        doc: "In a diff session: push changes from the current buffer to the partner buffer at the cursor position.",
+        fun: diff_put,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "diff-off",
+        aliases: &["diffoff"],
+        doc: "End the diff session for the current view. Both views continue as independent buffers.",
+        fun: diff_off,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "diff-this",
+        aliases: &["diffthis"],
+        doc: "Mark the current view as a diff participant. Run in two views to create a diff session between them.",
+        fun: diff_this,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),

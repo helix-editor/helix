@@ -356,6 +356,13 @@ impl AppBuilder {
         self
     }
 
+    // Remove this attribute once `with_diff` is used outside the diff tests:
+    #[allow(dead_code)]
+    pub fn with_diff(mut self) -> Self {
+        self.args.diff = true;
+        self
+    }
+
     // Remove this attribute once `with_config` is used in a test:
     #[allow(dead_code)]
     pub fn with_config(mut self, mut config: Config) -> Self {
