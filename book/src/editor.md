@@ -1,6 +1,7 @@
 ## Editor
 
 - [`[editor]` Section](#editor-section)
+- [`[editor.breadcrumb]` Section](#editorbreadcrumb-section)
 - [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
@@ -70,6 +71,21 @@
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
 
 [^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
+
+### `[editor.breadcrumb]` Section
+
+Allows configuration of the breadcrumb navigation bar.
+
+```toml
+[editor.breadcrumb]
+enable = true
+# full: helix-term > src > commands > typed.rs > TypeableCommand > name
+# file: typed.rs > TypeableCommand > name
+# none: TypeableCommand > name
+path = "full|file|none"
+```
+
+The bar is displayed at the top of the editor (but below any bufferline).
 
 ### `[editor.clipboard-provider]` Section
 

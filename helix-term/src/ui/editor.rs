@@ -22,10 +22,11 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::lsp::SymbolKind;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{BufferLine, CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -703,6 +704,134 @@ impl EditorView {
 
             if x >= surface.area.right() {
                 break;
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
+    pub fn render_breadcrumb(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        use helix_view::editor::BreadcrumbPathOptions::{File, Full};
+
+        #[must_use]
+        fn draw_element(
+            surface: &mut Surface,
+            viewport: Rect,
+            x: u16,
+            content: &str,
+            style: Style,
+        ) -> u16 {
+            let remaining = viewport.right().saturating_sub(x) as usize;
+            surface
+                .set_stringn(x, viewport.y, content, remaining, style)
+                .0
+        }
+
+        let (view, _) = current_ref!(editor);
+        let Some(doc) = editor.document(view.doc) else {
+            return;
+        };
+
+        let config = editor.config();
+
+        let style = editor
+            .theme
+            .try_get_exact("ui.breadcrumb")
+            .unwrap_or_else(|| editor.theme.get("ui.text"));
+
+        surface.clear_with(viewport, style);
+
+        let mut x = viewport.x;
+
+        let separator = " > ";
+        let separator_style = editor.theme.get("ui.breadcrumb.separator");
+        let mut draw_separator = false;
+
+        if matches!(config.breadcrumb.path, Full | File) {
+            if let Some(path) = doc.relative_path() {
+                let mut components = path.components().peekable();
+
+                if matches!(config.breadcrumb.path, File) {
+                    // Skip until the filename component.
+                    //
+                    // NOTE:
+                    // We could use `next_back` to get this element directly, but
+                    // this keeps our logic below simpler, with the logic for `Full`
+                    // and `File` being the same below this point.
+                    //
+                    // PERF: The `clone` is cheap, being equivalent to a `Copy`.
+                    while components.clone().nth(1).is_some() {
+                        components.next();
+                    }
+                }
+
+                while let Some(component) = components.next() {
+                    if draw_separator {
+                        x = draw_element(surface, viewport, x, separator, separator_style);
+                    } else {
+                        draw_separator = true;
+                    }
+
+                    let segment = component.as_os_str().to_string_lossy();
+                    let is_directory = components.peek().is_some();
+
+                    let style = if is_directory {
+                        editor.theme.get("ui.text.directory")
+                    } else {
+                        style
+                    };
+
+                    x = draw_element(surface, viewport, x, &segment, style);
+                }
+            } else {
+                // Handle `[scratch]`
+                x = draw_element(surface, viewport, x, SCRATCH_BUFFER_NAME, style);
+            }
+        }
+
+        // Draw symbols, if any.
+        if let Some(breadcrumb) = doc.breadcrumbs.get(&view.id) {
+            for symbol in breadcrumb.iter() {
+                if draw_separator {
+                    x = draw_element(surface, viewport, x, separator, separator_style);
+                } else {
+                    draw_separator = true;
+                }
+
+                let style = match symbol.kind {
+                    SymbolKind::MODULE
+                    | SymbolKind::NAMESPACE
+                    | SymbolKind::PACKAGE => editor.theme.get("namespace"),
+
+                    SymbolKind::OBJECT // impl Block
+                    | SymbolKind::STRUCT
+                    | SymbolKind::INTERFACE
+                    | SymbolKind::CLASS => editor.theme.get("type"),
+
+                    SymbolKind::METHOD => editor.theme.get("function.method"),
+                    SymbolKind::FUNCTION => editor.theme.get("function"),
+
+                    SymbolKind::ENUM => editor.theme.get("type.enum"),
+                    SymbolKind::ENUM_MEMBER => editor.theme.get("type.enum.variant"),
+
+                   SymbolKind::FIELD | SymbolKind::PROPERTY => {
+                        editor.theme.get("variable.other.member")
+                    }
+
+                    SymbolKind::VARIABLE => editor.theme.get("variable"),
+                    SymbolKind::CONSTANT => editor.theme.get("constant"),
+                    SymbolKind::CONSTRUCTOR => editor.theme.get("constructor"),
+                    SymbolKind::STRING => editor.theme.get("string"),
+                    SymbolKind::NUMBER => editor.theme.get("constant.numeric"),
+                    SymbolKind::BOOLEAN => editor.theme.get("constant.builtin.boolean"),
+                    SymbolKind::ARRAY => editor.theme.get("punctuation.bracket"),
+                    SymbolKind::KEY => editor.theme.get("label"),
+                    SymbolKind::NULL => editor.theme.get("constant.builtin"),
+                    SymbolKind::TYPE_PARAMETER => editor.theme.get("type.parameter"),
+                    _ => style,
+                };
+
+                let text = symbol.name.as_ref();
+                x = draw_element(surface, viewport, x, text, style);
             }
         }
     }
@@ -1602,16 +1731,21 @@ impl Component for EditorView {
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
         let use_bufferline = match config.bufferline {
             BufferLine::Always => true,
             BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
         };
 
+        let render_breadcrumb = config.breadcrumb.enable;
+
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
         if use_bufferline {
+            editor_area = editor_area.clip_top(1);
+        }
+
+        if render_breadcrumb {
             editor_area = editor_area.clip_top(1);
         }
 
@@ -1620,6 +1754,16 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
+        }
+
+        if render_breadcrumb {
+            let area = area
+                .with_height(1)
+                // Position it at y=1 if bufferline is used, otherwise y=0
+                .with_y(if use_bufferline { area.y + 1 } else { area.y })
+                // Adds padding to the start of the breadcrumb.
+                .clip_left(1);
+            Self::render_breadcrumb(cx.editor, area, surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {

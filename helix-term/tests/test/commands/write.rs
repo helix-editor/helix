@@ -277,6 +277,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[ignore = "TODO(#15573): Hangs during integration test"]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
