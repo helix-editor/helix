@@ -205,14 +205,14 @@ All git related options are only enabled in a git repository.
 
 | Key | Description | Default |
 |--|--|---------|
-|`hidden` | Enables ignoring hidden files | `true`
+|`hidden` | Omit hidden files from the picker | `true`
 |`follow-symlinks` | Follow symlinks instead of ignoring them | `true`
 |`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | `true`
-|`parents` | Enables reading ignore files from parent directories | `true`
-|`ignore` | Enables reading `.ignore` files | `true`
-|`git-ignore` | Enables reading `.gitignore` files | `true`
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
-|`git-exclude` | Enables reading `.git/info/exclude` files | `true`
+|`parents` | Read ignore files from parent directories | `true`
+|`ignore` | Use `.ignore` files to omit entries | `true`
+|`git-ignore` | Use `.gitignore` files to omit entries | `true`
+|`git-global` | Use global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
+|`git-exclude` | Use `.git/info/exclude` to omit entries | `true`
 |`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
@@ -239,13 +239,13 @@ Note that the ignore files consulted by the file explorer when `ignore` is set t
 
 | Key | Description | Default |
 |--|--|---------|
-|`hidden` | Enables ignoring hidden files | `false`
+|`hidden` | Omit hidden files from the explorer | `false`
 |`follow-symlinks` | Follow symlinks instead of ignoring them | `false`
-|`parents` | Enables reading ignore files from parent directories | `false`
-|`ignore` | Enables reading `.ignore` files | `false`
-|`git-ignore` | Enables reading `.gitignore` files | `false`
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
-|`git-exclude` | Enables reading `.git/info/exclude` files | `false`
+|`parents` | Read ignore files from parent directories | `false`
+|`ignore` | Use `.ignore` files to omit entries | `false`
+|`git-ignore` | Use `.gitignore` files to omit entries | `false`
+|`git-global` | Use global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
+|`git-exclude` | Use `.git/info/exclude` to omit entries | `false`
 |`flatten-dirs` | Enables flattening single child directories | `true`
 
 ### `[editor.buffer-picker]` Section
