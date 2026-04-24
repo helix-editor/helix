@@ -1,4 +1,8 @@
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::HashSet,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
@@ -144,7 +148,7 @@ pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
     match fs::read_to_string(workspace_trust_file()) {
         Ok(workspace_trust_file) => {
             for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
+                if Path::new(line) == workspace {
                     return TrustStatus::Trusted;
                 }
             }
@@ -164,7 +168,7 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     match fs::read_to_string(workspace_trust_file()) {
         Ok(workspace_trust_file) => {
             for line in workspace_trust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
+                if Path::new(line) == workspace {
                     return TrustUntrustStatus::AllowAlways;
                 }
             }
@@ -176,7 +180,7 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> TrustUntru
     match fs::read_to_string(workspace_exclude_file()) {
         Ok(workspace_untrust_file) => {
             for line in workspace_untrust_file.split('\n') {
-                if PathBuf::from(line) == workspace {
+                if Path::new(line) == workspace {
                     return TrustUntrustStatus::DenyAlways;
                 }
             }
