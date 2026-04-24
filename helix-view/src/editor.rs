@@ -19,7 +19,7 @@ use helix_loader::workspace_trust::TrustStatus;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
-use futures_util::{future, StreamExt};
+use futures_util::StreamExt;
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -2258,10 +2258,7 @@ impl Editor {
 
     /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
-    pub async fn close_language_servers(
-        &self,
-        timeout: Option<u64>,
-    ) -> Result<(), tokio::time::error::Elapsed> {
+    pub async fn close_language_servers(&self, timeout: Option<u64>) {
         // Remove all language servers from the file event handler.
         // Note: this is non-blocking.
         for client in self.language_servers.iter_clients() {
@@ -2270,16 +2267,15 @@ impl Editor {
                 .remove_client(client.id());
         }
 
-        tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(3000)),
-            future::join_all(
-                self.language_servers
-                    .iter_clients()
-                    .map(|client| client.force_shutdown()),
-            ),
-        )
-        .await
-        .map(|_| ())
+        // Enqueue shutdown+exit for every server (non-blocking fire-and-forget).
+        for client in self.language_servers.iter_clients() {
+            client.force_shutdown();
+        }
+
+        // Give the send tasks a brief window to flush the queued bytes to the
+        // servers' stdin pipes before the tokio runtime is dropped. The servers
+        // receive both messages in order and exit gracefully (LSP exit code 0).
+        tokio::time::sleep(Duration::from_millis(timeout.unwrap_or(50))).await;
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {
