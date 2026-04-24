@@ -600,16 +600,18 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
+                // Render the cursor span for secondary cursors always, and for the primary
+                // cursor only when it is a block cursor (non-block cursors are drawn by the
+                // terminal, including native/bar/underline).
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
+                // Render the cursor span for secondary cursors always, and for the primary
+                // cursor only when it is a block cursor (non-block cursors are drawn by the
+                // terminal, including native/bar/underline).
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
@@ -1700,15 +1702,17 @@ impl Component for EditorView {
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         match editor.cursor() {
-            // all block cursors are drawn manually
+            // Block cursors are always manually rendered via highlight spans
             (pos, CursorKind::Block) => {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)
                 } else {
-                    // use terminal cursor when terminal loses focus
+                    // Use terminal cursor as fallback when unfocused
                     (pos, CursorKind::Underline)
                 }
             }
+            // Native cursor: always use the terminal cursor for the main (primary) cursor.
+            // Secondary cursors are still rendered visually via highlight spans.
             cursor => cursor,
         }
     }
