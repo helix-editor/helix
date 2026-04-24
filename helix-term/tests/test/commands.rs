@@ -1,4 +1,9 @@
+use helix_stdx::path;
 use helix_term::application::Application;
+use helix_view::{
+    doc,
+    quicklist::{QuicklistEntry, QuicklistPosition, QuicklistTarget},
+};
 
 use super::*;
 
@@ -201,6 +206,177 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_picker_quicklist_navigation() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let alpha = dir.path().join("alpha.rs");
+    let beta = dir.path().join("beta.rs");
+    std::fs::write(&alpha, "fn alpha() {}\n")?;
+    std::fs::write(&beta, "fn beta() {}\n")?;
+
+    test_key_sequence(
+        &mut AppBuilder::new()
+            .with_file(&alpha, None)
+            .with_file(&beta, None)
+            .build()?,
+        Some("<space>balpha<C-q><esc>]q"),
+        Some(&|app| {
+            let doc = doc!(app.editor);
+            assert_eq!(doc.path(), Some(&path::normalize(&alpha)));
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_quicklist_motion_pushes_pre_jump_location_to_jumplist() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let file = dir.path().join("quicklist.rs");
+    std::fs::write(&file, "alpha\nbeta\ngamma\n")?;
+
+    let mut app = AppBuilder::new().with_file(&file, None).build()?;
+
+    let initial_cursor = 0;
+    {
+        let (view, doc) = helix_view::current!(app.editor);
+        doc.set_selection(view.id, helix_core::Selection::point(initial_cursor));
+        view.sync_changes(doc);
+    }
+    app.editor.replace_quicklist(vec![QuicklistEntry {
+        target: QuicklistTarget::Path(file.clone()),
+        position: QuicklistPosition::LineRange { start: 1, end: 1 },
+    }]);
+
+    test_key_sequence(
+        &mut app,
+        Some("]q<C-o>"),
+        Some(&|app| {
+            let (view, doc) = helix_view::current_ref!(app.editor);
+            assert_eq!(
+                doc.selection(view.id)
+                    .primary()
+                    .cursor(doc.text().slice(..)),
+                initial_cursor,
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_quicklist_picker_navigation() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let alpha = dir.path().join("alpha.rs");
+    let beta = dir.path().join("beta.rs");
+    std::fs::write(&alpha, "fn alpha() {}\n")?;
+    std::fs::write(&beta, "fn beta() {}\n")?;
+
+    test_key_sequence(
+        &mut AppBuilder::new()
+            .with_file(&alpha, None)
+            .with_file(&beta, None)
+            .build()?,
+        Some("<space>balpha<C-q><esc><space>q<ret>"),
+        Some(&|app| {
+            let doc = doc!(app.editor);
+            assert_eq!(doc.path(), Some(&path::normalize(&alpha)));
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_picker_quicklist_preserves_unsaved_buffer_entries() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().with_input_text("#[hello|]#").build()?,
+        Some("<space>b<C-q><esc>]q"),
+        Some(&|app| {
+            let doc = doc!(app.editor);
+            assert_eq!(doc.path(), None);
+            helpers::assert_status_not_error(&app.editor);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_failed_quicklist_motion_does_not_pollute_jumplist() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some("]q"),
+        Some(&|app| {
+            let (view, _) = helix_view::current_ref!(app.editor);
+            assert_eq!(view.jumps.iter().count(), 1);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_jumplist_picker_quicklist_preserves_exact_selection() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let file = dir.path().join("jumplist.rs");
+    std::fs::write(&file, "alpha\nbeta\ngamma\n")?;
+
+    let mut app = AppBuilder::new().with_file(&file, None).build()?;
+
+    let selection = helix_core::Selection::single(6, 10);
+    {
+        let (view, doc) = helix_view::current!(app.editor);
+        doc.set_selection(view.id, selection.clone());
+        view.sync_changes(doc);
+        view.jumps.push((doc.id(), selection.clone()));
+    }
+
+    test_key_sequence(
+        &mut app,
+        Some("<space>j<C-q><esc>]q"),
+        Some(&|app| {
+            let (view, doc) = helix_view::current_ref!(app.editor);
+            assert_eq!(doc.selection(view.id), &selection);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_syntax_symbol_quicklist_preserves_exact_symbol_selection() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let file = dir.path().join("symbols.rs");
+    std::fs::write(&file, "fn alpha() {}\nfn banana() {}\n")?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(&file, None).build()?,
+        Some("<space>sbanana<C-q><esc>]q"),
+        Some(&|app| {
+            let (view, doc) = helix_view::current_ref!(app.editor);
+            let text = doc.text().slice(..);
+            assert_eq!(doc.selection(view.id).primary().fragment(text), "banana");
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test((
