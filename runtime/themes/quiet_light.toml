@@ -1,0 +1,258 @@
+# Author: Tyler Laprade <tyler@tylerlaprade.com>
+# License: MIT
+# Port of VSCode's built-in "Quiet Light" theme (originally by occlure, itself
+# ported from Ian Beck's TextMate theme of the same name). Distinctive for its
+# bold-on-functions / bold-on-types styling.
+
+# --- Syntax ---
+
+"comment" = { fg = "muted", modifiers = ["italic"] }
+"comment.line" = { fg = "muted", modifiers = ["italic"] }
+"comment.block" = { fg = "muted", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "green", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "green", modifiers = ["italic"] }
+"comment.unused" = { fg = "muted", modifiers = ["italic", "dim"] }
+
+"string" = "green"
+"string.regexp" = "blue"
+"string.special" = "orange"
+"string.special.symbol" = "orange"
+"string.special.path" = "green"
+"string.special.url" = "blue"
+"constant.character.escape" = "gray"
+
+"constant" = "orange"
+"constant.builtin" = "orange"
+"constant.builtin.boolean" = "orange"
+"constant.character" = "orange"
+"constant.numeric" = "orange"
+"constant.numeric.integer" = "orange"
+"constant.numeric.float" = "orange"
+
+"variable" = "purple"
+"variable.builtin" = "orange"
+"variable.parameter" = "#333333"
+"variable.other.member" = "#333333"
+"variable.other.member.private" = "#333333"
+
+"label" = "purple"
+
+"type" = { fg = "purple", modifiers = ["bold"] }
+"type.builtin" = "purple"
+"type.parameter" = "purple"
+"type.enum" = { fg = "purple", modifiers = ["bold"] }
+"type.enum.variant" = "orange"
+
+"constructor" = { fg = "purple", modifiers = ["bold"] }
+"namespace" = { fg = "purple", modifiers = ["bold"] }
+
+"attribute" = { fg = "slate", modifiers = ["italic"] }
+
+"function" = { fg = "red", modifiers = ["bold"] }
+"function.builtin" = { fg = "red", modifiers = ["bold"] }
+"function.method" = { fg = "red", modifiers = ["bold"] }
+"function.method.private" = { fg = "red", modifiers = ["bold"] }
+"function.macro" = { fg = "red", modifiers = ["bold"] }
+"function.special" = { fg = "red", modifiers = ["bold"] }
+
+"tag" = "blue"
+"tag.builtin" = "blue"
+
+"keyword" = "blue"
+"keyword.control" = "blue"
+"keyword.control.conditional" = "blue"
+"keyword.control.repeat" = "blue"
+"keyword.control.import" = "blue"
+"keyword.control.return" = "blue"
+"keyword.control.exception" = "blue"
+"keyword.operator" = "gray"
+"keyword.directive" = { fg = "blue", modifiers = ["bold"] }
+"keyword.function" = "blue"
+"keyword.storage" = "blue"
+"keyword.storage.type" = "purple"
+"keyword.storage.modifier" = "blue"
+
+"operator" = "gray"
+
+"punctuation" = "gray"
+"punctuation.delimiter" = "gray"
+"punctuation.bracket" = "gray"
+"punctuation.special" = "gray"
+
+"special" = "orange"
+
+# --- Markup (Markdown etc.) ---
+
+"markup.heading" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "red", modifiers = ["bold"] }
+"markup.list" = "blue"
+"markup.list.unnumbered" = "blue"
+"markup.list.numbered" = "blue"
+"markup.list.checked" = "green"
+"markup.list.unchecked" = "gray"
+"markup.bold" = { fg = "green", modifiers = ["bold"] }
+"markup.italic" = { fg = "green", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = "blue"
+"markup.link.url" = { fg = "blue", underline = { style = "line" } }
+"markup.link.label" = "blue"
+"markup.link.text" = "blue"
+"markup.quote" = { fg = "purple", modifiers = ["italic"] }
+"markup.raw" = "orange"
+"markup.raw.inline" = "orange"
+"markup.raw.block" = "orange"
+
+# --- Diff ---
+
+"diff.plus" = "diff-plus"
+"diff.minus" = "diff-minus"
+"diff.delta" = "diff-delta"
+"diff.delta.moved" = "blue"
+
+# --- UI ---
+
+"ui.background" = { fg = "chrome-border", bg = "bg" }
+"ui.background.separator" = { fg = "chrome-border" }
+
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "fg", bg = "menu-sel" }
+"ui.text.inactive" = { fg = "muted" }
+"ui.text.info" = { fg = "fg" }
+"ui.text.directory" = { fg = "blue" }
+"ui.text.symlink" = { fg = "slate" }
+
+"ui.cursor" = { fg = "bg", bg = "cursor" }
+"ui.cursor.normal" = { fg = "bg", bg = "cursor" }
+"ui.cursor.insert" = { fg = "bg", bg = "cursor" }
+"ui.cursor.select" = { fg = "bg", bg = "accent" }
+"ui.cursor.match" = { bg = "match-bg", modifiers = ["bold"] }
+"ui.cursor.primary" = { fg = "bg", bg = "cursor" }
+"ui.cursor.primary.normal" = { fg = "bg", bg = "cursor" }
+"ui.cursor.primary.insert" = { fg = "bg", bg = "cursor" }
+"ui.cursor.primary.select" = { fg = "bg", bg = "accent" }
+
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+
+"ui.cursorline.primary" = { bg = "line-hl" }
+"ui.cursorline.secondary" = { bg = "line-hl-dim" }
+
+"ui.linenr" = { fg = "linenr" }
+"ui.linenr.selected" = { fg = "active-link", modifiers = ["bold"] }
+
+"ui.gutter" = { bg = "bg" }
+"ui.gutter.selected" = { bg = "line-hl" }
+
+"ui.statusline" = { fg = "white", bg = "accent" }
+"ui.statusline.inactive" = { fg = "fg", bg = "title-inactive" }
+"ui.statusline.normal" = { fg = "white", bg = "accent", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "white", bg = "#448C27", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "white", bg = "red", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "accent-dark", bg = "accent" }
+
+"ui.bufferline" = { fg = "fg-dim", bg = "sidebar" }
+"ui.bufferline.active" = { fg = "fg", bg = "bg", modifiers = ["bold"] }
+"ui.bufferline.background" = { bg = "sidebar" }
+
+"ui.popup" = { fg = "fg", bg = "bg" }
+"ui.popup.info" = { fg = "fg", bg = "bg" }
+"ui.window" = { fg = "chrome-border" }
+"ui.help" = { fg = "fg", bg = "bg" }
+
+"ui.picker.header" = { fg = "accent-dark", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "muted" }
+"ui.picker.header.column.active" = { fg = "accent", modifiers = ["bold"], underline = { style = "line" } }
+
+"ui.menu" = { fg = "fg", bg = "bg" }
+"ui.menu.selected" = { fg = "fg", bg = "menu-sel", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "accent", bg = "sidebar" }
+
+"ui.highlight" = { bg = "line-hl" }
+"ui.highlight.frameline" = { bg = "line-hl" }
+
+"ui.virtual.ruler" = { bg = "ruler" }
+"ui.virtual.whitespace" = { fg = "muted" }
+"ui.virtual.indent-guide" = { fg = "indent-guide" }
+"ui.virtual.inlay-hint" = { fg = "muted", bg = "inlay-bg" }
+"ui.virtual.inlay-hint.parameter" = { fg = "slate", bg = "inlay-bg", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "purple", bg = "inlay-bg" }
+"ui.virtual.wrap" = { fg = "muted" }
+"ui.virtual.jump-label" = { fg = "bg", bg = "red", modifiers = ["bold"] }
+
+"ui.debug.breakpoint" = { fg = "error-red" }
+"ui.debug.active" = { fg = "accent" }
+
+"tabstop" = { bg = "menu-sel" }
+
+# --- Diagnostics ---
+
+"warning" = "warn"
+"error" = "error-red"
+"info" = "blue"
+"hint" = "gray"
+
+"diagnostic" = { underline = { color = "gray", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "gray", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warn", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error-red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+# --- Palette (must be last table) ---
+
+[palette]
+# Text
+fg = "#333333"
+fg-dim = "#6c6c6c"
+bg = "#F5F5F5"
+white = "#ffffff"
+
+# Greyscale
+muted = "#AAAAAA"
+gray = "#777777"
+
+# Syntax
+green = "#448C27"
+blue = "#4B69C6"
+light-blue = "#91B3E0"
+slate = "#8190A0"
+purple = "#7A3E9D"
+orange = "#9C5D27"
+red = "#AA3731"
+
+# Diagnostics / errors
+error-red = "#cd3131"
+dark-red = "#660000"
+warn = "#B58900"
+
+# Diff
+diff-plus = "#448C27"
+diff-minus = "#C73D20"
+diff-delta = "#9C5D27"
+
+# UI accents
+accent = "#705697"
+accent-dark = "#4e3c69"
+active-link = "#9769dc"
+selection = "#C9D0D9"
+cursor = "#54494B"
+linenr = "#6D705B"
+line-hl = "#E4F6D4"
+line-hl-dim = "#eef8e1"
+match-bg = "#edc9d8"
+title-inactive = "#c4b7d7"
+sidebar = "#F2F2F2"
+border = "#d0d0d0"
+chrome-border = "#c9d0d9"
+ruler = "#ececec"
+indent-guide = "#d0d0d0"
+inlay-bg = "#ececec"
+menu-sel = "#c4d9b1"
+peek-bg = "#F2F8FC"
