@@ -70,6 +70,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
+use futures_util::future::join_all;
 use std::{
     char::{ToLowercase, ToUppercase},
     cmp::Ordering,
@@ -507,7 +508,7 @@ impl MappableCommand {
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
         indent, "Indent selection",
         unindent, "Unindent selection",
-        format_selections, "Format selection",
+        format_selections, "Format selections",
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
         keep_selections, "Keep selections matching regex",
@@ -5179,29 +5180,28 @@ fn unindent(cx: &mut Context) {
 
 fn format_selections(cx: &mut Context) {
     use helix_lsp::{lsp, util::range_to_lsp_range};
+    // TODO(matoous): use rangesFormatting once support (LSP 3.18)
+    // ref: https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#textDocument_rangeFormatting
 
     let (view, doc) = current!(cx.editor);
     let view_id = view.id;
 
-    // via lsp if available
     // TODO: else via tree-sitter indentation calculations
-
-    if doc.selection(view_id).len() != 1 {
+    let Some(language_server_id) = doc
+        .language_servers_with_feature(LanguageServerFeature::FormatSelection)
+        .next()
+        .map(|language_server| language_server.id())
+    else {
         cx.editor
-            .set_error("format_selections only supports a single selection for now");
+            .set_error("No configured language server supports range formatting");
         return;
-    }
+    };
 
-    // TODO extra LanguageServerFeature::FormatSelections?
-    // maybe such that LanguageServerFeature::Format contains it as well
-    let Some(language_server) = doc
-        .language_servers_with_feature(LanguageServerFeature::Format)
-        .find(|ls| {
-            matches!(
-                ls.capabilities().document_range_formatting_provider,
-                Some(lsp::OneOf::Left(true) | lsp::OneOf::Right(_))
-            )
-        })
+    let Some(language_server) = cx
+        .editor
+        .language_servers
+        .get_by_id(language_server_id)
+        .cloned()
     else {
         cx.editor
             .set_error("No configured language server supports range formatting");
@@ -5209,55 +5209,206 @@ fn format_selections(cx: &mut Context) {
     };
 
     let offset_encoding = language_server.offset_encoding();
-    let ranges: Vec<lsp::Range> = doc
-        .selection(view_id)
-        .iter()
-        .map(|range| range_to_lsp_range(doc.text(), *range, offset_encoding))
+    let text_document = doc.identifier();
+    let formatting_options = lsp::FormattingOptions {
+        tab_size: doc.tab_width() as u32,
+        insert_spaces: matches!(doc.indent_style, IndentStyle::Spaces(_)),
+        ..Default::default()
+    };
+    let ranges: Vec<_> = merge_format_selection_ranges(doc.selection(view_id))
+        .into_iter()
+        // Request range formatting in reverse order from last selection to first
+        // so rightmost edits win when a server expands changes beyond a range.
+        .rev()
+        .map(|range| range_to_lsp_range(doc.text(), range, offset_encoding))
         .collect();
-
-    // TODO: handle fails
-    // TODO: concurrent map over all ranges
-
-    let range = ranges[0];
-
-    let future = language_server
-        .text_document_range_formatting(
-            doc.identifier(),
+    let futures = ranges.into_iter().filter_map(move |range| {
+        language_server.text_document_range_formatting(
+            text_document.clone(),
             range,
-            lsp::FormattingOptions {
-                tab_size: doc.tab_width() as u32,
-                insert_spaces: matches!(doc.indent_style, IndentStyle::Spaces(_)),
-                ..Default::default()
-            },
+            formatting_options.clone(),
             None,
         )
-        .unwrap();
+    });
 
     let text = doc.text().clone();
     let doc_id = doc.id();
     let doc_version = doc.version();
 
     tokio::spawn(async move {
-        match future.await {
-            Ok(Some(res)) => {
-                let transaction =
-                    helix_lsp::util::generate_transaction_from_edits(&text, res, offset_encoding);
-                job::dispatch(move |editor, _compositor| {
-                    let Some(doc) = editor.document_mut(doc_id) else {
-                        return;
-                    };
-                    // Updating a desynced document causes problems with applying the transaction
-                    if doc.version() != doc_version {
-                        return;
-                    }
-                    doc.apply(&transaction, view_id);
-                })
-                .await
+        let all_edits = join_all(futures)
+            .await
+            .into_iter()
+            .filter_map(|result| match result {
+                Ok(Some(edits)) => Some(edits),
+                Ok(None) => None,
+                Err(err) => {
+                    log::error!("format sections failed: {err}");
+                    None
+                }
+            })
+            .flatten()
+            .collect();
+
+        let all_edits = filter_overlapping_format_edits(
+            &text,
+            all_edits,
+            offset_encoding,
+            /* keep_last */ true,
+        );
+
+        let transaction =
+            helix_lsp::util::generate_transaction_from_edits(&text, all_edits, offset_encoding);
+        job::dispatch(move |editor, _compositor| {
+            let Some(doc) = editor.document_mut(doc_id) else {
+                return;
+            };
+            // Updating a desynced document causes problems with applying the transaction.
+            if doc.version() != doc_version {
+                return;
             }
-            Err(err) => log::error!("format sections failed: {err}"),
-            Ok(None) => (),
-        }
+            doc.apply(&transaction, view_id);
+        })
+        .await;
     });
+}
+
+fn merge_format_selection_ranges(selection: &Selection) -> Vec<Range> {
+    selection
+        .clone()
+        .merge_consecutive_ranges()
+        .iter()
+        .copied()
+        .collect()
+}
+
+fn filter_overlapping_format_edits(
+    text: &Rope,
+    mut edits: Vec<helix_lsp::lsp::TextEdit>,
+    offset_encoding: helix_lsp::OffsetEncoding,
+    keep_last: bool,
+) -> Vec<helix_lsp::lsp::TextEdit> {
+    edits.sort_by_key(|edit| edit.range.start);
+    if keep_last {
+        edits.reverse();
+    }
+
+    let mut filtered = Vec::with_capacity(edits.len());
+    let mut last_end = 0;
+    let mut dropped = 0;
+
+    for edit in edits {
+        let Some(start) = helix_lsp::util::lsp_pos_to_pos(text, edit.range.start, offset_encoding)
+        else {
+            continue;
+        };
+        let Some(end) = helix_lsp::util::lsp_pos_to_pos(text, edit.range.end, offset_encoding)
+        else {
+            continue;
+        };
+
+        if start < last_end {
+            dropped += 1;
+            continue;
+        }
+
+        last_end = end;
+        filtered.push(edit);
+    }
+
+    if keep_last {
+        filtered.reverse();
+    }
+
+    if dropped > 0 {
+        log::warn!("discarded {dropped} overlapping range formatting edits");
+    }
+
+    filtered
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{filter_overlapping_format_edits, merge_format_selection_ranges};
+    use helix_core::{Range, Rope, Selection};
+    use helix_lsp::{lsp, OffsetEncoding};
+    use smallvec::smallvec;
+
+    #[test]
+    fn merge_format_selection_ranges_coalesces_touching_ranges() {
+        let selection = Selection::new(
+            smallvec![
+                Range::new(2, 4),
+                Range::new(4, 7),
+                Range::new(9, 11),
+                Range::new(10, 13),
+            ],
+            0,
+        );
+
+        assert_eq!(
+            merge_format_selection_ranges(&selection),
+            vec![Range::new(2, 7), Range::new(9, 13)]
+        );
+    }
+
+    #[test]
+    fn filter_overlapping_format_edits_discards_conflicts() {
+        let text = Rope::from("abcdef");
+        let edits = vec![
+            lsp::TextEdit {
+                range: lsp::Range {
+                    start: lsp::Position::new(0, 1),
+                    end: lsp::Position::new(0, 4),
+                },
+                new_text: "x".into(),
+            },
+            lsp::TextEdit {
+                range: lsp::Range {
+                    start: lsp::Position::new(0, 3),
+                    end: lsp::Position::new(0, 5),
+                },
+                new_text: "y".into(),
+            },
+            lsp::TextEdit {
+                range: lsp::Range {
+                    start: lsp::Position::new(0, 5),
+                    end: lsp::Position::new(0, 6),
+                },
+                new_text: "z".into(),
+            },
+        ];
+
+        let filtered = filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, false);
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].new_text, "x");
+        assert_eq!(filtered[1].new_text, "z");
+    }
+
+    #[test]
+    fn filter_overlapping_format_edits_can_prefer_later_edits() {
+        let text = Rope::from("abcdef");
+        let edits = vec![
+            lsp::TextEdit {
+                range: lsp::Range {
+                    start: lsp::Position::new(0, 1),
+                    end: lsp::Position::new(0, 4),
+                },
+                new_text: "x".into(),
+            },
+            lsp::TextEdit {
+                range: lsp::Range {
+                    start: lsp::Position::new(0, 3),
+                    end: lsp::Position::new(0, 5),
+                },
+                new_text: "y".into(),
+            },
+        ];
+
+        let filtered = filter_overlapping_format_edits(&text, edits, OffsetEncoding::Utf8, true);
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].new_text, "y");
+    }
 }
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
