@@ -2513,7 +2513,7 @@ language-servers = [ "r" ]
 
 [[grammar]]
 name = "r"
-source = { git = "https://github.com/r-lib/tree-sitter-r", rev = "cc04302e1bff76fa02e129f332f44636813b0c3c" }
+source = { git = "https://github.com/r-lib/tree-sitter-r", rev = "0e6ef7741712c09dc3ee6e81c42e919820cc65ef" }
 
 [[language]]
 name = "rmarkdown"
