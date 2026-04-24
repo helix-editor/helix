@@ -81,7 +81,7 @@ content_inspector = "0.2.4"
 thiserror.workspace = true
 
 # opening URLs
-open = "5.3.3"
+open = "5.3.4"
 url = "2.5.4"
 
 # config
