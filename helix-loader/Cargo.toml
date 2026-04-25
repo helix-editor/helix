@@ -9,6 +9,7 @@ rust-version.workspace = true
 categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
+globset.workspace = true
 
 [[bin]]
 name = "hx-loader"
@@ -23,6 +24,7 @@ toml.workspace = true
 etcetera.workspace = true
 once_cell = "1.21"
 log = "0.4"
+parking_lot.workspace = true
 
 # TODO: these two should be on !wasm32 only
 
@@ -32,3 +34,5 @@ threadpool = { version = "1.0" }
 tempfile.workspace = true
 
 tree-house.workspace = true
+globset.workspace = true
+arc-swap.workspace = true

@@ -1,45 +1,42 @@
-use std::{collections::HashSet, path::PathBuf};
-
+use arc_swap::access::Access;
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
-    quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
+    clear_trust_cache, quick_query_workspace_with_explicit_untrust, TrustUntrustStatus,
+    WorkspaceTrust,
 };
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use helix_view::{
+    events::ConfigDidChange, events::DocumentDidOpen, handlers::Handlers, DocumentId,
+};
 
 use crate::{compositor::Compositor, job, ui};
 
 const ID: &str = "workspace-trust-select";
-
-/// A set of canonicalized workspace paths which have been prompted for trust at runtime.
-static PROMPTED_WORKSPACES: Lazy<Mutex<HashSet<PathBuf>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let doc = doc!(event.editor, &event.doc);
 
         // If there is no servers to be loaded, then the workspace might not be trusted yet
-        if doc.language_servers().next().is_none() {
-            if let TrustUntrustStatus::DenyOnce =
-                quick_query_workspace_with_explicit_untrust(event.editor.config().insecure)
-            {
-                let (workspace, _) = helix_loader::find_workspace();
-                job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
-            }
+        if doc.language_servers().next().is_none()
+            && quick_query_workspace_with_explicit_untrust(&event.editor.config.load().trust)
+                .is_none()
+        {
+            job::dispatch_blocking(|_editor, compositor| prompt(compositor));
+        }
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut ConfigDidChange<'_>| {
+        if event.old.trust != event.new.trust {
+            clear_trust_cache();
+            // TODO: restart LSP, so that no `:lsp-restart` is needed after
+            // reloading the config
         }
         Ok(())
     });
 }
 
-pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
-    let mut workspaces = PROMPTED_WORKSPACES.lock();
-    if workspaces.contains(&path) {
-        return;
-    } else {
-        workspaces.insert(path.clone());
-    }
+pub fn prompt(compositor: &mut Compositor) {
     let select = select();
     compositor.replace_or_push(ID, select);
 }
@@ -65,7 +62,7 @@ fn select() -> ui::Select<TrustUntrustStatus> {
                         trust.exclude_workspace();
                     }
                     TrustUntrustStatus::DenyOnce => {
-                        // Do nothing
+                        trust.untrust_workspace();
                     }
                     TrustUntrustStatus::AllowAlways => {
                         trust.trust_workspace();
