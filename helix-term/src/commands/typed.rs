@@ -144,33 +144,47 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 }
 
 fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow::Result<()> {
+    let as_list = args.has_flag("list");
+
     for arg in args {
-        let (path, pos) = crate::args::parse_file(&arg);
-        let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker =
-                            ui::file_picker(editor, path.into_owned()).with_default_action(action);
-                        compositor.push(Box::new(overlaid(picker)));
-                    },
-                ));
-                Ok(call)
-            };
-            cx.jobs.callback(callback);
+        let paths = if as_list {
+            arg.lines().map(Cow::Borrowed).collect::<Vec<_>>()
         } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, action)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+            vec![arg]
+        };
+
+        for path in paths {
+            let (path, pos) = {
+                let (path, pos) = crate::args::parse_file(&path);
+                (helix_stdx::path::expand_tilde(path), pos)
+            };
+
+            // If the path is a directory, open a file picker on that directory and
+            // update the status message.
+            if std::fs::canonicalize(&path).is_ok_and(|p| p.is_dir()) {
+                let callback = async move {
+                    let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                        move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let picker = ui::file_picker(editor, path.into_owned())
+                                .with_default_action(action);
+                            compositor.push(Box::new(overlaid(picker)));
+                        },
+                    ));
+                    Ok(call)
+                };
+                cx.jobs.callback(callback);
+            } else {
+                // Otherwise, just open the file
+                let _ = cx.editor.open(&path, action)?;
+                let (view, doc) = current!(cx.editor);
+                let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                doc.set_selection(view.id, pos);
+                // does not affect opening a buffer without pos
+                align_view(doc, view, Align::Center);
+            }
         }
     }
+
     Ok(())
 }
 
@@ -2949,6 +2963,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         completer: CommandCompleter::all(completers::filename),
         signature: Signature {
             positionals: (1, None),
+            flags: &[Flag {
+                name: "list",
+                alias: Some('l'),
+                doc: "Opens the provded argument as a newline delimited list of paths",
+                completions: None,
+            }],
             ..Signature::DEFAULT
         },
     },
