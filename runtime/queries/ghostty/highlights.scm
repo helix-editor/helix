@@ -17,6 +17,7 @@
  "+"
  "="
  (keybind_trigger ">")
+ (chain_operator)
 ] @operator
 
 (":") @punctuation.delimiter
@@ -59,9 +60,13 @@
 [
  (key_qualifier)
  (keybind_modifier)
+ (theme_variant)
+ (command_modifier)
 ] @attribute
 
 [
  (modifier_key)
  (key)
 ] @constant.builtin
+
+(keybind_table) @namespace
