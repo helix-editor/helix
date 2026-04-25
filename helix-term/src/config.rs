@@ -57,7 +57,7 @@ impl Display for ConfigLoadError {
 
 impl Config {
     pub fn load(
-        global: Result<&String, ConfigLoadError>,
+        global: Result<&str, ConfigLoadError>,
         local: Result<String, ConfigLoadError>,
     ) -> Result<Config, ConfigLoadError> {
         let global_config: Result<ConfigRaw, ConfigLoadError> =
@@ -125,8 +125,8 @@ impl Config {
 
         let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
-        if let helix_loader::workspace_trust::TrustStatus::Trusted =
-            helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
+        if helix_loader::workspace_trust::TrustStatus::Trusted
+            == helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
         {
             Config::load(Ok(&global_config), local_config)
         } else {
@@ -141,7 +141,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(&config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            Config::load(Ok(config), Err(ConfigLoadError::default())).unwrap()
         }
     }
 

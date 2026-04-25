@@ -1,3 +1,4 @@
+use helix_stdx::faccess::write_with_perms;
 use std::{collections::HashSet, fs, path::PathBuf};
 
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
@@ -7,7 +8,7 @@ pub struct WorkspaceTrust {
     excluded: Option<HashSet<PathBuf>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrustStatus {
     Untrusted,
     Trusted,
@@ -22,33 +23,29 @@ impl WorkspaceTrust {
     /// For querying trust status of a workspace use `quick_query_workspace()` or
     /// `quick_query_workspace_with_explicit_untrust()`
     pub fn load(with_exclusion: bool) -> Self {
-        let mut trusted = HashSet::new();
-
-        match fs::read_to_string(workspace_trust_file()) {
-            Ok(workspace_trust_file) => {
-                for line in workspace_trust_file.split('\n') {
-                    if !line.is_empty() {
-                        let path = PathBuf::from(line);
-                        trusted.insert(path);
-                    }
-                }
+        let trusted: HashSet<_> = match fs::read_to_string(workspace_trust_file()) {
+            Ok(workspace_trust_file) => workspace_trust_file
+                .split('\n')
+                .filter(|line| !line.is_empty())
+                .map(PathBuf::from)
+                .collect(),
+            Err(e) => {
+                log::error!("workspace file couldn't be read: {:?}", e);
+                HashSet::new()
             }
-            Err(e) => log::error!("workspace file couldn't be read: {:?}", e),
         };
 
         let excluded = if with_exclusion {
-            let mut untrusted = HashSet::new();
-
-            match fs::read_to_string(workspace_exclude_file()) {
-                Ok(workspace_untrust_file) => {
-                    for line in workspace_untrust_file.split('\n') {
-                        if !line.is_empty() {
-                            let path = PathBuf::from(line);
-                            untrusted.insert(path);
-                        }
-                    }
+            let untrusted: HashSet<_> = match fs::read_to_string(workspace_exclude_file()) {
+                Ok(workspace_untrust_file) => workspace_untrust_file
+                    .split('\n')
+                    .filter(|line| !line.is_empty())
+                    .map(PathBuf::from)
+                    .collect(),
+                Err(e) => {
+                    log::error!("workspace file couldn't be read: {:?}", e);
+                    HashSet::new()
                 }
-                Err(e) => log::error!("workspace file couldn't be read: {:?}", e),
             };
 
             Some(untrusted)
@@ -62,7 +59,12 @@ impl WorkspaceTrust {
         let mut trust_text = String::new();
         for workspace in self.trusted.iter() {
             if let Some(path_str) = workspace.to_str() {
-                trust_text += &format!("{path_str}\n");
+                if path_str.contains('\n') {
+                    log::error!("Unsupported path (contains \\n): {:?}", path_str);
+                    continue;
+                }
+                trust_text += path_str;
+                trust_text += "\n";
             }
         }
         // let chains aren't supported in current MSRV
@@ -71,7 +73,8 @@ impl WorkspaceTrust {
                 log::error!("Couldn't create helix's data directory: {:?}", e);
             };
         }
-        if let Err(e) = fs::write(workspace_trust_file(), trust_text) {
+        // TO-DO: apply mask for group and others, while setting owner
+        if let Err(e) = write_with_perms(workspace_trust_file(), trust_text, 0o0640) {
             log::error!("Error during write of workspace_trust file: {:?}", e);
         }
     }
@@ -81,7 +84,12 @@ impl WorkspaceTrust {
             let mut trust_text = String::new();
             for workspace in untrusted.iter() {
                 if let Some(path_str) = workspace.to_str() {
-                    trust_text += &format!("{path_str}\n");
+                    if path_str.contains('\n') {
+                        log::error!("Unsupported path (contains \\n): {:?}", path_str);
+                        continue;
+                    }
+                    trust_text += path_str;
+                    trust_text += "\n";
                 }
             }
             // let chains aren't supported in current MSRV
@@ -90,7 +98,8 @@ impl WorkspaceTrust {
                     log::error!("Couldn't create helix's data directory: {:?}", e);
                 };
             }
-            if let Err(e) = fs::write(workspace_exclude_file(), trust_text) {
+            // TO-DO: apply mask for group and others, while setting owner
+            if let Err(e) = write_with_perms(workspace_exclude_file(), trust_text, 0o0640) {
                 log::error!("Error during write of workspace_trust file: {:?}", e);
             }
         } else {
