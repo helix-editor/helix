@@ -65,6 +65,8 @@ pub struct TestCase {
     pub out_text: String,
     pub out_selection: Selection,
 
+    // remove when this is used in any test.
+    #[allow(dead_code)]
     pub line_feed_handling: LineFeedHandling,
 }
 
