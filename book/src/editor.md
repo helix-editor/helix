@@ -42,6 +42,7 @@
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
 | `auto-format` | Enable automatic formatting on save[^3] | `true` |
+| `default-directory-opener`  | Whether to open a directory with the [File Picker](#editorfile-picker-section) or [File Explorer](#editorfile-explorer-section) by default.
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. | `250` |
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
@@ -73,10 +74,11 @@
 
 ### `[editor.clipboard-provider]` Section
 
-Helix can be configured either to use a builtin clipboard configuration or to use
-a provided command.
+Helix can be configured either to use a builtin clipboard configuration or to use a provided
+command.
 
 For instance, setting it to use OSC 52 termcodes, the configuration would be:
+
 ```toml
 [editor]
 clipboard-provider = "termcode"
@@ -86,10 +88,10 @@ Alternatively, Helix can be configured to use arbitrary commands for clipboard i
 
 ```toml
 [editor.clipboard-provider.custom]
-yank = { command = "cat",  args = ["test.txt"] }
-paste = { command = "tee",  args = ["test.txt"] }
-primary-yank = { command = "cat",  args = ["test-primary.txt"] } # optional
-primary-paste = { command = "tee",  args = ["test-primary.txt"] } # optional
+yank = { command = "cat", args = ["test.txt"] }
+paste = { command = "tee", args = ["test.txt"] }
+primary-yank = { command = "cat", args = ["test-primary.txt"] } # optional
+primary-paste = { command = "tee", args = ["test-primary.txt"] } # optional
 ```
 
 For custom commands the contents of the yank/paste is communicated over stdin/stdout.
@@ -116,78 +118,80 @@ mode.select = "SELECT"
 diagnostics = ["warning", "error"]
 workspace-diagnostics = ["warning", "error"]
 ```
+
 The `[editor.statusline]` key takes the following sub-keys:
 
-| Key           | Description | Default |
-| ---           | ---         | ---     |
-| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
-| `center`      | A list of elements aligned to the middle of the statusline | `[]` |
-| `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |
-| `separator`   | The character used to separate elements in the statusline | `"│"` |
-| `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
-| `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
-| `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
-| `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
-| `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
+| Key                     | Description                                                     | Default                                                                                  |
+| ----------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `left`                  | A list of elements aligned to the left of the statusline        | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
+| `center`                | A list of elements aligned to the middle of the statusline      | `[]`                                                                                     |
+| `right`                 | A list of elements aligned to the right of the statusline       | `["diagnostics", "selections", "register", "position", "file-encoding"]`                 |
+| `separator`             | The character used to separate elements in the statusline       | `"│"`                                                                                    |
+| `mode.normal`           | The text shown in the `mode` element for normal mode            | `"NOR"`                                                                                  |
+| `mode.insert`           | The text shown in the `mode` element for insert mode            | `"INS"`                                                                                  |
+| `mode.select`           | The text shown in the `mode` element for select mode            | `"SEL"`                                                                                  |
+| `diagnostics`           | A list of severities which are displayed for the current buffer | `["warning", "error"]`                                                                   |
+| `workspace-diagnostics` | A list of severities which are displayed for the workspace      | `["warning", "error"]`                                                                   |
 
 The following statusline elements can be configured:
 
-| Key    | Description |
-| ------ | ----------- |
-| `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
-| `spinner` | A progress spinner indicating LSP activity |
-| `file-name` | The path/name of the opened file |
-| `file-absolute-path` | The absolute path/name of the opened file |
-| `file-base-name` | The basename of the opened file |
-| `current-working-directory` | The current working directory  |
+| Key                           | Description                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `mode`                        | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`)                                 |
+| `spinner`                     | A progress spinner indicating LSP activity                                                          |
+| `file-name`                   | The path/name of the opened file                                                                    |
+| `file-absolute-path`          | The absolute path/name of the opened file                                                           |
+| `file-base-name`              | The basename of the opened file                                                                     |
+| `current-working-directory`   | The current working directory                                                                       |
 | `file-modification-indicator` | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
-| `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
-| `file-line-ending` | The file line endings (CRLF or LF) |
-| `file-indent-style` | The file indentation style |
-| `read-only-indicator` | An indicator that shows `[readonly]` when a file cannot be written |
-| `total-line-numbers` | The total line numbers of the opened file |
-| `file-type` | The type of the opened file |
-| `diagnostics` | The number of warnings and/or errors |
-| `workspace-diagnostics` | The number of warnings and/or errors on workspace |
-| `selections` | The primary selection index out of the number of active selections |
-| `primary-selection-length` | The number of characters currently in primary selection |
-| `position` | The cursor position |
-| `position-percentage` | The cursor position as a percentage of the total number of lines |
-| `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
-| `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
-| `version-control` | The current branch name or detached commit hash of the opened workspace |
-| `register` | The current selected register |
+| `file-encoding`               | The encoding of the opened file if it differs from UTF-8                                            |
+| `file-line-ending`            | The file line endings (CRLF or LF)                                                                  |
+| `file-indent-style`           | The file indentation style                                                                          |
+| `read-only-indicator`         | An indicator that shows `[readonly]` when a file cannot be written                                  |
+| `total-line-numbers`          | The total line numbers of the opened file                                                           |
+| `file-type`                   | The type of the opened file                                                                         |
+| `diagnostics`                 | The number of warnings and/or errors                                                                |
+| `workspace-diagnostics`       | The number of warnings and/or errors on workspace                                                   |
+| `selections`                  | The primary selection index out of the number of active selections                                  |
+| `primary-selection-length`    | The number of characters currently in primary selection                                             |
+| `position`                    | The cursor position                                                                                 |
+| `position-percentage`         | The cursor position as a percentage of the total number of lines                                    |
+| `separator`                   | The string defined in `editor.statusline.separator` (defaults to `"│"`)                             |
+| `spacer`                      | Inserts a space between elements (multiple/contiguous spacers may be specified)                     |
+| `version-control`             | The current branch name or detached commit hash of the opened workspace                             |
+| `register`                    | The current selected register                                                                       |
 
 ### `[editor.lsp]` Section
 
-| Key                   | Description                                                 | Default |
-| ---                   | -----------                                                 | ------- |
-| `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
-| `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
-| `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
-| `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
-| `auto-document-highlight` | Automatically highlight symbol references at the cursor | `false` |
-| `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
-| `inlay-hints-length-limit` | Maximum displayed length (non-zero number) of inlay hints | Unset by default  |
-| `display-color-swatches` | Show color swatches next to colors | `true` |
-| `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
-| `snippets`      | Enables snippet completions. Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`/`:set`. | `true`  |
-| `goto-reference-include-declaration` | Include declaration in the goto references popup. | `true`  |
+| Key                                  | Description                                                                                                           | Default          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `enable`                             | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.   | `true`           |
+| `display-messages`                   | Display LSP `window/showMessage` messages below statusline[^1]                                                        | `true`           |
+| `display-progress-messages`          | Display LSP progress messages below statusline[^1]                                                                    | `false`          |
+| `auto-signature-help`                | Enable automatic popup of signature help (parameter hints)                                                            | `true`           |
+| `auto-document-highlight`            | Automatically highlight symbol references at the cursor                                                               | `false`          |
+| `display-inlay-hints`                | Display inlay hints[^2]                                                                                               | `false`          |
+| `inlay-hints-length-limit`           | Maximum displayed length (non-zero number) of inlay hints                                                             | Unset by default |
+| `display-color-swatches`             | Show color swatches next to colors                                                                                    | `true`           |
+| `display-signature-help-docs`        | Display docs under signature help popup                                                                               | `true`           |
+| `snippets`                           | Enables snippet completions. Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`/`:set`. | `true`           |
+| `goto-reference-include-declaration` | Include declaration in the goto references popup.                                                                     | `true`           |
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
-[^2]: You may also have to activate them in the language server config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
+[^2]: You may also have to activate them in the language server config for them to appear, not just
+    in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky
+    under some circumstances. Please report any bugs you see so we can fix them!
 
 ### `[editor.cursor-shape]` Section
 
-Defines the shape of cursor in each mode.
-Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
+Defines the shape of cursor in each mode. Valid values for these options are `block`, `bar`,
+`underline`, or `hidden`.
 
-> 💡 Due to limitations of the terminal environment, only the primary cursor can
-> change shape.
+> 💡 Due to limitations of the terminal environment, only the primary cursor can change shape.
 
 | Key      | Description                                | Default   |
-| ---      | -----------                                | -------   |
+| -------- | ------------------------------------------ | --------- |
 | `normal` | Cursor shape in [normal mode][normal mode] | `"block"` |
 | `insert` | Cursor shape in [insert mode][insert mode] | `"block"` |
 | `select` | Cursor shape in [select mode][select mode] | `"block"` |
@@ -198,26 +202,29 @@ Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
 
 ### `[editor.file-picker]` Section
 
-Set options for file picker and global search. Ignoring a file means it is
-not visible in the Helix file picker and global search.
+Set options for file picker and global search. Ignoring a file means it is not visible in the Helix
+file picker and global search.
 
 All git related options are only enabled in a git repository.
 
-| Key | Description | Default |
-|--|--|---------|
-|`hidden` | Enables ignoring hidden files | `true`
-|`follow-symlinks` | Follow symlinks instead of ignoring them | `true`
-|`deduplicate-links` | Ignore symlinks that point at files already shown in the picker | `true`
-|`parents` | Enables reading ignore files from parent directories | `true`
-|`ignore` | Enables reading `.ignore` files | `true`
-|`git-ignore` | Enables reading `.gitignore` files | `true`
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
-|`git-exclude` | Enables reading `.git/info/exclude` files | `true`
-|`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
+| Key                 | Description                                                                                              | Default          |
+| ------------------- | -------------------------------------------------------------------------------------------------------- | ---------------- |
+| `hidden`            | Enables ignoring hidden files                                                                            | `true`           |
+| `follow-symlinks`   | Follow symlinks instead of ignoring them                                                                 | `true`           |
+| `deduplicate-links` | Ignore symlinks that point at files already shown in the picker                                          | `true`           |
+| `parents`           | Enables reading ignore files from parent directories                                                     | `true`           |
+| `ignore`            | Enables reading `.ignore` files                                                                          | `true`           |
+| `git-ignore`        | Enables reading `.gitignore` files                                                                       | `true`           |
+| `git-global`        | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`           |
+| `git-exclude`       | Enables reading `.git/info/exclude` files                                                                | `true`           |
+| `max-depth`         | Set with an integer value for maximum depth to recurse                                                   | Unset by default |
 
-Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
+Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They
+support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
 
-Additionally, you can use Helix-specific ignore files by creating a local `.helix/ignore` file in the current workspace or a global `ignore` file located in your Helix config directory:
+Additionally, you can use Helix-specific ignore files by creating a local `.helix/ignore` file in
+the current workspace or a global `ignore` file located in your Helix config directory:
+
 - Linux and Mac: `~/.config/helix/ignore`
 - Windows: `%AppData%\helix\ignore`
 
@@ -232,29 +239,31 @@ Example:
 
 ### `[editor.file-explorer]` Section
 
-In addition to the options for the file picker and global search, a similar set of options is presented to configure the file explorer separately. However, unlike the file picker, the defaults are set to avoid ignoring most files.
+In addition to the options for the file picker and global search, a similar set of options is
+presented to configure the file explorer separately. However, unlike the file picker, the defaults
+are set to avoid ignoring most files.
 
-Note that the ignore files consulted by the file explorer when `ignore` is set to true are the same ones used by the file picker, including the aforementioned Helix-specific ignore files.
+Note that the ignore files consulted by the file explorer when `ignore` is set to true are the same
+ones used by the file picker, including the aforementioned Helix-specific ignore files.
 
-
-| Key | Description | Default |
-|--|--|---------|
-|`hidden` | Enables ignoring hidden files | `false`
-|`follow-symlinks` | Follow symlinks instead of ignoring them | `false`
-|`parents` | Enables reading ignore files from parent directories | `false`
-|`ignore` | Enables reading `.ignore` files | `false`
-|`git-ignore` | Enables reading `.gitignore` files | `false`
-|`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false`
-|`git-exclude` | Enables reading `.git/info/exclude` files | `false`
-|`flatten-dirs` | Enables flattening single child directories | `true`
+| Key               | Description                                                                                              | Default |
+| ----------------- | -------------------------------------------------------------------------------------------------------- | ------- |
+| `hidden`          | Enables ignoring hidden files                                                                            | `false` |
+| `follow-symlinks` | Follow symlinks instead of ignoring them                                                                 | `false` |
+| `parents`         | Enables reading ignore files from parent directories                                                     | `false` |
+| `ignore`          | Enables reading `.ignore` files                                                                          | `false` |
+| `git-ignore`      | Enables reading `.gitignore` files                                                                       | `false` |
+| `git-global`      | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `false` |
+| `git-exclude`     | Enables reading `.git/info/exclude` files                                                                | `false` |
+| `flatten-dirs`    | Enables flattening single child directories                                                              | `true`  |
 
 ### `[editor.buffer-picker]` Section
 
 Set options for buffer picker.
 
-| Key | Description | Default |
-|--|--|---------|
-|`start-position` | Controls behavior for which buffer is initially selected | `current` |
+| Key              | Description                                              | Default   |
+| ---------------- | -------------------------------------------------------- | --------- |
+| `start-position` | Controls behavior for which buffer is initially selected | `current` |
 
 Example
 
@@ -265,8 +274,8 @@ start-position = "previous"
 
 ### `[editor.auto-pairs]` Section
 
-Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
-simple boolean value, or a specific mapping of pairs of single characters.
+Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a simple boolean value,
+or a specific mapping of pairs of single characters.
 
 To disable auto-pairs altogether, set `auto-pairs` to `false`:
 
@@ -275,8 +284,8 @@ To disable auto-pairs altogether, set `auto-pairs` to `false`:
 auto-pairs = false # defaults to `true`
 ```
 
-The default pairs are <code>(){}[]''""``</code>, but these can be customized by
-setting `auto-pairs` to a TOML table:
+The default pairs are <code>(){}[]''""``</code>, but these can be customized by setting `auto-pairs`
+to a TOML table:
 
 ```toml
 [editor.auto-pairs]
@@ -288,9 +297,8 @@ setting `auto-pairs` to a TOML table:
 '<' = '>'
 ```
 
-Additionally, this setting can be used in a language config. Unless
-the editor setting is `false`, this will override the editor config in
-documents with this language.
+Additionally, this setting can be used in a language config. Unless the editor setting is `false`,
+this will override the editor config in documents with this language.
 
 Example `languages.toml` that adds `<>` and removes `''`
 
@@ -311,29 +319,30 @@ name = "rust"
 
 Control auto save behavior.
 
-| Key | Description | Default |
-|--|--|---------|
-| `focus-lost` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
-| `after-delay.enable` | Enable automatic saving after `auto-save.after-delay.timeout` milliseconds have passed since last edit. | `false` |
-| `after-delay.timeout` | Time in milliseconds since last edit before auto save timer triggers. | `3000` |
+| Key                   | Description                                                                                                                                                                 | Default |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `focus-lost`          | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `after-delay.enable`  | Enable automatic saving after `auto-save.after-delay.timeout` milliseconds have passed since last edit.                                                                     | `false` |
+| `after-delay.timeout` | Time in milliseconds since last edit before auto save timer triggers.                                                                                                       | `3000`  |
 
 ### `[editor.search]` Section
 
 Search specific options.
 
-| Key | Description | Default |
-|--|--|---------|
-| `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
-| `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+| Key           | Description                                                                                        | Default |
+| ------------- | -------------------------------------------------------------------------------------------------- | ------- |
+| `smart-case`  | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true`  |
+| `wrap-around` | Whether the search should wrap after depleting the matches                                         | `true`  |
 
 ### `[editor.whitespace]` Section
 
-Options for rendering whitespace with visible characters. Use `:set whitespace.render all` to temporarily enable visible whitespace.
+Options for rendering whitespace with visible characters. Use `:set whitespace.render all` to
+temporarily enable visible whitespace.
 
-| Key | Description | Default |
-|-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `"none"` |
-| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad` | See example below |
+| Key          | Description                                                                                                                          | Default           |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| `render`     | Whether to render whitespace. May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `"none"`          |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad`   | See example below |
 
 Example
 
@@ -362,7 +371,7 @@ tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 Options for rendering vertical indent guides.
 
 | Key           | Description                                             | Default |
-| ---           | ---                                                     | ---     |
+| ------------- | ------------------------------------------------------- | ------- |
 | `render`      | Whether to render indent guides                         | `false` |
 | `character`   | Literal character to use for rendering the indent guide | `"│"`   |
 | `skip-levels` | Number of indent levels to skip                         | `0`     |
@@ -378,20 +387,19 @@ skip-levels = 1
 
 ### `[editor.gutters]` Section
 
-For simplicity, `editor.gutters` accepts an array of gutter types, which will
-use default settings for all gutter components.
+For simplicity, `editor.gutters` accepts an array of gutter types, which will use default settings
+for all gutter components.
 
 ```toml
 [editor]
 gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
 ```
 
-To customize the behavior of gutters, the `[editor.gutters]` section must
-be used. This section contains top level settings, as well as settings for
-specific gutter components as subsections.
+To customize the behavior of gutters, the `[editor.gutters]` section must be used. This section
+contains top level settings, as well as settings for specific gutter components as subsections.
 
 | Key      | Description                    | Default                                                       |
-| ---      | ---                            | ---                                                           |
+| -------- | ------------------------------ | ------------------------------------------------------------- |
 | `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 
 Example:
@@ -406,7 +414,7 @@ layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 Options for the line number gutter
 
 | Key         | Description                             | Default |
-| ---         | ---                                     | ---     |
+| ----------- | --------------------------------------- | ------- |
 | `min-width` | The minimum number of characters to use | `3`     |
 
 Example:
@@ -422,8 +430,9 @@ Currently unused
 
 #### `[editor.gutters.diff]` Section
 
-The `diff` gutter option displays colored bars indicating whether a `git` diff represents that a line was added, removed or changed.
-These colors are controlled by the theme attributes `diff.plus`, `diff.minus` and `diff.delta`.
+The `diff` gutter option displays colored bars indicating whether a `git` diff represents that a
+line was added, removed or changed. These colors are controlled by the theme attributes `diff.plus`,
+`diff.minus` and `diff.delta`.
 
 Other diff providers will eventually be supported by a future plugin system.
 
@@ -437,13 +446,13 @@ Currently unused
 
 Options for soft wrapping lines that exceed the view width:
 
-| Key                  | Description                                                  | Default |
-| ---                  | ---                                                          | ---     |
-| `enable`             | Whether soft wrapping is enabled.                            | `false` |
-| `max-wrap`           | Maximum free space left at the end of the line.              | `20`    |
-| `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line. | `40`    |
-| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `"↪ "`    |
-| `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size. | `false` |
+| Key                  | Description                                                                 | Default |
+| -------------------- | --------------------------------------------------------------------------- | ------- |
+| `enable`             | Whether soft wrapping is enabled.                                           | `false` |
+| `max-wrap`           | Maximum free space left at the end of the line.                             | `20`    |
+| `max-indent-retain`  | Maximum indentation to carry over when soft wrapping a line.                | `40`    |
+| `wrap-indicator`     | Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap` | `"↪ "`  |
+| `wrap-at-text-width` | Soft wrap at `text-width` instead of using the full viewport size.          | `false` |
 
 Example:
 
@@ -452,20 +461,22 @@ Example:
 enable = true
 max-wrap = 25 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0
-wrap-indicator = ""  # set wrap-indicator to "" to hide it
+wrap-indicator = "" # set wrap-indicator to "" to hide it
 ```
 
 ### `[editor.smart-tab]` Section
 
 Options for navigating and editing using tab key.
 
-| Key        | Description | Default |
-|------------|-------------|---------|
-| `enable` | If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run `move_parent_node_end`. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab. | `true` |
+| Key              | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Default |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `enable`         | If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run `move_parent_node_end`. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab.                                                                                                                                                         | `true`  |
 | `supersede-menu` | Normally, when a menu is on screen, such as when auto complete is triggered, the tab key is bound to cycling through the items. This means when menus are on screen, one cannot use the tab key to trigger the `smart-tab` command. If this option is set to true, the `smart-tab` command always takes precedence, which means one cannot use the tab key to cycle through menu items. One of the other bindings must be used instead, such as arrow keys or `C-n`/`C-p`. | `false` |
 
-
-Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the [Enhanced Keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol), consider setting extra keybindings:
+Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace
+smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the
+[Enhanced Keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol),
+consider setting extra keybindings:
 
 ```
 [keys.normal]
@@ -489,19 +500,20 @@ fn main() {
   let foo = bar;
             └─ no such value in this scope
 }
-````
+```
 
-| Key        | Description | Default |
-|------------|-------------|---------|
-| `cursor-line` | The minimum severity that a diagnostic must have to be shown inline on the line that contains the primary cursor. Set to `disable` to not show any diagnostics inline. This option does not have any effect when in insert-mode and will only take effect 350ms after moving the cursor to a different line. | `"warning"` |
-| `other-lines` | The minimum severity that a diagnostic must have to be shown inline on a line that does not contain the cursor-line. Set to `disable` to not show any diagnostics inline. | `"disable"` |
-| `prefix-len` | How many horizontal bars `─` are rendered before the diagnostic text.  | `1` |
-| `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
-| `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
+| Key               | Description                                                                                                                                                                                                                                                                                                  | Default     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| `cursor-line`     | The minimum severity that a diagnostic must have to be shown inline on the line that contains the primary cursor. Set to `disable` to not show any diagnostics inline. This option does not have any effect when in insert-mode and will only take effect 350ms after moving the cursor to a different line. | `"warning"` |
+| `other-lines`     | The minimum severity that a diagnostic must have to be shown inline on a line that does not contain the cursor-line. Set to `disable` to not show any diagnostics inline.                                                                                                                                    | `"disable"` |
+| `prefix-len`      | How many horizontal bars `─` are rendered before the diagnostic text.                                                                                                                                                                                                                                        | `1`         |
+| `max-wrap`        | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.                                                                                                                                                                                                                                        | `20`        |
+| `max-diagnostics` | Maximum number of diagnostics to render inline for a given line                                                                                                                                                                                                                                              | `10`        |
 
 The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, `info`, `hint`.
 
-The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
+The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of
+the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
 
 ```
 fn main() {
@@ -515,10 +527,10 @@ fn main() {
 
 Options for controlling completion of words from open buffers.
 
-| Key                  | Description                                                    | Default  |
-| ---                  | ---                                                            | ---      |
-| `enable`             | Whether word completion is enabled                             | `true`   |
-| `trigger-length`     | Number of word characters to type before triggering completion | `7`      |
+| Key              | Description                                                    | Default |
+| ---------------- | -------------------------------------------------------------- | ------- |
+| `enable`         | Whether word completion is enabled                             | `true`  |
+| `trigger-length` | Number of word characters to type before triggering completion | `7`     |
 
 Example:
 
