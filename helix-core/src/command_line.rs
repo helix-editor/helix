@@ -257,11 +257,20 @@ pub enum ExpansionKind {
     ///
     /// For example `%reg{a}`.
     Register,
+    /// Quotes token's contents with double quotes, and escapes according to standard escaping conventions.
+    ///
+    /// For example, `%quote{ "'"="foo" }` -> `"\"'\"=foo\""`.
+    Quote,
 }
 
 impl ExpansionKind {
-    pub const VARIANTS: &'static [Self] =
-        &[Self::Variable, Self::Unicode, Self::Shell, Self::Register];
+    pub const VARIANTS: &'static [Self] = &[
+        Self::Variable,
+        Self::Unicode,
+        Self::Shell,
+        Self::Register,
+        Self::Quote,
+    ];
 
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -269,6 +278,7 @@ impl ExpansionKind {
             Self::Unicode => "u",
             Self::Shell => "sh",
             Self::Register => "reg",
+            Self::Quote => "quote",
         }
     }
 
@@ -278,6 +288,7 @@ impl ExpansionKind {
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
             "reg" => Some(Self::Register),
+            "quote" => Some(Self::Quote),
             _ => None,
         }
     }
