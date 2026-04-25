@@ -6,7 +6,7 @@ use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
+use helix_view::{Editor, editor::SmartTabConfig, graphics::Rect};
 use tui::layout::Constraint;
 
 pub trait Item: Sync + Send + 'static {
@@ -337,6 +337,21 @@ impl<T: Item + 'static> Component for Menu<T> {
         let selected = theme.get("ui.menu.selected");
 
         surface.clear_with(area, style);
+
+        // Defensive clamp against terminal resize: `adjust_scroll` keeps the
+        // cursor within `self.size.1`, but a resize race can leave us
+        // rendering into a smaller `area.height` with `scroll` stale, so
+        // `cursor - scroll` underflows or goes past the end of `surface`.
+        // Re-clamp against the area we're actually about to draw into.
+        // Fixes #6382.
+        if let Some(cursor) = self.cursor {
+            let win_height = area.height as usize;
+            if cursor < self.scroll {
+                self.scroll = cursor;
+            } else if win_height > 0 && cursor >= self.scroll + win_height {
+                self.scroll = cursor + 1 - win_height;
+            }
+        }
 
         let scroll = self.scroll;
 
