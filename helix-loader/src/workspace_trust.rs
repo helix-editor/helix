@@ -1,5 +1,8 @@
 use std::{collections::HashSet, fs, path::PathBuf};
 
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
 use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
 
 pub struct WorkspaceTrust {
@@ -7,7 +10,7 @@ pub struct WorkspaceTrust {
     excluded: Option<HashSet<PathBuf>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum TrustStatus {
     Untrusted,
     Trusted,
@@ -127,12 +130,21 @@ impl WorkspaceTrust {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TrustUntrustStatus {
     DenyAlways,
     #[default]
     DenyOnce,
     AllowAlways,
+}
+
+/// A set of canonicalized workspace paths for which trust has been queried
+static TRUST_QUERIED_WORKSPACES: Lazy<Mutex<HashSet<PathBuf>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+
+pub fn workspace_needs_trust() -> bool {
+    let workspace = crate::find_workspace().0;
+    TRUST_QUERIED_WORKSPACES.lock().contains(&workspace)
 }
 
 pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
@@ -152,6 +164,7 @@ pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => (),
         Err(err) => log::error!("workspace file couldn't be read: {err:?}"),
     };
+    TRUST_QUERIED_WORKSPACES.lock().insert(workspace);
     TrustStatus::Untrusted
 }
 
