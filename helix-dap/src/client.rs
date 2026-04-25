@@ -117,14 +117,24 @@ impl Client {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
-        let process = Command::new(cmd)
+        let mut command = Command::new(cmd);
+        command
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             // make sure the process is reaped on drop
-            .kill_on_drop(true)
-            .spawn();
+            .kill_on_drop(true);
+
+        #[cfg(unix)]
+        unsafe {
+            command.pre_exec(|| match libc::setsid() {
+                -1 => Err(std::io::Error::last_os_error()),
+                _ => Ok(()),
+            });
+        }
+
+        let process = command.spawn();
 
         let mut process = process?;
 
