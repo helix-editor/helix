@@ -87,6 +87,8 @@ metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inl
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
+mm0-rs = { command = "mm0-rs", args = [ "server" ] }
+mm-lsp-server = { command = "mm-lsp-server" }
 neocmakelsp = { command = "neocmakelsp", args = ["stdio"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
@@ -165,6 +167,7 @@ vuels = { command = "vue-language-server", args = ["--stdio"], config = { typesc
 wgsl-analyzer = { command = "wgsl-analyzer" }
 wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+yamma-server = { command = "yamma-server" }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
@@ -5453,3 +5456,18 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+[[language]]
+name = "metamath"
+scope = "source.metamath"
+file-types = [ "mm" ]
+injection-regex = "mm|metamath"
+roots = [ "set.mm" ]
+block-comment-tokens = { start = "$(", end = "$)" }
+indent = { tab-width = 2, unit = "  " }
+text-width = 80
+language-servers = [ "mm-lsp-server" ]
+
+[[grammar]]
+name = "metamath"
+source = { git = "https://github.com/POPeeeDev/tree-sitter-metamath", rev = "TODO" }
