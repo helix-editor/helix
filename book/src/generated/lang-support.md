@@ -185,6 +185,7 @@
 | matlab | ✓ | ✓ | ✓ |  |  |  |
 | mermaid | ✓ |  |  |  |  |  |
 | meson | ✓ |  | ✓ |  |  | `mesonlsp` |
+| metamath | ✓ |  |  | ✓ |  | `mm-lsp-server` |
 | mint |  |  |  |  |  | `mint` |
 | miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
