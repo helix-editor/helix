@@ -1387,6 +1387,30 @@ name = "twig"
 source = { git = "https://github.com/gbprod/tree-sitter-twig", rev = "085648e01d1422163a1702a44e72303b4e2a0bd1" }
 
 [[language]]
+name = "lateralus"
+scope = "source.lateralus"
+injection-regex = "ltl|lateralus"
+file-types = ["ltl"]
+roots = ["lateralus.toml"]
+comment-tokens = ["//"]
+block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = ["lateralus-ls"]
+indent = { tab-width = 4, unit = "    " }
+auto-format = true
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+
+[[grammar]]
+name = "lateralus"
+source = { git = "https://github.com/bad-antics/tree-sitter-lateralus", rev = "main" }
+
+
+[[language]]
 name = "latex"
 scope = "source.tex"
 injection-regex = "tex"
@@ -5453,3 +5477,6 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "d3b3b2699bc09fd0c63e2c13f15f6e474665c62e" }
+
+# Lateralus language
+lateralus-ls = { command = "lateralus-lsp" }
