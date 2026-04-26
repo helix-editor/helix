@@ -733,7 +733,7 @@ async fn test_select_next_sibling() -> anyhow::Result<()> {
         // basic test
         (
             indoc! {r##"
-                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                #[fn inc(x: usize) -> usize { x + 1 }|]#
                 fn dec(x: usize) -> usize { x - 1 }
                 fn ident(x: usize) -> usize { x }
             "##},
@@ -747,7 +747,7 @@ async fn test_select_next_sibling() -> anyhow::Result<()> {
         // direction is not preserved and is always forward.
         (
             indoc! {r##"
-                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                #[fn inc(x: usize) -> usize { x + 1 }|]#
                 fn dec(x: usize) -> usize { x - 1 }
                 fn ident(x: usize) -> usize { x }
             "##},
@@ -756,6 +756,30 @@ async fn test_select_next_sibling() -> anyhow::Result<()> {
                 fn inc(x: usize) -> usize { x + 1 }
                 fn dec(x: usize) -> usize { x - 1 }
                 #[fn ident(x: usize) -> usize { x }|]#
+            "##},
+        ),
+        // stops at last sibling
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                fn dec(x: usize) -> usize { x - 1 }
+                fn ident(x: usize) -> usize { x }
+            "##},
+            "<A-n>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                fn dec(x: usize) -> usize { x - 1 }
+                fn ident(x: usize) -> usize { x }
+            "##},
+        ),
+        // doesn't get stuck in node with one child
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { #[for _ in 0..1 {}|]# x + 1 }
+            "##},
+            "<A-n>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { for _ in 0..1 {} #[x + 1|]# }
             "##},
         ),
     ];
@@ -775,7 +799,7 @@ async fn test_select_prev_sibling() -> anyhow::Result<()> {
             indoc! {r##"
                 fn inc(x: usize) -> usize { x + 1 }
                 fn dec(x: usize) -> usize { x - 1 }
-                #[|f]#n ident(x: usize) -> usize { x }
+                #[|fn ident(x: usize) -> usize { x }]#
             "##},
             "<A-p>",
             indoc! {r##"
@@ -789,13 +813,37 @@ async fn test_select_prev_sibling() -> anyhow::Result<()> {
             indoc! {r##"
                 fn inc(x: usize) -> usize { x + 1 }
                 fn dec(x: usize) -> usize { x - 1 }
-                #[|f]#n ident(x: usize) -> usize { x }
+                #[|fn ident(x: usize) -> usize { x }]#
             "##},
             "<A-p><A-;><A-p>",
             indoc! {r##"
                 #[|fn inc(x: usize) -> usize { x + 1 }]#
                 fn dec(x: usize) -> usize { x - 1 }
                 fn ident(x: usize) -> usize { x }
+            "##},
+        ),
+        // stops at last sibling
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                fn dec(x: usize) -> usize { x - 1 }
+                #[|f]#n ident(x: usize) -> usize { x }
+            "##},
+            "<A-p>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                fn dec(x: usize) -> usize { x - 1 }
+                #[|fn]# ident(x: usize) -> usize { x }
+            "##},
+        ),
+        // doesn't get stuck in node with one child
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { println("{x}"); #[for _ in 0..1 {}|]# x + 1 }
+            "##},
+            "<A-p>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { #[|println("{x}");]# for _ in 0..1 {} x + 1 }
             "##},
         ),
     ];
