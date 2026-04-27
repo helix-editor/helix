@@ -1427,6 +1427,19 @@ name = "bibtex"
 source = { git = "https://github.com/latex-lsp/tree-sitter-bibtex", rev = "ccfd77db0ed799b6c22c214fe9d2937f47bc8b34" }
 
 [[language]]
+name = "lateralus"
+scope = "source.lateralus"
+injection-regex = "lateralus|ltl"
+file-types = ["ltl"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "lateralus"
+source = { git = "https://github.com/bad-antics/tree-sitter-lateralus", rev = "bcb8e71caf7723bf2b8b0501521f2c19404cbeb3" }
+
+[[language]]
 name = "lean"
 scope = "source.lean"
 injection-regex = "lean"
