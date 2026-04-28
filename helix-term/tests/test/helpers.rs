@@ -279,6 +279,21 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
     Ok(temp_file)
 }
 
+pub fn temp_file_with_contents_and_ext<S: AsRef<str>>(
+    content: S,
+    ext: &str,
+) -> anyhow::Result<tempfile::NamedTempFile> {
+    let mut temp_file = tempfile::Builder::new().suffix(ext).tempfile()?;
+
+    temp_file
+        .as_file_mut()
+        .write_all(content.as_ref().as_bytes())?;
+
+    temp_file.flush()?;
+    temp_file.as_file_mut().sync_all()?;
+    Ok(temp_file)
+}
+
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
     Config {
@@ -354,6 +369,18 @@ impl AppBuilder {
             vec![helix_term::args::FileTarget {
                 position: pos.unwrap_or_default(),
                 section: None,
+            }],
+        );
+
+        self
+    }
+
+    pub fn with_file_section<P: Into<PathBuf>>(mut self, path: P, section: &str) -> Self {
+        self.args.files.insert(
+            path.into(),
+            vec![helix_term::args::FileTarget {
+                position: helix_core::Position::default(),
+                section: Some(section.to_string()),
             }],
         );
 
