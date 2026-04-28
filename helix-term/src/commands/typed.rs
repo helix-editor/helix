@@ -422,6 +422,19 @@ fn write_impl(
     Ok(())
 }
 
+fn trim_trailing_whitespace_cmd(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let (view, doc) = current!(cx.editor);
+    trim_trailing_whitespace(doc, view.id);
+    return Ok(());
+}
+
 /// Trim all whitespace preceding line-endings in a document.
 fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
@@ -3098,6 +3111,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["fmt"],
         doc: "Format the file using an external formatter or language server.",
         fun: format,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "trim-trailing-whitespace",
+        aliases: &[],
+        doc: "Trim trailing whitespace in document.",
+        fun: trim_trailing_whitespace_cmd,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),
