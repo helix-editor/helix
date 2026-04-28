@@ -432,7 +432,7 @@ fn trim_trailing_whitespace_cmd(
     }
     let (view, doc) = current!(cx.editor);
     trim_trailing_whitespace(doc, view.id);
-    return Ok(());
+    Ok(())
 }
 
 /// Trim all whitespace preceding line-endings in a document.
