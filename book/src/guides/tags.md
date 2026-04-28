@@ -19,6 +19,8 @@ The following [captures][tree-sitter-captures] are recognized:
 |---                     |
 | `definition.class`     |
 | `definition.constant`  |
+| `definition.enum`      |
+| `definition.field`     |
 | `definition.function`  |
 | `definition.interface` |
 | `definition.macro`     |

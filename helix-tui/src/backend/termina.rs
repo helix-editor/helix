@@ -9,6 +9,7 @@ use termina::{
     escape::{
         csi::{self, Csi, SgrAttributes, SgrModifiers},
         dcs::{self, Dcs},
+        osc::{self, Osc},
     },
     style::{CursorStyle, RgbColor},
     Event, OneBased, PlatformTerminal, Terminal as _, WindowSize,
@@ -52,6 +53,8 @@ struct Capabilities {
     synchronized_output: bool,
     true_color: bool,
     extended_underlines: bool,
+    /// OSC11 / OSC111 - change the terminal's background color.
+    dynamic_background_color: bool,
     theme_mode: Option<theme::Mode>,
 }
 
@@ -76,54 +79,18 @@ pub struct TerminaBackend {
     capabilities: Capabilities,
     reset_cursor_command: String,
     is_synchronized_output_set: bool,
+    /// The requested terminal background color, set in `Self::set_background_color`.
+    background_color: Option<RgbColor>,
+    /// The terminal emulator's background color. This is queried when claiming the terminal so
+    /// that custom colors set outside of Helix with OSC11 are restored when Helix exits.
+    original_background_color: Option<RgbColor>,
 }
 
 impl TerminaBackend {
     pub fn new(config: Config) -> io::Result<Self> {
-        let mut terminal = PlatformTerminal::new()?;
-        let (capabilities, reset_cursor_command) =
-            Self::detect_capabilities(&mut terminal, &config)?;
-
-        // In the case of a panic, reset the terminal eagerly. If we didn't do this and instead
-        // relied on `Drop`, the backtrace would be lost because it is printed before we would
-        // clear and exit the alternate screen.
-        let hook_reset_cursor_command = reset_cursor_command.clone();
-        terminal.set_panic_hook(move |term| {
-            let _ = write!(
-                term,
-                "{}{}{}{}{}{}{}{}{}{}{}",
-                Csi::Keyboard(csi::Keyboard::PopFlags(1)),
-                decreset!(MouseTracking),
-                decreset!(ButtonEventMouse),
-                decreset!(AnyEventMouse),
-                decreset!(RXVTMouse),
-                decreset!(SGRMouse),
-                &hook_reset_cursor_command,
-                decreset!(BracketedPaste),
-                decreset!(FocusTracking),
-                Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
-                decreset!(ClearAndEnableAlternateScreen),
-            );
-        });
-
-        Ok(Self {
-            terminal,
-            config,
-            capabilities,
-            reset_cursor_command,
-            is_synchronized_output_set: false,
-        })
-    }
-
-    pub fn terminal(&self) -> &PlatformTerminal {
-        &self.terminal
-    }
-
-    fn detect_capabilities(
-        terminal: &mut PlatformTerminal,
-        config: &Config,
-    ) -> io::Result<(Capabilities, String)> {
         use std::time::{Duration, Instant};
+
+        let mut terminal = PlatformTerminal::new()?;
 
         // Colibri "midnight"
         const TEST_COLOR: RgbColor = RgbColor::new(59, 34, 76);
@@ -131,7 +98,11 @@ impl TerminaBackend {
         terminal.enter_raw_mode()?;
 
         let mut capabilities = Capabilities::default();
+        let mut original_background_color = None;
         let start = Instant::now();
+
+        // HACK: emitting OSC11 / OSC111 seems to break SGR and cause flickering in tmux.
+        capabilities.dynamic_background_color = std::env::var_os("TMUX").is_none();
 
         capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
             KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
@@ -149,7 +120,7 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
@@ -162,6 +133,10 @@ impl TerminaBackend {
             Csi::Sgr(csi::Sgr::UnderlineColor(TEST_COLOR.into())),
             Dcs::Request(dcs::DcsRequest::GraphicRendition),
             Csi::Sgr(csi::Sgr::Reset),
+            Osc::ChangeDynamicColors(
+                osc::DynamicColorNumber::TextBackgroundColor,
+                vec![osc::ColorOrQuery::Query]
+            ),
             // Finally request the primary device attributes
             Csi::Device(csi::Device::RequestPrimaryDeviceAttributes),
         )?;
@@ -189,6 +164,14 @@ impl TerminaBackend {
                     }
                     Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
                         capabilities.theme_mode = Some(mode.into());
+                    }
+                    Event::Osc(Osc::ChangeDynamicColors(
+                        osc::DynamicColorNumber::TextBackgroundColor,
+                        colors,
+                    )) => {
+                        if let Some(osc::ColorOrQuery::Color(color)) = colors.first() {
+                            original_background_color = Some(*color);
+                        }
                     }
                     Event::Dcs(dcs::Dcs::Response {
                         value: dcs::DcsResponse::GraphicRendition(sgrs),
@@ -241,7 +224,42 @@ impl TerminaBackend {
 
         terminal.enter_cooked_mode()?;
 
-        Ok((capabilities, reset_cursor_command))
+        // In the case of a panic, reset the terminal eagerly. If we didn't do this and instead
+        // relied on `Drop`, the backtrace would be lost because it is printed before we would
+        // clear and exit the alternate screen.
+        let hook_reset_cursor_command = reset_cursor_command.clone();
+        terminal.set_panic_hook(move |term| {
+            let _ = write!(
+                term,
+                "{}{}{}{}{}{}{}{}{}{}{}{}",
+                Csi::Keyboard(csi::Keyboard::PopFlags(1)),
+                decreset!(MouseTracking),
+                decreset!(ButtonEventMouse),
+                decreset!(AnyEventMouse),
+                decreset!(RXVTMouse),
+                decreset!(SGRMouse),
+                &hook_reset_cursor_command,
+                decreset!(BracketedPaste),
+                decreset!(FocusTracking),
+                Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
+                Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
+                decreset!(ClearAndEnableAlternateScreen),
+            );
+        });
+
+        Ok(Self {
+            terminal,
+            config,
+            capabilities,
+            reset_cursor_command,
+            is_synchronized_output_set: false,
+            background_color: None,
+            original_background_color,
+        })
+    }
+
+    pub fn terminal(&self) -> &PlatformTerminal {
+        &self.terminal
     }
 
     fn enable_mouse_capture(&mut self) -> io::Result<()> {
@@ -272,6 +290,20 @@ impl TerminaBackend {
             )?;
         }
         Ok(())
+    }
+
+    fn reset_background_color(&mut self) -> io::Result<()> {
+        write!(
+            self.terminal,
+            "{}",
+            match self.original_background_color {
+                Some(color) => Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![color.into()]
+                ),
+                None => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
+            }
+        )
     }
 
     fn enable_extensions(&mut self) -> io::Result<()> {
@@ -390,6 +422,16 @@ impl Backend for TerminaBackend {
             // things like mosh are buggy. See <https://github.com/helix-editor/helix/pull/1944>.
             Csi::Edit(csi::Edit::EraseInDisplay(csi::EraseInDisplay::EraseDisplay)),
         )?;
+        if let Some(color) = self.background_color {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![color.into()]
+                )
+            )?;
+        }
         self.enable_mouse_capture()?;
         self.enable_extensions()?;
 
@@ -420,6 +462,9 @@ impl Backend for TerminaBackend {
             decreset!(FocusTracking),
             decreset!(ClearAndEnableAlternateScreen),
         )?;
+        if self.background_color.is_some() {
+            self.reset_background_color()?;
+        }
         self.terminal.flush()?;
         self.terminal.enter_cooked_mode()?;
         Ok(())
@@ -571,6 +616,28 @@ impl Backend for TerminaBackend {
     fn get_theme_mode(&self) -> Option<theme::Mode> {
         self.capabilities.theme_mode
     }
+
+    fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()> {
+        if !self.capabilities.dynamic_background_color {
+            return Ok(());
+        }
+        self.background_color = match color {
+            Some(Color::Rgb(r, g, b)) => Some(RgbColor::new(r, g, b)),
+            _ => None,
+        };
+        if let Some(color) = self.background_color {
+            write!(
+                self.terminal,
+                "{}",
+                Osc::ChangeDynamicColors(
+                    osc::DynamicColorNumber::TextBackgroundColor,
+                    vec![color.into()]
+                )
+            )
+        } else {
+            self.reset_background_color()
+        }
+    }
 }
 
 impl Drop for TerminaBackend {
@@ -588,6 +655,9 @@ impl Drop for TerminaBackend {
                 decreset!(FocusTracking),
                 decreset!(ClearAndEnableAlternateScreen),
             );
+            if self.background_color.is_some() {
+                let _ = self.reset_background_color();
+            }
             // NOTE: Drop for Platform terminal resets the mode and flushes the buffer when not
             // panicking.
         }

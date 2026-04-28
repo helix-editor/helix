@@ -32,9 +32,12 @@
 "type.builtin"              = "type"
 "type.enum.variant"         = "constant"
 "variable"                  = "variable"
+"variable.mutable"          = { fg = "variable", underline.style= "line" }
 "variable.builtin"          = "blue2"
+"variable.builtin.mutable"  = { fg = "blue2", underline.style= "line" }
 "variable.other.member"     = "variable"
 "variable.parameter"        = "variable"
+"variable.parameter.mutable" = { fg = "variable", underline.style= "line" }
 
 # MARKUP
 "markup.heading"       = { fg = "blue2", modifiers = ["bold"] }

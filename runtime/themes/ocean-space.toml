@@ -32,7 +32,7 @@
 "diff.delta" = "orange"
 
 "ui.background" = { bg = "bg" }
-"ui.cursor" = { bg = "selected" }
+"ui.cursor" = { bg = "cursor-light", fg = "bg" }
 "ui.cursor.primary" = { bg = "cursor", fg = "bg" }
 "ui.cursor.match" = { fg = "hot-pink", modifiers = ["bold"] }
 "ui.debug.breakpoint" = "red"
@@ -86,5 +86,6 @@ green = "#14b37d"
 bg = "#0f111a"
 bg-light = "#25293a"
 selected = "#414a5b"
-cursor = "#b4b4b4"
+cursor = "#d5d5d5"
+cursor-light = "#92969f"
 bar = "#00b491"

@@ -39,6 +39,8 @@ use super::Context;
 enum TagKind {
     Class,
     Constant,
+    Enum,
+    Field,
     Function,
     Interface,
     Macro,
@@ -53,6 +55,8 @@ impl TagKind {
         match self {
             Self::Class => "class",
             Self::Constant => "constant",
+            Self::Enum => "enum",
+            Self::Field => "field",
             Self::Function => "function",
             Self::Interface => "interface",
             Self::Macro => "macro",
@@ -67,6 +71,8 @@ impl TagKind {
         match name {
             "class" => Some(TagKind::Class),
             "constant" => Some(TagKind::Constant),
+            "enum" => Some(TagKind::Enum),
+            "field" => Some(TagKind::Field),
             "function" => Some(TagKind::Function),
             "interface" => Some(TagKind::Interface),
             "macro" => Some(TagKind::Macro),
