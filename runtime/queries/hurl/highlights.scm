@@ -23,7 +23,7 @@
 (quoted_string) @string
 (json_string) @string
 (file_value) @string.special.path
-(regex) @string.regex
+(regex) @string.regexp
 
 [
   "\\"

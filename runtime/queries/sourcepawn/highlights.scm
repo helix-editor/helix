@@ -200,10 +200,8 @@
 (float_literal) @constant.numeric.float
 (string_literal) @string
 (array_literal) @punctuation.bracket
-[
-  (bool_literal)
-  (null)
-] @constant.builtin
+(null) @constant.builtin
+(bool_literal) @constant.builtin.boolean
 ((identifier) @constant
   (#match? @constant "INVALID_HANDLE"))
 
