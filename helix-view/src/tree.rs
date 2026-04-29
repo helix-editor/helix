@@ -957,8 +957,7 @@ mod test {
 
         assert_eq!(10, tree.views().count());
         assert_eq!(
-            std::iter::repeat(7)
-                .take(9)
+            std::iter::repeat_n(7, 9)
                 .chain(Some(8)) // Rounding in `recalculate`.
                 .collect::<Vec<_>>(),
             tree.views()

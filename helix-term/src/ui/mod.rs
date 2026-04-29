@@ -9,6 +9,7 @@ pub mod overlay;
 pub mod picker;
 pub mod popup;
 pub mod prompt;
+mod select;
 mod spinner;
 mod statusline;
 mod text;
@@ -26,6 +27,7 @@ pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
+pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
@@ -39,6 +41,7 @@ use std::{error::Error, path::PathBuf};
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
+    is_symlink: bool,
 }
 
 impl AsRef<str> for Utf8PathBuf {
@@ -124,11 +127,13 @@ pub fn raw_regex_prompt(
                         false
                     };
 
+                    let is_crlf = doc!(cx.editor).line_ending == helix_core::LineEnding::Crlf;
                     match rope::RegexBuilder::new()
                         .syntax(
                             rope::Config::new()
                                 .case_insensitive(case_insensitive)
-                                .multi_line(true),
+                                .multi_line(true)
+                                .crlf(is_crlf),
                         )
                         .build(input)
                     {
@@ -254,7 +259,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .build()
         .filter_map(move |entry| {
             let entry = entry.ok()?;
-            if !entry.file_type()?.is_file() {
+            if !entry.path().is_file() {
                 return None;
             }
             let path = entry.into_path();
@@ -396,10 +401,9 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
         .filter_map(|entry| {
             entry
                 .map(|entry| {
-                    let is_dir = entry
-                        .file_type()
-                        .is_some_and(|file_type| file_type.is_dir());
-                    let mut path = entry.path().to_path_buf();
+                    let path = entry.path();
+                    let is_dir = path.is_dir();
+                    let mut path = path.to_path_buf();
                     if is_dir && path != root && config.file_explorer.flatten_dirs {
                         while let Some(single_child_directory) = get_child_if_single_dir(&path) {
                             path = single_child_directory;
@@ -424,8 +428,9 @@ fn directory_content(root: &Path, editor: &Editor) -> Result<Vec<(PathBuf, bool)
 fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
     let mut entries = path.read_dir().ok()?;
     let entry = entries.next()?.ok()?;
-    if entries.next().is_none() && entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
-        Some(entry.path())
+    let entry_path = entry.path();
+    if entries.next().is_none() && entry_path.is_dir() {
+        Some(entry_path)
     } else {
         None
     }
@@ -545,9 +550,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::AcceptIncomplete
             } else {
                 FileMatch::Accept
@@ -596,9 +599,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-            if is_dir {
+            if entry.path().is_dir() {
                 FileMatch::Accept
             } else {
                 FileMatch::Reject
@@ -677,9 +678,10 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
                     let path = entry.path();
+                    let is_dir = path.is_dir();
+                    let file_type = entry.file_type();
+                    let is_symlink = file_type.is_some_and(|ft| ft.is_symlink());
                     let mut path = if is_tilde {
                         // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
                         // one of the directories the tilde will be replaced with a valid path not with a relative
@@ -696,15 +698,22 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Utf8PathBuf { path, is_dir })
+                    Some(Utf8PathBuf {
+                        path,
+                        is_dir,
+                        is_symlink,
+                    })
                 })
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
         let directory_color = editor.theme.get("ui.text.directory");
+        let symlink_color = editor.theme.get("ui.text.symlink");
 
         let style_from_file = |file: Utf8PathBuf| {
-            if file.is_dir {
+            if file.is_symlink {
+                Span::styled(file.path, symlink_color)
+            } else if file.is_dir {
                 Span::styled(file.path, directory_color)
             } else {
                 Span::raw(file.path)
@@ -755,8 +764,8 @@ pub mod completers {
                 .flatten()
                 .filter_map(|res| {
                     let entry = res.ok()?;
-                    let metadata = entry.metadata().ok()?;
-                    if metadata.is_file() || metadata.is_symlink() {
+                    let file_type = entry.file_type().ok()?;
+                    if file_type.is_file() || file_type.is_symlink() {
                         entry.file_name().into_string().ok()
                     } else {
                         None

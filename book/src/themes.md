@@ -33,14 +33,20 @@ Where `key` represents what you want to style, `fg` specifies the foreground col
 To specify only the foreground color:
 
 ```toml
+# Valid hex-color format is `#RGB` or `#RRGGBB`
+# (each letter is a nibble)
 key = "#ffffff"
 ```
 
 If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
 
 ```toml
-"key.key" = "#ffffff"
+"key.key" = "#fff"
 ```
+
+Color values must be either a [CSS hex RGB string](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/hex-color) or a name declared in the [`palette`](#color-palettes).
+
+> 💡 Note that Helix doesn't support transparency (alpha channel).
 
 For inspiration, you can find the default `theme.toml`
 [here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
@@ -199,8 +205,11 @@ We use a similar set of scopes as
   - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
+  - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
+    - `mutable` - Mutable language variables (e.g. `mut self` in Rust)
   - `parameter` - Function parameters
+    - `mutable` - Mutable function parameters (e.g. marked with `mut` in Rust)
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
@@ -240,7 +249,8 @@ We use a similar set of scopes as
 
 - `namespace`
 
-- `special` - `derive` in Rust, etc.
+- `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
+See also [#2380]
 
 - `markup`
   - `heading`
@@ -330,6 +340,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.text.directory`               | Directory names in prompt completion                                                           |
+| `ui.text.symlink`                 | Symlink names in prompt completion                                                             |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
@@ -363,3 +374,4 @@ These scopes are used for theming the editor interface:
 | `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
+[#2380]: https://github.com/helix-editor/helix/issues/2380

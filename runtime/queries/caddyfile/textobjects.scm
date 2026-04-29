@@ -13,4 +13,4 @@
 (named_route
   (block) @class.inside) @class.around
 
-(site_definition (block) @class.inside) @class.around
+(site_block (block) @class.inside) @class.around

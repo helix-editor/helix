@@ -407,7 +407,7 @@ blue-green = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using
 # aura dark soft/dim
 purple = "#8464c6"
 purple-dimmer = "#7B57C2" # increased saturation??
-purple-selection = "#3d375e7f"
+purple-selection = "#3d375e"
 purple-selection-solid = "#29263c"
 blue-aqua = "#47ace8" # currently used for types, a pretty standard blue for classes..
 green-aqua = "#54c59f" # used for constants/literals, not the prettiest, but it fits the aqua sea feelin' of the overall theme.. maybe can try bogster's green
@@ -427,7 +427,7 @@ red-error = "#c55858" # error, looks great when blinking, like red flashing like
 white-stone = "#bdbdbd" # variable, has a dim tinge of dirty stone to it
 # white-stone-yellow-tinge = "#BAB195" # just added a little saturation, but it feels less readable :/
 gray-stone = "#6d6d6d" # comment, similar to white, but desaturated/grayed out, now a sort of dirty blonde; i didn't like it at first, but then became amazing once dimmed!!
-  # gray-stone-dimmed = "#6d6d6d80" # 80 = 50%, 40 = 25%
+  # gray-stone-dimmed = "#6d6d6d" # 80 = 50%, 40 = 25%
 gray-stone-lighter = "#7d7d7d" # used for comments with the dim modifier; 9d9d9d dimmed seems slightly brighter than gray-stone undimmed.. 7d7d7d is out of the way, 858585 forces eyes to read it, vs 8d8d8d?
   # TODO: alpha doesn't seem to affect these, only dim works..
 # bg = "#121016" # black, was accent28, slightly darker
@@ -436,7 +436,7 @@ bg = "#15141b" # was "black", quite dark.. high-contrast
 # bg = "#211D26" # a darker raisin black, was accent39, seems like a nice alternative
 # bg = "#2d2b38" # raisin black, was accent30. much much lighter, tougher to see on transparent backgrounds
 
-purple-pleasant = "#a394f033" # great comfy purp for ui, should be main color, used for text (in .txt files) and strings and ui, was accent17 (with 33 alpha) as TODO: secondary selection and accent18 (with 00 alpha)
+purple-pleasant = "#a394f0" # great comfy purp for ui, should be main color, used for text (in .txt files) and strings and ui, was accent17 (with 33 alpha) as TODO: secondary selection and accent18 (with 00 alpha)
   # NOTE: still use this with dim modifer to make a color even dimmer than purple-pleasant-dimmer
 purple-pleasant-dimmer = "#9889E4" # switch to using this as main text.. along with pink-dimmer
 
@@ -450,15 +450,15 @@ marker13 = "#2d2d2d" # a barely visible gray
 
 # others scraped from aura
 cyan = "#82e2ff" # seems like noctis's cyan.. also sticks out too much.., just used for cursor match..
-# purple14 = "#af8aff7f" # light purple TODO: try it
-# purple-pleasant-opaque = "#a394f000" # purple-pleasant with 00 alpha (opaque?), was accent18
+# purple14 = "#af8aff" # light purple TODO: try it
+# purple-pleasant-opaque = "#a394f0" # purple-pleasant with 00 alpha (opaque?), was accent18
   # NOTE: doesn't seem to make a difference..
 # accent4 = "#9dff65" # bright green
 orange-brighter = "#ffca85" # brighter than noctis's orange, beautiful, was accent31
-# green-aqua-darker = "#3ea7847f" # was accent19
+# green-aqua-darker = "#3ea784" # was accent19
 # gray-purple = "#4d466e" # was accent22, english violet, too dark to read, almost charcoal.. perhaps used for grayed out text like for auto-suggestions? too dark for even inactive tabs..
 # accent25 = "#49c29a" # mint green, seems very close to green-aqua
-# accent26 = "#00d89023" # emerald green, slightly brighter than the above, when without alpha
+# accent26 = "#00d890" # emerald green, slightly brighter than the above, when without alpha
 # TODO: untested colors below..
 # accent36 = "#a19c77" # debugging background
 # accent37 = "#353424" # breakpoint frame highlight

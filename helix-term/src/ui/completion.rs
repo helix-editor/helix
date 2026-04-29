@@ -76,7 +76,7 @@ impl menu::Item for CompletionItem {
                         // digit hex code at the end for the color. The extra 1 digit is for the '#'
                         text.get(text.len().checked_sub(7)?..)
                     })
-                    .and_then(Color::from_hex)
+                    .and_then(|c| Color::from_hex(c).ok())
                     .map_or("color".into(), |color| {
                         Spans::from(vec![
                             Span::raw("color "),

@@ -35,6 +35,7 @@ pub struct Menu<T: Item> {
     size: (u16, u16),
     viewport: (u16, u16),
     recalculate: bool,
+    auto_close: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -59,6 +60,7 @@ impl<T: Item> Menu<T> {
             size: (0, 0),
             viewport: (0, 0),
             recalculate: true,
+            auto_close: false,
         }
     }
 
@@ -102,11 +104,34 @@ impl<T: Item> Menu<T> {
         self.adjust_scroll();
     }
 
+    pub fn move_half_page_up(&mut self) {
+        let len = self.matches.len();
+        let max_index = len.saturating_sub((self.size.1 as usize / 2).max(1));
+        let pos = self.cursor.map_or(max_index, |i| (i + max_index) % len) % len;
+        self.cursor = Some(pos);
+        self.adjust_scroll();
+    }
+
     pub fn move_down(&mut self) {
         let len = self.matches.len();
         let pos = self.cursor.map_or(0, |i| i + 1) % len;
         self.cursor = Some(pos);
         self.adjust_scroll();
+    }
+
+    pub fn move_half_page_down(&mut self) {
+        let len = self.matches.len();
+        let pos = self
+            .cursor
+            .map_or(0, |i| i + (self.size.1 as usize / 2).max(1))
+            % len;
+        self.cursor = Some(pos);
+        self.adjust_scroll();
+    }
+
+    pub fn auto_close(mut self, auto_close: bool) -> Self {
+        self.auto_close = auto_close;
+        self
     }
 
     fn recalculate_size(&mut self, viewport: (u16, u16)) {
@@ -251,6 +276,18 @@ impl<T: Item + 'static> Component for Menu<T> {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
+            key!(PageUp) | ctrl!('u') => {
+                // page up moves back in the completion choice (including updating the doc)
+                self.move_half_page_up();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                return EventResult::Consumed(None);
+            }
+            key!(PageDown) | ctrl!('d') => {
+                // page down advances completion choice (including updating the doc)
+                self.move_half_page_down();
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
+                return EventResult::Consumed(None);
+            }
             key!(Enter) => {
                 if let Some(selection) = self.selection() {
                     (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
@@ -272,6 +309,10 @@ impl<T: Item + 'static> Component for Menu<T> {
             // enter confirms the match and closes the menu
             // typing filters the menu
             // if we run out of options the menu closes itself
+            _ if self.auto_close => {
+                (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
+                return EventResult::Consumed(close_fn);
+            }
             _ => (),
         }
         // for some events, we want to process them but send ignore, specifically all input except

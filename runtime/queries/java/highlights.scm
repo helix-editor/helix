@@ -82,8 +82,8 @@
 [
   (true)
   (false)
-  (null_literal)
-] @constant.builtin
+] @constant.builtin.boolean
+(null_literal) @constant.builtin
 
 (line_comment) @comment
 (block_comment) @comment
@@ -184,7 +184,6 @@
   "extends"
   "final"
   "finally"
-  "for"
   "if"
   "implements"
   "import"
@@ -218,7 +217,11 @@
   "try"
   "uses"
   "volatile"
-  "while"
   "with"
   "yield"
 ] @keyword
+
+[
+  "while"
+  "for"
+] @keyword.control.repeat

@@ -51,7 +51,7 @@
 
 "ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
 "ui.selection" = { "bg" = "selection" }
-"ui.selection.primary" = { "bg" = "#625D8860" }
+"ui.selection.primary" = { "bg" = "#625D88" }
 "ui.linenr" = { fg = "#696292" }
 "ui.linenr.selected" = { fg = "#27264B" }
 "ui.cursorline.primary" = { bg = "#887ced" }
@@ -90,7 +90,7 @@
 [palette]
 background = "#1e1c3f"
 widget = "#222246"
-selection = "#5D408989"
+selection = "#5D4089"
 cursor = "#7EA7FB"
 status_bg = "#171530"
 status_fg = "#5D5988"

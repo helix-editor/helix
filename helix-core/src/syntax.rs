@@ -1086,7 +1086,7 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
 }
 
 fn node_is_visible(node: &Node) -> bool {
-    node.is_missing() || (node.is_named() && node.grammar().node_kind_is_visible(node.kind_id()))
+    node.is_named() && node.grammar().node_kind_is_visible(node.kind_id())
 }
 
 fn format_anonymous_node_kind(kind: &str) -> Cow<'_, str> {

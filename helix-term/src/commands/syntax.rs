@@ -39,10 +39,13 @@ use super::Context;
 enum TagKind {
     Class,
     Constant,
+    Enum,
+    Field,
     Function,
     Interface,
     Macro,
     Module,
+    Section,
     Struct,
     Type,
 }
@@ -52,10 +55,13 @@ impl TagKind {
         match self {
             Self::Class => "class",
             Self::Constant => "constant",
+            Self::Enum => "enum",
+            Self::Field => "field",
             Self::Function => "function",
             Self::Interface => "interface",
             Self::Macro => "macro",
             Self::Module => "module",
+            Self::Section => "section",
             Self::Struct => "struct",
             Self::Type => "type",
         }
@@ -65,10 +71,13 @@ impl TagKind {
         match name {
             "class" => Some(TagKind::Class),
             "constant" => Some(TagKind::Constant),
+            "enum" => Some(TagKind::Enum),
+            "field" => Some(TagKind::Field),
             "function" => Some(TagKind::Function),
             "interface" => Some(TagKind::Interface),
             "macro" => Some(TagKind::Macro),
             "module" => Some(TagKind::Module),
+            "section" => Some(TagKind::Section),
             "struct" => Some(TagKind::Struct),
             "type" => Some(TagKind::Type),
             _ => None,
@@ -335,11 +344,9 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                         Ok(entry) => entry,
                         Err(_) => return WalkState::Continue,
                     };
-                    match entry.file_type() {
-                        Some(entry) if entry.is_file() => {}
-                        // skip everything else
-                        _ => return WalkState::Continue,
-                    };
+                    if !entry.path().is_file() {
+                        return WalkState::Continue;
+                    }
                     let path = entry.path();
                     // If this document is open, skip it because we've already processed it above.
                     if documents.contains(path) {

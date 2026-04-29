@@ -3,9 +3,8 @@
 // Upstream implementation: https://github.com/paritytech/jsonrpc/tree/38af3c9439aa75481805edf6c05c6622a5ab1e70/core/src/types
 // Changes from upstream:
 // * unused functions (almost all non-trait-implementation functions) have been removed
-// * `#[serde(deny_unknown_fields)]` annotations have been removed on response types
-//   for compatibility with non-strict language server implementations like Ruby Sorbet
-//   (see https://github.com/helix-editor/helix/issues/2786)
+// * `#[serde(deny_unknown_fields)]` annotations have been removed on types for compatibility.
+//   (For examples https://github.com/helix-editor/helix/issues/2786, https://github.com/helix-editor/helix/issues/15078)
 // * some variable names have been lengthened for readability
 
 use serde::de::{self, DeserializeOwned, Visitor};
@@ -224,7 +223,6 @@ impl From<Params> for Value {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct MethodCall {
     pub jsonrpc: Option<Version>,
     pub method: String,
@@ -234,7 +232,6 @@ pub struct MethodCall {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct Notification {
     pub jsonrpc: Option<Version>,
     pub method: String,
@@ -437,7 +434,7 @@ fn success_output_deserialize() {
 
 #[test]
 fn success_output_deserialize_with_extra_fields() {
-    use serde_json;
+    use serde_json::{self, json};
 
     // https://github.com/helix-editor/helix/issues/2786
     let dso = r#"{"jsonrpc":"2.0","result":1,"id":1,"requestMethod":"initialize"}"#;
@@ -450,5 +447,21 @@ fn success_output_deserialize_with_extra_fields() {
             result: Value::from(1),
             id: Id::Num(1)
         })
+    );
+
+    // https://github.com/helix-editor/helix/issues/15078
+    let json = r#"{"traceparent":"00-84b1954eb787286f09bf07937689f8cb-5f78c8b6ed6bc71a-00","jsonrpc":"2.0","method":"window/logMessage","params":{"type":5,"message":"Initialized"}}"#;
+    assert_eq!(
+        serde_json::from_str::<Notification>(json).unwrap(),
+        Notification {
+            jsonrpc: Some(Version::V2),
+            method: "window/logMessage".to_owned(),
+            params: Params::Map(
+                json!({"type":5,"message":"Initialized"})
+                    .as_object()
+                    .unwrap()
+                    .clone()
+            ),
+        }
     );
 }

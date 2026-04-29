@@ -32,7 +32,7 @@ variable = { fg = "white" }
 "murkup.heading" = { bg = "white" }
 
 "diff.delta" = { fg = "beige" }
-"diff.minus" = { fg = "#FF808015" }
+"diff.minus" = { fg = "#FF8080" }
 "diff.plus" = { fg = "bright-green" }
 
 string = { fg = "bright-green" }
@@ -114,8 +114,8 @@ beige = "#ffc799"
 black = "#101010"
 dim-gray = "#505050"
 dark-gray = "#1C1C1C"
-bright-green = "#99FFE415"
+bright-green = "#99FFE4"
 
 cursor = "#aeafad"
-comment = "#8b8b8b94"
+comment = "#8b8b8b"
 bg-selection = "#666666"

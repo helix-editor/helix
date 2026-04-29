@@ -8,8 +8,8 @@ inherits = "modus_operandi"
 
 "constant.character.escape" = "magenta"
 "comment" = "yellow-cooler"
-"function" = "magenta"
-"tag" = "magenta"
+"function" = "yellow-warmer"
+"tag" = "blue-cooler"
 
 "ui.cursor" = { fg = "bg-main", bg = "blue-intense" }
 "ui.cursor.primary.normal" = { fg = "bg-main", bg = "blue-intense" }

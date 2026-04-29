@@ -98,6 +98,7 @@
  (true)
  (false)
 ] @constant.builtin.boolean
+(nil) @constant.builtin
 
 [
   "pub"
@@ -106,7 +107,6 @@
   "defer"
   "unsafe"
   "sql"
-  (nil)
   (none)
 ] @keyword
 
@@ -159,7 +159,7 @@
 
 [
   "fn"
-] @keyword.control.function
+] @keyword.function
 
 
 [

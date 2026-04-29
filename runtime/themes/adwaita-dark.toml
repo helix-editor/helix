@@ -20,7 +20,7 @@
 "comment" = "dark_2"
 
 "variable" = "light_4"
-"variable.parameter" = "orange_2"
+"variable.parameter" = "light_4"
 "variable.builtin" = "orange_2"
 "variable.other" = "teal_2"
 "variable.other.member" = "teal_2"
@@ -69,26 +69,30 @@
 "ui.cursor.select" = { fg = "libadwaita_dark", bg = "light_5" }
 "ui.cursor.match" = { fg = "libadwaita_dark", bg = "blue_2" }
 "ui.cursor.primary" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.cursor.primary.normal" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.cursor.primary.insert" = { fg = "libadwaita_dark", bg = "teal_4" }
+"ui.cursor.primary.select" = { fg = "libadwaita_dark", bg = "blue_4" }
 "ui.linenr" = "dark_2"
-"ui.linenr.selected" = { fg = "light_7", bg = "libadwaita_dark_alt", modifiers = [
-  "bold",
-] }
+"ui.linenr.selected" = { fg = "light_7", modifiers = ["bold"] }
 "ui.statusline" = { fg = "light_4", bg = "libadwaita_dark_alt" }
-"ui.statusline.inactive" = { fg = "light_4", bg = "libadwaita_dark_alt" }
-"ui.statusline.insert" = { fg = "light_4", bg = "teal_4" }
-"ui.statusline.select" = { fg = "light_4", bg = "blue_4" }
-"ui.popup" = { bg = "libadwaita_popup" }
+"ui.statusline.inactive" = { fg = "light_7", bg = "libadwaita_dark_alt" }
+"ui.statusline.normal" = { fg = "libadwaita_dark", bg = "light_7" }
+"ui.statusline.insert" = { fg = "libadwaita_dark", bg = "teal_4" }
+"ui.statusline.select" = { fg = "libadwaita_dark", bg = "blue_4" }
+"ui.popup" = { fg = "light_4", bg = "libadwaita_popup" }
 "ui.window" = "split_and_borders"
-"ui.help" = { bg = "libadwaita_dark_alt" }
+"ui.help" = { fg = "light_4", bg = "libadwaita_dark_alt" }
 "ui.text" = "light_4"
 "ui.virtual" = "dark_1"
 "ui.virtual.ruler" = { bg = "libadwaita_popup"}
+"ui.virtual.jump-label" = { fg = "libadwaita_dark", bg = "light_4" }
 "ui.menu" = { fg = "light_4", bg = "libadwaita_popup" }
 "ui.menu.selected" = { fg = "light_4", bg = "blue_5" }
 "ui.menu.scroll" = { fg = "light_7", bg = "dark_3" }
 "ui.selection" = { bg = "blue_7" }
 "ui.selection.primary" = { bg = "blue_7" }
 "ui.cursorline.primary" = { bg = "libadwaita_dark_alt" }
+"ui.virtual.whitespace" = "dark_2"
 
 "warning" = "yellow_2"
 "error" = "red_4"
@@ -106,6 +110,7 @@
 "ui.bufferline.active" = { fg = "light_4", bg = "libadwaita_dark_alt" }
 
 [palette]
+blue_0 = "#d3e4f9"
 blue_1 = "#99C1F1"
 blue_2 = "#62A0EA"
 blue_3 = "#3584E4"
@@ -133,7 +138,7 @@ green_4 = "#2EC27E"
 green_5 = "#26A269"
 green_6 = "#1F7F56"
 green_7 = "#1C6849"
-libadwaita_dark = "#1d1d20"
+libadwaita_dark = "#1c1c1f"
 libadwaita_dark_alt = "#28282c"
 libadwaita_popup = "#36363a"
 light_1 = "#FFFFFF"

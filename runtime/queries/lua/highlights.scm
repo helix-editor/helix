@@ -53,6 +53,7 @@
 [
  "in"
  "local"
+ "global"
  (break_statement)
  "goto"
 ] @keyword

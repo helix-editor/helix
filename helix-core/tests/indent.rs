@@ -222,7 +222,7 @@ fn test_treesitter_indent(
             .unwrap()
             .to_string(&indent_style, tab_width);
             assert!(
-                line.get_slice(..pos).map_or(false, |s| s == suggested_indent),
+                line.get_slice(..pos).is_some_and(|s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",
                 test_name,
                 i+1,

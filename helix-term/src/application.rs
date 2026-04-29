@@ -124,7 +124,7 @@ impl Application {
         let backend = TestBackend::new(120, 150);
 
         let theme_mode = backend.get_theme_mode();
-        let terminal = Terminal::new(backend)?;
+        let mut terminal = Terminal::new(backend)?;
         let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
@@ -138,12 +138,7 @@ impl Application {
             })),
             handlers,
         );
-        Self::load_configured_theme(
-            &mut editor,
-            &config.load(),
-            terminal.backend().supports_true_color(),
-            theme_mode,
-        );
+        Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -395,6 +390,15 @@ impl Application {
                 };
                 self.config.store(Arc::new(app_config));
             }
+            ConfigEvent::ThemeChanged => {
+                let _ = self.terminal.backend_mut().set_background_color(
+                    self.editor
+                        .theme
+                        .try_get_exact("ui.background")
+                        .and_then(|style| style.bg),
+                );
+                return;
+            }
         }
 
         // Update all the relevant members in the editor after updating
@@ -417,12 +421,12 @@ impl Application {
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader()?;
+            let lang_loader = helix_core::config::user_lang_loader(default_config.editor.insecure)?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,
                 &default_config,
-                self.terminal.backend().supports_true_color(),
+                &mut self.terminal,
                 self.theme_mode,
             );
 
@@ -460,10 +464,12 @@ impl Application {
     fn load_configured_theme(
         editor: &mut Editor,
         config: &Config,
-        terminal_true_color: bool,
+        terminal: &mut Terminal,
         mode: Option<theme::Mode>,
     ) {
-        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
+        let true_color = terminal.backend().supports_true_color()
+            || config.editor.true_color
+            || crate::true_color();
         let theme = config
             .theme
             .as_ref()
@@ -490,7 +496,7 @@ impl Application {
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
-        editor.set_theme(theme);
+        let _ = editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -717,11 +723,12 @@ impl Application {
             }) => false,
             #[cfg(not(windows))]
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
+                self.theme_mode = Some(mode.into());
                 Self::load_configured_theme(
                     &mut self.editor,
                     &self.config.load(),
-                    self.terminal.backend().supports_true_color(),
-                    Some(mode.into()),
+                    &mut self.terminal,
+                    self.theme_mode,
                 );
                 true
             }
@@ -744,6 +751,8 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
+            #[cfg(not(windows))]
+            event if event.is_escape() => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
@@ -829,15 +838,7 @@ impl Application {
                         );
                     }
                     Notification::ShowMessage(params) => {
-                        if self.config.load().editor.lsp.display_messages {
-                            match params.typ {
-                                lsp::MessageType::ERROR => self.editor.set_error(params.message),
-                                lsp::MessageType::WARNING => {
-                                    self.editor.set_warning(params.message)
-                                }
-                                _ => self.editor.set_status(params.message),
-                            }
-                        }
+                        self.handle_show_message(params.typ, params.message);
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -1125,6 +1126,42 @@ impl Application {
 
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::ShowMessageRequest(params)) => {
+                        if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
+                            let id = id.clone();
+                            let select = ui::Select::new(
+                                params.message,
+                                actions,
+                                (),
+                                move |editor, action, event| {
+                                    let reply = match event {
+                                        ui::PromptEvent::Update => return,
+                                        ui::PromptEvent::Validate => Some(action.clone()),
+                                        ui::PromptEvent::Abort => None,
+                                    };
+                                    if let Some(language_server) =
+                                        editor.language_server_by_id(server_id)
+                                    {
+                                        if let Err(err) =
+                                            language_server.reply(id.clone(), Ok(json!(reply)))
+                                        {
+                                            log::error!(
+                                                "Failed to send reply to server '{}' request {id}: {err}",
+                                                language_server.name()
+                                            );
+                                        }
+                                    }
+                                },
+                            );
+                            self.compositor
+                                .replace_or_push("lsp-show-message-request", select);
+                            // Avoid sending a reply. The `Select` callback above sends the reply.
+                            return;
+                        } else {
+                            self.handle_show_message(params.typ, params.message);
+                            Ok(serde_json::Value::Null)
+                        }
+                    }
                 };
 
                 let language_server = language_server!();
@@ -1136,6 +1173,16 @@ impl Application {
                 }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
+        }
+    }
+
+    fn handle_show_message(&mut self, message_type: lsp::MessageType, message: String) {
+        if self.config.load().editor.lsp.display_messages {
+            match message_type {
+                lsp::MessageType::ERROR => self.editor.set_error(message),
+                lsp::MessageType::WARNING => self.editor.set_warning(message),
+                _ => self.editor.set_status(message),
+            }
         }
     }
 
@@ -1300,5 +1347,12 @@ impl Application {
         }
 
         errs
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
+        self.title.as_str().into()
     }
 }
