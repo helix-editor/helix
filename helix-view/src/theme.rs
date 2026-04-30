@@ -51,59 +51,36 @@ impl From<termina::escape::csi::ThemeMode> for Mode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Config {
-    light: String,
-    dark: String,
-    /// A theme to choose when the terminal did not declare either light or dark mode.
-    /// When not specified the dark theme is preferred.
-    fallback: Option<String>,
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+pub enum Config {
+    Constant(String),
+    Adaptive {
+        light: String,
+        dark: String,
+        /// A theme to choose when the terminal did not declare either light or dark mode.
+        /// When not specified the dark theme is preferred.
+        fallback: Option<String>,
+    },
 }
 
 impl Config {
     pub fn choose(&self, preference: Option<Mode>) -> &str {
-        match preference {
-            Some(Mode::Light) => &self.light,
-            Some(Mode::Dark) => &self.dark,
-            None => self.fallback.as_ref().unwrap_or(&self.dark),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Config {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
-        enum InnerConfig {
-            Constant(String),
-            Adaptive {
-                dark: String,
-                light: String,
-                fallback: Option<String>,
-            },
-        }
-
-        let inner = InnerConfig::deserialize(deserializer)?;
-
-        let (light, dark, fallback) = match inner {
-            InnerConfig::Constant(theme) => (theme.clone(), theme.clone(), None),
-            InnerConfig::Adaptive {
+        match self {
+            Config::Constant(theme) => theme,
+            Config::Adaptive {
                 light,
                 dark,
                 fallback,
-            } => (light, dark, fallback),
-        };
-
-        Ok(Self {
-            light,
-            dark,
-            fallback,
-        })
+            } => match preference {
+                Some(Mode::Light) => light,
+                Some(Mode::Dark) => dark,
+                None => fallback.as_ref().unwrap_or(dark),
+            },
+        }
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
