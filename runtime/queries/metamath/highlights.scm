@@ -14,25 +14,25 @@
 [ "|-" "wff" "setvar" "class" ] @type.builtin
 
 ; Labels
-(floatingstmt (label) @function)
-(essentialstmt (label) @function)
-(axiomstmt (label) @function.definition)
-(provablestmt (label) @function.definition)
+(floating_stmt (label) @function)
+(essential_stmt (label) @function)
+(axiom_stmt (label) @function.definition)
+(provable_stmt (label) @function.definition)
 
 ; Types
 (typecode) @type
 
 ; Variables and constants in declarations
-(constantstmt (constant) @constant)
-(variablestmt (variable) @variable)
+(constant_stmt (constant) @constant)
+(variable_stmt (variable) @variable)
 
 ; Math symbols
 (mathsymbol) @variable
 
 ; Proofs
-(uncompressedproof (label) @function.call)
-(compressedproof (label) @function.call)
-(compressedproofblock) @string
+(uncompressed_proof (label) @function.call)
+(compressed_proof (label) @function.call)
+(compressed_proof_block) @string
 
 ; Comments
 (comment) @comment.block

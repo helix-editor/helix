@@ -3,24 +3,24 @@
 (database) @local.scope
 
 ; Definitions
-(floatingstmt
+(floating_stmt
   (label) @local.definition)
 
-(essentialstmt
+(essential_stmt
   (label) @local.definition)
 
-(axiomstmt
+(axiom_stmt
   (label) @local.definition)
 
-(provablestmt
+(provable_stmt
   (label) @local.definition)
 
-(variablestmt
+(variable_stmt
   (variable) @local.definition)
 
-(constantstmt
+(constant_stmt
   (constant) @local.definition)
 
 ; References in proofs
-(uncompressedproof
+(uncompressed_proof
   (label) @local.reference)

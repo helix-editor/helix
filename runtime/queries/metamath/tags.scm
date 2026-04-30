@@ -1,19 +1,19 @@
 ; Axioms
-(axiomstmt
+(axiom_stmt
   (label) @name) @definition.function
 
 ; Provable theorems
-(provablestmt
+(provable_stmt
   (label) @name) @definition.function
 
 ; Floating hypotheses
-(floatingstmt
+(floating_stmt
   (label) @name) @definition.variable
 
 ; Essential hypotheses
-(essentialstmt
+(essential_stmt
   (label) @name) @definition.variable
 
 ; References in proofs
-(uncompressedproof
+(uncompressed_proof
   (label) @name) @reference.call
