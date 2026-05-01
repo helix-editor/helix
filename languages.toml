@@ -5524,6 +5524,15 @@ indent = { tab-width = 2, unit = "  " }
 text-width = 80
 language-servers = [ "mm-lsp-server" ]
 
+[language.auto-pairs]
+"$" = "$"
+"(" = ")"
+"[" = "]"
+"{" = "}"
+"<" = ">"
+'"' = '"'
+"`" = "`"
+
 [[grammar]]
 name = "metamath"
 source = { git = "https://github.com/POPeeeDev/tree-sitter-metamath", rev = "TODO" }
