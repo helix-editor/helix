@@ -3,6 +3,7 @@
 //!
 //! All positioning is done via `char` offsets into the buffer.
 use crate::{
+    Assoc, ChangeSet, RopeSlice,
     graphemes::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
@@ -10,11 +11,10 @@ use crate::{
     line_ending::get_line_ending,
     movement::Direction,
     tree_sitter::Node,
-    Assoc, ChangeSet, RopeSlice,
 };
 use helix_stdx::range::is_subset;
 use helix_stdx::rope::{self, RopeSliceExt};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use std::{borrow::Cow, iter, slice};
 
 /// A single selection range.
@@ -861,6 +861,7 @@ pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Re
 
         let sel_start = sel.from();
         let sel_end = sel.to();
+        let sub_result_start = result.len();
         let mut start = sel_start;
 
         for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
@@ -872,6 +873,16 @@ pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Re
 
         if start < sel_end {
             result.push(Range::new(start, sel_end));
+        }
+
+        // Drop a leading zero-width range produced by a regex anchor (e.g. `^`)
+        // matching at the beginning of the sub-selection, but only if there are
+        // other ranges left for this sub-selection — we always need to leave
+        // at least one range behind.
+        if result.len() > sub_result_start + 1
+            && result[sub_result_start] == Range::point(sel_start)
+        {
+            result.remove(sub_result_start);
         }
     }
 
@@ -1353,29 +1364,52 @@ mod test {
         assert_eq!(
             result.ranges(),
             &[
-                // TODO: rather than this behavior, maybe we want it
-                // to be based on which side is the anchor?
-                //
-                // We get a leading zero-width range when there's
-                // a leading match because ranges are inclusive on
-                // the left.  Imagine, for example, if the entire
-                // selection range were matched: you'd still want
-                // at least one range to remain after the split.
-                Range::new(0, 0),
+                // A leading match no longer produces a leading zero-width
+                // range when there are other ranges to fall back on. We
+                // still preserve the invariant that each sub-selection
+                // contributes at least one range (see the dedicated test
+                // below for the degenerate case).
                 Range::new(1, 5),
                 Range::new(6, 9),
                 Range::new(11, 13),
                 Range::new(16, 19),
-                // In contrast to the comment above, there is no
-                // _trailing_ zero-width range despite the trailing
-                // match, because ranges are exclusive on the right.
+                // There is no trailing zero-width range despite the
+                // trailing match, because ranges are exclusive on the right.
             ]
         );
 
         assert_eq!(
             result.fragments(text.slice(..)).collect::<Vec<_>>(),
-            &["", "abcd", "efg", "rs", "xyz"]
+            &["abcd", "efg", "rs", "xyz"]
         );
+    }
+
+    #[test]
+    fn test_split_on_matches_leading_anchor() {
+        // Regression for #3850: a regex matching at the very start of the
+        // selection (e.g. an anchor like `^`, or a literal that happens to be
+        // first) used to produce a leading zero-width range.
+        let text = Rope::from("| | | |");
+        let selection = Selection::single(0, text.len_chars());
+        let result = split_on_matches(
+            text.slice(..),
+            &selection,
+            &rope::Regex::new(r"\|").unwrap(),
+        );
+        assert_eq!(
+            result.fragments(text.slice(..)).collect::<Vec<_>>(),
+            &[" ", " ", " "]
+        );
+    }
+
+    #[test]
+    fn test_split_on_matches_full_match_keeps_one() {
+        // When the whole sub-selection matches the regex, we still need to
+        // leave one range behind so the selection remains valid.
+        let text = Rope::from(",");
+        let selection = Selection::single(0, text.len_chars());
+        let result = split_on_matches(text.slice(..), &selection, &rope::Regex::new(r",").unwrap());
+        assert_eq!(result.ranges(), &[Range::point(0)]);
     }
 
     #[test]
