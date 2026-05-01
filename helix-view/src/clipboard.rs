@@ -135,12 +135,35 @@ mod external {
             use helix_stdx::env::{binary_exists, env_var_is_set};
 
             fn is_exit_success(program: &str, args: &[&str]) -> bool {
-                std::process::Command::new(program)
+                use std::process::{Command, Stdio};
+                use std::time::{Duration, Instant};
+
+                let Ok(mut child) = Command::new(program)
                     .args(args)
-                    .output()
-                    .ok()
-                    .and_then(|out| out.status.success().then_some(()))
-                    .is_some()
+                    .stdin(Stdio::null())
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                else {
+                    return false;
+                };
+
+                // Bound the wait so that a hung clipboard helper (e.g. xsel
+                // probing a missing X server under WSL) can't stall startup.
+                // See https://github.com/helix-editor/helix/issues/3655.
+                let deadline = Instant::now() + Duration::from_millis(500);
+                loop {
+                    match child.try_wait() {
+                        Ok(Some(status)) => return status.success(),
+                        Ok(None) if Instant::now() >= deadline => {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                            return false;
+                        }
+                        Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+                        Err(_) => return false,
+                    }
+                }
             }
 
             if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get") {
