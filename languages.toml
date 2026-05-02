@@ -5535,4 +5535,4 @@ language-servers = [ "mm-lsp-server" ]
 
 [[grammar]]
 name = "metamath"
-source = { git = "https://github.com/POPeeeDev/tree-sitter-metamath", rev = "TODO" }
+source = { git = "https://git.sr.ht/~m4dh0rs3/tree-sitter-metamath", rev = "d6a57b0ddb4feba4a88f8cbb2f497b718e0c5c1d" }
