@@ -1048,6 +1048,30 @@
 ;;
 (define Event? helix.components.Event?)
 
+(provide focus-gained-event?)
+;;@doc
+;;Checks if the given event is a focus gained event.
+;;
+;;```scheme
+;;(focus-gained-event? event) -> bool?
+;;```
+;;
+;;* event : Event?
+;;
+(define focus-gained-event? helix.components.focus-gained-event?)
+
+(provide focus-lost-event?)
+;;@doc
+;;Checks if the given event is a focus lost event.
+;;
+;;```scheme
+;;(focus-lost-event? event) -> bool?
+;;```
+;;
+;;* event : Event?
+;;
+(define focus-lost-event? helix.components.focus-lost-event?)
+
 (provide paste-event?)
 ;;@doc
 ;;Checks if the given event is a paste event.

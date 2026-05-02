@@ -441,6 +441,12 @@ pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
         )
         .register_fn("style", Style::default)
         .register_fn("Event?", |value: SteelVal| Event::as_ref(&value).is_ok())
+        .register_fn("focus-gained-event?", |event: Event| {
+            matches!(event, Event::FocusGained)
+        })
+        .register_fn("focus-lost-event?", |event: Event| {
+            matches!(event, Event::FocusLost)
+        })
         .register_fn("paste-event?", |event: Event| {
             matches!(event, Event::Paste(_))
         })
