@@ -87,15 +87,23 @@ pub mod tasks {
         println!("----------------------------");
         println!("Warming up `forge`...");
 
-        std::process::Command::new("forge")
+        let forge = std::process::Command::new("forge")
             .args(["pkg", "refresh"])
             .spawn()
             .unwrap()
-            .wait()
-            .unwrap();
+            .wait();
 
-        println!("Done.");
-        println!("----------------------------");
+        match forge {
+            Ok(_) => {
+                println!("Done.");
+                println!("----------------------------");
+            }
+            Err(e) => {
+                println!("Error calling forge !!! Make sure that ~/.cargo/bin or $CARGO_HOME/bin are loaded into the path.");
+                println!("----------------------------");
+                panic!("{:?}", e)
+            }
+        }
 
         code_gen();
 
