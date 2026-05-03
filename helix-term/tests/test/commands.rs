@@ -910,7 +910,10 @@ async fn test_open_file_with_section_fragment() -> anyhow::Result<()> {
         .primary()
         .cursor_line(doc.text().slice(..));
 
-    assert_eq!(cursor_line, 8, "cursor should be on the Installation heading");
+    assert_eq!(
+        cursor_line, 8,
+        "cursor should be on the Installation heading"
+    );
 
     Ok(())
 }
