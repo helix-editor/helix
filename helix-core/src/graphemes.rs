@@ -1,6 +1,7 @@
 //! Utility functions to traverse the unicode graphemes of a `Rope`'s text contents.
 //!
 //! Based on <https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs>
+use helix_stdx::hint::likely;
 use ropey::{str_utils::byte_to_char_idx, RopeSlice};
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 use unicode_width::UnicodeWidthStr;
@@ -93,9 +94,10 @@ impl Display for Grapheme<'_> {
     }
 }
 
+#[inline]
 #[must_use]
 pub fn grapheme_width(g: &str) -> usize {
-    if g.as_bytes()[0] <= 127 {
+    if likely(g.as_bytes()[0] <= 127) {
         // Fast-path ascii.
         // Point 1: theoretically, ascii control characters should have zero
         // width, but in our case we actually want them to have width: if they
