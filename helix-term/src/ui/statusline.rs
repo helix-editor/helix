@@ -1,6 +1,7 @@
 use helix_core::indent::IndentStyle;
 use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
+use helix_stdx::hint::cold_path;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -265,33 +266,37 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     use helix_core::diagnostic::Severity;
-    let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
-        (0u32, 0u32, 0u32, 0u32),
-        |mut counts, (diag, _)| {
-            match diag.severity {
-                // PERF: For large workspace diagnostics, this loop can be very tight.
-                //
-                // Most often the diagnostics will be for warnings and errors.
-                // Errors should tend to be fixed fast, leaving warnings as the most common.
-                Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
-                Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
-                Some(DiagnosticSeverity::HINT) => counts.0 += 1,
-                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
-                // Fallback to `hint`.
-                _ => counts.0 += 1,
+    let mut hints = 0;
+    let mut info = 0;
+    let mut warnings = 0;
+    let mut errors = 0;
+
+    for (diagnostic, _) in context.editor.diagnostics.values().flatten() {
+        match diagnostic.severity {
+            // PERF: For large workspace diagnostics, this loop can be very tight.
+            //
+            // Most often the diagnostics will be for warnings and errors.
+            // Errors should tend to be fixed fast, leaving warnings as the most common.
+            Some(DiagnosticSeverity::WARNING) => warnings += 1,
+            Some(DiagnosticSeverity::ERROR) => errors += 1,
+            Some(DiagnosticSeverity::HINT) => hints += 1,
+            Some(DiagnosticSeverity::INFORMATION) => info += 1,
+            // Fallback to `hint`.
+            _ => {
+                cold_path();
+                hints += 1;
             }
-            counts
-        },
-    );
+        }
+    }
 
     let sevs_to_show = &context.editor.config().statusline.workspace_diagnostics;
 
     // Avoid showing the " W " if no diagnostic counts will be shown.
     if !sevs_to_show.iter().any(|sev| match sev {
-        Severity::Hint => hints != 0,
-        Severity::Info => info != 0,
         Severity::Warning => warnings != 0,
         Severity::Error => errors != 0,
+        Severity::Hint => hints != 0,
+        Severity::Info => info != 0,
     }) {
         return;
     }
@@ -300,14 +305,6 @@ where
 
     for sev in sevs_to_show {
         match sev {
-            Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
-                write(context, format!(" {} ", hints).into());
-            }
-            Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
-                write(context, format!(" {} ", info).into());
-            }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
@@ -321,6 +318,14 @@ where
                     Span::styled("●", context.editor.theme.get("error")),
                 );
                 write(context, format!(" {} ", errors).into());
+            }
+            Severity::Hint if hints > 0 => {
+                write(context, Span::styled("●", context.editor.theme.get("hint")));
+                write(context, format!(" {} ", hints).into());
+            }
+            Severity::Info if info > 0 => {
+                write(context, Span::styled("●", context.editor.theme.get("info")));
+                write(context, format!(" {} ", info).into());
             }
             _ => {}
         }
