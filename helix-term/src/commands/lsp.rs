@@ -811,7 +811,8 @@ pub fn code_action(cx: &mut Context) {
                         }
                     }
                 }
-            });
+            })
+            .close_by_id("code-action");
             picker.move_down(); // pre-select the first item
 
             let popup = Popup::new("code-action", picker)

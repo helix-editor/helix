@@ -40,7 +40,7 @@ pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
     } else {
         workspaces.insert(path.clone());
     }
-    let select = select();
+    let select = select().with_id(ID);
     compositor.replace_or_push(ID, select);
 }
 
