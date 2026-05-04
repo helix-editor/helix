@@ -47,6 +47,8 @@ pub struct Prompt {
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
     language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
+    /// Cached first history completion to avoid repeated expensive reads (e.g., clipboard registers)
+    cached_suggestion: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -103,6 +105,7 @@ impl Prompt {
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
             language: None,
+            cached_suggestion: None,
         }
     }
 
@@ -121,6 +124,8 @@ impl Prompt {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
+        // Clear cached suggestion since line is no longer empty
+        self.cached_suggestion = None;
         self.recalculate_completion(editor);
     }
 
@@ -523,7 +528,13 @@ impl Prompt {
         if self.line.is_empty() {
             self.anchor = 0;
             // Show the most recently entered value as a suggestion.
-            if let Some(suggestion) = self.first_history_completion(cx.editor) {
+            // Cache it to avoid repeated expensive reads (e.g., clipboard registers)
+            if self.cached_suggestion.is_none() {
+                self.cached_suggestion = self
+                    .first_history_completion(cx.editor)
+                    .map(|s| s.into_owned());
+            }
+            if let Some(ref suggestion) = self.cached_suggestion {
                 surface.set_string(
                     self.line_area.x,
                     self.line_area.y,
@@ -531,7 +542,10 @@ impl Prompt {
                     suggestion_color,
                 );
             }
-        } else if let Some((language, loader)) = self.language.as_ref() {
+        } else {
+            // Line is not empty, clear the cached suggestion
+            self.cached_suggestion = None;
+            if let Some((language, loader)) = self.language.as_ref() {
             let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
                 &self.line,
                 language,
@@ -598,6 +612,7 @@ impl Prompt {
                 line_width,
                 |_| prompt_color,
             );
+            }
         }
     }
 }
