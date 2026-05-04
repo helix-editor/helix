@@ -4836,7 +4836,7 @@ file-types = ["ink"]
 injection-regex = "ink"
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/"}
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 2, unit = "  " }
 soft-wrap = { enable = true }
 
 [[grammar]]
