@@ -18,6 +18,8 @@
 ;; * 'on-mode-switch
 ;; * 'post-insert-char
 ;; * 'post-command
+;; * 'terminal-focus-gained
+;; * 'terminal-focus-lost
 ;; * 'document-focus-lost
 ;; * 'selection-did-change
 ;; * 'document-opened
@@ -54,6 +56,24 @@
 ;; ```scheme
 ;; (register-hook 'post-command
 ;;                (lambda (command-name) (log::info! command-name)))
+;; ```
+;;
+;; ## terminal-focus-gained
+;;
+;; Expects a function with no arguments.
+;;
+;; ```scheme
+;; (register-hook 'terminal-focus-gained
+;;                (lambda () (log::info! "terminal focus gained")))
+;; ```
+;;
+;; ## terminal-focus-lost
+;;
+;; Expects a function with no arguments.
+;;
+;; ```scheme
+;; (register-hook 'terminal-focus-lost
+;;                (lambda () (log::info! "terminal focus lost")))
 ;; ```
 ;;
 ;; ## document-focus-lost

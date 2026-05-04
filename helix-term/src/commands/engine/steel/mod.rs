@@ -78,7 +78,7 @@ use crate::{
     commands::{insert, TYPABLE_COMMAND_LIST},
     compositor::{self, Component, Compositor},
     config::Config,
-    events::{OnModeSwitch, PostCommand, PostInsertChar},
+    events::{OnModeSwitch, PostCommand, PostInsertChar, TerminalFocusGained, TerminalFocusLost},
     job::{self, Callback, Jobs},
     keymap::{self, merge_keys, KeyTrie, KeymapResult, MappableCommand},
     ui::{self, picker::PathOrId, PickerColumn, Popup, Prompt, PromptEvent},
@@ -3312,6 +3312,8 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         "post-insert-char" => register_post_insert_char(generation, rooted),
         // Register hook - on save?
         "post-command" => register_post_command(generation, rooted),
+        "terminal-focus-gained" => register_terminal_focus_gained(generation, rooted),
+        "terminal-focus-lost" => register_terminal_focus_lost(generation, rooted),
         "document-focus-lost" => register_document_focus_lost(generation, rooted),
         "selection-did-change" => register_selection_did_change(generation, rooted),
         "document-opened" => register_document_opened(generation, rooted),
@@ -3536,6 +3538,30 @@ fn register_on_mode_switch(
             &mut [minimized_event.into_steelval().unwrap()],
         );
 
+        Ok(())
+    });
+
+    Ok(SteelVal::Void).into()
+}
+
+fn register_terminal_focus_gained(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut TerminalFocusGained<'_, '_>| {
+        generation_call_with_args(generation, event.cx, rooted.value().clone(), &mut []);
+        Ok(())
+    });
+
+    Ok(SteelVal::Void).into()
+}
+
+fn register_terminal_focus_lost(
+    generation: usize,
+    rooted: RootedSteelVal,
+) -> steel::UnRecoverableResult {
+    register_hook!(move |event: &mut TerminalFocusLost<'_, '_>| {
+        generation_call_with_args(generation, event.cx, rooted.value().clone(), &mut []);
         Ok(())
     });
 

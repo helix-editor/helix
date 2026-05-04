@@ -1,7 +1,7 @@
 use crate::{
     commands::{self, engine::ScriptingEngine, OnKeyCallback, OnKeyCallbackKind},
     compositor::{Component, Context, Event, EventResult},
-    events::{OnModeSwitch, PostCommand},
+    events::{OnModeSwitch, PostCommand, TerminalFocusGained, TerminalFocusLost},
     handlers::completion::CompletionItem,
     key,
     keymap::{KeymapResult, Keymaps},
@@ -1580,10 +1580,12 @@ impl Component for EditorView {
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
+                helix_event::dispatch(TerminalFocusGained { cx: &mut cx });
                 self.terminal_focused = true;
                 EventResult::Consumed(None)
             }
             Event::FocusLost => {
+                helix_event::dispatch(TerminalFocusLost { cx: &mut cx });
                 if context.editor.config().auto_save.focus_lost {
                     let options = commands::WriteAllOptions {
                         force: false,
