@@ -368,6 +368,26 @@ fn apply_offset(line: u32, offset: i64) -> u32 {
     result.clamp(0, u32::MAX as i64) as u32
 }
 
+/// Side of the session that holds `source`, but only when `source` and `dest`
+/// are paired partners in the same `DiffSession`. Returns `None` when no
+/// session contains `source`, or when `source`'s partner is some other view.
+///
+/// This is the gating predicate for cursor-sync writes: returning a side
+/// authorizes the caller to write to `dest`'s selection. Returning `None`
+/// means the caller must skip - either no session pairs them, or the session
+/// has changed shape since the focus event arrived.
+pub fn paired_side(sessions: &[DiffSession], source: ViewId, dest: ViewId) -> Option<DiffSide> {
+    sessions
+        .iter()
+        .find(|s| s.contains_view(source))
+        .and_then(|s| {
+            if s.partner_view(source) != Some(dest) {
+                return None;
+            }
+            s.side_for_view(source)
+        })
+}
+
 /// Returns an iterator over hunks whose range on `side` intersects any of the given line
 /// ranges. Line ranges are (start_line, end_line) pairs (inclusive, 0-indexed).
 ///
@@ -1079,6 +1099,83 @@ mod tests {
             // B loses (2 + 3) = 5 lines.
             25,
         );
+    }
+
+    // --- paired_side gating tests (D's cursor-sync predicate) ---
+
+    #[test]
+    fn paired_side_returns_source_side_when_views_are_partners() {
+        let (view_a, view_b) = make_view_ids();
+        let session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        let sessions = vec![session];
+
+        // Source on side A, partner on side B: returns A.
+        assert_eq!(paired_side(&sessions, view_a, view_b), Some(DiffSide::A));
+        // Reverse direction also resolves.
+        assert_eq!(paired_side(&sessions, view_b, view_a), Some(DiffSide::B));
+    }
+
+    #[test]
+    fn paired_side_returns_none_when_dest_is_not_partner() {
+        // AB4: two sessions exist, but source and dest are in different ones.
+        let mut sm: slotmap::SlotMap<ViewId, ()> = slotmap::SlotMap::with_key();
+        let view_a = sm.insert(());
+        let view_b = sm.insert(());
+        let view_c = sm.insert(());
+        let view_d = sm.insert(());
+
+        let sessions = vec![
+            DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2)),
+            DiffSession::new(view_c, view_d, make_doc_id(3), make_doc_id(4)),
+        ];
+
+        // view_a's partner is view_b, not view_c. Cross-session sync is denied.
+        assert_eq!(paired_side(&sessions, view_a, view_c), None);
+        assert_eq!(paired_side(&sessions, view_a, view_d), None);
+        assert_eq!(paired_side(&sessions, view_c, view_a), None);
+    }
+
+    #[test]
+    fn paired_side_returns_none_when_source_is_not_in_any_session() {
+        // Source view exists but is not a member of any session. No write.
+        // All three IDs come from the same slotmap so they really are
+        // distinct: keys from different slotmaps can collide on the integer.
+        let mut sm: slotmap::SlotMap<ViewId, ()> = slotmap::SlotMap::with_key();
+        let view_a = sm.insert(());
+        let view_b = sm.insert(());
+        let outsider = sm.insert(());
+
+        let sessions = vec![DiffSession::new(
+            view_a,
+            view_b,
+            make_doc_id(1),
+            make_doc_id(2),
+        )];
+        assert_eq!(paired_side(&sessions, outsider, view_a), None);
+        assert_eq!(paired_side(&sessions, outsider, view_b), None);
+    }
+
+    #[test]
+    fn paired_side_returns_none_when_no_sessions_exist() {
+        let (view_a, view_b) = make_view_ids();
+        let sessions: Vec<DiffSession> = vec![];
+        assert_eq!(paired_side(&sessions, view_a, view_b), None);
+    }
+
+    #[test]
+    fn paired_side_returns_none_when_source_equals_dest() {
+        // Defensive: a focus event from a view to itself shouldn't sync.
+        // partner_view returns the other view, never self, so source==dest
+        // always falls into the "not partner" branch.
+        let (view_a, view_b) = make_view_ids();
+        let sessions = vec![DiffSession::new(
+            view_a,
+            view_b,
+            make_doc_id(1),
+            make_doc_id(2),
+        )];
+        assert_eq!(paired_side(&sessions, view_a, view_a), None);
+        assert_eq!(paired_side(&sessions, view_b, view_b), None);
     }
 
     // --- map_line / map_to_real_line tests ---
