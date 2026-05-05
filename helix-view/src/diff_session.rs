@@ -285,6 +285,88 @@ impl DiffSession {
             None
         }
     }
+
+    /// Map a line on `from_side` to its corresponding position on the partner side.
+    ///
+    /// Walks the hunk list once with a running offset (sum of `other_len - my_len`
+    /// for hunks fully above the input line):
+    ///
+    /// - Outside any hunk: 1:1 with the running offset applied.
+    /// - Inside a hunk where the partner has lines: clamp the within-hunk offset
+    ///   to `other_range.end - 1` so an asymmetric replace doesn't run past the
+    ///   partner's last line.
+    /// - Inside a hunk where the partner is empty (deletion-on-partner): return
+    ///   [`MappedLine::Filler`] anchored at `other_range.start - 1`. The partner
+    ///   has no real line for this position.
+    ///
+    /// All arithmetic uses saturating ops so `u32::MAX` and other adversarial
+    /// inputs don't panic.
+    pub fn map_line(&self, from_side: DiffSide, line: u32) -> MappedLine {
+        let mut offset: i64 = 0;
+        for hunk in self.hunks.iter() {
+            let (my_range, other_range) = match from_side {
+                DiffSide::A => (hunk.before.clone(), hunk.after.clone()),
+                DiffSide::B => (hunk.after.clone(), hunk.before.clone()),
+            };
+
+            if line < my_range.start {
+                return MappedLine::Real(apply_offset(line, offset));
+            }
+
+            // `line < my_range.end` only when my_range is non-empty (else
+            // start == end and the previous branch already handled it).
+            if line < my_range.end {
+                if other_range.is_empty() {
+                    return MappedLine::Filler {
+                        after: other_range.start.saturating_sub(1),
+                    };
+                }
+                let within_offset = line.saturating_sub(my_range.start);
+                let other_last = other_range
+                    .end
+                    .saturating_sub(other_range.start)
+                    .saturating_sub(1);
+                let clamped = within_offset.min(other_last);
+                return MappedLine::Real(other_range.start.saturating_add(clamped));
+            }
+
+            let my_len = my_range.end as i64 - my_range.start as i64;
+            let other_len = other_range.end as i64 - other_range.start as i64;
+            offset += other_len - my_len;
+        }
+
+        MappedLine::Real(apply_offset(line, offset))
+    }
+
+    /// Map a line and clamp the result to the partner document's line count.
+    ///
+    /// Filler positions collapse to the line they sit after. Useful for cursor
+    /// placement, where a real partner line is always required.
+    pub fn map_to_real_line(&self, from_side: DiffSide, line: u32, partner_line_count: u32) -> u32 {
+        let last = partner_line_count.saturating_sub(1);
+        let mapped = match self.map_line(from_side, line) {
+            MappedLine::Real(n) => n,
+            MappedLine::Filler { after } => after,
+        };
+        mapped.min(last)
+    }
+}
+
+/// Result of [`DiffSession::map_line`]. The partner side may have a real line at
+/// the mapped position, or only a filler if the input lands inside a deletion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MappedLine {
+    /// The partner has a real line at this index.
+    Real(u32),
+    /// The partner has no line for the input position; conceptually the input
+    /// sits in a filler row just after partner line `after`.
+    Filler { after: u32 },
+}
+
+/// Apply a signed offset to a line index, saturating at the `u32` bounds.
+fn apply_offset(line: u32, offset: i64) -> u32 {
+    let result = line as i64 + offset;
+    result.clamp(0, u32::MAX as i64) as u32
 }
 
 /// Returns an iterator over hunks whose range on `side` intersects any of the given line
@@ -906,6 +988,141 @@ mod tests {
             assert_eq!(align_a.filler_lines_at(line), 0);
             assert_eq!(align_b.filler_lines_at(line), 0);
         }
+    }
+
+    // --- map_line / map_to_real_line tests ---
+
+    fn session_with_hunks(pairs: &[(Range<u32>, Range<u32>)]) -> DiffSession {
+        let mut session = make_session();
+        session.hunks = make_hunks(pairs);
+        session
+    }
+
+    #[test]
+    fn map_line_identical_files_is_identity() {
+        // M1: With no hunks the mapping is 1:1 in both directions.
+        let session = session_with_hunks(&[]);
+        for line in [0u32, 5, 100] {
+            assert_eq!(session.map_line(DiffSide::A, line), MappedLine::Real(line));
+            assert_eq!(session.map_line(DiffSide::B, line), MappedLine::Real(line));
+        }
+    }
+
+    #[test]
+    fn map_line_pure_insert_on_partner_shifts_lines_after_hunk() {
+        // M2: side A has no lines for the hunk, side B inserts 3 lines at row 5.
+        // Lines on A before row 5 are unchanged on B; lines at/after row 5 shift +3.
+        let session = session_with_hunks(&[(5..5, 5..8)]);
+
+        // Before the insert: 1:1.
+        assert_eq!(session.map_line(DiffSide::A, 0), MappedLine::Real(0));
+        assert_eq!(session.map_line(DiffSide::A, 4), MappedLine::Real(4));
+
+        // After the insert: shift by other_len - my_len = 3.
+        assert_eq!(session.map_line(DiffSide::A, 5), MappedLine::Real(8));
+        assert_eq!(session.map_line(DiffSide::A, 10), MappedLine::Real(13));
+    }
+
+    #[test]
+    fn map_line_pure_delete_on_partner_yields_filler() {
+        // M3: side A has 2 lines (3..5) that side B doesn't have. From A's perspective
+        // those lines have no real partner row, so map_line returns Filler.
+        let session = session_with_hunks(&[(3..5, 3..3)]);
+
+        // Before the delete: 1:1.
+        assert_eq!(session.map_line(DiffSide::A, 0), MappedLine::Real(0));
+        assert_eq!(session.map_line(DiffSide::A, 2), MappedLine::Real(2));
+
+        // Inside the deleted range (no partner row): Filler anchored at start - 1.
+        assert_eq!(
+            session.map_line(DiffSide::A, 3),
+            MappedLine::Filler { after: 2 }
+        );
+        assert_eq!(
+            session.map_line(DiffSide::A, 4),
+            MappedLine::Filler { after: 2 }
+        );
+
+        // After the delete: shift by -2 (other_len 0 - my_len 2).
+        assert_eq!(session.map_line(DiffSide::A, 5), MappedLine::Real(3));
+        assert_eq!(session.map_line(DiffSide::A, 10), MappedLine::Real(8));
+    }
+
+    #[test]
+    fn map_line_pure_delete_filler_anchors_at_zero_when_at_file_start() {
+        // Edge: deletion at line 0; saturating_sub keeps `after` at 0.
+        let session = session_with_hunks(&[(0..2, 0..0)]);
+        assert_eq!(
+            session.map_line(DiffSide::A, 0),
+            MappedLine::Filler { after: 0 }
+        );
+        assert_eq!(
+            session.map_line(DiffSide::A, 1),
+            MappedLine::Filler { after: 0 }
+        );
+    }
+
+    #[test]
+    fn map_line_multiple_delete_only_hunks_accumulate_offset() {
+        // M4: archseer's repro shape - several deletion-only hunks at increasing
+        // positions. After each, the running offset shrinks by the deletion size.
+        let session = session_with_hunks(&[
+            (3..5, 3..3),     // delete 2 lines on B
+            (10..12, 8..8),   // delete 2 more
+            (20..21, 16..16), // delete 1 more
+        ]);
+
+        // After the third hunk: cumulative offset is -5 (lost 5 lines on B).
+        assert_eq!(session.map_line(DiffSide::A, 30), MappedLine::Real(25));
+
+        // Between hunks the offset reflects only the previous deletions.
+        assert_eq!(session.map_line(DiffSide::A, 6), MappedLine::Real(4));
+        assert_eq!(session.map_line(DiffSide::A, 13), MappedLine::Real(9));
+    }
+
+    #[test]
+    fn map_line_asymmetric_replace_clamps_within_hunk_offset() {
+        // M5: side A has 3 lines (5..8), side B has 5 lines (5..10).
+        // Within the hunk, A row 5 -> B row 5, A row 6 -> B row 6, A row 7 -> B row 7
+        // (clamped to other_range.end - 1 = 9, but 7 is below that anyway).
+        let session = session_with_hunks(&[(5..8, 5..10)]);
+        assert_eq!(session.map_line(DiffSide::A, 5), MappedLine::Real(5));
+        assert_eq!(session.map_line(DiffSide::A, 6), MappedLine::Real(6));
+        assert_eq!(session.map_line(DiffSide::A, 7), MappedLine::Real(7));
+
+        // Reverse: B has more lines; B row 5..10 maps onto A row 5..8 with clamp.
+        assert_eq!(session.map_line(DiffSide::B, 5), MappedLine::Real(5));
+        assert_eq!(session.map_line(DiffSide::B, 6), MappedLine::Real(6));
+        assert_eq!(session.map_line(DiffSide::B, 7), MappedLine::Real(7));
+        assert_eq!(session.map_line(DiffSide::B, 8), MappedLine::Real(7)); // clamped
+        assert_eq!(session.map_line(DiffSide::B, 9), MappedLine::Real(7)); // clamped
+    }
+
+    #[test]
+    fn map_to_real_line_clamps_to_partner_line_count() {
+        // M6: a row that maps past the partner doc's last line is clamped, no panic.
+        let session = session_with_hunks(&[]);
+        // Partner has 3 lines (indices 0..2). Asking for line 100 returns last line.
+        assert_eq!(session.map_to_real_line(DiffSide::A, 100, 3), 2);
+
+        // Even with partner_line_count = 0, we return 0 instead of underflowing.
+        assert_eq!(session.map_to_real_line(DiffSide::A, 5, 0), 0);
+
+        // Filler positions also clamp.
+        let session = session_with_hunks(&[(3..5, 3..3)]);
+        assert_eq!(session.map_to_real_line(DiffSide::A, 3, 1), 0);
+    }
+
+    #[test]
+    fn map_line_does_not_panic_on_extreme_inputs() {
+        // M7: u32::MAX as an input must not panic.
+        let session = session_with_hunks(&[(3..5, 3..3)]);
+        let result = session.map_line(DiffSide::A, u32::MAX);
+        // Past all hunks, offset is -2; result is u32::MAX - 2.
+        assert_eq!(result, MappedLine::Real(u32::MAX - 2));
+
+        // map_to_real_line clamps to the partner's last line.
+        assert_eq!(session.map_to_real_line(DiffSide::A, u32::MAX, 10), 9);
     }
 
     // --- find_next_hunk / find_prev_hunk tests ---
