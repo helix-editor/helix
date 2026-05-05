@@ -16,6 +16,7 @@ pub mod ui;
 use std::env::var_os;
 
 use std::path::Path;
+use std::process::Stdio;
 
 use futures_util::Future;
 mod handlers;
@@ -79,9 +80,25 @@ fn open_external_url_callback(
     async {
         for cmd in commands {
             let mut command: tokio::process::Command = cmd.into();
-            if command.status().await.is_ok() {
+            command.stdin(Stdio::null());
+            let output = match command.output().await {
+                Ok(output) => output,
+                Err(err) => {
+                    log::debug!("Failed to launch external URL opener: {err}");
+                    continue;
+                }
+            };
+            if output.status.success() {
                 return Ok(job::Callback::Editor(Box::new(|_| {})));
             }
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            log::warn!(
+                "External URL opener exited with status {}. stdout: {:?}, stderr: {:?}",
+                output.status,
+                stdout.trim(),
+                stderr.trim()
+            );
         }
         Ok(job::Callback::Editor(Box::new(move |editor| {
             editor.set_error("Opening URL in external program failed")
