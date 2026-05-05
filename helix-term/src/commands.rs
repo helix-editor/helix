@@ -4290,26 +4290,21 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 
         if let Some((hunks, is_side_a)) = session_info {
             let count = count as usize;
+            let side = if is_side_a {
+                helix_view::diff_session::DiffSide::A
+            } else {
+                helix_view::diff_session::DiffSide::B
+            };
             let selection = doc.selection(view.id).clone().transform(|range| {
                 let cursor_line = range.cursor_line(doc_text) as u32;
                 let hunk_idx = match direction {
                     Direction::Forward => {
-                        let base = hunks.iter().position(|h| {
-                            let r = if is_side_a { &h.before } else { &h.after };
-                            if r.is_empty() {
-                                r.start >= cursor_line
-                            } else {
-                                r.end > cursor_line
-                            }
-                        });
-                        base.map(|idx| (idx + count).min(hunks.len().saturating_sub(1)))
+                        helix_view::diff_session::find_next_hunk(&hunks, side, cursor_line)
+                            .map(|idx| (idx + count).min(hunks.len().saturating_sub(1)))
                     }
                     Direction::Backward => {
-                        let base = hunks.iter().rposition(|h| {
-                            let r = if is_side_a { &h.before } else { &h.after };
-                            r.start < cursor_line
-                        });
-                        base.map(|idx| idx.saturating_sub(count))
+                        helix_view::diff_session::find_prev_hunk(&hunks, side, cursor_line)
+                            .map(|idx| idx.saturating_sub(count))
                     }
                 };
                 let Some(hunk_idx) = hunk_idx else {

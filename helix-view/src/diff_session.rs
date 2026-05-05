@@ -312,6 +312,46 @@ fn hunks_intersecting<'a>(
     })
 }
 
+/// Index of the first hunk strictly after `cursor_line` on `side`.
+///
+/// "Strictly after" means: if the cursor sits inside or at the start of a
+/// hunk, that hunk is skipped. This matches `helix-vcs`'s `next_hunk` and is
+/// the predicate behind `]g` when a `DiffSession` is active. Returns `None`
+/// when no later hunk exists.
+///
+/// Empty ranges (deletions on this side) are handled by the same predicate:
+/// the deletion's filler renders between line `start - 1` and `start`, so a
+/// cursor at line `start` is already past the filler and the deletion should
+/// not match.
+pub fn find_next_hunk(hunks: &[Hunk], side: DiffSide, cursor_line: u32) -> Option<usize> {
+    hunks.iter().position(|h| {
+        let r = match side {
+            DiffSide::A => &h.before,
+            DiffSide::B => &h.after,
+        };
+        r.start > cursor_line
+    })
+}
+
+/// Index of the last hunk strictly before `cursor_line` on `side`.
+///
+/// Symmetric to [`find_next_hunk`]: a cursor inside or at the end of a hunk
+/// skips that hunk. Used by `[g` when a `DiffSession` is active. Returns
+/// `None` when no earlier hunk exists.
+pub fn find_prev_hunk(hunks: &[Hunk], side: DiffSide, cursor_line: u32) -> Option<usize> {
+    hunks.iter().rposition(|h| {
+        let r = match side {
+            DiffSide::A => &h.before,
+            DiffSide::B => &h.after,
+        };
+        if r.is_empty() {
+            r.start < cursor_line
+        } else {
+            r.end <= cursor_line
+        }
+    })
+}
+
 /// Build a transaction on `curr_text` that replaces content at hunks under `line_ranges`
 /// with content from `partner_text`. This is the `:diffget` operation: pull from partner.
 /// Returns `(transaction, number_of_changes)`.
@@ -866,6 +906,108 @@ mod tests {
             assert_eq!(align_a.filler_lines_at(line), 0);
             assert_eq!(align_b.filler_lines_at(line), 0);
         }
+    }
+
+    // --- find_next_hunk / find_prev_hunk tests ---
+
+    #[test]
+    fn find_next_hunk_advances_when_cursor_inside_hunk() {
+        // Hunk spans lines 5..8 (lines 5, 6, 7) on side A; another at 12..14.
+        // Cursor on line 6 (middle of first hunk) should advance past it.
+        let hunks = make_hunks(&[(5..8, 5..8), (12..14, 12..14)]);
+        let next = find_next_hunk(&hunks, DiffSide::A, 6);
+        assert_eq!(next, Some(1));
+    }
+
+    #[test]
+    fn find_next_hunk_advances_when_cursor_at_hunk_start() {
+        // Cursor exactly on the first line of a hunk: still considered "inside",
+        // so the predicate should advance to the next hunk.
+        let hunks = make_hunks(&[(5..8, 5..8), (12..14, 12..14)]);
+        let next = find_next_hunk(&hunks, DiffSide::A, 5);
+        assert_eq!(next, Some(1));
+    }
+
+    #[test]
+    fn find_next_hunk_returns_first_hunk_when_cursor_before_all() {
+        let hunks = make_hunks(&[(5..8, 5..8), (12..14, 12..14)]);
+        let next = find_next_hunk(&hunks, DiffSide::A, 0);
+        assert_eq!(next, Some(0));
+    }
+
+    #[test]
+    fn find_next_hunk_returns_none_when_cursor_past_all_hunks() {
+        let hunks = make_hunks(&[(5..8, 5..8), (12..14, 12..14)]);
+        let next = find_next_hunk(&hunks, DiffSide::A, 20);
+        assert_eq!(next, None);
+    }
+
+    #[test]
+    fn find_next_hunk_handles_empty_range_deletion() {
+        // Deletion on side A: empty range at start=5. Cursor at 4 should match,
+        // cursor at 5 should NOT match (already at/past the filler position).
+        let hunks = make_hunks(&[(5..5, 5..7)]);
+        assert_eq!(find_next_hunk(&hunks, DiffSide::A, 4), Some(0));
+        assert_eq!(find_next_hunk(&hunks, DiffSide::A, 5), None);
+    }
+
+    #[test]
+    fn find_prev_hunk_retreats_when_cursor_inside_hunk() {
+        // Cursor on line 6 (middle of second hunk 5..8); should retreat to first hunk.
+        let hunks = make_hunks(&[(0..2, 0..2), (5..8, 5..8)]);
+        let prev = find_prev_hunk(&hunks, DiffSide::A, 6);
+        assert_eq!(prev, Some(0));
+    }
+
+    #[test]
+    fn find_prev_hunk_retreats_when_cursor_at_hunk_end_minus_one() {
+        // Cursor on the last line of a hunk (5..8 means lines 5, 6, 7). Cursor on 7
+        // is still inside; should retreat.
+        let hunks = make_hunks(&[(0..2, 0..2), (5..8, 5..8)]);
+        let prev = find_prev_hunk(&hunks, DiffSide::A, 7);
+        assert_eq!(prev, Some(0));
+    }
+
+    #[test]
+    fn find_prev_hunk_includes_hunk_just_above_cursor() {
+        // Cursor at line 8: a hunk ending at 8 (exclusive) covers lines 5..7.
+        // The hunk is fully above the cursor, so it should match.
+        let hunks = make_hunks(&[(5..8, 5..8)]);
+        let prev = find_prev_hunk(&hunks, DiffSide::A, 8);
+        assert_eq!(prev, Some(0));
+    }
+
+    #[test]
+    fn find_prev_hunk_returns_none_when_cursor_before_all() {
+        let hunks = make_hunks(&[(5..8, 5..8)]);
+        let prev = find_prev_hunk(&hunks, DiffSide::A, 0);
+        assert_eq!(prev, None);
+    }
+
+    #[test]
+    fn find_prev_hunk_handles_empty_range_deletion() {
+        // Deletion on side A at line 5 (empty range). Cursor at 5 should retreat past it
+        // (we're at or past the filler), cursor at 6 should match (filler is above us).
+        let hunks = make_hunks(&[(0..1, 0..1), (5..5, 5..7)]);
+        assert_eq!(find_prev_hunk(&hunks, DiffSide::A, 5), Some(0));
+        assert_eq!(find_prev_hunk(&hunks, DiffSide::A, 6), Some(1));
+    }
+
+    #[test]
+    fn find_next_and_prev_use_correct_side_range() {
+        // Hunk where before and after differ in placement:
+        // before: lines 5..6, after: lines 10..11.
+        let hunks = make_hunks(&[(5..6, 10..11)]);
+
+        // Side A: cursor at 4 sees hunk at line 5.
+        assert_eq!(find_next_hunk(&hunks, DiffSide::A, 4), Some(0));
+        // Side B: same cursor (4) sees hunk at line 10.
+        assert_eq!(find_next_hunk(&hunks, DiffSide::B, 4), Some(0));
+
+        // Side A: cursor at 7 has hunk behind it at line 5.
+        assert_eq!(find_prev_hunk(&hunks, DiffSide::A, 7), Some(0));
+        // Side B: cursor at 7 has hunk ahead of it at line 10, none behind.
+        assert_eq!(find_prev_hunk(&hunks, DiffSide::B, 7), None);
     }
 
     // --- build_get_transaction / build_put_transaction tests ---
