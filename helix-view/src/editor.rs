@@ -2397,12 +2397,16 @@ impl Editor {
     /// Synchronize the partner view's scroll position to match the source view.
     /// Copies the source view's anchor line to the partner view's document.
     pub fn sync_diff_scroll(&mut self, source_view_id: ViewId) {
-        let Some(partner_id) = self
+        let session_info = self
             .diff_sessions
             .iter()
             .find(|s| s.contains_view(source_view_id))
-            .and_then(|s| s.partner_view(source_view_id))
-        else {
+            .and_then(|s| {
+                let partner = s.partner_view(source_view_id)?;
+                let side = s.side_for_view(source_view_id)?;
+                Some((partner, side))
+            });
+        let Some((partner_id, source_side)) = session_info else {
             return;
         };
 
@@ -2411,13 +2415,25 @@ impl Editor {
         };
         let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
         let source_text = self.documents[&source_doc_id].text().slice(..);
-        let source_line = source_text.char_to_line(source_offset.anchor);
+        let source_line = source_text.char_to_line(source_offset.anchor) as u32;
 
         let Some(partner_doc_id) = self.tree.try_get(partner_id).map(|v| v.doc) else {
             return;
         };
         let partner_text = self.documents[&partner_doc_id].text().slice(..);
-        let partner_line = source_line.min(partner_text.len_lines().saturating_sub(1));
+        let partner_line_count = partner_text.len_lines() as u32;
+
+        // Map through the hunks so the partner anchor lands on the matching
+        // logical line, not just the same line index. Without this, asymmetric
+        // hunks above the anchor would scroll the panes out of sync.
+        let partner_line = self
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(source_view_id))
+            .map(|s| s.map_to_real_line(source_side, source_line, partner_line_count) as usize)
+            .unwrap_or_else(|| {
+                (source_line as usize).min(partner_line_count.saturating_sub(1) as usize)
+            });
         let partner_anchor = partner_text.line_to_char(partner_line);
 
         let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
