@@ -607,6 +607,20 @@ pub enum DiffSide {
     B,
 }
 
+/// Doc-line at which a hunk should emit its filler lines.
+///
+/// For non-empty `my_range` the trigger is the hunk's last line so the filler
+/// renders below the hunk on this side. For an empty `my_range` (the partner
+/// has lines but we don't), the trigger is the line just before the insertion
+/// point so the filler renders in the gap.
+fn trigger_for(my_range: &Range<u32>) -> usize {
+    if my_range.is_empty() {
+        my_range.start.saturating_sub(1) as usize
+    } else {
+        (my_range.end - 1) as usize
+    }
+}
+
 /// A `LineAnnotation` that inserts virtual filler lines to keep two
 /// side-by-side diff panes visually aligned at hunk boundaries.
 ///
@@ -638,44 +652,36 @@ impl DiffAlignment {
 
     /// Compute how many filler lines to insert after `doc_line`.
     /// Returns 0 if no filler is needed at this line.
+    ///
+    /// Multiple hunks can share a trigger position (e.g. a non-empty hunk
+    /// ending at line X and a pure insertion immediately after at `[X..X)` -
+    /// both trigger at line `X - 1`). We accumulate fillers across every hunk
+    /// at the current trigger before returning, otherwise the second hunk's
+    /// fillers would be silently dropped when the cursor advances past it on
+    /// the next call.
     pub fn filler_lines_at(&mut self, doc_line: usize) -> usize {
-        // Advance cursor past hunks that ended before this line
+        // Advance cursor past hunks that ended before this line.
         while self.cursor < self.hunks.len() {
             let (my_range, _) = self.ranges_for(&self.hunks[self.cursor]);
-            let trigger = if my_range.is_empty() {
-                // Pure insertion/deletion on our side: trigger at the line
-                // just before the insertion point (or 0 if at start)
-                my_range.start.saturating_sub(1) as usize
-            } else {
-                (my_range.end - 1) as usize
-            };
-            if trigger < doc_line {
+            if trigger_for(&my_range) < doc_line {
                 self.cursor += 1;
             } else {
                 break;
             }
         }
 
-        if self.cursor >= self.hunks.len() {
-            return 0;
-        }
-
-        let (my_range, other_range) = self.ranges_for(&self.hunks[self.cursor]);
-
-        let trigger = if my_range.is_empty() {
-            my_range.start.saturating_sub(1) as usize
-        } else {
-            (my_range.end - 1) as usize
-        };
-
-        if doc_line == trigger {
+        // Sum fillers from every remaining hunk whose trigger matches doc_line.
+        let mut total = 0usize;
+        while self.cursor < self.hunks.len() {
+            let (my_range, other_range) = self.ranges_for(&self.hunks[self.cursor]);
+            if trigger_for(&my_range) != doc_line {
+                break;
+            }
             self.cursor += 1;
-            let filler =
-                (other_range.end - other_range.start).saturating_sub(my_range.end - my_range.start);
-            filler as usize
-        } else {
-            0
+            total += (other_range.end - other_range.start)
+                .saturating_sub(my_range.end - my_range.start) as usize;
         }
+        total
     }
 }
 
@@ -988,6 +994,93 @@ mod tests {
             assert_eq!(align_a.filler_lines_at(line), 0);
             assert_eq!(align_b.filler_lines_at(line), 0);
         }
+    }
+
+    // --- alignment-invariant tests (issue C: drift on archseer-shaped diffs) ---
+
+    /// Sum filler counts produced for `total_lines` consecutive doc lines.
+    fn total_fillers(hunks: Arc<Vec<Hunk>>, side: DiffSide, total_lines: u32) -> u32 {
+        let mut align = DiffAlignment::new(hunks, side);
+        let mut sum = 0u32;
+        for line in 0..total_lines {
+            sum += align.filler_lines_at(line as usize) as u32;
+        }
+        sum
+    }
+
+    /// `len_a + fillers_a == len_b + fillers_b` must hold for alignment to work.
+    fn assert_aligned(hunks: &[(Range<u32>, Range<u32>)], len_a: u32, len_b: u32) {
+        let arc = make_hunks(hunks);
+        let fa = total_fillers(Arc::clone(&arc), DiffSide::A, len_a);
+        let fb = total_fillers(arc, DiffSide::B, len_b);
+        assert_eq!(
+            len_a + fa,
+            len_b + fb,
+            "alignment broken: A has {len_a} lines + {fa} fillers, B has {len_b} lines + {fb} fillers",
+        );
+    }
+
+    #[test]
+    fn alignment_holds_with_three_replace_hunks() {
+        // Three pure replacements at increasing positions; symmetric sizes -> no fillers needed.
+        assert_aligned(&[(2..3, 2..3), (10..11, 10..11), (20..21, 20..21)], 30, 30);
+    }
+
+    #[test]
+    fn alignment_holds_with_three_pure_deletions() {
+        // archseer-like: deletions only. A has 30 lines, B has 25 (lost 5 across 3 hunks).
+        assert_aligned(&[(3..5, 3..3), (10..12, 8..8), (20..21, 16..16)], 30, 25);
+    }
+
+    #[test]
+    fn alignment_holds_with_mixed_asymmetric_hunks() {
+        // Mix of replace, pure-insert, pure-delete at increasing positions.
+        // A: 30 lines.
+        // Hunk 1 at A[5..7) -> B[5..10): replace 2 with 5  -> B gains 3
+        // Hunk 2 at A[12..15) -> B[15..15): delete 3 lines -> B loses 3
+        // Hunk 3 at A[22..22) -> B[22..27): pure insert 5  -> B gains 5
+        // Net: B has 30 + 3 - 3 + 5 = 35 lines.
+        assert_aligned(&[(5..7, 5..10), (12..15, 15..15), (22..22, 22..27)], 30, 35);
+    }
+
+    #[test]
+    fn alignment_holds_when_replace_is_adjacent_to_pure_insert() {
+        // The shape that produces colliding triggers on side A:
+        // A: replace at [10..15) and immediately a pure insert at [15..15).
+        // Both empty's trigger = start-1 = 14, AND the replace's trigger = end-1 = 14.
+        // Side A's filler_lines_at(14) must emit fillers for BOTH hunks.
+        assert_aligned(
+            &[(10..15, 10..15), (15..15, 15..18)],
+            // A: 15 lines through hunk 1 + 15 + 0 (hunk 2 empty on A) + ... = arbitrary; use 30.
+            30,
+            // B: hunk 1 same length, hunk 2 inserts 3. So 30 + 3 = 33.
+            33,
+        );
+    }
+
+    #[test]
+    fn alignment_holds_when_pure_insert_is_adjacent_to_replace() {
+        // Symmetric flavor on side B: a pure-insert on A immediately before a replace.
+        assert_aligned(
+            &[(10..10, 10..13), (10..15, 13..18)],
+            30,
+            // A inserts 3 (B gains 3) + replace same length = 33.
+            33,
+        );
+    }
+
+    #[test]
+    fn alignment_holds_with_consecutive_deletions_on_one_side() {
+        // Two pure deletions on side B (same as deletions on A's perspective: empty B ranges).
+        // The B-side empty ranges have triggers at start-1; consecutive deletions can
+        // share the same B-side trigger when their A-side spans differ but B-side
+        // accumulator doesn't advance.
+        assert_aligned(
+            &[(5..7, 5..5), (10..13, 5..5)],
+            30,
+            // B loses (2 + 3) = 5 lines.
+            25,
+        );
     }
 
     // --- map_line / map_to_real_line tests ---
