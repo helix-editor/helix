@@ -95,18 +95,60 @@ impl EditorView {
         // and releases the borrow on editor.diff_sessions before touching editor.documents.
         let diff_view_info = editor.diff_session_for(view.id).and_then(|session| {
             let side = session.side_for_view(view.id)?;
+            let partner_view_id = session.partner_view(view.id)?;
             let hunks = session.hunks_arc();
             let intra_line_cache = session.intra_line_cache_arc();
             let doc_ids = session.doc_ids();
-            Some((side, hunks, intra_line_cache, doc_ids))
+            Some((side, partner_view_id, hunks, intra_line_cache, doc_ids))
         });
 
         let mut text_annotations = view.text_annotations(doc, Some(theme));
 
         // Add DiffAlignment line annotation last so it can account for other virtual text.
-        if let Some((side, ref hunks, _, _)) = diff_view_info {
+        if let Some((side, partner_view_id, ref hunks, _, (doc_a_id, doc_b_id))) = diff_view_info {
+            // Compute filler counts in visual rows so soft-wrapped hunks stay
+            // aligned. Falls back to doc-line subtraction if the partner view
+            // can't be resolved (closed mid-render, etc.).
+            let fillers = (|| -> Option<Vec<u32>> {
+                let partner_view = editor.tree.try_get(partner_view_id)?;
+                let partner_doc_id = if side == helix_view::diff_session::DiffSide::A {
+                    doc_b_id
+                } else {
+                    doc_a_id
+                };
+                let partner_doc = editor.documents.get(&partner_doc_id)?;
+                let my_text_fmt = doc.text_format(view.inner_area(doc).width, Some(theme));
+                let partner_text_fmt = partner_doc
+                    .text_format(partner_view.inner_area(partner_doc).width, Some(theme));
+                Some(helix_view::diff_session::compute_visual_fillers(
+                    hunks,
+                    side,
+                    doc.text(),
+                    partner_doc.text(),
+                    &my_text_fmt,
+                    &partner_text_fmt,
+                ))
+            })()
+            .unwrap_or_else(|| {
+                // Doc-line fallback: matches the previous behavior.
+                hunks
+                    .iter()
+                    .map(|h| {
+                        let (my_range, other_range) = match side {
+                            helix_view::diff_session::DiffSide::A => (&h.before, &h.after),
+                            helix_view::diff_session::DiffSide::B => (&h.after, &h.before),
+                        };
+                        (other_range.end - other_range.start)
+                            .saturating_sub(my_range.end - my_range.start)
+                    })
+                    .collect()
+            });
             text_annotations.add_line_annotation(Box::new(
-                helix_view::diff_session::DiffAlignment::new(Arc::clone(hunks), side),
+                helix_view::diff_session::DiffAlignment::new(
+                    Arc::clone(hunks),
+                    side,
+                    Arc::new(fillers),
+                ),
             ));
         }
 
@@ -120,7 +162,7 @@ impl EditorView {
             Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
         }
 
-        if let Some((side, ref hunks, _, _)) = diff_view_info {
+        if let Some((side, _, ref hunks, _, _)) = diff_view_info {
             let hunks = Arc::clone(hunks);
 
             // Look up `<base>.view` first, falling back to bare `<base>` for
@@ -231,7 +273,7 @@ impl EditorView {
         // these overlays add fg (and an identical bg patch) to character
         // cells so theme fg overrides syntax — classic vim "whole line in
         // one color" behavior when the theme sets both fg+bg on diff scopes.
-        if let Some((side, ref hunks, _, (doc_a_id, doc_b_id))) = diff_view_info {
+        if let Some((side, _, ref hunks, _, (doc_a_id, doc_b_id))) = diff_view_info {
             let rope_a = editor.documents[&doc_a_id].text().clone();
             let rope_b = editor.documents[&doc_b_id].text().clone();
             let my_rope = match side {
@@ -279,7 +321,7 @@ impl EditorView {
         // The hop into the `.view` namespace keeps the diff viewer's styling distinct
         // from the bare `diff.delta` scope, which is shared with the diff language
         // grammar and the VCS gutter.
-        if let Some((side, _, ref intra_line_cache, (doc_a_id, doc_b_id))) = diff_view_info {
+        if let Some((side, _, _, ref intra_line_cache, (doc_a_id, doc_b_id))) = diff_view_info {
             let intra_highlight = theme
                 .find_highlight_exact("diff.delta.view.text")
                 .or_else(|| theme.find_highlight_exact("diff.delta.view"))
