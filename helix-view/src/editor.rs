@@ -2500,11 +2500,16 @@ impl Editor {
         let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
         if partner_offset.anchor == partner_anchor
             && partner_offset.vertical_offset == source_offset.vertical_offset
+            && partner_offset.horizontal_offset == source_offset.horizontal_offset
         {
             return;
         }
         partner_offset.anchor = partner_anchor;
         partner_offset.vertical_offset = source_offset.vertical_offset;
+        // Mirror the source's horizontal scroll. Without this the panes drift
+        // sideways the moment the user scrolls right past wrap width on one
+        // side; with soft-wrap off, that's any line longer than the viewport.
+        partner_offset.horizontal_offset = source_offset.horizontal_offset;
         self.documents
             .get_mut(&partner_doc_id)
             .unwrap()
