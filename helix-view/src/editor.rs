@@ -2328,9 +2328,9 @@ impl Editor {
     /// diff session's hunks. No-op when the two views aren't paired in the
     /// same `DiffSession`.
     fn sync_diff_cursor(&mut self, source_view_id: ViewId, dest_view_id: ViewId) {
-        // Gate: source and dest must be paired in the same diff session.
-        // partner_view(src) returning Some(dst) is the binding contract; if
-        // either side has been closed or the sessions differ, skip.
+        // Only sync when source and dest are actual partners in the same
+        // session. If either view was closed or they belong to different
+        // sessions, skip - we must not write to a foreign view's selection.
         let source_side = self
             .diff_sessions
             .iter()

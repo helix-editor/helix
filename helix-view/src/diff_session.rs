@@ -299,8 +299,7 @@ impl DiffSession {
     ///   [`MappedLine::Filler`] anchored at `other_range.start - 1`. The partner
     ///   has no real line for this position.
     ///
-    /// All arithmetic uses saturating ops so `u32::MAX` and other adversarial
-    /// inputs don't panic.
+    /// Saturating arithmetic throughout so `u32::MAX` inputs do not panic.
     pub fn map_line(&self, from_side: DiffSide, line: u32) -> MappedLine {
         let mut offset: i64 = 0;
         for hunk in self.hunks.iter() {
@@ -650,15 +649,14 @@ impl DiffAlignment {
         }
     }
 
-    /// Compute how many filler lines to insert after `doc_line`.
-    /// Returns 0 if no filler is needed at this line.
+    /// How many filler lines to insert after `doc_line`. Returns 0 if no
+    /// filler is needed at this line.
     ///
-    /// Multiple hunks can share a trigger position (e.g. a non-empty hunk
-    /// ending at line X and a pure insertion immediately after at `[X..X)` -
-    /// both trigger at line `X - 1`). We accumulate fillers across every hunk
-    /// at the current trigger before returning, otherwise the second hunk's
-    /// fillers would be silently dropped when the cursor advances past it on
-    /// the next call.
+    /// Multiple hunks can share a trigger position. A non-empty hunk ending
+    /// at line X and a pure insertion at `[X..X)` both trigger at `X - 1`,
+    /// for example. We accumulate fillers from every hunk at the current
+    /// trigger in a single call. Otherwise the cursor advances past them on
+    /// the next call and their fillers go missing.
     pub fn filler_lines_at(&mut self, doc_line: usize) -> usize {
         // Advance cursor past hunks that ended before this line.
         while self.cursor < self.hunks.len() {
