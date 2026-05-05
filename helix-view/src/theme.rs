@@ -763,4 +763,37 @@ mod tests {
         let highlight = Highlight::new(Theme::rgb_highlight(0, 0, 0).get() - 1);
         Theme::default().highlight(highlight);
     }
+
+    #[test]
+    fn default_theme_defines_diff_view_scopes() {
+        // The diff viewer pulls its line backgrounds from the `.view` namespace.
+        // Each key must resolve via try_get_exact (no rsplit cascade) so the
+        // diff viewer never silently picks up a bare `diff.*` style intended
+        // for the VCS gutter or the diff language grammar.
+        let theme = DEFAULT_THEME.clone();
+        for key in [
+            "diff.plus.view",
+            "diff.minus.view",
+            "diff.delta.view",
+            "diff.delta.view.text",
+        ] {
+            assert!(
+                theme.try_get_exact(key).is_some(),
+                "default theme is missing required diff viewer scope `{key}`",
+            );
+        }
+    }
+
+    #[test]
+    fn default_theme_keeps_legacy_diff_scopes() {
+        // The bare scopes back the VCS gutter and the diff language grammar.
+        // They MUST stay defined so existing consumers keep working.
+        let theme = DEFAULT_THEME.clone();
+        for key in ["diff.plus", "diff.minus", "diff.delta"] {
+            assert!(
+                theme.try_get_exact(key).is_some(),
+                "default theme dropped legacy diff scope `{key}`",
+            );
+        }
+    }
 }
