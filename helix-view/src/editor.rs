@@ -2331,17 +2331,9 @@ impl Editor {
         // Only sync when source and dest are actual partners in the same
         // session. If either view was closed or they belong to different
         // sessions, skip - we must not write to a foreign view's selection.
-        let source_side = self
-            .diff_sessions
-            .iter()
-            .find(|s| s.contains_view(source_view_id))
-            .and_then(|s| {
-                if s.partner_view(source_view_id) != Some(dest_view_id) {
-                    return None;
-                }
-                s.side_for_view(source_view_id)
-            });
-        let Some(source_side) = source_side else {
+        let Some(source_side) =
+            crate::diff_session::paired_side(&self.diff_sessions, source_view_id, dest_view_id)
+        else {
             return;
         };
 
@@ -2493,15 +2485,16 @@ impl Editor {
 
         // Map through the hunks so the partner anchor lands on the matching
         // logical line, not just the same line index. Without this, asymmetric
-        // hunks above the anchor would scroll the panes out of sync.
+        // hunks above the anchor would scroll the panes out of sync. The
+        // session lookup must succeed - the early-return at the top already
+        // proved it exists, and we have not mutated diff_sessions since.
         let partner_line = self
             .diff_sessions
             .iter()
             .find(|s| s.contains_view(source_view_id))
-            .map(|s| s.map_to_real_line(source_side, source_line, partner_line_count) as usize)
-            .unwrap_or_else(|| {
-                (source_line as usize).min(partner_line_count.saturating_sub(1) as usize)
-            });
+            .expect("session was just resolved above")
+            .map_to_real_line(source_side, source_line, partner_line_count)
+            as usize;
         let partner_anchor = partner_text.line_to_char(partner_line);
 
         let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);

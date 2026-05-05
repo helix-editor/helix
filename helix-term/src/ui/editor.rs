@@ -1967,18 +1967,18 @@ fn diff_view_highlight(
         .or_else(|| theme.find_highlight_exact(base))
 }
 
-/// Compute the row-decoration Style for a diff line from a theme `diff.*` scope.
+/// Row-decoration Style for a diff line from a theme `diff.*` scope.
 ///
-/// - Both fg and bg set: preserves both so vimdiff-style "white on red" scopes
-///   override syntax fg on the diff line.
-/// - Only bg set: bg-only Style (preserves syntax fg underneath).
-/// - Only fg set: fg is used as bg. This is the fallback for themes that
-///   define diff scopes as gutter-only accents without an explicit bg.
-/// - Neither set: returns the input Style unchanged (no-op on cell bgs).
+/// - bg set (with or without fg): pass the style through unchanged so any
+///   modifiers (italic, bold, underline) the theme attached to the scope are
+///   honored on the diff line.
+/// - Only fg set: legacy fallback for themes that define diff scopes as
+///   gutter-only accents without an explicit bg. The fg is promoted to bg
+///   and modifiers are dropped, since they were attached to a fg we discard.
+/// - Neither set: passthrough.
 fn diff_bg_style(style: Style) -> Style {
     match (style.bg, style.fg) {
-        (Some(bg), Some(fg)) => Style::default().bg(bg).fg(fg),
-        (Some(bg), None) => Style::default().bg(bg),
+        (Some(_), _) => style,
         (None, Some(fg)) => Style::default().bg(fg),
         (None, None) => style,
     }
@@ -2100,6 +2100,22 @@ mod diff_coloring_tests {
         // Empty style returns unchanged (no-op on cell bgs).
         let input = Style::default();
         assert_eq!(diff_bg_style(input), Style::default());
+    }
+
+    #[test]
+    fn diff_bg_style_preserves_modifiers_when_bg_is_set() {
+        // m4rch3n1ng's bonus point: a theme attaching italic / bold to a
+        // diff scope should see those modifiers on the diff line as long as
+        // the theme also set a bg.
+        use helix_view::graphics::Modifier;
+        let input = Style::default()
+            .bg(Color::Rgb(31, 111, 78))
+            .add_modifier(Modifier::ITALIC)
+            .add_modifier(Modifier::BOLD);
+        let result = diff_bg_style(input);
+        assert!(result.add_modifier.contains(Modifier::ITALIC));
+        assert!(result.add_modifier.contains(Modifier::BOLD));
+        assert_eq!(result.bg, Some(Color::Rgb(31, 111, 78)));
     }
 
     use super::{diff_view_highlight, diff_view_line_style};
