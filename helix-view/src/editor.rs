@@ -2293,10 +2293,19 @@ impl Editor {
             return;
         }
 
+        let prev_id = self.tree.focus;
+
         // Reset mode to normal and ensure any pending changes are committed in the old document.
         self.enter_normal_mode();
         let (view, doc) = current!(self);
         doc.append_changes_to_history(view);
+
+        // If the source and destination are paired in a diff session, move the
+        // destination's cursor to the corresponding partner line before scroll
+        // sync so ensure_cursor_in_view scrolls to the new position rather than
+        // the partner view's last-known cursor.
+        self.sync_diff_cursor(prev_id, view_id);
+
         self.ensure_cursor_in_view(view_id);
         // Update jumplist selections with new document changes.
         for (view, _focused) in self.tree.views_mut() {
@@ -2304,7 +2313,7 @@ impl Editor {
             view.sync_changes(doc);
         }
 
-        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+        self.tree.focus = view_id;
         doc_mut!(self).mark_as_focused();
 
         let focus_lost = self.tree.get(prev_id).doc;
@@ -2312,6 +2321,65 @@ impl Editor {
             editor: self,
             doc: focus_lost,
         });
+    }
+
+    /// Place `dest_view_id`'s primary cursor at the line on its document that
+    /// corresponds to `source_view_id`'s primary cursor, mapped through the
+    /// diff session's hunks. No-op when the two views aren't paired in the
+    /// same `DiffSession`.
+    fn sync_diff_cursor(&mut self, source_view_id: ViewId, dest_view_id: ViewId) {
+        // Gate: source and dest must be paired in the same diff session.
+        // partner_view(src) returning Some(dst) is the binding contract; if
+        // either side has been closed or the sessions differ, skip.
+        let source_side = self
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(source_view_id))
+            .and_then(|s| {
+                if s.partner_view(source_view_id) != Some(dest_view_id) {
+                    return None;
+                }
+                s.side_for_view(source_view_id)
+            });
+        let Some(source_side) = source_side else {
+            return;
+        };
+
+        let Some(source_doc_id) = self.tree.try_get(source_view_id).map(|v| v.doc) else {
+            return;
+        };
+        let source_doc = &self.documents[&source_doc_id];
+        let source_text = source_doc.text().slice(..);
+        let source_cursor = source_doc
+            .selection(source_view_id)
+            .primary()
+            .cursor(source_text);
+        let source_line = source_text.char_to_line(source_cursor) as u32;
+
+        let Some(dest_doc_id) = self.tree.try_get(dest_view_id).map(|v| v.doc) else {
+            return;
+        };
+
+        let dest_char = {
+            let dest_text = self.documents[&dest_doc_id].text().slice(..);
+            let dest_line_count = dest_text.len_lines() as u32;
+            let Some(mapped_line) = self
+                .diff_sessions
+                .iter()
+                .find(|s| s.contains_view(source_view_id))
+                .map(|s| s.map_to_real_line(source_side, source_line, dest_line_count))
+            else {
+                return;
+            };
+            let safe_line = (mapped_line as usize).min(dest_line_count.saturating_sub(1) as usize);
+            dest_text.line_to_char(safe_line)
+        };
+
+        let new_selection = helix_core::Selection::point(dest_char);
+        self.documents
+            .get_mut(&dest_doc_id)
+            .unwrap()
+            .set_selection(dest_view_id, new_selection);
     }
 
     pub fn focus_next(&mut self) {
