@@ -1,8 +1,9 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use helix_core::text_annotations::LineAnnotation;
-use helix_core::{Position, Rope, RopeSlice, Tendril, Transaction};
+use helix_core::doc_formatter::TextFormat;
+use helix_core::text_annotations::{LineAnnotation, TextAnnotations};
+use helix_core::{visual_offset_from_block, Position, Rope, RopeSlice, Tendril, Transaction};
 use helix_vcs::Hunk;
 use imara_diff::{Algorithm, Diff, InternedInput, TokenSource};
 
@@ -640,23 +641,79 @@ fn trigger_for(my_range: &Range<u32>) -> usize {
     }
 }
 
-/// A `LineAnnotation` that inserts virtual filler lines to keep two
+/// Visual height of `range` in `rope` under `text_fmt`. Counts wrapped rows,
+/// not just doc lines, so a single long line that soft-wraps to four rows
+/// reports four. Empty ranges report zero.
+pub fn visual_height(rope: &Rope, range: &Range<u32>, text_fmt: &TextFormat) -> u32 {
+    if range.is_empty() {
+        return 0;
+    }
+    let start_char = rope.line_to_char(range.start as usize);
+    let end_char = rope.line_to_char(range.end as usize);
+    let (pos, _) = visual_offset_from_block(
+        rope.slice(..),
+        start_char,
+        end_char,
+        text_fmt,
+        &TextAnnotations::default(),
+    );
+    pos.row as u32
+}
+
+/// Per-hunk filler counts on `my_side`, in visual rows.
+///
+/// Each entry is `max(0, partner_visual_height - my_visual_height)`. Visual
+/// heights are computed with each side's own `TextFormat`, so wrap widths
+/// and tab settings can differ between panes. The result is parallel to
+/// `hunks`.
+pub fn compute_visual_fillers(
+    hunks: &[Hunk],
+    my_side: DiffSide,
+    my_rope: &Rope,
+    partner_rope: &Rope,
+    my_text_fmt: &TextFormat,
+    partner_text_fmt: &TextFormat,
+) -> Vec<u32> {
+    hunks
+        .iter()
+        .map(|hunk| {
+            let (my_range, other_range) = match my_side {
+                DiffSide::A => (&hunk.before, &hunk.after),
+                DiffSide::B => (&hunk.after, &hunk.before),
+            };
+            let my_height = visual_height(my_rope, my_range, my_text_fmt);
+            let partner_height = visual_height(partner_rope, other_range, partner_text_fmt);
+            partner_height.saturating_sub(my_height)
+        })
+        .collect()
+}
+
+/// `LineAnnotation` that inserts virtual filler lines to keep two
 /// side-by-side diff panes visually aligned at hunk boundaries.
 ///
-/// Each side of the diff gets its own `DiffAlignment`. When the "other" side
-/// has more lines in a hunk, this annotation pads with filler lines so both
-/// panes show the same visual height for every hunk.
+/// Each side of the diff has its own `DiffAlignment`. The filler count for
+/// each hunk is precomputed (usually by [`compute_visual_fillers`]) and
+/// passed in at construction; `filler_lines_at` looks it up as the renderer
+/// walks doc lines.
 pub struct DiffAlignment {
     hunks: Arc<Vec<Hunk>>,
     side: DiffSide,
+    /// Per-hunk filler row counts on this side, parallel to `hunks`.
+    fillers: Arc<Vec<u32>>,
     cursor: usize,
 }
 
 impl DiffAlignment {
-    pub fn new(hunks: Arc<Vec<Hunk>>, side: DiffSide) -> Self {
+    pub fn new(hunks: Arc<Vec<Hunk>>, side: DiffSide, fillers: Arc<Vec<u32>>) -> Self {
+        debug_assert_eq!(
+            hunks.len(),
+            fillers.len(),
+            "fillers must be parallel to hunks",
+        );
         Self {
             hunks,
             side,
+            fillers,
             cursor: 0,
         }
     }
@@ -669,7 +726,7 @@ impl DiffAlignment {
         }
     }
 
-    /// How many filler lines to insert after `doc_line`. Returns 0 if no
+    /// How many filler rows to insert after `doc_line`. Returns 0 if no
     /// filler is needed at this line.
     ///
     /// Multiple hunks can share a trigger position. A non-empty hunk ending
@@ -688,16 +745,15 @@ impl DiffAlignment {
             }
         }
 
-        // Sum fillers from every remaining hunk whose trigger matches doc_line.
+        // Sum precomputed fillers from every hunk whose trigger matches doc_line.
         let mut total = 0usize;
         while self.cursor < self.hunks.len() {
-            let (my_range, other_range) = self.ranges_for(&self.hunks[self.cursor]);
+            let (my_range, _) = self.ranges_for(&self.hunks[self.cursor]);
             if trigger_for(&my_range) != doc_line {
                 break;
             }
+            total += self.fillers[self.cursor] as usize;
             self.cursor += 1;
-            total += (other_range.end - other_range.start)
-                .saturating_sub(my_range.end - my_range.start) as usize;
         }
         total
     }
@@ -919,10 +975,27 @@ mod tests {
         )
     }
 
+    /// Build a DiffAlignment whose fillers come from doc-line differences,
+    /// matching the original (pre-soft-wrap-aware) behavior. Render code uses
+    /// compute_visual_fillers instead, which is exercised in helix-term tests.
+    fn alignment_with_doc_line_fillers(hunks: Arc<Vec<Hunk>>, side: DiffSide) -> DiffAlignment {
+        let fillers: Vec<u32> = hunks
+            .iter()
+            .map(|h| {
+                let (my, other) = match side {
+                    DiffSide::A => (&h.before, &h.after),
+                    DiffSide::B => (&h.after, &h.before),
+                };
+                (other.end - other.start).saturating_sub(my.end - my.start)
+            })
+            .collect();
+        DiffAlignment::new(hunks, side, Arc::new(fillers))
+    }
+
     #[test]
     fn alignment_identical_files_no_fillers() {
         let hunks = make_hunks(&[]);
-        let mut align = DiffAlignment::new(hunks, DiffSide::A);
+        let mut align = alignment_with_doc_line_fillers(hunks, DiffSide::A);
 
         for line in 0..5 {
             assert_eq!(align.filler_lines_at(line), 0);
@@ -934,7 +1007,7 @@ mod tests {
         // before: 5 lines, after: 8 lines (3 added at lines 2..5 on after)
         // Hunk: before 2..2 (pure insertion), after 2..5
         let hunks = make_hunks(&[(2..2, 2..5)]);
-        let mut align = DiffAlignment::new(hunks, DiffSide::A);
+        let mut align = alignment_with_doc_line_fillers(hunks, DiffSide::A);
 
         // Side A has 0 lines in hunk, other side has 3
         // Trigger at doc_line = max(0, 2-1) = 1
@@ -947,7 +1020,7 @@ mod tests {
     fn alignment_addition_no_pad_on_longer_side() {
         // Same hunk but from side B's perspective: B has the 3 added lines
         let hunks = make_hunks(&[(2..2, 2..5)]);
-        let mut align = DiffAlignment::new(hunks, DiffSide::B);
+        let mut align = alignment_with_doc_line_fillers(hunks, DiffSide::B);
 
         // Side B has 3 lines, other side has 0. No filler needed.
         for line in 0..8 {
@@ -959,7 +1032,7 @@ mod tests {
     fn alignment_deletion_pads_side_b() {
         // before has 3 lines (1..4), after has 0 lines (1..1)
         let hunks = make_hunks(&[(1..4, 1..1)]);
-        let mut align = DiffAlignment::new(hunks, DiffSide::B);
+        let mut align = alignment_with_doc_line_fillers(hunks, DiffSide::B);
 
         // Side B (after) has 0 lines, other has 3. Trigger at 1-1=0
         assert_eq!(align.filler_lines_at(0), 3);
@@ -970,7 +1043,7 @@ mod tests {
     fn alignment_modification_pads_shorter_side() {
         // before: 2 lines (1..3), after: 5 lines (1..6)
         let hunks = make_hunks(&[(1..3, 1..6)]);
-        let mut align_a = DiffAlignment::new(hunks.clone(), DiffSide::A);
+        let mut align_a = alignment_with_doc_line_fillers(hunks.clone(), DiffSide::A);
 
         // Side A has 2 lines, other has 5. Need 3 fillers after last line (doc_line 2)
         assert_eq!(align_a.filler_lines_at(0), 0);
@@ -979,7 +1052,7 @@ mod tests {
         assert_eq!(align_a.filler_lines_at(3), 0);
 
         // Side B has 5 lines, other has 2. No filler needed.
-        let mut align_b = DiffAlignment::new(hunks, DiffSide::B);
+        let mut align_b = alignment_with_doc_line_fillers(hunks, DiffSide::B);
         for line in 0..8 {
             assert_eq!(align_b.filler_lines_at(line), 0);
         }
@@ -992,7 +1065,7 @@ mod tests {
             (1..2, 1..4), // 1 line before, 3 after: side A needs 2 fillers
             (4..4, 6..8), // pure insertion: 0 before, 2 after: side A needs 2 fillers
         ]);
-        let mut align = DiffAlignment::new(hunks, DiffSide::A);
+        let mut align = alignment_with_doc_line_fillers(hunks, DiffSide::A);
 
         assert_eq!(align.filler_lines_at(0), 0);
         assert_eq!(align.filler_lines_at(1), 2); // end of first hunk
@@ -1005,8 +1078,8 @@ mod tests {
     fn alignment_equal_length_modification_no_fillers() {
         // Both sides have same number of lines
         let hunks = make_hunks(&[(2..5, 2..5)]);
-        let mut align_a = DiffAlignment::new(hunks.clone(), DiffSide::A);
-        let mut align_b = DiffAlignment::new(hunks, DiffSide::B);
+        let mut align_a = alignment_with_doc_line_fillers(hunks.clone(), DiffSide::A);
+        let mut align_b = alignment_with_doc_line_fillers(hunks, DiffSide::B);
 
         for line in 0..8 {
             assert_eq!(align_a.filler_lines_at(line), 0);
@@ -1014,11 +1087,95 @@ mod tests {
         }
     }
 
+    // --- visual_height / compute_visual_fillers tests (soft-wrap awareness) ---
+
+    /// Build a TextFormat that wraps at `viewport_width` columns.
+    fn wrap_text_fmt(viewport_width: u16) -> TextFormat {
+        TextFormat {
+            soft_wrap: true,
+            tab_width: 4,
+            max_wrap: 1,
+            max_indent_retain: 0,
+            wrap_indicator: "".into(),
+            wrap_indicator_highlight: None,
+            viewport_width,
+            soft_wrap_at_text_width: false,
+        }
+    }
+
+    #[test]
+    fn visual_height_no_wrap_matches_doc_line_count() {
+        // 3 lines, all short. With wide viewport no wrap kicks in.
+        let rope = Rope::from("aaa\nbbb\nccc\n");
+        let fmt = wrap_text_fmt(80);
+        assert_eq!(visual_height(&rope, &(0..3), &fmt), 3);
+        assert_eq!(visual_height(&rope, &(1..3), &fmt), 2);
+    }
+
+    #[test]
+    fn visual_height_counts_wrapped_rows() {
+        // One long line, narrow viewport.
+        let rope = Rope::from("aaaaaaaaaaaaaaaaaaaa\nbbb\n");
+        let fmt = wrap_text_fmt(5);
+        // First line (20 chars) wraps at width 5: at least 4 visual rows.
+        // Second line (3 chars) takes 1 row.
+        let h = visual_height(&rope, &(0..2), &fmt);
+        assert!(
+            h > 2,
+            "wrapped first line should produce more than 2 rows, got {h}"
+        );
+    }
+
+    #[test]
+    fn visual_height_empty_range_is_zero() {
+        let rope = Rope::from("aaa\nbbb\n");
+        let fmt = wrap_text_fmt(80);
+        assert_eq!(visual_height(&rope, &(2..2), &fmt), 0);
+    }
+
+    #[test]
+    fn compute_visual_fillers_matches_doc_line_diff_when_no_wrap() {
+        // Without wrap, visual fillers should equal what the old doc-line
+        // subtraction produced. This is the regression guarantee.
+        let hunks = make_hunks(&[(5..7, 5..10), (12..15, 15..15)]);
+        let rope_a = Rope::from("a\n".repeat(20));
+        let rope_b = Rope::from("b\n".repeat(20));
+        let fmt = wrap_text_fmt(80);
+
+        let fillers_a = compute_visual_fillers(&hunks, DiffSide::A, &rope_a, &rope_b, &fmt, &fmt);
+        // Hunk 0: A has 2 lines, B has 5 -> A needs 3 fillers.
+        // Hunk 1: A has 3 lines, B has 0 -> A needs 0 fillers (saturating).
+        assert_eq!(fillers_a, vec![3, 0]);
+
+        let fillers_b = compute_visual_fillers(&hunks, DiffSide::B, &rope_b, &rope_a, &fmt, &fmt);
+        assert_eq!(fillers_b, vec![0, 3]);
+    }
+
+    #[test]
+    fn compute_visual_fillers_inflates_when_partner_wraps() {
+        // Side A has 1 short line, side B has 1 very long line that wraps.
+        // From A's perspective, A's range visually consumes 1 row but B's range
+        // consumes several. A needs extra fillers to keep aligned.
+        let hunks = make_hunks(&[(0..1, 0..1)]);
+        let rope_a = Rope::from("short\n");
+        let rope_b = Rope::from("aaaaaaaaaaaaaaaaaaaaaaaaa\n"); // 25 chars
+        let fmt = wrap_text_fmt(5);
+
+        let fillers_a = compute_visual_fillers(&hunks, DiffSide::A, &rope_a, &rope_b, &fmt, &fmt);
+        // Doc-line subtraction would say 0 (both ranges are 1 line). With wrap
+        // awareness it must be > 0 because B's content wraps.
+        assert!(
+            fillers_a[0] > 0,
+            "wrapped partner line should require fillers on the unwrapped side, got {}",
+            fillers_a[0]
+        );
+    }
+
     // --- alignment-invariant tests (issue C: drift on archseer-shaped diffs) ---
 
     /// Sum filler counts produced for `total_lines` consecutive doc lines.
     fn total_fillers(hunks: Arc<Vec<Hunk>>, side: DiffSide, total_lines: u32) -> u32 {
-        let mut align = DiffAlignment::new(hunks, side);
+        let mut align = alignment_with_doc_line_fillers(hunks, side);
         let mut sum = 0u32;
         for line in 0..total_lines {
             sum += align.filler_lines_at(line as usize) as u32;
