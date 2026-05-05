@@ -123,21 +123,19 @@ impl EditorView {
         if let Some((side, ref hunks, _, _)) = diff_view_info {
             let hunks = Arc::clone(hunks);
 
-            // Fall back to the default theme's diff colors when the active theme
-            // does not define these scopes at all.
+            // Look up `<base>.view` first, falling back to bare `<base>` for
+            // themes that only define the legacy scope. Falls through to a
+            // hardcoded color when neither key is set.
             let style_deleted = diff_bg_style(
-                theme
-                    .try_get("diff.minus")
+                diff_view_line_style(theme, "diff.minus")
                     .unwrap_or_else(|| Style::default().fg(Color::Rgb(242, 44, 134))),
             );
             let style_added = diff_bg_style(
-                theme
-                    .try_get("diff.plus")
+                diff_view_line_style(theme, "diff.plus")
                     .unwrap_or_else(|| Style::default().fg(Color::Rgb(53, 191, 134))),
             );
             let style_modified = diff_bg_style(
-                theme
-                    .try_get("diff.delta")
+                diff_view_line_style(theme, "diff.delta")
                     .unwrap_or_else(|| Style::default().fg(Color::Rgb(111, 68, 240))),
             );
 
@@ -257,11 +255,14 @@ impl EditorView {
                     if ranges.is_empty() {
                         return;
                     }
-                    let style = theme.try_get(scope).unwrap_or_default();
+                    let style = match diff_view_line_style(theme, scope) {
+                        Some(s) => s,
+                        None => return,
+                    };
                     if style.fg.is_none() || style.bg.is_none() {
                         return;
                     }
-                    if let Some(highlight) = theme.find_highlight_exact(scope) {
+                    if let Some(highlight) = diff_view_highlight(theme, scope) {
                         overlays.push(OverlayHighlights::Homogeneous { highlight, ranges });
                     }
                 };
@@ -271,11 +272,17 @@ impl EditorView {
         }
 
         // Intra-line diff highlighting via OverlayHighlights.
-        // Prefer diff.delta.text (explicit bg, makes whitespace changes visible) over
-        // diff.delta (line-level scope whose bg matches the line background).
+        // Prefer the most-specific scope, falling back through the namespace chain:
+        // `diff.delta.view.text` (intra-line override in the diff viewer)
+        //   -> `diff.delta.view` (line-level override in the diff viewer)
+        //   -> `diff.delta` (legacy / shared).
+        // The hop into the `.view` namespace keeps the diff viewer's styling distinct
+        // from the bare `diff.delta` scope, which is shared with the diff language
+        // grammar and the VCS gutter.
         if let Some((side, _, ref intra_line_cache, (doc_a_id, doc_b_id))) = diff_view_info {
             let intra_highlight = theme
-                .find_highlight_exact("diff.delta.text")
+                .find_highlight_exact("diff.delta.view.text")
+                .or_else(|| theme.find_highlight_exact("diff.delta.view"))
                 .or_else(|| theme.find_highlight_exact("diff.delta"));
             if let Some(highlight) = intra_highlight {
                 let rope_a = editor.documents[&doc_a_id].text().clone();
@@ -1934,6 +1941,32 @@ fn canonicalize_key(key: &mut KeyEvent) {
     }
 }
 
+/// Look up the diff viewer's line-bg style for a base scope.
+///
+/// Tries `<base>.view` first (the diff viewer's own namespace, e.g.
+/// `diff.plus.view`), and falls back to the bare `<base>` so themes that only
+/// define the bare scope still color diff lines.
+///
+/// Uses `try_get_exact` (no rsplit cascade) on both lookups to keep the
+/// fallback bounded: it must not leak further to bare `diff`, which the `diff`
+/// language grammar and the VCS gutter already use for unrelated meanings.
+fn diff_view_line_style(theme: &helix_view::Theme, base: &str) -> Option<Style> {
+    theme
+        .try_get_exact(&format!("{base}.view"))
+        .or_else(|| theme.try_get_exact(base))
+}
+
+/// Look up an `OverlayHighlights` highlight for the diff viewer with the same
+/// bounded `<base>.view` -> `<base>` fallback as [`diff_view_line_style`].
+fn diff_view_highlight(
+    theme: &helix_view::Theme,
+    base: &str,
+) -> Option<helix_core::syntax::Highlight> {
+    theme
+        .find_highlight_exact(&format!("{base}.view"))
+        .or_else(|| theme.find_highlight_exact(base))
+}
+
 /// Compute the row-decoration Style for a diff line from a theme `diff.*` scope.
 ///
 /// - Both fg and bg set: preserves both so vimdiff-style "white on red" scopes
@@ -2067,6 +2100,89 @@ mod diff_coloring_tests {
         // Empty style returns unchanged (no-op on cell bgs).
         let input = Style::default();
         assert_eq!(diff_bg_style(input), Style::default());
+    }
+
+    use super::{diff_view_highlight, diff_view_line_style};
+    use helix_view::Theme;
+
+    fn theme_from_toml(toml_str: &str) -> Theme {
+        let value: toml::Value = toml::from_str(toml_str).expect("valid theme toml");
+        Theme::from(value)
+    }
+
+    #[test]
+    fn diff_view_line_style_prefers_view_namespace() {
+        // Theme defines BOTH `.view` and bare; the `.view` entry must win.
+        let theme = theme_from_toml(
+            r##"
+"diff.plus" = { bg = "#000000" }
+"diff.plus.view" = { bg = "#112233" }
+            "##,
+        );
+        let style = diff_view_line_style(&theme, "diff.plus").expect("should resolve");
+        assert_eq!(style.bg, Some(Color::Rgb(0x11, 0x22, 0x33)));
+    }
+
+    #[test]
+    fn diff_view_line_style_falls_back_to_bare_scope() {
+        // Theme only defines bare `diff.plus`; the helper must return it as a soft fallback.
+        let theme = theme_from_toml(r##""diff.plus" = { bg = "#445566" }"##);
+        let style = diff_view_line_style(&theme, "diff.plus").expect("should fall back");
+        assert_eq!(style.bg, Some(Color::Rgb(0x44, 0x55, 0x66)));
+    }
+
+    #[test]
+    fn diff_view_line_style_returns_none_when_neither_is_defined() {
+        // Theme defines unrelated keys only; both lookups miss.
+        let theme = theme_from_toml(r##""ui.text" = { fg = "#ffffff" }"##);
+        assert!(diff_view_line_style(&theme, "diff.plus").is_none());
+    }
+
+    #[test]
+    fn diff_view_line_style_does_not_leak_to_bare_diff() {
+        // Bare `diff` is reserved for the language grammar / VCS gutter. The
+        // bounded fallback must NOT promote a bare `diff` style up to the line bg.
+        let theme = theme_from_toml(r##"diff = { fg = "#abcdef" }"##);
+        assert!(diff_view_line_style(&theme, "diff.plus").is_none());
+    }
+
+    #[test]
+    fn diff_view_line_style_handles_minus_and_delta_too() {
+        // Helper must work for every diff scope the renderer cares about.
+        let theme = theme_from_toml(
+            r##"
+"diff.minus.view" = { bg = "#101010" }
+"diff.delta.view" = { bg = "#202020" }
+            "##,
+        );
+        assert_eq!(
+            diff_view_line_style(&theme, "diff.minus").unwrap().bg,
+            Some(Color::Rgb(0x10, 0x10, 0x10))
+        );
+        assert_eq!(
+            diff_view_line_style(&theme, "diff.delta").unwrap().bg,
+            Some(Color::Rgb(0x20, 0x20, 0x20))
+        );
+    }
+
+    #[test]
+    fn diff_view_highlight_prefers_view_then_bare_then_none() {
+        // `.view` set: helper resolves to it.
+        let theme_view = theme_from_toml(
+            r##"
+"diff.delta" = { bg = "#000000" }
+"diff.delta.view" = { bg = "#abcdef" }
+            "##,
+        );
+        assert!(diff_view_highlight(&theme_view, "diff.delta").is_some());
+
+        // only bare set: helper still resolves (soft fallback).
+        let theme_bare = theme_from_toml(r##""diff.delta" = { bg = "#abcdef" }"##);
+        assert!(diff_view_highlight(&theme_bare, "diff.delta").is_some());
+
+        // neither set: helper returns None (no leakage to plain `diff`).
+        let theme_none = theme_from_toml(r##"diff = { fg = "#abcdef" }"##);
+        assert!(diff_view_highlight(&theme_none, "diff.delta").is_none());
     }
 
     use super::diff_line_char_ranges;
