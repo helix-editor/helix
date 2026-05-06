@@ -27,6 +27,30 @@ pub struct LinePos {
     pub visual_line: u16,
 }
 
+impl LinePos {
+    /// Returns the "no previous line yet" sentinel used by the render loop
+    /// before any grapheme has been emitted. `doc_line` uses `usize::MAX`
+    /// because no real document can reach that size (allocations are bounded
+    /// by `isize::MAX`); `visual_line` mirrors that with `u16::MAX` so any
+    /// addition into it is detectable as overflow rather than landing at a
+    /// plausible row.
+    pub const fn sentinel() -> Self {
+        Self {
+            first_visual_line: false,
+            doc_line: usize::MAX,
+            visual_line: u16::MAX,
+        }
+    }
+
+    /// True when `self` is still the [`LinePos::sentinel`] value, meaning
+    /// no real visual line has been processed yet. Decorations that read
+    /// `visual_line` (`draw_indent_guides`, `render_virtual_lines`) must
+    /// not run for a sentinel, since `u16::MAX + anything` overflows.
+    pub const fn is_sentinel(&self) -> bool {
+        self.doc_line == usize::MAX
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn render_document(
     surface: &mut Surface,
@@ -81,11 +105,7 @@ pub fn render_text(
         SyntaxHighlighter::new(syntax_highlighter, text, theme, renderer.text_style);
     let mut overlay_highlighter = OverlayHighlighter::new(overlay_highlights, theme);
 
-    let mut last_line_pos = LinePos {
-        first_visual_line: false,
-        doc_line: usize::MAX,
-        visual_line: u16::MAX,
-    };
+    let mut last_line_pos = LinePos::sentinel();
     let mut last_line_end = 0;
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
@@ -113,11 +133,7 @@ pub fn render_text(
 
         // apply decorations before rendering a new line
         if grapheme.visual_pos.row as u16 != last_line_pos.visual_line {
-            // we initiate doc_line with usize::MAX because no file
-            // can reach that size (memory allocations are limited to isize::MAX)
-            // initially there is no "previous" line (so doc_line is set to usize::MAX)
-            // in that case we don't need to draw indent guides/virtual text
-            if last_line_pos.doc_line != usize::MAX {
+            if !last_line_pos.is_sentinel() {
                 // draw indent guides for the last line
                 renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
                 is_in_indent_area = true;
@@ -168,8 +184,10 @@ pub fn render_text(
         last_line_end = grapheme.visual_pos.col + grapheme_width;
     }
 
-    renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
-    decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+    if !last_line_pos.is_sentinel() {
+        renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
+        decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+    }
 }
 
 #[derive(Debug)]
@@ -578,5 +596,42 @@ impl<'t> OverlayHighlighter<'t> {
             acc.patch(self.theme.highlight(highlight))
         });
         self.update_pos();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn line_pos_sentinel_constructor_matches_is_sentinel() {
+        let pos = LinePos::sentinel();
+        assert!(pos.is_sentinel());
+        assert_eq!(pos.doc_line, usize::MAX);
+        assert_eq!(pos.visual_line, u16::MAX);
+    }
+
+    #[test]
+    fn line_pos_with_real_doc_line_is_not_sentinel() {
+        let pos = LinePos {
+            first_visual_line: true,
+            doc_line: 0,
+            visual_line: 0,
+        };
+        assert!(!pos.is_sentinel());
+    }
+
+    #[test]
+    fn line_pos_at_max_visual_line_with_real_doc_line_is_not_sentinel() {
+        // Only `doc_line` decides sentinel-ness. A real line that happens
+        // to land at `visual_line = u16::MAX` (the renderer's saturation
+        // ceiling) is still a real line: trailing decorations should run
+        // for it. The sentinel guard hinges on `doc_line` alone.
+        let pos = LinePos {
+            first_visual_line: false,
+            doc_line: 42,
+            visual_line: u16::MAX,
+        };
+        assert!(!pos.is_sentinel());
     }
 }
