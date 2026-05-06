@@ -48,7 +48,7 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
             (true, false) => number.len() - 1,
             (false, true) => number.len() + 1,
             _ => number.len(),
-        } - separator_rtl_indexes.len();
+        };
 
         if number.starts_with('0') || number.starts_with("-0") {
             format!("{:01$}", new_value, format_length)
