@@ -132,7 +132,6 @@
   "as"
   "base"
   "break"
-  "case"
   "catch"
   "checked"
   "class"
@@ -140,7 +139,6 @@
   "default"
   "delegate"
   "do"
-  "else"
   "enum"
   "event"
   "explicit"
@@ -150,7 +148,6 @@
   "foreach"
   "global"
   "goto"
-  "if"
   "implicit"
   "interface"
   "is"
@@ -165,7 +162,6 @@
   "stackalloc"
   "static"
   "struct"
-  "switch"
   "throw"
   "try"
   "typeof"
@@ -189,6 +185,14 @@
   "with"
   "let"
 ] @keyword
+
+[
+  "case"
+  "else"
+  "if"
+  "switch"
+  "when"
+] @keyword.control.conditional
 
 ;; Attribute
 

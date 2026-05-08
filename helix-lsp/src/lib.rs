@@ -9,6 +9,7 @@ pub use client::Client;
 pub use futures_executor::block_on;
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
+use log::warn;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
@@ -915,6 +916,8 @@ fn start_client(
             .map(|entry| entry.file_name())
             .any(|entry| globset.is_match(entry))
         {
+            // TODO: also show the globset that should be matched: https://github.com/BurntSushi/ripgrep/issues/3274
+            warn!("The lsp {name:?} tried to start at {root_path:?} but failed to match it's 'required_root_patterns'");
             return Err(StartupError::NoRequiredRootFound);
         }
     }

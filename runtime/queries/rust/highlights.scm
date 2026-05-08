@@ -208,6 +208,23 @@
 (closure_parameters
 	(identifier) @variable.parameter)
 
+; Mutable variables
+
+(let_declaration
+  (mutable_specifier)
+  pattern: (identifier) @variable.mutable)
+(mut_pattern
+  (mutable_specifier)
+  (identifier) @variable.mutable)
+
+(parameter
+  (mutable_specifier)
+  pattern: (identifier) @variable.parameter.mutable)
+
+(self_parameter
+  (mutable_specifier)
+  (self) @variable.builtin.mutable)
+
 ; -------
 ; Keywords
 ; -------
@@ -286,8 +303,6 @@
   "move"
   "dyn"
 ] @keyword.storage.modifier
-
-; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; ---
 ; Remaining Paths

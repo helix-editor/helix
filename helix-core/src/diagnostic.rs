@@ -7,17 +7,13 @@ use serde::{Deserialize, Serialize};
 /// Describes the severity level of a [`Diagnostic`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Severity {
+    #[default]
     Hint,
     Info,
     Warning,
     Error,
-}
-
-impl Default for Severity {
-    fn default() -> Self {
-        Self::Hint
-    }
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]

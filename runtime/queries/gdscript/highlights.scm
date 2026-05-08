@@ -34,10 +34,7 @@
 (binary_operator (identifier) @type)
 (enum_definition (name) @type.enum)
 (enumerator (identifier) @type.enum.variant)
-[
-  (null)
-  (underscore)
-] @type.builtin
+(underscore) @type.builtin
 
 
 (variable_statement (identifier) @variable)
@@ -63,6 +60,7 @@
   (true)
   (false)
 ] @constant.builtin.boolean
+(null) @constant.builtin
 
 [
   "+"

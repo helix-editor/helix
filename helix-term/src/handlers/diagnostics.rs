@@ -174,8 +174,13 @@ fn request_document_diagnostics_for_language_severs(
         .iter()
         .filter_map(|x| doc.language_servers().find(|y| &y.id() == x))
         .filter_map(|language_server| {
-            let future = language_server
-                .text_document_diagnostic(doc.identifier(), doc.previous_diagnostic_id.clone())?;
+            let language_server_id = language_server.id();
+            let future = language_server.text_document_diagnostic(
+                doc.identifier(),
+                doc.previous_diagnostic_ids
+                    .get(&language_server_id)
+                    .cloned(),
+            )?;
 
             let identifier = language_server
                 .capabilities()
@@ -190,7 +195,6 @@ fn request_document_diagnostics_for_language_severs(
                     }
                 });
 
-            let language_server_id = language_server.id();
             let provider = DiagnosticProvider::Lsp {
                 server_id: language_server_id,
                 identifier,
@@ -293,7 +297,17 @@ fn handle_pull_diagnostics_response(
             };
 
             if let Some(doc) = editor.document_mut(document_id) {
-                doc.previous_diagnostic_id = result_id;
+                let server_id = provider
+                    .language_server_id()
+                    .expect("pull diagnostics always originate from an LSP");
+                match result_id {
+                    Some(result_id) => {
+                        doc.previous_diagnostic_ids.insert(server_id, result_id);
+                    }
+                    None => {
+                        doc.previous_diagnostic_ids.remove(&server_id);
+                    }
+                }
             };
         }
         lsp::DocumentDiagnosticReportResult::Partial(_) => {}
