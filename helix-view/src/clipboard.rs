@@ -143,7 +143,13 @@ mod external {
                     .is_some()
             }
 
-            if env_var_is_set("WAYLAND_DISPLAY")
+            if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get") {
+                Self::Termux
+            } else if env_var_is_set("TMUX") && binary_exists("tmux") {
+                Self::Tmux
+            } else if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
+                Self::Termcode
+            } else if env_var_is_set("WAYLAND_DISPLAY")
                 && binary_exists("wl-copy")
                 && binary_exists("wl-paste")
             {
@@ -156,11 +162,6 @@ mod external {
                 && is_exit_success("xsel", &["-o", "-b"])
             {
                 Self::XSel
-            } else if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get")
-            {
-                Self::Termux
-            } else if env_var_is_set("TMUX") && binary_exists("tmux") {
-                Self::Tmux
             } else if binary_exists("win32yank.exe") {
                 Self::Win32Yank
             } else if cfg!(feature = "term") {

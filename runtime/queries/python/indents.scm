@@ -53,6 +53,9 @@
 
   (function_definition)
   (class_definition)
+
+  (except_clause)
+  (finally_clause)
 ] @extend
 
 [
@@ -72,6 +75,10 @@
   "elif" @outdent)
 (else_clause
   "else" @outdent)
+(except_clause
+  "except" @outdent)
+(finally_clause
+  "finally" @outdent)
 
 (parameters
   .

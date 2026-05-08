@@ -47,6 +47,9 @@
 | `:primary-clipboard-paste-replace` | Replace selections with content of system primary clipboard. |
 | `:show-clipboard-provider` | Show clipboard provider name in status bar. |
 | `:change-current-directory`, `:cd` | Change the current working directory. |
+| `:show-directory-stack` | Show the directory stack as a <space> delimited string. |
+| `:push-directory`, `:pushd` | Save and then change the current directory. |
+| `:pop-directory`, `:popd` | Remove the top entry from the directory stack, and cd to the new top directory.. |
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
@@ -86,9 +89,13 @@
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
+| `:set-register` | Set contents of the given register. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
+| `:move!`, `:mv!` | Move the current buffer and its corresponding file to a different path creating necessary subdirectories |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:workspace-trust` | Add current workspace to the list of trusted workspaces. |
+| `:workspace-untrust` | Remove current workspace from the list of trusted workspaces. |
