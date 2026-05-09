@@ -276,13 +276,13 @@ impl<T: Item + 'static> Component for Menu<T> {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            key!(PageUp) | ctrl!('u') => {
+            key!(PageUp) | ctrl!('b') => {
                 // page up moves back in the completion choice (including updating the doc)
                 self.move_half_page_up();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
                 return EventResult::Consumed(None);
             }
-            key!(PageDown) | ctrl!('d') => {
+            key!(PageDown) | ctrl!('f') => {
                 // page down advances completion choice (including updating the doc)
                 self.move_half_page_down();
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Update);
