@@ -2469,6 +2469,7 @@ scope = "source.qmd"
 language-id = "qmd"
 injection-regex = "qmd"
 file-types = ["qmd"]
+roots = ["_quarto.yml"]
 indent = { tab-width = 2, unit = "  " }
 grammar = "markdown"
 block-comment-tokens = { start = "<!--", end = "-->" }
