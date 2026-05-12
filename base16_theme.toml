@@ -1,0 +1,56 @@
+# Author: NNB <nnbnh@protonmail.com>
+
+"ui.menu" = { fg = "black", bg = "white" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.linenr" = { fg = "gray", bg = "black" }
+"ui.popup" = { modifiers = ["reversed"] }
+"ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.selection" = { fg = "black", bg = "blue" }
+"ui.selection.primary" = { fg = "white", bg = "blue" }
+"ui.text.inactive" = { fg = "gray" }
+"comment" = { fg = "gray" }
+"ui.statusline" = { fg = "black", bg = "white" }
+"ui.statusline.inactive" = { fg = "gray", bg = "white" }
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+"variable" = "red"
+"constant.numeric" = "yellow"
+"constant" = "yellow"
+"attributes" = "yellow"
+"type" = "yellow"
+"ui.cursor.match" = { fg = "yellow", modifiers = ["underlined"] }
+"string"  = "green"
+"variable.other.member" = "green"
+"constant.character.escape" = "cyan"
+"function" = "blue"
+"constructor" = "blue"
+"special" = "blue"
+"keyword" = "magenta"
+"label" = "magenta"
+"namespace" = "magenta"
+"ui.help" = { fg = "white", bg = "black" }
+"ui.statusline.insert" = { fg = "black", bg = "green" }
+"ui.statusline.select" = { fg = "black", bg = "blue" }
+"ui.virtual" = { fg = "gray", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
+
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = "green"
+"diff.delta" = "yellow"
+"diff.minus" = "red"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "black" }
+"info" = "blue"
+"hint" = "gray"
+"debug" = "gray"
+"warning" = "yellow"
+"error" = "red"

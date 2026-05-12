@@ -1,0 +1,86 @@
+# nyxvamp - obsidian variant
+# author: zoedsoupe <zoey.spessanha@zeetech.io>
+
+inherits = "nyxvamp-radiance"
+
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "string_fg", "type_fg"]
+
+# Override specific styles for obsidian variant
+"function" = { fg = "function_fg", modifiers = ["bold"] }
+"function.builtin" = { fg = "function_builtin_fg", modifiers = ["bold"] }
+"ui.match_paren" = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
+
+# Palette overrides
+[palette]
+# Very dark theme colors
+background = "#000A0F"  # Very dark background
+foreground = "#C0C0CE"  # Slightly muted foreground
+cursor_fg = "#0E0E10"
+cursor_bg = "#F28FAD"  # Pink cursor
+cursorline = "#1E1E20"  # Slightly lighter background
+selection = "#2E2E30"  # Dark gray selection
+line_nr = "#5E5A76"  # Dark gray line numbers
+line_nr_selected = "#C0C0CE"  # Foreground color for selected line number
+
+# Status line colors
+status_fg = "#C0C0CE"
+status_bg = "#1E1E20"
+status_inactive_fg = "#5E5A76"
+status_inactive_bg = "#0E0E10"
+
+# Menu colors
+menu_fg = "#C0C0CE"
+menu_bg = "#1E1E20"
+menu_sel_fg = "#C0C0CE"
+menu_sel_bg = "#2E2E30"
+menu_scroll_fg = "#5E5A76"
+menu_scroll_bg = "#1E1E20"
+popup_fg = "#C0C0CE"
+popup_bg = "#1E1E20"
+
+# UI virtual
+virtual_ruler_bg = "#191921"  # Slightly lighter than background, close to comment color
+
+# Syntax highlighting
+match_paren_fg = "#F28FAD"
+match_paren_bg = "#0E0E10"
+comment_fg = "#5E5A76"  # Dark gray comments
+string_fg = "#8FBF8F"  # Muted green strings
+string_special_fg = "#F28FAD"  # Pink special strings
+constant_fg = "#F28FAD"  # Pink constants
+constant_builtin_fg = "#F28FAD"
+number_fg = "#D8A080"  # Muted peach numbers
+boolean_fg = "#F28FAD"
+function_fg = "#7FAFD7"  # Muted blue functions
+function_builtin_fg = "#7FAFD7"
+keyword_fg = "#F5C2E7"  # Pink keywords
+keyword_control_fg = "#F5C2E7"
+operator_fg = "#C0C0CE"  # Foreground color for operators
+variable_fg = "#C0C0CE"
+variable_builtin_fg = "#F28FAD"
+type_fg = "#A0A0D0"  # Muted lavender types
+type_builtin_fg = "#A0A0D0"
+attribute_fg = "#F5C2E7"
+namespace_fg = "#A0A0D0"  # Muted lavender namespaces (Base16 base0E)
+punctuation_fg = "#C0C0CE"
+symbol_fg = "#F28FAD"
+
+# Diagnostics
+error_fg = "#F28FAD"  # Base16 base08 - red errors
+warning_fg = "#D8A080"  # Base16 base09 - orange warnings
+info_fg = "#7FAFD7"  # Base16 base0B - blue info
+hint_fg = "#7BB5A8"  # Base16 base0C - cyan hints
+
+# Diff colors
+diff_add_fg = "#86BA75"  # Muted green additions
+diff_delete_fg = "#D78284"  # Muted red deletions
+diff_change_fg = "#D5B880"  # Muted yellow changes
+
+# Markup colors
+markup_heading_fg = "#F5C2E7"
+markup_bold_fg = "#F5C2E7"
+markup_italic_fg = "#F5C2E7"
+markup_link_url_fg = "#7FAFD7"
+markup_link_text_fg = "#F5C2E7"
+markup_quote_fg = "#5E5A76"

@@ -1,0 +1,134 @@
+# Beans
+# A slightly modified Jellybeans with better support for multi-cursor and multiple selections
+#
+# Original repository: nanotech/jellybeans.vim
+# Contributors:
+# @cemalokten
+# @gnur
+
+
+"attribute" = "green"
+"type" = "light_blue"
+"type.enum.variant" = "purple"
+"constructor" = "yellow"
+"constant" = "dark_orange"
+
+"constant.builtin.boolean" = "yellow"
+"constant.character" = "yellow"
+"constant.character.escape" = "red_error"
+"constant.numeric" = "dark_orange"
+"string" = "dark_green"
+"string.regexp" = "light_purple"
+"string.special" = { fg = "yellow", modifiers = ["underlined"] }
+"comment" = "light_gray"
+
+"variable" = "light_yellow"
+"variable.builtin" = { fg = "dark_green", modifiers = ["underlined"] }
+"variable.parameter" = "yellow"
+"variable.other.member" = "light_purple"
+"label" = "yellow"
+"punctuation" = "mid_blue"
+"keyword" = "mid_blue"
+"keyword.control.exception" = "purple"
+"operator" = "light_purple"
+"function" = "yellow"
+"function.macro" = "green"
+"function.builtin" = "green"
+"function.special" = "green"
+"function.method" = "yellow"
+"tag" = "light_blue"
+"special" = "green"
+"namespace" = "light_purple"
+
+"markup.bold" = { fg = "white", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.heading" = { fg = "mid_blue", modifiers = ["bold"] }
+"markup.list" = "dark_green"
+"markup.list.numbered" = "mid_blue"
+"markup.list.unnumbered" = "mid_blue"
+"markup.link.url" = { fg = "dark_green", modifiers = ['italic', 'underlined'] }
+"markup.link.text" = "mid_blue"
+"markup.link.label" = "purple"
+"markup.quote" = "dark_green"
+"markup.raw" = "dark_green"
+"markup.raw.inline" = "mid_blue"
+"markup.raw.block" = "dark_green"
+
+"diff.plus" = "diff_plus"
+"diff.minus" = "red_accent"
+"diff.delta" = "blue_accent"
+
+# ui specific
+"ui.background" = { bg = "background" }
+"ui.cursor" = { bg = "purple", fg = "selectionfg" }
+"ui.cursor.primary" = { bg = "dark_blue", fg = "white" }
+"ui.cursor.normal" = { bg = "purple", fg = "selectionfg" }
+"ui.cursor.insert" = { bg = "light_yellow", fg = "background" }
+"ui.cursor.match" = { fg = "background", bg = "dark_orange" }
+"ui.cursorline" = { bg = "darker" }
+"ui.linenr" = "dark_gray"
+"ui.linenr.selected" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline.inactive" = { fg = "dark", bg = "darker" }
+"ui.statusline.normal" = { fg = "light_yellow", bg = "darker" }
+"ui.statusline.insert" = { fg = "darker", bg = "purple" }
+"ui.statusline.select" = { fg = "selectionfg", bg = "selection" }
+"ui.popup" = { fg = "light_yellow", bg = "darkest" }
+"ui.window" = { fg = "dark", bg = "darkest" }
+"ui.help" = { fg = "light_yellow", bg = "darkest" }
+"ui.text" = "light_yellow"
+"ui.text.focus" = { fg = "white", bg = "dark_blue" }
+"ui.virtual" = "dark"
+"ui.virtual.ruler" = { bg = "darker" }
+"ui.virtual.jump-label" = { bg = "light_blue", fg = "darkest", modifiers = ["bold"] }
+"ui.menu" = { fg = "light_purple", bg = "darkest" }
+"ui.menu.selected" = { fg = "white", bg = "dark_blue" }
+"ui.selection.primary" = { bg = "light_purple", fg = "darkest" }
+"ui.selection" = { bg = "light_blue", fg = "darkest" }
+"hint" = "blue"
+"info" = "yellow_accent"
+"warning" = "orange_accent"
+"error" = "red_error"
+"diagnostic" = { modifiers = [] }
+"diagnostic.hint" = { underline = { color = "white", style = "line" } }
+"diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
+"diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
+"diagnostic.error" = { underline = { color = "red_error", style = "line" } }
+
+[palette]
+background = "#111111"
+darkest = "#1c1c1c"
+darker = "#292929"
+dark = "#898989"
+white = "#ffffff"
+dark_gray = "#535353"
+light_gray = "#6d6d6d"
+
+purple = "#833c9f"
+light_purple = "#be67e1"
+
+blue = "#048ac7"
+light_blue = "#48c6ff"
+mid_blue = "#8197bf"
+dark_blue = "#0ac1cd"
+blue_accent = "#63e7f0"
+
+green = "#ccff00"
+dark_green = "#cee318"
+
+red = "#cc7c8a"
+red_error = "#902020"
+red_accent = "#f44747"
+
+orange = "#ff9f00"
+dark_orange = "#ff005b"
+orange_accent = "#ee7f25"
+
+yellow = "#fad07a"
+light_yellow = "#ebebd8"
+yellow_accent = "#dea407"
+
+diff_plus = "#5a9f81"
+selection = "#37232d"
+selectionfg = "#e5e5e5"

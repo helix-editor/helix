@@ -1,0 +1,94 @@
+# Author: André Sá <enkodr@outlook.com>
+# Based on the AYU theme colors from https://github.com/dempfi/ayu
+
+# Syntax highlighting
+"type" = "blue"
+"type.builtin" = "blue"
+"constructor" = "green"
+"constant" = "magenta"
+"string" = "green"
+"string.regexp" = "orange"
+"string.special" = "yellow"
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"variable" = "foreground"
+"label" = "orange"
+"punctuation" = "foreground"
+"keyword" = "orange"
+"keyword.control" = "yellow"
+"keyword.directive" = "yellow"
+"operator" = "orange"
+"function" = "yellow"
+"tag" = "blue"
+"namespace" = "blue"
+"markup.heading" = "orange"
+"markup.list" = "yellow"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.raw.block" = "orange"
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.text" = "yellow"
+"markup.link.label" = "green"
+"markup.quote" = "yellow"
+"diff.plus" =  "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+
+# Interface
+"ui.background"= { bg = "background" }
+"ui.cursor" = { fg = "dark_gray", bg = "yellow" }
+"ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
+"ui.cursor.match" = "orange"
+"ui.linenr" = "dark_gray"
+"ui.linenr.selected" = "gray"
+"ui.statusline" = { fg = "foreground", bg = "black" }
+"ui.statusline.normal" = { fg = "black", bg = "blue" }
+"ui.statusline.insert" = { fg = "black", bg = "orange" }
+"ui.statusline.select" = { fg = "black", bg = "magenta" }
+"ui.cursorline" = { bg = "black" }
+"ui.popup" = { fg = "#7B91b3", bg = "black" }
+"ui.window" = "dark_gray"
+"ui.help" = { fg = "#7B91b3", bg = "black" }
+"ui.text" = "foreground"
+"ui.text.focus" = { bg = "dark_gray", fg = "foreground" }
+"ui.text.info" = "foreground"
+"ui.virtual.whitespace" = "dark_gray"
+"ui.virtual.ruler" = { bg = "black" }
+"ui.virtual.inlay-hint" = { fg = "#f4a028", bg = "#fcf2e3" }  # bg original #ffaa3333
+"ui.menu" = { fg = "foreground", bg = "black" }
+"ui.menu.selected" = { bg = "gray", fg = "background" }
+"ui.selection" = { bg = "dark_gray" }
+"warning" = "yellow"
+"error" = { fg = "red", modifiers = ["bold"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "blue", modifiers = ["bold"] }
+"diagnostic.hint"= { underline = { color = "blue", style = "curl" } }
+"diagnostic.info"= { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning"= { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error"= { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.bufferline" = { fg = "gray", bg = "background" }
+"ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
+"ui.debug" = { fg = "orange", bg = "background" }
+"ui.highlight.frameline" = { bg = "#cfe0f2" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
+
+"special" = "orange"
+
+[palette]
+background = "#fafafa"
+foreground = "#5c6166"
+
+black = "#e7eaed"
+white = "#fcfcfc"
+blue = "#399ee6"
+light_blue = "#55b4d4"
+cyan = "#478acc"
+dark_gray = "#d8d8d7"
+gray = "#828c9a"
+green = "#86b300"
+magenta = "#a37acc"
+orange = "#fa8d3e"
+red = "#f07171"
+yellow = "#ffaa33"

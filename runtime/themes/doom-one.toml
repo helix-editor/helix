@@ -1,0 +1,127 @@
+# Author: spentbliss <zyhkekrz.hatbox475@passinbox.com>
+# License: MIT (originally by NTBBloodbath)
+
+"ui.background" = { bg = "bg", fg = "fg" } 
+"ui.text" = "fg"
+"ui.text.focus" = { bg = "bg_highlight", fg = "cyan" }
+"ui.cursor" = { bg = "cyan", fg = "bg" }
+"ui.linenr" = "grey"
+"ui.linenr.selected" = "yellow"
+"ui.statusline" = { fg = "blue" }
+"ui.selection" = { bg = "bg_highlight" } 
+"ui.selection.primary" = { bg = "bg_highlight" }  
+"ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.jump-label" = { fg = "cyan", modifiers = ["bold"] }
+
+# Markdown Highlighting
+"markup.raw" = { fg = "blue", bg = "bg" } 
+"markup.raw.inline" = { fg = "orange" } 
+"markup.heading.1" = { fg = "#E99BEA", bg = "#4F4258"}
+"markup.heading.2" = { fg = "#51AFEF", bg = "#2F4456" }
+"markup.heading.3" = { fg = "#A9A1E1", bg = "#3F4153" }
+"markup.heading.4" = { fg = "#98BE65", bg = "#3C453D" }
+"markup.heading.5" = { fg = "#ECBE7B", bg = "#4B4641" }
+"markup.heading.6" = { fg = "#DA8549", bg = "#483C39" }
+"markup.list" = { fg = "magenta" }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange" }
+"markup.strikethrough" = { fg = "red", modifiers = ["crossed_out"] }
+"markup.link" = { fg = "cyan" }
+"markup.quote" = { fg = "fg" }
+
+# Syntax Highlighting for Code
+"comment" = { fg = "grey" }
+"comment.line" = { fg = "grey" }
+"comment.block" = { fg = "grey" }
+"comment.documentation" = { fg = "blue" }
+
+"keyword" = "blue"
+"keyword.control" = "blue"
+"keyword.operator" = "fg"
+"keyword.function" = "blue"
+"keyword.directive" = "green"
+"keyword.storage" = "blue"
+
+"type" = "yellow"
+"type.builtin" = "yellow" 
+"type.enum.variant" = "purple"
+
+"function" = "magenta"
+"function.builtin" = "fg"
+"function.method" = "fg"
+"function.macro" = "purple"
+
+"variable" = "fg"
+"variable.builtin" = "red"
+"variable.parameter" = "fg" 
+
+"string" = "green"
+"string.special" = "green"
+
+"constant" = "orange"
+"constant.builtin" = "orange"
+"constant.numeric" = "orange"
+"constant.character" = "orange"
+"constant.boolean" = "orange"
+
+"attribute" = "magenta"
+"operator" = "blue"
+"tag" = { fg = "magenta", modifiers = ["bold"] }
+"tag.special" = { fg = "orange", modifiers = ["bold"] }
+"namespace" = "blue"
+"macro" = "orange"
+"label" = "red"
+
+# Interface specific
+"ui.cursorline.primary" = { bg = "bg_highlight" }
+"ui.cursorline.secondary" = { bg = "bg_alt" }
+"ui.cursorcolumn.primary" = { bg = "bg_highlight" }
+"ui.cursorcolumn.secondary" = { bg = "bg_alt" }
+"ui.statusline.normal" = { fg = "bg", bg = "blue" }
+"ui.statusline.insert" = { fg = "bg", bg = "green" }
+"ui.statusline.select" = { fg = "bg", bg = "purple" }
+
+# Git changes indicator
+"diff.plus" = "green"
+"diff.plus.gutter" = "green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "red"
+"diff.delta" = "green"
+"diff.delta.gutter" = "green"
+"diff.delta.moved" = "orange"
+"diff.delta.conflict" = "purple"
+
+# Diagnostic styles
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "red", modifiers = ["bold"] }
+"info" = { fg = "cyan", modifiers = ["bold"] }
+"hint" = { fg = "blue", modifiers = ["bold"] }
+"diagnostic.error" = { fg = "red" }
+"diagnostic.warning" = { fg = "yellow" }
+"diagnostic.info" = { fg = "cyan" }
+"diagnostic.hint" = { fg = "blue" }
+
+# Popups for documentation or file picker
+"ui.popup" = { fg = "fg", bg = "bg" } 
+"ui.popup.info" = { fg = "fg", bg = "bg_alt" } 
+"ui.menu" = { fg = "fg", bg = "bg" } 
+"ui.menu.selected" = { fg = "cyan", bg = "bg_highlight" }
+
+# Additional overrides
+"ui.virtual.whitespace" = "grey"
+"ui.virtual.indent-guide" = { fg = "grey" }
+
+[palette]
+bg = "#282C34"
+fg = "#BBC2CF" 
+grey = "#5B6268"
+blue = "#51AFEF"
+green = "#98BE65"
+cyan = "#46D9FF" 
+red = "#FF6C6B"
+yellow = "#ECBE7B"
+purple = "#A8A1E1"
+magenta = "#C678DD"
+orange = "#DA8548" 
+bg_alt = "#21242B"
+bg_highlight = "#3C4048"

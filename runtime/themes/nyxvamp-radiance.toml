@@ -1,0 +1,144 @@
+# nyxvamp - radiance variant
+# author: <zoey.spessanha@zeetech.io>
+
+# Rainbow parentheses colors
+rainbow = ["keyword_fg", "function_fg", "constant_fg", "string_fg"]
+
+# UI Elements
+"ui.background"               = { bg = "background", fg = "foreground" }
+"ui.text"                     = { fg = "foreground" }
+"ui.text.focus"               = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.text.inactive"            = { fg = "comment_fg" }
+"ui.text.info"                = { fg = "menu_fg", bg = "menu_bg" }
+"ui.cursor"                   = { fg = "cursor_fg", bg = "cursor_bg" }
+"ui.cursorline.primary"       = { bg = "cursorline" }
+"ui.selection"                = { bg = "selection" }
+"ui.linenr"                   = { fg = "line_nr" }
+"ui.linenr.selected"          = { fg = "line_nr_selected", modifiers = ["bold"] }
+"ui.statusline"               = { fg = "status_fg", bg = "status_bg" }
+"ui.statusline.inactive"      = { fg = "status_inactive_fg", bg = "status_inactive_bg" }
+"ui.menu"                     = { fg = "menu_fg", bg = "menu_bg" }
+"ui.menu.selected"            = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.menu.scroll"              = { fg = "menu_scroll_fg", bg = "menu_scroll_bg" }
+"ui.popup"                    = { fg = "popup_fg", bg = "popup_bg" }
+"ui.popup.info"               = { fg = "menu_fg", bg = "menu_bg" }
+"ui.match_paren"              = { fg = "match_paren_fg", bg = "match_paren_bg", modifiers = ["bold"] }
+"ui.virtual"                  = { fg = "comment_fg" }
+"ui.virtual.ruler"            = { bg = "virtual_ruler_bg" }
+"ui.highlight"                = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.picker.header"            = { fg = "menu_fg", bg = "menu_bg" }
+"ui.picker.header.column"     = { fg = "menu_fg", bg = "menu_bg" }
+"ui.picker.header.column.active" = { fg = "menu_sel_fg", bg = "menu_sel_bg" }
+"ui.window"                   = { fg = "foreground" }
+"ui.help"                     = { fg = "menu_fg", bg = "menu_bg" }
+"ui.text.directory"           = { fg = "function_fg", modifiers = ["bold"] }
+"ui.selection.primary"          = { bg = "selection" }
+
+# Syntax Highlighting
+"comment"                     = { fg = "comment_fg", modifiers = ["italic"] }
+"string"                      = { fg = "string_fg" }
+"string.special"              = { fg = "string_special_fg" }
+"constant"                    = { fg = "constant_fg" }
+"constant.builtin"            = { fg = "constant_builtin_fg", modifiers = ["bold"] }
+"number"                      = { fg = "number_fg" }
+"boolean"                     = { fg = "boolean_fg" }
+"function"                    = { fg = "function_fg", modifiers = ["bold"] }  # Added bold for better distinction
+"function.builtin"            = { fg = "function_builtin_fg", modifiers = ["bold"] }
+"keyword"                     = { fg = "keyword_fg", modifiers = ["bold"] }
+"keyword.control"             = { fg = "keyword_control_fg", modifiers = ["bold"] }
+"operator"                    = { fg = "operator_fg" }
+"variable"                    = { fg = "variable_fg" }
+"variable.builtin"            = { fg = "variable_builtin_fg", modifiers = ["italic"] }
+"type"                        = { fg = "type_fg", modifiers = ["italic"] }
+"type.builtin"                = { fg = "type_builtin_fg", modifiers = ["italic"] }
+"attribute"                   = { fg = "attribute_fg" }
+"namespace"                   = { fg = "namespace_fg" }
+"punctuation"                 = { fg = "punctuation_fg" }
+"symbol"                      = { fg = "symbol_fg", modifiers = ["italic"] }
+
+# Diagnostics
+"warning"                     = { fg = "warning_fg" }
+"error"                       = { fg = "error_fg" }
+"info"                        = { fg = "info_fg" }
+"hint"                        = { fg = "hint_fg" }
+"diagnostic"                  = { fg = "error_fg" }
+"diagnostic.error"            = { fg = "error_fg", modifiers = ["bold"] }
+"diagnostic.warning"          = { fg = "warning_fg", modifiers = ["bold"] }
+"diagnostic.info"             = { fg = "info_fg", modifiers = ["bold"] }
+"diagnostic.hint"             = { fg = "hint_fg", modifiers = ["bold"] }
+
+# Diff
+"diff.plus"                   = { fg = "diff_add_fg" }
+"diff.minus"                  = { fg = "diff_delete_fg" }
+"diff.delta"                  = { fg = "diff_change_fg" }
+
+# Markup
+"markup.heading"              = { fg = "markup_heading_fg", modifiers = ["bold"] }
+"markup.bold"                 = { fg = "markup_bold_fg", modifiers = ["bold"] }
+"markup.italic"               = { fg = "markup_italic_fg", modifiers = ["italic"] }
+"markup.link.url"             = { fg = "markup_link_url_fg", modifiers = ["underlined"] }
+"markup.link.text"            = { fg = "markup_link_text_fg" }
+"markup.quote"                = { fg = "markup_quote_fg", modifiers = ["italic"] }
+
+# Palette
+[palette]
+background                    = "#F7F7FF"  # Off-white background (from your visual identity)
+foreground                    = "#1E1E2E"  # Deep navy foreground (from your visual identity)
+cursor_fg                     = "#F7F7FF"  # Off-white cursor text
+cursor_bg                     = "#9655FF"  # Deep purple cursor (from your visual identity)
+cursorline                    = "#E8E8F0"  # Slightly darker than background
+selection                     = "#E8D5FF"  # Light purple selection that matches theme palette
+line_nr                       = "#5A5570"  # Darker gray for line numbers
+line_nr_selected              = "#1E1E2E"  # Deep navy for selected line number
+status_fg                     = "#1E1E2E"  # Deep navy
+status_bg                     = "#E8E8F0"  # Light gray
+status_inactive_fg            = "#5A5570"  # Darker gray
+status_inactive_bg            = "#F7F7FF"  # Off-white
+menu_fg                       = "#1E1E2E"  # Deep navy
+menu_bg                       = "#E8E8F0"  # Light gray
+menu_sel_fg                   = "#1E1E2E"  # Dark navy text for better contrast
+menu_sel_bg                   = "#E8D5FF"  # Light purple selection
+menu_scroll_fg                = "#5A5570"  # Darker gray
+menu_scroll_bg                = "#E8E8F0"  # Light gray
+popup_fg                      = "#1E1E2E"  # Deep navy
+popup_bg                      = "#E8E8F0"  # Light gray
+match_paren_fg                = "#1E1E2E"  # Deep navy
+match_paren_bg                = "#E8D5FF"  # Light purple matching selection
+virtual_ruler_bg              = "#EAEAF0"  # Slightly lighter than comment color background
+
+comment_fg                    = "#5A5570"  # Darker gray comments for better contrast
+string_fg                     = "#B8860B"  # Dark golden rod - much better contrast on light background
+string_special_fg             = "#9F1239"  # Even darker pink special strings
+constant_fg                   = "#9F1239"  # Even darker pink constants for maximum contrast
+constant_builtin_fg           = "#9F1239"  # Even darker pink built-in constants
+number_fg                     = "#C2410C"  # Darker orange numbers for better contrast
+boolean_fg                    = "#9F1239"  # Even darker pink booleans
+function_fg                   = "#005F87"  # Dark blue functions (more distinguishable)
+function_builtin_fg           = "#005F87"  # Dark blue built-in functions
+keyword_fg                    = "#9655FF"  # Deep purple keywords
+keyword_control_fg            = "#9655FF"  # Deep purple control keywords
+operator_fg                   = "#4A4560"  # Darker purple-gray operators for better contrast
+variable_fg                   = "#1E1E2E"  # Deep navy variables
+variable_builtin_fg           = "#9F1239"  # Even darker pink built-in variables
+type_fg                       = "#6B46C1"  # Darker purple types for better contrast
+type_builtin_fg               = "#6B46C1"  # Darker purple built-in types for better contrast
+attribute_fg                  = "#9655FF"  # Deep purple attributes
+namespace_fg                  = "#6B46C1"  # Darker purple namespaces (Base16 base0E)
+punctuation_fg                = "#1E1E2E"  # Deep navy punctuation
+symbol_fg                     = "#9F1239"  # Even darker pink symbols (atoms) for maximum contrast
+
+error_fg                      = "#9F1239"  # Base16 base08 - red errors
+warning_fg                    = "#C2410C"  # Base16 base09 - orange warnings
+info_fg                       = "#005F87"  # Base16 base0B - blue info
+hint_fg                       = "#8BD5CA"  # Base16 base0C - cyan hints
+
+diff_add_fg                   = "#A6DA95"  # Soft green additions
+diff_delete_fg                = "#E78284"  # Soft red deletions
+diff_change_fg                = "#E5C890"  # Soft yellow changes
+
+markup_heading_fg             = "#9655FF"  # Deep purple headings
+markup_bold_fg                = "#1E1E2E"  # Deep navy bold text
+markup_italic_fg              = "#1E1E2E"  # Deep navy italic text
+markup_link_url_fg            = "#005F87"  # Dark blue links
+markup_link_text_fg           = "#9655FF"  # Deep purple link text
+markup_quote_fg               = "#5A5570"  # Darker gray quotes

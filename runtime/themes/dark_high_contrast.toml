@@ -1,0 +1,123 @@
+# GreasySlug : dark high contrast <9619abgoni@gmail.com>
+
+# Interface
+"ui.background" = { bg = "black" }
+"ui.window" = { fg = "aqua" }
+"special" = "orange"                           # file picker fuzzy match
+"ui.background.separator" = { fg = "white" }
+"ui.text" = "white"
+"ui.text.focus" = { modifiers = ["reversed"] } # file picker selected
+
+"ui.virtual.jump-label" = { fg = "deep_red", modifiers = [
+    "bold",
+], underline = { color = "deep_red", style = "line" } }
+"ui.virtual" = "gray"
+"ui.virtual.whitespace" = "gray"
+"ui.virtual.ruler" = { fg = "white", bg = "gray" }
+"ui.virtual.indent-guide" = "white"
+"ui.virtual.inlay-hint" = { fg = "black", bg = "orange" }
+"ui.virtual.inlay-hint.parameter" = { fg = "black", bg = "orange" }
+"ui.virtual.inlay-hint.type" = { fg = "black", bg = "orange" }
+"ui.virtual.wrap" = "gray"
+
+"ui.statusline" = { fg = "white", bg = "deep_blue" }
+"ui.statusline.inactive" = { fg = "gray", bg = "deep_blue" }
+"ui.statusline.normal" = { fg = "black", bg = "aqua" }
+"ui.statusline.insert" = { fg = "black", bg = "orange" }
+"ui.statusline.select" = { fg = "black", bg = "purple" }
+"ui.statusline.separator" = { fg = "aqua", bg = "white" }
+
+"ui.cursor" = { fg = "black", bg = "white" }
+"ui.cursor.insert" = { fg = "black", bg = "white" }
+"ui.cursor.select" = { fg = "black", bg = "white" }
+"ui.cursor.match" = { modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "black", bg = "white", modifiers = ["slow_blink"] }
+"ui.cursor.secondary" = "white"
+"ui.cursorline.primary" = { bg = "deep_blue", underline = { color = "orange", style = "double_line" } }
+"ui.cursorline.secondary" = { bg = "dark_blue", underline = { color = "white", style = "line" } }
+"ui.selection" = { fg = "dark_blue", bg = "white" }
+"ui.selection.primary" = { fg = "deep_blue", bg = "white" }
+
+"ui.menu" = { fg = "white", bg = "deep_blue" }
+"ui.menu.selected" = { fg = "orange", underline = { style = "line" } }
+"ui.menu.scroll" = { fg = "aqua", bg = "black" }
+"ui.help" = { fg = "white", bg = "deep_blue" }
+
+"ui.popup" = { bg = "deep_blue" }
+"ui.popup.info" = { fg = "white", bg = "deep_blue" }
+
+"ui.gutter" = { bg = "black" }
+"ui.gutter.selected" = { bg = "black" }
+"ui.linenr" = { fg = "white", bg = "black" }
+"ui.linenr.selected" = { fg = "orange", bg = "black", modifiers = ["bold"] }
+
+# Diagnostic
+"diagnostic" = { fg = "white" }
+"diagnostic.info" = { underline = { color = "white", style = "dotted" } }
+"diagnostic.hint" = { underline = { color = "yellow", style = "dashed" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"info" = "white"
+"hint" = "yellow"
+"warning" = "orange"
+"error" = "red"
+"debug" = "red"
+
+"diff.plus" = "green"
+"diff.delta" = "blue"
+"diff.minus" = "pink"
+
+# Syntax high light
+"type" = "emerald_green"
+"type.buildin" = "emerald_green"
+"comment" = "white"
+"operator" = "white"
+"variable" = "aqua"
+"variable.other.member" = "brown"
+"constant" = "aqua"
+"constant.numeric" = "emerald_green"
+"attributes" = "blue"
+"namespace" = "blue"
+"string" = "brown"
+"string.special.url" = "brown"
+"constant.character.escape" = "yellow"
+"constructor" = "aqua"
+"keyword" = "blue"
+"keyword.control" = "purple"
+"function" = "yellow"
+"label" = "blue"
+"tag" = "aqua"
+"attribute" = "blue"
+
+# Markup 
+"markup.heading" = { fg = "yellow", modifiers = [
+    "bold",
+], underline = { color = "yellow", style = "double_line" } }
+"markup.list" = "pink"
+"markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
+"markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue", underline = { color = "blue", style = "line" } }
+"markup.link.text" = "pink"
+"markup.quote" = "yellow"
+"markup.raw" = "brown"
+
+[palette]
+black = "#000000"
+gray = "#585858"
+white = "#ffffff"
+blue = "#66a4ff"
+deep_blue = "#142743"
+dark_blue = "#0d1a2d"
+aqua = "#6fc3df"
+purple = "#c586c0"
+red = "#b65f5f"
+deep_red = "#fd0004"
+pink = "#ff5c8d"
+orange = "#f38518"
+brown = "#ce9178"
+yellow = "#cedc84"
+green = "#427a2d"
+emerald_green = "#4ec9b0"

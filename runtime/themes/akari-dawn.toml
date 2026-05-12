@@ -1,0 +1,260 @@
+# Author: Shu Kutsuzawa <cappyzawa@gmail.com>
+# License: MIT
+# Akari Dawn — A light palette inspired by Japanese alleys lit by round lanterns.
+
+# UI elements
+"ui.background" = { bg = "background" }
+"ui.text" = "foreground"
+"ui.text.focus" = { fg = "selection-fg", bg = "selection-bg" }
+"ui.text.inactive" = { fg = "bright-black" }
+"ui.text.info" = { fg = "info" }
+"ui.text.directory" = { fg = "directory" }
+
+"ui.cursor" = { fg = "cursor-text", bg = "cursor" }
+"ui.cursor.normal" = { fg = "cursor-text", bg = "cursor" }
+"ui.cursor.primary" = { fg = "cursor-text", bg = "cursor" }
+"ui.cursor.primary.normal" = { fg = "cursor-text", bg = "cursor" }
+"ui.cursor.match" = { fg = "lantern", bg = "sunken", modifiers = ["bold"] }
+"ui.cursor.insert" = { fg = "cursor-text", bg = "green" }
+"ui.cursor.primary.insert" = { fg = "cursor-text", bg = "green" }
+"ui.cursor.select" = { fg = "cursor-text", bg = "magenta" }
+"ui.cursor.primary.select" = { fg = "cursor-text", bg = "magenta" }
+
+"ui.selection" = { bg = "selection-bg" }
+"ui.selection.primary" = { bg = "selection-bg" }
+
+"ui.cursorline.primary" = { bg = "cursorline" }
+"ui.cursorline.secondary" = { bg = "surface" }
+"ui.cursorcolumn.primary" = { bg = "surface" }
+"ui.cursorcolumn.secondary" = { bg = "surface" }
+
+"ui.gutter" = { bg = "background" }
+"ui.gutter.selected" = { bg = "cursorline" }
+"ui.linenr" = { fg = "bright-black" }
+"ui.linenr.selected" = { fg = "lantern" }
+
+"ui.statusline" = { fg = "foreground", bg = "surface" }
+"ui.statusline.inactive" = { fg = "comment", bg = "surface" }
+"ui.statusline.normal" = { fg = "background", bg = "green", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "background", bg = "lantern", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "background", bg = "magenta", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "bright-black", bg = "surface" }
+
+"ui.popup" = { fg = "foreground", bg = "raised" }
+"ui.popup.info" = { fg = "foreground", bg = "raised" }
+"ui.window" = { fg = "border" }
+"ui.background.separator" = { bg = "surface" }
+"ui.help" = { fg = "foreground", bg = "raised" }
+
+"ui.menu" = { fg = "foreground", bg = "raised" }
+"ui.menu.selected" = { fg = "selection-fg", bg = "selection-bg" }
+"ui.menu.scroll" = { fg = "bright-black", bg = "raised" }
+
+"ui.virtual.ruler" = { bg = "surface" }
+"ui.virtual.whitespace" = { fg = "bright-black" }
+"ui.virtual.indent-guide" = { fg = "bright-black" }
+"ui.virtual.inlay-hint" = { fg = "comment" }
+"ui.virtual.inlay-hint.parameter" = { fg = "comment" }
+"ui.virtual.inlay-hint.type" = { fg = "comment" }
+"ui.virtual.wrap" = { fg = "bright-black" }
+"ui.virtual.jump-label" = { fg = "bright-red", modifiers = ["bold"] }
+
+"ui.debug.breakpoint" = { fg = "red" }
+"ui.debug.active" = { fg = "lantern", modifiers = ["bold"] }
+
+"ui.highlight" = { bg = "match-bg" }
+"ui.highlight.frameline" = { bg = "surface" }
+
+"ui.bufferline" = { fg = "bright-black", bg = "surface" }
+"ui.bufferline.active" = { fg = "foreground", bg = "background" }
+"ui.bufferline.background" = { bg = "surface" }
+
+"ui.picker.header" = { fg = "bright-blue", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "bright-blue", modifiers = ["bold"] }
+"ui.picker.header.column.active" = { fg = "lantern", modifiers = ["bold"] }
+
+# Diagnostics
+"error" = { fg = "red", modifiers = ["bold"] }
+"warning" = { fg = "lantern" }
+"info" = { fg = "blue" }
+"hint" = { fg = "comment" }
+
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "lantern", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "comment", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"tabstop" = { underline = { color = "lantern", style = "dashed" } }
+
+# Diff
+"diff.plus" = "green"
+"diff.plus.gutter" = "green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "red"
+"diff.delta" = "amber"
+"diff.delta.gutter" = "amber"
+"diff.delta.moved" = "diff-moved"
+"diff.delta.conflict" = { fg = "conflict", modifiers = ["bold"] }
+
+# Markup
+"markup.heading" = { fg = "lantern", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "comment" }
+"markup.heading.1" = { fg = "lantern", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "amber", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "ember", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "amber" }
+"markup.heading.5" = { fg = "comment", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "blue" }
+"markup.list" = { fg = "cyan" }
+"markup.list.numbered" = { fg = "lantern" }
+"markup.list.unnumbered" = { fg = "cyan" }
+"markup.list.checked" = { fg = "green" }
+"markup.list.unchecked" = { fg = "comment" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "link", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "cyan" }
+"markup.link.label" = { fg = "magenta" }
+"markup.quote" = { fg = "comment", modifiers = ["dim"] }
+"markup.raw" = { fg = "bright-green" }
+"markup.raw.inline" = { fg = "bright-green" }
+"markup.raw.block" = { fg = "bright-green" }
+"markup.normal.completion" = "foreground"
+"markup.normal.hover" = "foreground"
+"markup.heading.completion" = { fg = "lantern", modifiers = ["bold"] }
+"markup.heading.hover" = { fg = "lantern", modifiers = ["bold"] }
+"markup.raw.inline.completion" = { fg = "bright-green" }
+"markup.raw.inline.hover" = { fg = "bright-green" }
+
+# Syntax highlighting
+"attribute" = { fg = "amber" }
+"type" = { fg = "amber" }
+"type.builtin" = { fg = "yellow" }
+"type.enum" = { fg = "amber" }
+"type.enum.variant" = { fg = "amber" }
+"type.parameter" = { fg = "yellow" }
+
+"constructor" = { fg = "amber" }
+
+"constant" = { fg = "constant" }
+"constant.builtin" = { fg = "constant" }
+"constant.builtin.boolean" = { fg = "constant" }
+"constant.character" = { fg = "lantern" }
+"constant.character.escape" = { fg = "escape" }
+"constant.numeric" = { fg = "constant" }
+"constant.numeric.integer" = { fg = "constant" }
+"constant.numeric.float" = { fg = "constant" }
+
+"string" = { fg = "green" }
+"string.regexp" = { fg = "regexp" }
+"string.regexp.special" = { fg = "bright-magenta" }
+"string.special" = { fg = "green" }
+"string.special.path" = { fg = "path" }
+"string.special.url" = { fg = "link", modifiers = ["underlined"] }
+"string.special.symbol" = { fg = "bright-magenta" }
+
+"comment" = { fg = "comment", modifiers = ["dim"] }
+"comment.line" = { fg = "comment", modifiers = ["dim"] }
+"comment.line.documentation" = { fg = "comment", modifiers = ["dim"] }
+"comment.block" = { fg = "comment", modifiers = ["dim"] }
+"comment.block.documentation" = { fg = "comment", modifiers = ["dim"] }
+"comment.unused" = { fg = "comment", modifiers = ["dim"] }
+
+"variable" = "foreground"
+"variable.builtin" = { fg = "bright-red" }
+"variable.parameter" = "foreground"
+"variable.other" = "foreground"
+"variable.other.member" = "foreground"
+"variable.other.member.private" = "foreground"
+
+"label" = { fg = "amber" }
+
+"punctuation" = "foreground"
+"punctuation.bracket" = "foreground"
+"punctuation.delimiter" = "foreground"
+"punctuation.special" = { fg = "amber" }
+
+"keyword" = { fg = "lantern" }
+"keyword.control" = { fg = "lantern" }
+"keyword.control.conditional" = { fg = "lantern" }
+"keyword.control.repeat" = { fg = "lantern" }
+"keyword.control.import" = { fg = "lantern" }
+"keyword.control.return" = { fg = "lantern" }
+"keyword.control.exception" = { fg = "lantern" }
+"keyword.operator" = { fg = "lantern" }
+"keyword.directive" = { fg = "macro" }
+"keyword.function" = { fg = "lantern" }
+"keyword.storage" = { fg = "lantern" }
+"keyword.storage.type" = { fg = "lantern" }
+"keyword.storage.modifier" = { fg = "lantern" }
+
+"operator" = "foreground"
+
+"function" = { fg = "magenta" }
+"function.builtin" = { fg = "bright-magenta" }
+"function.method" = { fg = "magenta" }
+"function.method.private" = { fg = "magenta" }
+"function.macro" = { fg = "macro" }
+"function.special" = { fg = "bright-magenta" }
+
+"tag" = { fg = "lantern" }
+"tag.builtin" = { fg = "blue" }
+
+"namespace" = { fg = "amber" }
+
+"special" = { fg = "bright-yellow" }
+
+"module" = { fg = "amber" }
+
+# Palette definition (MUST be at the end of the file)
+[palette]
+background = "#E4DED6"
+foreground = "#1A1816"
+
+cursor = "#8A4530"
+cursor-text = "#E4DED6"
+selection-bg = "#D7C5B1"
+selection-fg = "#1A1816"
+cursorline = "#DDD2C9"
+
+surface = "#CFC4B6"
+raised = "#D9D1C6"
+border = "#CABEAE"
+
+black = "#1A1816"
+red = "#6A2828"
+green = "#3A5830"
+yellow = "#B07840"
+blue = "#304050"
+magenta = "#806080"
+cyan = "#305858"
+white = "#E4DED6"
+
+bright-black = "#514B45"
+bright-red = "#3E1717"
+bright-green = "#20301A"
+bright-yellow = "#78522C"
+bright-blue = "#131A20"
+bright-magenta = "#543F54"
+bright-cyan = "#152727"
+bright-white = "#D0C5B7"
+
+lantern = "#8A4530"
+ember = "#7A3828"
+amber = "#B07840"
+constant = "#447C7C"
+comment = "#222D38"
+path = "#3A5830"
+macro = "#543F54"
+escape = "#543F54"
+regexp = "#20301A"
+link = "#131A20"
+directory = "#305858"
+sunken = "#DDD2C9"
+match-bg = "#D2BFB5"
+info = "#304050"
+diff-moved = "#304050"
+conflict = "#6A2828"

@@ -1,0 +1,129 @@
+# Gruvbox Material Light Medium for Helix
+# Original Author: @sainnhe (https://github.com/sainnhe/gruvbox-material)
+# Base theme ported by: @satoqz
+# Palette ported by: @ivan-shymkiv
+# License: MIT
+
+"attribute" = "green"
+"comment" = { fg = "grey1", modifiers = ["italic"] }
+"constant" = "fg0"
+"constant.builtin" = "purple"
+"constant.character.escape" = "green"
+"constant.numeric" = "purple"
+"constructor" = "green"
+"function" = "green"
+"keyword" = "red"
+"keyword.directive" = "purple"
+"keyword.operator" = "orange"
+"label" = "red"
+"namespace" = "yellow"
+"operator" = "orange"
+"punctuation" = "grey1"
+"punctuation.bracket" = "fg0"
+"punctuation.delimiter" = "grey1"
+"punctuation.special" = "blue"
+"special" = "green"
+"string" = "aqua"
+"string.regexp" = "green"
+"string.special.path" = "yellow"
+"string.special.symbol" = "fg0"
+"string.special.url" = { fg = "fg0", modifiers = ["underlined"] }
+"tag" = "orange"
+"type" = "yellow"
+"type.enum.variant" = "purple"
+"variable" = "fg0"
+"variable.builtin" = "purple"
+"variable.other.member" = "blue"
+"variable.parameter" = "fg0"
+
+"markup.heading.1" = "red"
+"markup.heading.2" = "orange"
+"markup.heading.3" = "yellow"
+"markup.heading.4" = "green"
+"markup.heading.5" = "blue"
+"markup.heading.6" = "purple"
+
+"markup.bold" = { fg = "fg0", modifiers = ["bold"] }
+"markup.italic" = { fg = "fg0", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "fg0", modifiers = ["crossed_out"] }
+
+"markup.link.label" = "blue"
+"markup.link.text" = "yellow"
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.list" = "blue"
+"markup.list.checked" = "green"
+"markup.list.unchecked" = "grey1"
+"markup.quote" = "grey1"
+"markup.raw" = "green"
+
+"diff.delta" = "blue"
+"diff.minus" = "red"
+"diff.plus" = "green"
+
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "green", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+
+error = "red"
+hint = "green"
+info = "blue"
+warning = "yellow"
+
+"ui.background" = { fg = "fg0", bg = "bg0" }
+"ui.bufferline" = { fg = "fg1", bg = "bg4" }
+"ui.bufferline.active" = { fg = "bg0", bg = "grey2" }
+"ui.bufferline.background" = { bg = "bg1" }
+"ui.cursor" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.primary" = { fg = "bg0", bg = "fg0" }
+"ui.cursor.match" = { bg = "bg2" }
+"ui.cursorline.primary" = { bg = "bg1" }
+"ui.help" = { fg = "grey1", bg = "bg0" }
+"ui.highlight" = { bg = "bg2" }
+"ui.linenr" = "bg3"
+"ui.linenr.selected" = "grey1"
+"ui.menu" = { fg = "fg1", bg = "bg2" }
+"ui.menu.scroll" = { fg = "grey0", bg = "bg1" }
+"ui.menu.selected" = { fg = "bg2", bg = "grey2" }
+"ui.popup" = { fg = "fg1", bg = "bg2" }
+"ui.popup.info" = { "fg" = "grey1", bg = "bg0" }
+"ui.selection" = { bg = "bg2" }
+"ui.statusline" = { fg = "fg1", bg = "bg1" }
+"ui.statusline.inactive" = { fg = "grey1", bg = "bg1" }
+"ui.statusline.insert" = { fg = "bg0", bg = "green" }
+"ui.statusline.normal" = { fg = "bg0", bg = "grey2" }
+"ui.statusline.select" = { fg = "bg0", bg = "red" }
+"ui.text" = "fg0"
+"ui.text.directory" = { fg = "blue" }
+"ui.text.focus" = { bg = "bg2" }
+"ui.text.inactive" = { fg = "grey1" }
+"ui.text.info" = "grey1"
+"ui.virtual" = "grey0"
+"ui.virtual.indent-guide" = "bg3"
+"ui.virtual.inlay-hint" = "grey0"
+"ui.virtual.jump-label" = "grey2"
+"ui.virtual.ruler" = { bg = "bg1" }
+"ui.window" = { fg = "bg3" }
+
+[palette]
+fg0 = "#654735"
+fg1 = "#4f3829"
+
+bg0 = "#fbf1c7"
+bg1 = "#f4e8be"
+bg2 = "#eee0b7"
+bg3 = "#ddccab"
+bg4 = "#e5d5ad"
+
+grey0 = "#a89984"
+grey1 = "#928374"
+grey2 = "#7c6f64"
+
+aqua = "#4c7a5d"
+blue = "#45707a"
+green = "#6c782e"
+orange = "#c35e0a"
+purple = "#945e80"
+red = "#c14a4a"
+yellow = "#b47109"

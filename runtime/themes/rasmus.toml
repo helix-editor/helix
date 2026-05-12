@@ -1,0 +1,143 @@
+# Author : Rohit K Viswanath <kvrohit@gmail.com>
+# Ported from : [rsms/sublime-theme](https://github.com/rsms/sublime-theme)
+
+"attribute" = "cyan"
+
+"keyword" = "blue"
+"keyword.control.conditional" = { fg = "blue", modifiers = ["italic"] }
+"keyword.directive" = "magenta" # -- preprocessor comments (#if in C)
+
+"namespace" = { fg = "blue", modifiers = ["italic"] }
+
+"punctuation" = "gray06"
+"punctuation.delimiter" = "gray06"
+
+"operator" = "yellow"
+"special" = "yellow"
+
+"variable" = "white"
+"variable.builtin" = "bright_blue"
+"variable.parameter" = "bright_white"
+"variable.other.member" = "white"
+
+"type" = "bright_white"
+"type.builtin" = "magenta"
+"type.enum.variant" = "magenta"
+
+"constructor" = "yellow"
+
+"function" = "white"
+"function.macro" = "blue"
+"function.builtin" = "blue"
+
+"tag" = "yellow"
+"comment" = { fg = "gray05", modifiers = ["italic"] }
+
+"string" = "cyan"
+"string.regexp" = "green"
+"string.special" = "blue"
+
+"constant" = "white"
+"constant.builtin" = "white"
+"constant.numeric" = "magenta"
+"constant.character.escape" = "magenta"
+
+# used for lifetimes
+"label" = "yellow"
+
+"markup.heading.marker" = { fg = "gray07" }
+"markup.heading.1" = { fg = "white", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "gray07", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "gray07", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "gray07", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "gray06", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "gray06", modifiers = ["bold"] }
+"markup.list" = "gray07"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
+"markup.link.text" = "blue"
+"markup.raw" = "yellow"
+
+"diff.plus" = "bright_green"
+"diff.minus" = "bright_red"
+"diff.delta" = "bright_cyan"
+
+"ui.background" = { bg = "bg" }
+"ui.background.separator" = { fg = "fg" }
+
+"ui.linenr" = { fg = "gray04" }
+"ui.linenr.selected" = { fg = "gray07" }
+
+"ui.statusline" = { fg = "gray07", bg = "gray02" }
+"ui.statusline.inactive" = { fg = "gray05", bg = "gray01" }
+"ui.statusline.normal" = { fg = "black", bg = "cyan", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "black", bg = "blue", modifiers = ["bold"]  }
+"ui.statusline.select" = { fg = "black", bg = "magenta", modifiers = ["bold"]  }
+
+"ui.popup" = { bg = "gray01" }
+"ui.window" = { fg = "gray02" }
+"ui.help" = { bg = "gray01", fg = "fg" }
+
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "white" }
+
+"ui.virtual" = { fg = "gray03" }
+"ui.virtual.ruler" = { bg = "gray03" }
+"ui.virtual.indent-guide" = { fg = "gray04" }
+"ui.virtual.inlay-hint" = { fg = "gray05" }
+
+"ui.selection" = { bg = "gray03" }
+"ui.selection.primary" = { bg = "gray03" }
+
+"ui.cursor" = { bg = "gray04" }
+"ui.cursor.insert" = { bg = "white" }
+"ui.cursor.match" = { fg = "bright_yellow" }
+"ui.cursor.select" = { bg = "gray03" }
+"ui.cursorline.primary" = { bg = "gray01" }
+
+"ui.highlight" = { bg = "gray03" }
+
+"ui.menu" = { fg = "white", bg = "gray01" }
+"ui.menu.selected" = { fg = "fg", bg = "gray03" }
+"ui.menu.scroll" = { fg = "white", bg = "gray01" }
+
+"diagnostic.warning".underline = { color = "bright_yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "bright_red", style = "curl" } 
+"diagnostic.info".underline = { color = "bright_blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright_cyan", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+warning = "bright_yellow"
+error = "bright_red"
+info = "bright_blue"
+hint = "bright_cyan"
+
+[palette]
+bg = "#1a1a19"
+fg = "#d1d1d1"
+black = "#333332"
+red = "#ff968c"
+green = "#61957f"
+yellow = "#ffc591"
+blue = "#8db4d4"
+magenta = "#de9bc8"
+cyan = "#7bb099"
+white = "#d1d1d1"
+bright_black = "#4c4c4b"
+bright_red = "#ffafa5"
+bright_green = "#7aae98"
+bright_yellow = "#ffdeaa"
+bright_blue = "#a6cded"
+bright_magenta = "#f7b4e1"
+bright_cyan = "#94c9b2"
+bright_white = "#eaeaea"
+gray01 = "#222221"
+gray02 = "#2a2a29"
+gray03 = "#323231"
+gray04 = "#3a3a39"
+gray05 = "#6a6a69"
+gray06 = "#767675"
+gray07 = "#b6b6b5"

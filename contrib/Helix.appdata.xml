@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.helix_editor.Helix</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MPL-2.0</project_license>
+  <name>Helix</name>
+  <summary>A post-modern text editor</summary>
+  <summary xml:lang="ar">مُحَرِّرُ نُصُوصٍ سَابِقٌ لِعَهدِه</summary>
+  <developer id="com.helix_editor">
+    <name>Blaž Hrastnik</name>
+  </developer>
+
+  <description>
+    <p>
+      Helix is a terminal-based text editor inspired by Kakoune / Neovim and written in Rust.
+    </p>
+    <p xml:lang="ar">
+      مُحَرِّرُ نُصُوصٍ يَعمَلُ فِي الطَّرَفِيَّة، مُستَلهَمٌ مِن Kakoune وَ Neovim وَمَكتُوبٌ بِلُغَةِ رَست البَرمَجِيَّة.
+    </p>
+    <ul>
+      <li>Vim-like modal editing</li>
+      <li xml:lang="ar">تَحرِيرٌ وَضعِيٌّ شَبيهٌ بِـVim</li>
+      <li>Multiple selections</li>
+      <li xml:lang="ar">تَحدِيدَاتٌ لِلنَّصِ مُتَعَدِّدَة</li>
+      <li>Built-in language server support</li>
+      <li xml:lang="ar">دَعْمٌ مُدمَجٌ لِخَوادِمِ اللُّغَات</li>
+      <li>Smart, incremental syntax highlighting and code editing via tree-sitter</li>
+      <li xml:lang="ar">تَحرِيرُ التَّعلِيمَاتِ البَّرمَجِيَّةِ مَعَ تَمييزٍ لِلتَّركِيبِ النَّحُويِّ بِواسِطَةِ tree-sitter</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">Helix.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Helix with default theme</caption>
+      <image>https://github.com/helix-editor/helix/raw/d4565b4404cabc522bd60822abd374755581d751/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://helix-editor.com/</url>
+  <url type="donation">https://opencollective.com/helix-editor</url>
+  <url type="help">https://docs.helix-editor.com/</url>
+  <url type="vcs-browser">https://github.com/helix-editor/helix</url>
+  <url type="bugtracker">https://github.com/helix-editor/helix/issues</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="25.07.1" date="2025-07-18">
+      <url>https://github.com/helix-editor/helix/releases/tag/25.07.1</url>
+    </release>
+    <release version="25.07" date="2025-07-15">
+      <url>https://helix-editor.com/news/release-25-07-highlights/</url>
+    </release>
+    <release version="25.01.1" date="2025-01-19">
+      <url>https://github.com/helix-editor/helix/releases/tag/25.01.1</url>
+    </release>
+    <release version="25.01" date="2025-01-03">
+      <url>https://helix-editor.com/news/release-25-01-highlights/</url>
+    </release>
+    <release version="24.07" date="2024-07-14">
+      <url>https://github.com/helix-editor/helix/releases/tag/24.07</url>
+    </release>
+    <release version="24.03" date="2024-03-30">
+      <url>https://helix-editor.com/news/release-24-03-highlights/</url>
+    </release>
+    <release version="23.10" date="2023-10-24">
+      <url>https://helix-editor.com/news/release-23-10-highlights/</url>
+    </release>
+    <release version="23.05" date="2023-05-18">
+      <url>https://github.com/helix-editor/helix/releases/tag/23.05</url>
+    </release>
+    <release version="23.03" date="2023-03-31">
+      <url>https://helix-editor.com/news/release-23-03-highlights/</url>
+    </release>
+    <release version="22.12" date="2022-12-6">
+      <url>https://helix-editor.com/news/release-22-12-highlights/</url>
+    </release>
+    <release version="22.08" date="2022-8-31">
+      <url>https://helix-editor.com/news/release-22-08-highlights/</url>
+    </release>
+    <release version="22.05" date="2022-5-28">
+      <url>https://helix-editor.com/news/release-22-05-highlights/</url>
+    </release>
+    <release version="22.03" date="2022-3-28">
+      <url>https://helix-editor.com/news/release-22-03-highlights/</url>
+    </release>
+  </releases>
+
+  <recommends>
+    <control>keyboard</control>
+  </recommends>
+
+  <categories>
+    <category>Utility</category>
+    <category>TextEditor</category>
+  </categories>
+
+  <keywords>
+    <keyword>text</keyword>
+    <keyword>editor</keyword>
+    <keyword>development</keyword>
+    <keyword>programming</keyword>
+  </keywords>
+
+  <provides>
+    <binary>hx</binary>
+    <mediatype>text/english</mediatype>
+    <mediatype>text/plain</mediatype>
+    <mediatype>text/x-makefile</mediatype>
+    <mediatype>text/x-c++hdr</mediatype>
+    <mediatype>text/x-c++src</mediatype>
+    <mediatype>text/x-chdr</mediatype>
+    <mediatype>text/x-csrc</mediatype>
+    <mediatype>text/x-java</mediatype>
+    <mediatype>text/x-moc</mediatype>
+    <mediatype>text/x-pascal</mediatype>
+    <mediatype>text/x-tcl</mediatype>
+    <mediatype>text/x-tex</mediatype>
+    <mediatype>application/x-shellscript</mediatype>
+    <mediatype>text/x-c</mediatype>
+    <mediatype>text/x-c++</mediatype>
+  </provides>
+</component>

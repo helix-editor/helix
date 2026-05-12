@@ -1,0 +1,134 @@
+# name = "Ashokai"
+# author = "TeriyakiBomb"
+# version = "1.0.0"
+
+# Syntax highlighting
+"type" = "purple"
+"constant" = "magenta"
+"constant.numeric" = "purple"
+"constant.character.escape" = "orange"
+"string" = "orange"
+"string.regexp" = "blue"
+"comment" = "comment"
+"variable" = "fg0"
+"class" = {fg ="purple", modifiers = ["bold"]}
+"variable.builtin" = "blue"
+"variable.parameter" = "yellow"
+"variable.other.member" = "fg0"
+"label" = "purple"
+"punctuation" = "grey1"
+"punctuation.delimiter" = "lightblue"
+"punctuation.bracket" = "blue2"
+"keyword" = "blue"
+"keyword.directive" = "aqua"
+"operator" = "lightblue"
+"function" = "green"
+"function.builtin" = "blue"
+"function.macro" = "aqua"
+"function.method" = "magenta"
+"tag" = "magenta"
+"namespace" = "aqua"
+"attribute" = "green"
+"constructor" = "purple"
+"module" = "blue"
+"special" = "orange"
+"identifier" = "blue"
+
+# Markup
+"markup.heading.marker" = "grey1"
+"markup.heading.1" = { fg = "purple", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "magenta", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg0", modifiers = ["bold"] }
+"markup.list" = "red"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.text" = "magenta"
+"markup.quote" = "grey1"
+"markup.raw" = "green"
+
+# Diff
+"diff.plus" = "diffgreen"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
+# UI elements
+"ui.background" = { bg = "bg0" }
+"ui.background.separator" = "grey"
+
+"ui.cursor" = { fg = "bg0", bg = "cursor" }
+"ui.cursor.match" = { fg = "orange", bg = "selection" }
+"ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.cursor.primary" = {fg = "bg0", bg ="fg0"}
+"ui.cursor.primary.normal" = {fg = "bg0", bg ="fg0"}
+"ui.cursorline.primary" = { bg = "cursorline" }
+"ui.cursorline.secondary" = { bg = "cursorline" }
+
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection" }
+
+"ui.linenr" = "line_number"
+"ui.linenr.selected" = "line_number_selected"
+"ui.statusline" = { fg = "fg0", bg = "bg3" }
+"ui.statusline.inactive" = { fg = "grey", bg = "bg0" }
+"ui.statusline.normal" = { fg = "bg0", bg = "fg0", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg0", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg0", bg = "pink", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "grey", bg = "bg1" }
+"ui.bufferline.active" = { fg = "fg0", bg = "bg3", modifiers = ["bold"] }
+"ui.popup" = { fg = "helptext", bg = "bg3" }
+"ui.window" = { fg = "grey", bg = "bg0" }
+"ui.help" = { fg = "helptext", bg = "helpbg" }
+"ui.text" = "fg0"
+"ui.text.focus" = "fg0"
+"ui.menu" = { fg = "fg0", bg = "bg3" }
+"ui.menu.selected" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
+"ui.virtual.whitespace" = { fg = "bg3" }
+"ui.virtual.indent-guide" = { fg = "bg3" }
+"ui.virtual.ruler" = { bg = "bg3" }
+
+# Diagnostics
+"hint" = "blue"
+"info" = "aqua"
+"warning" = "yellow"
+"error" = "red"
+"diagnostic" = { underline = { style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue", style = "dotted" } }
+"diagnostic.info" = { underline = { color = "aqua", style = "dotted" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+[palette]
+bg0 = "#191D24"
+bg1 = "#0F141C"
+bg2 = "#2C4A7A"
+bg3 = "#2A3A54"
+fg0 = "#FEFEFF"
+helptext = "#8599B9"
+helpbg = "#2A3A54"
+grey = "#70697D"
+grey1 = "#667E99"
+red = "#FF5D5D"
+yellow = "#FDC153"
+green = "#64FF85"
+blue = "#7AC3FF"
+blue2 = "#6C849D"
+lightblue = "#B0DDD2"
+aqua = "#5DB1B1"
+orange = "#FF9647"
+purple = "#9983D7"
+magenta = "#FF1E6D"
+pink = "#E06798"
+
+diffgreen = "#5B7753"
+
+line_number = "#374B6B"
+line_number_selected = "#8397B8"
+comment =  "#4E6A97"
+
+cursor = "#6F757F"
+cursorline = "#1B232E"
+selection = "#1B232E"

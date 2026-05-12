@@ -1,0 +1,53 @@
+# Author : Maxwell Anderson <zaechus@pm.me>
+
+inherits = "monokai"
+
+"comment" = "comment"
+"comment.block.documentation" = { fg = "comment", modifiers = ["bold"] }
+"comment.line.documentation" = { fg = "comment", modifiers = ["bold"] }
+"constant.character.escape" = { fg = "light-blue", modifiers = ["italic"] }
+"function.macro" = { fg = "#c4be89", modifiers = ["italic"] }
+"keyword" = { fg = "keyword", modifiers = ["bold"] }
+"keyword.control" = { fg = "keyword", modifiers = ["bold"] }
+"keyword.control.exception" = { fg = "fn_declaration", modifiers = ["bold"] }
+"keyword.directive" = { fg = "fn_declaration", modifiers = ["bold"] }
+"keyword.storage.modifier" = { fg = "#fd971f", modifiers = ["italic"] }
+"label" = "#e6db74"
+"operator" = "keyword"
+"punctuation.delimiter" = "#8f8f8f"
+"type" = "light-blue"
+"variable.builtin" = { fg = "#ae81ff", modifiers = ["bold"] }
+"tag.builtin" = { fg = "#ae81ff", modifiers = ["bold"] }
+"variable.parameter" = "variable"
+
+"diff.plus" = "text"
+"diff.delta" = "#89807d"
+"diff.minus" = "#960050"
+
+"ui.cursor.primary" = { fg = "#000000", bg = "#f8f8f0" }
+"ui.cursor.match" = { fg = "#000000", bg = "#fd971f", modifiers = ["bold"] }
+"ui.selection" = { bg = "#403d3d" }
+"ui.linenr" = "#465457"
+"ui.linenr.selected" = "#fd971f"
+
+"ui.help" = { fg = "light-blue", bg = "#000000" }
+"ui.menu" = { fg = "light-blue", bg = "#000000" }
+"ui.popup" = { fg = "light-blue", bg = "#000000" }
+"ui.popup.info" = { fg = "light-blue", bg = "#000000" }
+"ui.text.info" = { fg = "light-blue", bg = "#000000" }
+
+"ui.statusline.normal" = { fg = "#080808", bg = "#e6db74", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "#282828", bg = "#8787af", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "#282828", bg = "#ffd700", modifiers = ["bold"] }
+
+"warning" = { fg = "#ffffff", modifiers = ["bold"] }
+"error" = { fg = "#ffffff", modifiers = ["bold"] }
+"info" = { fg = "#ffffff", modifiers = ["bold"] }
+"hint" = { fg = "#ffffff", modifiers = ["bold"] }
+
+[palette]
+light-blue = "#66d9ef"
+
+background = "#1b1d1e"
+
+comment = "#7e8e91"

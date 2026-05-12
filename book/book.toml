@@ -1,0 +1,15 @@
+[book]
+authors = ["Blaž Hrastnik"]
+language = "en"
+src = "src"
+
+[output.html]
+cname = "docs.helix-editor.com"
+default-theme = "colibri"
+preferred-dark-theme = "colibri"
+git-repository-url = "https://github.com/helix-editor/helix"
+edit-url-template = "https://github.com/helix-editor/helix/edit/master/book/{path}"
+additional-css = ["custom.css"]
+
+[output.html.search]
+use-boolean-and = true

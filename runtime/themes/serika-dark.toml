@@ -1,0 +1,128 @@
+# Serika (Dark)
+# Author: VuiMuich
+
+# Original Author:
+# URL: https://github.com/arturoalviar/serika-syntax
+# Author: arturoalviar
+# License: MIT License
+
+"escape" = "orange"
+"type" = "yellow"
+"constant" = "purple"
+"number" = "purple"
+"string" = "fg"
+"comment" = { fg = "grey2", modifiers = [ "italic" ] }
+"variable" = "yellow"
+"variable.builtin" = "blue"
+"variable.parameter" = "yellow"
+"variable.property" = "yellow"
+"label" = "aqua"
+"punctuation" = "grey0"
+"punctuation.delimiter" = "bg4"
+"punctuation.bracket" = "fg"
+"keyword" = "red"
+"operator" = "grey0"
+"function" = "green"
+"function.builtin" = "blue"
+"function.macro" = "aqua"
+"tag" = "yellow"
+"namespace" = "fg"
+"attribute" = "aqua"
+"constructor" = "yellow"
+"module" = "blue"
+"special" = "orange"
+
+"ui.background" = { bg = "bg0" }
+"ui.background.separator" = { fg = "bg2" }
+"ui.bufferline" = { fg = "grey1" }
+"ui.bufferline.active" = { fg = "yellow" }
+"ui.bufferline.background" = { bg = "bg2" }
+"ui.cursor" = { fg = "fg", bg = "dark-red" }
+"ui.cursor.match" = { fg = "grey2", bg = "pale-yellow" }
+"ui.cursor.insert" = { fg = "bg0", bg = "pale-yellow" }
+"ui.cursor.select" = { fg = "bg0", bg = "bg-yellow" }
+"ui.cursor.primary" = { fg = "dark-red", bg = "fg" }
+"ui.cursor.primary.match" = { fg = "pale-yellow", bg = "grey2" }
+"ui.cursor.primary.insert" = { fg = "dark-red", bg = "bg-yellow" }
+"ui.cursor.primary.select" = { fg = "yellow", bg = "nasty-red" }
+"ui.linenr" = { fg = "yellow", modifiers = ["dim"] }
+"ui.linenr.selected" = { fg = "fg", modifiers = ["dim"], underline.style = "line" }
+"ui.cursorline" = { fg = "grey1", bg = "bg2" }
+"ui.statusline" = { fg = "grey1", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "bg5", bg = "bg1" }
+"ui.statusline.insert" = { fg = "blue" }
+"ui.statusline.select" = { fg = "pale-yellow" }
+"ui.popup" = { fg = "grey2", bg = "bg1" }
+"ui.picker.header" = { fg = "bg2", underline.style = "dashed" }
+"ui.window" = { fg = "bg1", bg = "bg1" }
+"ui.help" = { fg = "fg", bg = "bg1" }
+"ui.text" = "fg"
+"ui.text.focus" = "yellow"
+"ui.text.inactive" = { fg = "fg", modifiers = [ "dim" ] }
+"ui.text.directory" = "grey0"
+"ui.menu" = { fg = "fg", bg = "bg2" }
+"ui.menu.selected" = { fg = "bg0", bg = "bg-yellow" }
+"ui.selection" = { bg = "yellow", modifiers = [ "dim" ] }
+"ui.selection.prime" = { underline.style = "line" }
+"ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "nasty-red", modifiers = ["bold"] }
+"ui.virtual.ruler" = { bg = "bg1" } 
+"ui.virtual.whitespace" = { fg = "grey2", modifiers = [ "italic" ] }
+"ui.virtual.wrap" = { fg = "grey2", modifiers = [ "italic" ] }
+
+"hint" = "blue"
+"info" = "aqua"
+"warning" = "yellow"
+"error" = "nasty-red"
+
+"diagnostic" = { underline = { style = "curl", color = "purple" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "nasty-red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "orange" }
+"diff.minus" = { fg = "nasty-red" }
+
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "pink"
+"markup.quote" = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw" = { fg = "fg" }
+
+[palette]
+
+bg0 = "#323437"
+bg1 = "#494c50"
+bg2 = "#55585e"
+bg3 = "#61656b"
+bg4 = "#6d7278"
+bg5 = "#797e86"
+bg-visual = "#646669"
+bg-red = "#7e2a33"
+bg-green = "#86b365"
+bg-blue = "#6a89af"
+bg-yellow = "#e2b714"
+
+fg = "#d1d0c5"
+red = "#e29da7"
+nasty-red = "#ca4754"
+dark-red = "#7e2a33"
+orange = "#dd8a3c"
+yellow = "#e2b714"
+pale-yellow = "#f3e0a1"
+green = "#bcd5a8"
+aqua = "#b9c2c6"
+blue = "#adc9db"
+purple = "#be9ec9"
+grey0 = "#aaaeb3"
+grey1 = "#e1e1e3"
+grey2 = "#646669"
+pink = "#e06c75"

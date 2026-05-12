@@ -1,0 +1,7 @@
+# Author : Twinkle <saintwinkle@gmail.com>
+# The theme uses the gruvbox light palette with soft contrast: github.com/morhetz/gruvbox
+
+inherits = "gruvbox_light"
+
+[palette]
+bg0 = "#f2e5bc" # main background

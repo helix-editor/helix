@@ -1,0 +1,155 @@
+# NeoNotte Theme
+#
+# Author: b52es (https://github.com/b52es)
+# Inspired by Catppuccin Mocha and Tokyo Night.
+
+# Syntax highlighting
+# -------------------
+"attribute" = "blue"
+"comment" = { fg = "comment_dark", modifiers = ["italic"] }
+"constant" = "orange"
+"constant.builtin" = "orange"
+"constant.character" = "teal"
+"constant.character.escape" = "fuchsia"
+"constructor" = "cyan"
+"function" = "blue"
+"function.macro" = "magenta"
+"keyword" = "magenta"
+"keyword.storage.modifier.ref" = "teal"
+"keyword.control.conditional" = { fg = "magenta" }
+"label" = "cyan"
+"namespace" = "orange"
+"operator" = "red"
+"punctuation" = "comment"
+"punctuation.special" = "sky_blue"
+"punctuation.bracket" = "red"
+"punctuation.delimiter" = { fg = "red", modifiers = ["bold"] }
+"special" = "blue"
+"string" = "green"
+"string.regexp" = "orange"
+"string.special" = "blue"
+"tag" = "magenta"
+"type" = "yellow"
+"variable" = "fg"
+"variable.builtin" = "red"
+"variable.parameter" = { fg = "red_muted" }
+"variable.other.member" = "teal"
+
+"markup.bold" = { modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "orange", modifiers = ["bold"] }
+"markup.heading.1" = "indigo"
+"markup.heading.2" = "magenta"
+"markup.heading.3" = "green"
+"markup.heading.4" = "yellow"
+"markup.heading.5" = "fuchsia"
+"markup.heading.6" = "teal"
+"markup.italic" = "pink_light"
+"markup.link.url" = { fg = "pink_light", modifiers = ["underlined"] }
+"markup.link.text" = "blue"
+"markup.list" = "magenta"
+"markup.raw" = "pink_hot"
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "blue"
+
+# User Interface
+# --------------
+"ui.background" = { fg = "fg", bg = "bg" }
+
+"ui.linenr" = { fg = "bg_highlight" }
+"ui.linenr.selected" = { fg = "indigo" }
+
+"ui.statusline" = { fg = "fg_subtle", bg = "bg_dark" }
+"ui.statusline.inactive" = { fg = "bg_inactive", bg = "bg_dark" }
+"ui.statusline.normal" = { fg = "bg", bg = "indigo", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg", bg = "pink_hot", modifiers = ["bold"] }
+
+"ui.popup" = { fg = "fg", bg = "bg_surface" }
+"ui.window" = { fg = "bg_darkest" }
+"ui.help" = { fg = "comment", bg = "bg_surface" }
+
+"ui.bufferline" = { fg = "fg_dark", bg = "bg_dark" }
+"ui.bufferline.active" = { fg = "sky_blue", bg = "cursorline", modifiers = ["bold"] }
+"ui.bufferline.background" = "bg"
+
+"ui.text" = "fg"
+"ui.text.focus" = { fg = "fg", bg = "bg_surface", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "comment_dark" }
+
+"ui.virtual" = "guide"
+"ui.virtual.ruler" = { bg = "bg_surface" }
+"ui.virtual.indent-guide" = "bg_surface"
+"ui.virtual.inlay-hint" = { fg = "guide", bg = "bg" }
+
+"ui.selection" = { bg = "bg_highlight" }
+
+"ui.cursor" = { fg = "bg", bg = "secondary_cursor" }
+"ui.cursor.primary" = { fg = "bg", bg = "pink_light" }
+"ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
+
+"ui.cursor.primary.normal" = { fg = "bg", bg = "indigo" }
+"ui.cursor.primary.insert" = { fg = "bg", bg = "green" }
+"ui.cursor.primary.select" = { fg = "bg", bg = "pink_hot" }
+
+"ui.cursor.normal" = { fg = "bg", bg = "secondary_cursor_normal" }
+"ui.cursor.insert" = { fg = "bg", bg = "secondary_cursor_insert" }
+"ui.cursor.select" = { fg = "bg", bg = "secondary_cursor" }
+
+"ui.cursorline.primary" = { bg = "cursorline" }
+
+"ui.highlight" = { bg = "bg_highlight", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "comment", bg = "bg_surface" }
+"ui.menu.selected" = { fg = "fg", bg = "bg_highlight", modifiers = ["bold"] }
+
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "sky_blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
+
+"error" = { fg = "red", modifiers = ['bold'] }
+"warning" = { fg = "yellow", modifiers = ['bold'] }
+"info" = "sky_blue"
+"hint" = "teal"
+
+[palette]
+# Accent Colors
+pink_light = "#f8ded9"
+pink_hot = "#f7c8c8"
+fuchsia = "#ffc1fc"
+magenta = "#ee82ee"
+red = "#ff7ea2"
+red_muted = "#f497a6"
+orange = "#ea8743"
+yellow = "#ffea9b"
+green = "#9feb99"
+teal = "#59d2be"
+sky_blue = "#7de4f7"
+cyan = "#65cdfb"
+blue = "#7bb1ff"
+indigo = "#abb7ff"
+
+# Foreground/Text
+fg = "#cdd6f4"
+fg_subtle = "#b5bfe3"
+fg_dark = "#a2abcc"
+comment = "#8f97b6"
+comment_dark = "#7b82a0"
+guide = "#696e89"
+
+# Background
+bg_darkest = "#08080d"
+bg_dark = "#1f212d"
+bg = "#151520"
+bg_surface = "#272836"
+bg_highlight = "#42455d"
+bg_inactive = "#555973"
+
+# Derived colors
+cursorline = "#28293e"
+secondary_cursor = "#b7a4a7"
+secondary_cursor_normal = "#8089c7"
+secondary_cursor_insert = "#78ad79"

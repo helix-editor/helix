@@ -1,0 +1,116 @@
+# Author : nuid32 <lvkuzvesov@proton.me>
+
+"attribute" = { fg = "yellow" }
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
+"constant" = { fg = "gold" }
+"constant.numeric" = { fg = "gold" }
+"constant.builtin" = { fg = "gold" }
+"constant.character.escape" = { fg = "gold" }
+"constructor" = { fg = "blue" }
+"function" = { fg = "white" }
+"function.builtin" = { fg = "blue" }
+"function.macro" = { fg = "purple" }
+"keyword" = { fg = "purple" }
+"keyword.control" = { fg = "purple" }
+"keyword.control.import" = { fg = "purple" }
+"keyword.directive" = { fg = "purple" }
+"label" = { fg = "purple" }
+"namespace" = { fg = "purple" }
+"operator" = { fg = "white" }
+"keyword.operator" = { fg = "white" }
+"special" = { fg = "blue" }
+"string" = { fg = "green" }
+"tag" = { fg = "purple" }
+"type" = { fg = "yellow" }
+"variable" = { fg = "white" }
+"variable.builtin" = { fg = "red" }
+"variable.parameter" = { fg = "red" }
+"variable.other.member" = { fg = "blue" }
+
+"markup.heading" = { fg = "red" }
+"markup.raw.inline" = { fg = "green" }
+"markup.raw.block" = { fg = "white" }
+"markup.bold" = { fg = "gold", modifiers = ["bold"] }
+"markup.italic" = { fg = "purple", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.list" = { fg = "red" }
+"markup.quote" = { fg = "yellow" }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"]}
+"markup.link.text" = { fg = "white" }
+"markup.link.label" = { fg = "white" }
+
+"diff.plus" = "green"
+"diff.delta" = "gold"
+"diff.minus" = "red"
+
+"diagnostic.info".underline = { color = "blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "green", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "red", modifiers = ["bold"] }
+
+"ui.background" = { bg = "black" }
+"ui.virtual" = { fg = "faint-gray" }
+"ui.virtual.indent-guide" = { fg = "faint-gray" }
+"ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg = "gray" }
+"ui.virtual.inlay-hint" = { fg = "light-gray" }
+"ui.virtual.jump-label" = { fg = "gold", modifiers = ["bold", "underlined"] }
+
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
+
+"ui.selection" = { bg = "black", modifiers = ["reversed"] }
+"ui.selection.primary" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "dark-black" }
+
+"ui.linenr" = { fg = "linenr" }
+"ui.linenr.selected" = { fg = "white" }
+
+"ui.statusline" = { fg = "white", bg = "light-black" }
+"ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
+"ui.statusline.normal" = { fg = "light-black", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "light-black", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "light-black", bg = "cyan", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "light-gray", bg = "light-black" }
+"ui.bufferline.active" = { fg = "light-black", bg = "blue", underline = { color = "light-black", style = "line" } }
+"ui.bufferline.background" = { bg = "light-black" }
+
+"ui.text" = { fg = "white" }
+"ui.text.directory" = { fg = "blue" }
+"ui.text.focus" = { fg = "white", bg = "light-black", modifiers = ["bold"] }
+
+"ui.help" = { fg = "white", bg = "gray" }
+"ui.debug" = { fg = "red" }
+"ui.highlight.frameline" = { bg = "#97202a" }
+"ui.popup" = { bg = "gray" }
+"ui.window" = { fg = "gray" }
+"ui.menu" = { fg = "white", bg = "gray" }
+"ui.menu.selected" = { fg = "black", bg = "blue" }
+"ui.menu.scroll" = { fg = "white", bg = "light-gray" }
+
+[palette]
+
+yellow = "#D5B06B"
+blue = "#519FDF"
+red = "#D05C65"
+purple = "#B668CD"
+green = "#7DA869"
+gold = "#D19A66"
+cyan = "#46A6B2"
+white = "#ABB2BF"
+black = "#16181A"
+dark-black = "#12100E"
+light-black = "#2C323C"
+gray = "#252D30"
+faint-gray = "#ABB2BF"
+light-gray = "#636C6E"
+linenr = "#282C34"

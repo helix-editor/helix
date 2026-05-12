@@ -1,0 +1,85 @@
+# Author : Casper Rogild Storm <casper@asynkron.xyz>
+
+"comment" = { fg = "ferra_bark", modifiers = ["italic"] }
+"constant" = { fg = "ferra_sage" }
+"function" = { fg = "ferra_coral" }
+"function.macro" = { fg = "ferra_mist" }
+"keyword" = { fg = "ferra_mist" }
+"operator" = { fg = "ferra_mist" }
+"punctuation" = { fg = "ferra_blush" }
+"string" = { fg = "ferra_sage" }
+"type" = { fg = "ferra_rose" }
+"variable" = { fg = "ferra_blush" }
+"variable.builtin" = { fg = "ferra_rose" }
+"tag" = { fg = "ferra_sage" }
+"label" = { fg = "ferra_sage" }
+"attribute" = { fg = "ferra_blush" }
+"namespace" = { fg = "ferra_blush" }
+"module" = { fg = "ferra_blush" }
+
+"markup.heading" = { fg = "ferra_sage", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "ferra_bark" }
+"markup.list" = { fg = "ferra_mist" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "ferra_rose", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "ferra_rose" }
+"markup.quote" = { fg = "ferra_bark" }
+"markup.raw" = { fg = "ferra_coral" }
+
+"ui.background" = { bg = "ferra_night" }
+"ui.cursor" = { fg = "ferra_night", bg = "ferra_blush" }
+"ui.cursor.match" = { fg = "ferra_night", bg = "ferra_bark" }
+"ui.cursor.select" = { fg = "ferra_night", bg = "ferra_rose" }
+"ui.cursor.insert" = { fg = "ferra_night", bg = "ferra_coral" }
+"ui.linenr" = { fg = "ferra_bark" }
+"ui.linenr.selected" = { fg = "ferra_blush" }
+"ui.cursorline" = { fg = "ferra_blush", bg = "ferra_ash" }
+"ui.statusline" = { fg = "ferra_blush", bg = "ferra_ash" }
+"ui.statusline.inactive" = { fg = "ferra_bark", bg = "ferra_ash" }
+"ui.statusline.normal" = { fg = "ferra_ash", bg = "ferra_blush" }
+"ui.statusline.insert" = { fg = "ferra_ash", bg = "ferra_coral" }
+"ui.statusline.select" = { fg = "ferra_ash", bg = "ferra_rose" }
+"ui.popup" = { fg = "ferra_blush", bg = "ferra_ash" }
+"ui.window" = { fg = "ferra_bark", bg = "ferra_night" }
+"ui.help" = { fg = "ferra_blush", bg = "ferra_ash" }
+"ui.text" = { fg = "ferra_blush" }
+"ui.text.focus" = { fg = "ferra_coral" }
+"ui.menu" = { fg = "ferra_blush", bg = "ferra_ash" }
+"ui.menu.selected" = { fg = "ferra_coral", bg = "ferra_ash" }
+"ui.selection" = { bg = "ferra_umber" }
+"ui.virtual" = { fg = "ferra_bark" }
+"ui.virtual.whitespace" = { fg = "ferra_bark" }
+"ui.virtual.ruler" = { bg = "ferra_ash" }
+"ui.virtual.indent-guide" = { fg = "ferra_ash" }
+"ui.virtual.inlay-hint" = { fg = "ferra_bark" }
+
+"diff.plus" = { fg = "ferra_sage" }
+"diff.delta" = { fg = "ferra_blush" }
+"diff.minus" = { fg = "ferra_ember" }
+
+"error" = { fg = "ferra_ember" }
+"warning" = { fg = "ferra_honey" }
+"info" = { fg = "ferra_blush" }
+"hint" = { fg = "ferra_blush" }
+
+"diagnostic.warning" = { underline = { color = "ferra_honey", style = "curl" } }
+"diagnostic.error" = { underline = { color = "ferra_ember", style = "curl" } }
+"diagnostic.info" = { underline = { color = "ferra_blush", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "ferra_blush", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+ferra_night = "#2b292d"
+ferra_ash = "#383539"
+ferra_umber = "#4d424b"
+ferra_bark = "#6F5D63"
+ferra_mist = "#D1D1E0"
+ferra_sage = "#B1B695"
+ferra_blush = "#fecdb2"
+ferra_coral = "#ffa07a"
+ferra_rose = "#F6B6C9"
+ferra_ember = "#e06b75"
+ferra_honey = "#F5D76E"

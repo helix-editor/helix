@@ -1,0 +1,31 @@
+# Author: Michael McClintock <michael.mcclintock@hey.com>
+# License: MIT
+
+# Yo - Themes for Helix inspired by Zenbones & Alabaster with Radix Colors.
+# https://github.com/mrmcc3/yo-theme-helix
+
+inherits = "yo"
+
+[palette]
+
+# mauveDark
+p1 = "#121113"
+p2 = "#1a191b"
+p3 = "#232225"
+p4 = "#2b292d"
+p5 = "#323035"
+p6 = "#3c393f"
+p7 = "#49474e"
+p8 = "#625f69"
+p9 = "#6f6d78"
+p10 = "#7c7a85"
+p11 = "#b5b2bc"
+p12 = "#eeeef0"
+
+error = "#ee518a"   # crimsonDark-10
+warning = "#ffff57" # yellowDark-10
+info = "#3b9eff"    # blueDark-10
+
+string = "#0eb39e"   # teal-10
+constant = "#b658c4" # plum-10
+keyword = "#9eb1ff"  # indigo-11

@@ -1,0 +1,160 @@
+# Kanagawa
+# Author: zetashift
+
+# Adaptation of https://github.com/rebelot/kanagawa.nvim
+# Original author: rebelot
+# All credits to the original author, the palette is taken from the README
+# because of some theming differences, it's not an exact copy of the original.
+
+## User interface
+"ui.selection" = { bg = "waveBlue2" }
+"ui.selection.primary" = { bg = "waveBlue2" }
+"ui.background" = { fg = "fujiWhite", bg = "sumiInk3" }
+
+"ui.linenr" = { fg = "sumiInk6" }
+"ui.linenr.selected" = { fg = "roninYellow", modifiers = ["bold"] }
+"ui.gutter" = { fg = "sumiInk6", bg = "sumiInk4" }
+
+"ui.virtual" = "sumiInk6"
+"ui.virtual.ruler" = { bg = "sumiInk4" }
+"ui.virtual.inlay-hint" = "sumiInk6"
+"ui.virtual.jump-label" = { fg = "peachRed", modifiers = ["bold"] }
+
+"ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
+"ui.statusline.inactive" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.statusline.normal" = { fg = "sumiInk0", bg = "crystalBlue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
+"ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }
+"ui.bufferline.background" = { bg = "sumiInk0" }
+
+"ui.popup" = { fg = "fujiWhite", bg = "sumiInk0" }
+"ui.window" = { fg = "sumiInk0" }
+"ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
+"ui.text" = "fujiWhite"
+"ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
+
+"ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2" }
+"ui.cursor.primary" = { fg = "waveBlue1", bg = "fujiWhite" }
+"ui.cursor.match" = { fg = "waveRed", modifiers = ["bold"] }
+"ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
+"ui.menu" = { fg = "fujiWhite", bg = "waveBlue1" }
+"ui.menu.selected" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "oldWhite", bg = "waveBlue1" }
+
+"ui.cursorline.primary" = { bg = "sumiInk5" }
+"ui.cursorcolumn.primary" = { bg = "sumiInk5" }
+
+"ui.debug.breakpoint" = "springBlue"
+"ui.debug.active" = "winterRed"
+
+"diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "dragonBlue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "waveAqua1", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+error = "samuraiRed"
+warning = "roninYellow"
+info = "dragonBlue"
+hint = "waveAqua1"
+
+## Diff
+"diff.plus" = "autumnGreen"
+"diff.minus" = "autumnRed"
+"diff.delta" = "autumnYellow"
+
+## Syntax highlighting
+"attribute" = "waveRed"
+"type" = "waveAqua2"
+"type.builtin" = "springBlue"
+"constructor" = "springBlue"
+"constant" = "surimiOrange"
+"constant.numeric" = "sakuraPink"
+"constant.character.escape" = { fg = "boatYellow2", modifiers = ["bold"] }
+"string" = "springGreen"
+"string.regexp" = "boatYellow2"
+"string.special.url" = "springBlue"
+"string.special.symbol" = "oniViolet"
+"comment" = "fujiGray"
+"variable" = "fujiWhite"
+"variable.builtin" = "waveRed"
+"variable.parameter" = "oniViolet2"
+"variable.other.member" = "carpYellow"
+"label" = "springBlue"
+"punctuation" = "springViolet2"
+"keyword" = { fg = "oniViolet", modifiers = ["italic"] }
+"keyword.control.return" = "peachRed"
+"keyword.control.exception" = "peachRed"
+"keyword.directive" = "waveRed"
+"operator" = "boatYellow2"
+"function" = "crystalBlue"
+"function.builtin" = "springBlue"
+"function.macro" = "waveRed"
+"tag" = "waveAqua2"
+"namespace" = "surimiOrange"
+"special" = "peachRed"
+
+## Markup modifiers
+"markup.heading" = { fg = "springViolet2", modifiers = ["bold"] }
+"markup.heading.marker" = "springViolet2"
+"markup.heading.1" = { fg = "carpYellow", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "crystalBlue", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
+"markup.list" = "sakuraPink"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = { fg = "springBlue" }
+"markup.link.url" = { fg = "lightBlue" }
+"markup.link.label" = "surimiOrange"
+"markup.quote" = "oniViolet2"
+"markup.raw" = "springGreen"
+
+[palette]
+oldWhite = "#C8C093"       # dark foreground, e.g. statuslines
+fujiWhite = "#DCD7BA"      # default foreground
+fujiGray = "#727169"       # comments
+sumiInk0 = "#16161D"       # dark background, e.g. statuslines, floating windows
+sumiInk1 = "#181820"       # unused
+sumiInk2 = "#1A1A22"       # unused
+sumiInk3 = "#1F1F28"       # default background
+sumiInk4 = "#2A2A37"       # lighter background, e.g. colorcolumns, folds
+sumiInk5 = "#363646"       # lighter background, e.g. cursorline
+sumiInk6 = "#54546D"       # inlay hints
+waveBlue1 = "#223249"      # popup background, visual selection background
+waveBlue2 = "#2D4F67"      # popup selection background, search background
+winterGreen = "#2B3328"    # diff add background
+winterYellow = "#49443C"   # diff change background
+winterRed = "#43242B"      # diff delete background
+winterBlue = "#252535"     # diff line background
+autumnGreen = "#76946A"    # git add
+autumnRed = "#C34043"      # git delete
+autumnYellow = "#DCA561"   # git change
+samuraiRed = "#E82424"     # diagnostic error
+roninYellow = "#FF9E3B"    # diagnostic warning
+waveAqua1 = "#6A9589"      # diagnostic info
+dragonBlue = "#658594"     # diagnostic hint
+oniViolet = "#957FB8"      # statements and keywords
+oniViolet2 = "#B8B4D0"     # parameters
+crystalBlue = "#7E9CD8"    # functions and titles
+springViolet1 = "#938AA9"  # unused
+springViolet2 = "#9CABCA"  # brackets and punctuation
+springBlue = "#7FB4CA"     # specials and builtins
+lightBlue = "#A3D4D5"      # URLs
+waveAqua2 = "#7AA89F"      # types
+waveAqua3  = "#68AD99"     # unused
+waveAqua4  = "#7AA880"     # unused
+waveAqua5  = "#6CAF95"     # unused
+springGreen = "#98BB6C"    # strings
+boatYellow1 = "#938056"    # unused
+boatYellow2 = "#C0A36E"    # operators, regex
+carpYellow = "#E6C384"     # identifiers
+sakuraPink = "#D27E99"     # numbers
+waveRed = "#E46876"        # standout specials 1, e.g. builtin variables
+peachRed = "#FF5D62"       # standout specials 2, e.g. exception handling, returns
+surimiOrange = "#FFA066"   # constants, imports, booleans
+katanaGray = "#717C7C"     # unused

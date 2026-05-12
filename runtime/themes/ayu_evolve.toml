@@ -1,0 +1,38 @@
+inherits = 'ayu_dark'
+
+"keyword.control" = "orange"
+"keyword.storage" = "yellow"
+"keyword.storage.modifier" = "magenta"
+"variable" = "light_gray"
+"constructor" = "magenta"
+"type.builtin" = { fg = "blue", modifiers = ["italic"] }
+
+# Gutters and editing area
+"error" = "red"
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"warning" = "vibrant_orange"
+"diagnostic.warning" = { underline = { color = "vibrant_orange", style = "curl" } }
+"hint" = "vibrant_yellow"
+"diagnostic.hint" = { underline = { color = "vibrant_yellow", style = "curl" } }
+"info" = "white"
+"diagnostic.info" = { underline = { color = "white", style = "curl" } }
+
+"markup.raw.block" = { bg = "black" }
+"markup.raw.inline" = { bg = "black" }
+
+"ui.cursor" = { fg = "dark_gray", bg = "light_gray" }
+"ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
+"ui.cursor.primary.select" = { fg = "dark_gray", bg = "magenta" }
+"ui.cursor.primary.insert" = { fg = "dark_gray", bg = "green" }
+"ui.text.inactive" = "gray"
+"ui.bufferline" = { fg = "light_gray", bg = "background" }
+"ui.bufferline.active" = { fg = "light_gray", bg = "dark_gray" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
+
+[palette]
+background = '#020202'
+black = "#0D0D0D"
+light_gray = "#dedede"
+red = "#DD3E25"
+vibrant_yellow = "#CFCA0D"
+vibrant_orange = "#FF8732"

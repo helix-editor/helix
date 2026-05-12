@@ -1,0 +1,109 @@
+# A port of Neovim's default dark color scheme created by echasnovski: https://github.com/neovim/neovim/pull/26334
+# Based on Kim Nørgaard's Neovim dark (accented) theme for Zed: https://github.com/KimNorgaard/zed-neovim-default
+
+attribute = "fog"
+keyword = { fg = "fog", modifiers = ["bold"] }
+"keyword.directive" = { fg = "fog", modifiers = ["bold"] }
+namespace = "fog"
+punctuation = "fog"
+"punctuation.delimiter" = "fog"
+operator = "fog"
+special = "aqua"
+"variable.other.member" = "sky"
+variable = "fog"
+"variable.parameter" = { fg = "aqua" }
+"variable.builtin" = "aqua"
+type = "fog"
+"type.builtin" = "aqua"
+constructor = "aqua"
+function = "aqua"
+"function.macro" = "fog"
+"function.builtin" = "aqua"
+tag = "aqua"
+comment = "stone"
+constant = "fog"
+"constant.builtin" = "fog"
+string = "leaf"
+"constant.numeric" = "fog"
+"constant.character.escape" = "aqua"
+label = { fg = "fog", modifiers = ["bold"] }
+tabstop = { modifiers = ["italic"], bg = "panel"}
+
+"markup.heading" = "fog"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "aqua", modifiers = ["italic"] }
+"markup.link.text" = "aqua"
+"markup.raw" = "aqua"
+
+"diff.plus" = "leaf"
+"diff.minus" = "rose"
+"diff.delta" = "sun"
+
+"ui.background" = { bg = "night" }
+"ui.background.separator" = { fg = "panel" }
+"ui.linenr" = { fg = "slate" }
+"ui.linenr.selected" = { fg = "fog" }
+
+"ui.statusline" = { fg = "fog", bg = "panel" }
+"ui.statusline.inactive" = { fg = "stone", bg = "panel" }
+"ui.statusline.normal" = { bg = "aqua", fg = "panel" }
+"ui.statusline.insert" = { bg = "leaf", fg = "panel" }
+"ui.statusline.select" = { bg = "sky", fg = "panel" }
+
+"ui.popup" = { bg = "panel" }
+"ui.window" = { fg = "panel" }
+"ui.help" = { bg = "panel", fg = "fog" }
+"ui.text" = { fg = "fog" }
+"ui.text.focus" = { fg = "fog" }
+"ui.text.inactive" = "stone"
+"ui.text.directory" = { fg = "sky" }
+"ui.virtual" = { fg = "slate" }
+"ui.virtual.ruler" = { bg = "panel" }
+"ui.virtual.jump-label" = { fg = "sun", modifiers = ["bold"] }
+
+"ui.virtual.indent-guide" = { fg = "slate" }
+
+"ui.selection" = { bg = "oxford" }
+"ui.selection.primary" = { bg = "oxford" }
+"ui.cursor.select" = { bg = "aqua" }
+"ui.cursor.insert" = { bg = "fog" }
+"ui.cursor.primary.select" = { bg = "aqua" }
+"ui.cursor.primary.insert" = { bg = "fog" }
+"ui.cursor.match" = { fg = "night", bg = "slate" }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "panel" }
+"ui.highlight" = { bg = "panel" }
+"ui.highlight.frameline" = { bg = "slate" }
+"ui.debug" = { fg = "slate" }
+"ui.debug.breakpoint" = { fg = "sun" }
+"ui.menu" = { fg = "fog", bg = "panel" }
+"ui.menu.selected" = { fg = "night", bg = "fog" }
+"ui.menu.scroll" = { fg = "fog", bg = "panel" }
+
+"diagnostic.hint" = { underline = { color = "stone", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "sun", style = "curl" } }
+"diagnostic.error" = { underline = { color = "rose", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+warning = "sun"
+error = "rose"
+info = "aqua"
+hint = "stone"
+
+[palette]
+fog   = "#e0e2ea"
+stone = "#9b9ea4"  
+night = "#14161b"  
+panel = "#2c2e33"
+slate = "#4f5258"  
+
+aqua   = "#8cf8f7"
+leaf   = "#b3f6c0"  
+sun    = "#fce094"  
+rose   = "#ffc0b9"  
+sky    = "#a6dbff"
+oxford = "#0D2847" 

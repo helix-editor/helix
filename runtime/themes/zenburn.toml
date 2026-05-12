@@ -1,0 +1,278 @@
+# Port of Vim's Zenburn theme (https://github.com/jnurmine/Zenburn/)
+# based on theli-ua's Helix port (https://github.com/theli-ua/helix/tree/zenburn)
+# Author: Jakob Jordan <jakobjordan(at)posteo.de>
+# License: GNU GPL <http://www.gnu.org/licenses/gpl.html> 
+
+# "attribute"
+"type" = "zb-type-fg"
+"type.builtin" = { fg = "zb-type-fg", modifiers = ["bold"] }
+"type.parameter" = { fg = "zb-typedef-fg", modifiers = ["bold"] }
+"type.enum" = { fg = "zb-structure-fg", modifiers = ["bold"] }
+# "type.enum.variant"
+"constructor" = "zb-type-fg"
+"constant" = { fg = "zb-constant-fg", modifiers = ["bold"] }
+# "constant.builtin"
+"constant.builtin.boolean" = "zb-boolean-fg"
+"constant.character" = { fg = "zb-character-fg", modifiers = ["bold"] }
+# "constant.character.escape"
+"constant.numeric.integer" = { fg = "zb-number-fg" }
+"constant.numeric.float" = { fg = "zb-float-fg" }
+"string" = "zb-string-fg"
+# "string.regexp"
+# "string.special"
+# "string.special.path"
+# "string.special.url"
+# "string.special.symbol"
+"comment" = "zb-comment-fg"
+# "comment.line"
+"comment.line.documentation" = { fg = "zb-specialcomment-fg", modifiers = ["bold"] }
+# "comment.block"
+"comment.block.documentation" = { fg = "zb-specialcomment-fg", modifiers = ["bold"] }
+"variable" = "zb-identifier-fg"
+"variable.builtin" = { modifiers = ["bold"] }
+# "variable.parameter"
+# "variable.other"
+# "variable.other.member"
+# "variable.other.member.private"
+"label" = { fg = "zb-label-fg", underline = { style = 'line' } }
+# "punctuation"
+"punctuation.delimiter" = "zb-delimiter-fg"
+# "punctuation.bracket"
+"punctuation.special" = "zb-special-fg"
+"keyword" = { fg = "zb-keyword-fg", modifiers = ["bold"] }
+# "keyword.control"
+"keyword.control.conditional" = { fg = "zb-conditional-fg", modifiers = ["bold"] }
+"keyword.control.repeat" = { fg = "zb-repeat-fg", modifiers = ["bold"] }
+"keyword.control.import" = { fg = "zb-preproc-fg", modifiers = ["bold"] }
+# "keyword.control.return"
+"keyword.control.exception" = { fg = "zb-exception-fg", modifiers = ["bold"] }
+# "keyword.operator"
+# "keyword.directive"
+# "keyword.function"
+# "keyword.storage"
+"keyword.storage.type" = { fg = "zb-storageclass-fg", modifiers = ["bold"] }
+# "keyword.storage.modifier"
+"operator" = "zb-operator-fg"
+"function" = "zb-function-fg"
+"function.builtin" = { fg = "zb-function-fg", modifiers = ["bold"] }
+# "function.method"
+# "function.method.private"
+"function.macro" = { fg = "zb-macro-fg", modifiers = ["bold"] }
+# "function.special"
+"tag" = { fg = "zb-tag-fg", modifiers = ["bold"] }
+# "tag.builtin"
+"namespace" = { fg = "zb-include-fg", modifiers = ["bold"] }
+"special" = "zb-special-fg"
+# "markup"
+"markup.heading" = { fg = "zb-constant-fg", modifiers = ["bold"] }
+# "markup.heading.marker"
+# "markup.heading.1"
+# "markup.heading.2"
+# "markup.heading.3"
+# "markup.heading.4"
+# "markup.heading.5"
+# "markup.heading.6"
+"markup.list" = "zb-number-fg"
+# "markup.list.unnumbered"
+# "markup.list.numbered"
+# "markup.list.checked"
+# "markup.list.unchecked"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = { underline.style = "line" }
+# "markup.link.url"
+# "markup.link.label"
+# "markup.link.text" = "zb-cyan"
+"markup.quote" = "zb-comment-fg"
+"markup.raw" = "zb-delimiter-fg"
+# "markup.raw.inline"
+# "markup.raw.block"
+# "diff"
+"diff.plus" = { fg = "zb-diffadd-fg", bg = "zb-diffadd-bg", modifiers = ["bold"] }
+"diff.plus.gutter" = "zb-diffadd-fg"
+"diff.minus" = { fg = "zb-diffdelete-fg", bg = "zb-diffdelete-bg" }
+"diff.minus.gutter" = "zb-string-fg"
+"diff.delta" = { bg = "zb-diffchange-bg" }
+# "diff.delta.moved"
+# "diff.delta.conflict"
+"diff.delta.gutter" = "zb-normal-fg"
+
+"ui.background" = { bg = "zb-normal-bg" }
+# "ui.background.separator"
+"ui.cursor" = { fg = "zb-cursor-fg", bg = "zb-cursor-bg", modifiers = ["bold"] }
+# "ui.cursor.normal"
+# "ui.cursor.insert"
+# "ui.cursor.select"
+"ui.cursor.match" = { fg = "zb-matchparen-fg", bg = "zb-matchparen-bg", modifiers = ["bold"] }
+# "ui.cursor.primary"
+# "ui.cursor.primary.normal"
+# "ui.cursor.primary.insert"
+# "ui.cursor.primary.select"
+# "ui.debug.breakpoint"
+# "ui.debug.active"
+"ui.gutter" = { bg = "zb-linenr-bg" }
+# ui.gutter.selected	Gutter for the line the cursor is on
+"ui.linenr" = { fg = "zb-linenr-fg", bg = "zb-linenr-bg" }
+"ui.linenr.selected" = { fg = "zb-cursorlinenr-fg", bg = "zb-cursorlinenr-bg", modifiers = ["bold"] }
+"ui.statusline" = { bg = "zb-statusline-fg", fg = "zb-statusline-bg", modifiers = ["bold"] }
+"ui.statusline.inactive" = { bg = "zb-statuslinenc-fg", fg = "zb-statuslinenc-bg", modifiers = [] }
+# "ui.statusline.normal"
+# "ui.statusline.insert"
+# "ui.statusline.select"
+# "ui.statusline.separator"
+# "ui.bufferline"
+# "ui.bufferline.active"
+# "ui.bufferline.background"
+"ui.popup" = { fg = "zb-pmenu-fg", bg = "zb-pmenu-bg" }
+# "ui.popup.info"
+# "ui.picker.header"
+# "ui.picker.header.column"
+# "ui.picker.header.column.active"
+# "ui.window" = "zb-lineno"
+"ui.help" = { fg = "zb-pmenu-fg", bg = "zb-pmenu-bg" }
+"ui.text" = "zb-normal-fg"
+"ui.text.focus" = { modifiers = ["bold"] }
+# "ui.text.inactive"
+"ui.text.info" = { fg = "zb-pmenu-fg", bg = "zb-pmenu-bg" }
+"ui.virtual.ruler" = { bg = "zb-colorcolumn-bg" }
+"ui.virtual.whitespace" = { fg = "zb-nontext-fg", modifiers = ["bold"] }
+"ui.virtual.indent-guide" = { fg = "zb-colorcolumn-bg" }
+# "ui.virtual.inlay-hint"
+# "ui.virtual.inlay-hint.parameter"
+# "ui.virtual.inlay-hint.type"
+# "ui.virtual.wrap"
+"ui.virtual.jump-label" = { modifiers = ["bold"] }
+"ui.menu" = { fg = "zb-pmenu-fg", bg = "zb-pmenu-bg" }
+"ui.menu.selected" = { fg = "zb-pmenusel-fg", bg = "zb-pmenusel-bg", modifiers = ["bold"] }
+# "ui.menu.scroll"
+"ui.selection" = { bg = "#373737" }
+"ui.selection.primary" = { bg = "zb-visual-bg" }
+# "ui.highlight"
+# "ui.highlight.frameline"
+"ui.cursorline.primary" = { bg = "zb-cursorline-bg" }
+# "ui.cursorline.secondary"
+"ui.cursorcolumn.primary" = { bg = "zb-cursorcolumn-bg" }
+# "ui.cursorcolumn.secondary"
+"warning" = { fg = "zb-error-fg", modifiers = ["bold"] }
+"error" = { fg = "zb-error-fg", modifiers = ["bold"] }
+"info" = { fg = "zb-todo-fg", modifiers = ["bold"] }
+"hint" = { fg = "zb-todo-fg", modifiers = ["bold"] }
+# "diagnostic"
+"diagnostic.hint" = { fg = "zb-todo-fg", bg = "zb-todo-bg", modifiers = ["bold"] }
+"diagnostic.info" = { fg = "zb-todo-fg", bg = "zb-todo-bg", modifiers = ["bold"] }
+"diagnostic.warning" = { fg = "zb-error-fg", bg = "zb-error-bg", modifiers = ["bold"] }
+"diagnostic.error" = { fg = "zb-error-fg", bg = "zb-error-bg", modifiers = ["bold"] }
+"diagnostic.unnecessary" = { fg = "zb-todo-fg", bg = "zb-todo-bg", modifiers = ["bold"] }
+"diagnostic.deprecated"= { fg = "zb-todo-fg", bg = "zb-todo-bg", modifiers = ["bold"] }
+
+[palette]
+"zb-boolean-fg" = "#dca3a3"
+"zb-character-fg" = "#dca3a3" # gui=bold
+"zb-comment-fg" = "#7f9f7f"
+"zb-conditional-fg" = "#f0dfaf" # gui=bold
+"zb-constant-fg" = "#dca3a3" # gui=bold
+"zb-cursor-fg" = "#000d18"
+"zb-cursor-bg" = "#8faf9f" # gui=bold
+"zb-debug-fg" = "#bca3a3" # gui=bold
+"zb-define-fg" = "#ffcfaf" # gui=bold
+"zb-delimiter-fg" = "#8f8f8f"
+"zb-diffadd-fg" = "#709080"
+"zb-diffadd-bg" = "#313c36" # gui=bold
+"zb-diffchange-bg" = "#333333"
+"zb-diffdelete-fg" = "#333333"
+"zb-diffdelete-bg" = "#464646"
+"zb-difftext-fg" = "#ecbcbc"
+"zb-difftext-bg" = "#41363c" # gui=bold
+"zb-directory-fg" = "#9fafaf" # gui=bold
+"zb-errormsg-fg" = "#80d4aa"
+"zb-errormsg-bg" = "#2f2f2f" # gui=bold
+"zb-exception-fg" = "#c3bf9f" # gui=bold
+"zb-float-fg" = "#c0bed1"
+# "zb-foldcolumn-fg" = "#93b3a3"
+# "zb-foldcolumn-bg" = "#3f4040"
+# "zb-folded-fg" = "#93b3a3"
+# "zb-folded-bg" = "#3f4040"
+"zb-function-fg" = "#efef8f"
+"zb-identifier-fg" = "#efdcbc"
+"zb-incsearch-fg" = "#f8f893"
+"zb-incsearch-bg" = "#385f38"
+"zb-keyword-fg" = "#f0dfaf" # gui=bold
+"zb-macro-fg" = "#ffcfaf" # gui=bold
+"zb-modemsg-fg" = "#ffcfaf" # gui=none
+"zb-moremsg-fg" = "#ffffff" # gui=bold
+"zb-number-fg" = "#8cd0d3"
+"zb-operator-fg" = "#f0efd0"
+"zb-pmenusbar-fg" = "#000000"
+"zb-pmenusbar-bg" = "#2e3330"
+"zb-pmenuthumb-fg" = "#040404"
+"zb-pmenuthumb-bg" = "#a0afa0"
+"zb-precondit-fg" = "#dfaf8f" # gui=bold
+"zb-preproc-fg" = "#ffcfaf" # gui=bold
+"zb-question-fg" = "#ffffff" # gui=bold
+"zb-repeat-fg" = "#ffd7a7" # gui=bold
+"zb-search-fg" = "#ffffe0"
+"zb-search-bg" = "#284f28"
+"zb-signcolumn-fg" = "#9fafaf" # gui=bold
+"zb-specialchar-fg" = "#dca3a3" # gui=bold
+"zb-specialcomment-fg" = "#82a282" # gui=bold
+"zb-special-fg" = "#cfbfaf"
+"zb-specialkey-fg" = "#9ece9e"
+"zb-statement-fg" = "#e3ceab" # gui=none
+"zb-statusline-fg" = "#313633"
+"zb-statusline-bg" = "#ccdc90"
+"zb-statuslinenc-fg" = "#2e3330"
+"zb-statuslinenc-bg" = "#88b090"
+"zb-storageclass-fg" = "#c3bf9f" # gui=bold
+"zb-string-fg" = "#cc9393"
+"zb-structure-fg" = "#efefaf" # gui=bold
+"zb-tag-fg" = "#e89393" # gui=bold
+"zb-title-fg" = "#efefef" # gui=bold
+"zb-todo-fg" = "#dfdfdf" # gui=bold
+"zb-todo-bg" = "#575757"
+"zb-typedef-fg" = "#dfe4cf" # gui=bold
+"zb-type-fg" = "#dfdfbf" # gui=bold
+"zb-underlined-fg" = "#dcdccc" # gui=underline
+"zb-vertsplit-fg" = "#2e3330"
+"zb-vertsplit-bg" = "#688060"
+# "zb-visualnos-fg" = "#333333"
+# "zb-visualnos-bg" = "#f18c96" # gui=bold,underline
+"zb-warningmsg-fg" = "#ffffff"
+"zb-warningmsg-bg" = "#333333" # gui=bold
+"zb-wildmenu-fg" = "#cbecd0"
+"zb-wildmenu-bg" = "#2c302d" # gui=underline
+
+"zb-normal-fg" = "#dcdccc"
+"zb-normal-bg" = "#3f3f3f"
+"zb-conceal-fg" = "#8f8f8f"
+"zb-conceal-bg" = "#484848"
+"zb-colorcolumn-bg" = "#484848"
+"zb-cursorline-bg" = "#434443"
+"zb-cursorlinenr-fg" = "#d2d39b"
+"zb-cursorlinenr-bg" = "#262626"
+"zb-cursorcolumn-bg" = "#4f4f4f"
+"zb-foldcolumn-bg" = "#333333"
+"zb-folded-bg" = "#333333"
+"zb-linenr-fg" = "#9fafaf"
+"zb-linenr-bg" = "#262626"
+"zb-nontext-fg" = "#5b605e" # gui=bold
+"zb-pmenu-fg" = "#9f9f9f"
+"zb-pmenu-bg" = "#2c2e2e"
+"zb-pmenusel-fg" = "#d0d0a0"
+"zb-pmenusel-bg" = "#242424" # gui=bold
+"zb-matchparen-fg" = "#ffffe0"
+"zb-matchparen-bg" = "#284f28" # gui=bold
+"zb-signcolumn-bg" = "#343434"
+"zb-specialkey-bg" = "#444444"
+"zb-tabline-fg" = "#d0d0b8"
+"zb-tabline-bg" = "#222222" # gui=none
+"zb-tablinesel-fg" = "#f0f0b0"
+"zb-tablinesel-bg" = "#333333" # gui=bold
+"zb-tablinefill-fg" = "#dccdcc"
+"zb-tablinefill-bg" = "#101010" # gui=none
+"zb-visual-bg" = "#2f2f2f"
+"zb-visualnos-bg" = "#2f2f2f"
+"zb-error-fg" = "#e37170"
+"zb-error-bg" = "#3d3535" # gui=bold
+"zb-include-fg" = "#dfaf8f" # gui=bold
+"zb-label-fg" = "#dfcfaf" # gui=underline

@@ -1,0 +1,33 @@
+# The structure is based on `base16_default_dark` by Ray Gervais.  Most of
+# the colors come from the so called Autumn theme, a color scheme inspired by
+# the colors you can find in the autumn. Originally it was designed as a
+# color scheme for the Komodo IDE and then ported to Vim by Kenneth Love
+# and Chris Jones. Later, Yorick Peterse improved their work. See:
+# <https://github.com/YorickPeterse/Autumn.vim>
+# Jens Getreu ported and optimised the color theme for the Helix editor.
+# Author: Jens Getreu <getreu at web.de>
+
+inherits = "autumn"
+
+[palette]
+my_black      = "#111111" # Cursorline
+my_brown      = "#cfba8b" # Member variables, Quotes
+my_gray0      = "#090909" # Default Background
+my_gray1      = "#0e0e0e" # Ruler
+my_gray2      = "#1a1a1a" # Lighter Background (Used for status bars, line number and folding marks)
+my_gray3      = "#404040" # Selection Background
+my_gray4      = "#626C66" # Inlay-hint
+my_gray5      = "#626C66" # Comments, Invisibles, Line Highlighting
+my_gray6      = "#aaaaaa" # Dark Foreground (Used for status bars)
+my_gray7      = "#c4c4c4" # Light Foreground
+my_gray8      = "#e8e8e8" # Light Background
+my_green      = "#99be70" # Strings, Inherited Class, Markup Code, Diff Inserted
+my_red        = "#F05E48" # Keywords, Storage, Selector, Diff Changed
+my_turquoise1 = "#86c1b9" # Support, Regular Expressions, Escape Characters
+my_turquoise2 = "#72a59e" # URL
+my_white1     = "#F3F2CC" # Default Foreground, Caret, Delimiters, Operators
+my_white2     = "#F3F2CC" # Variables, XML Tags, Markup Link Text, Markup Lists, Diff Deleted
+my_white3     = "#F3F2CC" # Classes, Markup Bold, Search Text Background
+my_white4     = "#7e7d6a" # Secondary cursors
+my_yellow1    = "#FAD566" # Functions, Methods, Attribute IDs, Headings
+my_yellow2    = "#ffff9f" # Debug, Info

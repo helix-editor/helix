@@ -1,0 +1,14 @@
+# Gruvbox Material Light Soft for Helix
+# Original Author: @sainnhe (https://github.com/sainnhe/gruvbox-material)
+# Base theme ported by: @satoqz
+# Palette ported by: @ivan-shymkiv
+# License: MIT
+
+inherits = "gruvbox_material_light_medium"
+
+[palette]
+bg0 = "#f2e5bc"
+bg1 = "#eddeb5"
+bg2 = "#e6d5ae"
+bg3 = "#d5c4a1"
+bg4 = "#dac9a5"

@@ -1,0 +1,213 @@
+# Author : 0rphee <0rph3e@proton.me>
+
+# Template written with the help of https://github.com/n0s4/helix-theme-template
+# Keep in mind that I made this to fit Haskell and Python syntax, it may not work so well with other languages.
+
+## GENERAL ==============================
+
+'property' = { fg = "red" } # Regex group names.
+"warning" = { fg ="yellow", modifiers = ["bold"] } # Editor warnings.
+"error" = { fg = "red", modifiers = ["bold"] } # Editor errors, like mistyping a command.
+"info" = { fg = "mid-blue" } # Code diagnostic info in gutter (LSP).
+# ? Difference between info and hint ?
+"hint" = { fg = "light-green", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
+
+# Code diagnostics in editing area (LSP).
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "mid-blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "light-green", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+# UI ==============================
+# For styling helix itself.
+
+'ui.background' = { fg = "autocomp-green", bg = "dark-green" } # Default background color.
+'ui.window' = { fg = "mid-green" } # Window border between splits.
+
+'ui.gutter' = { } # Left gutter for diagnostics and breakpoints.
+
+'ui.text' = { fg = "white" } # Default text color.
+'ui.text.focus' = { fg = "white", bg = "mid-green", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
+'ui.text.info' = { fg = "white" } # Info popup contents (space mode menu).
+
+'ui.cursor' = { fg = "dark-green", bg = "white" } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
+'ui.cursor.primary' = { fg = "dark-green", bg = "light-blue" } # The primary cursor when there are multiple (shift-c).
+'ui.cursor.insert' = { fg = "dark-green", bg = "light-blue" } # The cursor in insert mode (i).
+'ui.cursor.select' = { fg = "dark-green", bg = "light-blue" } # The cursor in select mode (v).
+'ui.cursor.match' = { fg = "dark-green", bg = "red", modifiers = ["bold"] } # The matching parentheses of that under the cursor.
+
+'ui.selection' = { bg = "autocomp-green" } # All currently selected text.
+'ui.selection.primary' = { bg = "autocomp-green" } # The primary selection when there are multiple.
+'ui.cursorline.primary' = { bg = 'mid-green' }
+
+'ui.linenr' = {  fg = "gray"  } # Line numbers.
+'ui.linenr.selected' = { fg = "light-green", modifiers = [ "bold" ] } # Current line number.
+
+'ui.virtual' = { fg = "autocomp-green" } # Namespace for additions to the editing area.
+'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
+'ui.virtual.whitespace' = { fg = "mid-green"} # Whitespace markers in editing area.
+'ui.virtual.inlay-hint' = { fg = "autocomp-green" } # LSP inlay hints
+'ui.virtual.indent-guide' = { fg = "mid-green" } # Indentation guides.
+'ui.virtual.wrap' = { fg = "mid-green"} # Soft-wrap indicators
+'ui.virtual.jump-label' = { fg = "autocomp-green", modifiers = [ "bold" ] } # Word-jump labels
+
+'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
+'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.
+
+"ui.statusline.normal" = { fg = "dark-green", bg = "mid-blue", modifiers = [ "bold" ] }
+"ui.statusline.insert" = { fg = "dark-green", bg = "pink", modifiers = [ "bold" ] }
+"ui.statusline.select" = { fg = "dark-green", bg = "yellow", modifiers = [ "bold" ] }
+
+'ui.help' = { bg = "mid-green", fg = "white"} # `:command` descriptions above the command line.
+
+'ui.highlight' = { bg = "mid-green"} # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
+
+'ui.menu' = { fg = "white", bg = "mid-green" } # Autocomplete menu.
+'ui.menu.selected' = { fg = "light-green", bg = "autocomp-green" } # Selected autocomplete item.
+
+'ui.popup' = { bg = "mid-green" } # Documentation popups (space-k).
+# 'ui.ppopup.info' = { bg = "midgreen", fg = "gray", modifiers = ["bold"] } # Info popups box (space mode menu).
+
+# SYNTAX HIGHLIGHTING ==============================
+# All the keys here are Treesitter scopes.
+
+'special' = { fg = "mid-blue"} # Special symbols e.g `?` in Rust, `...` in Hare.
+'attribute' = { fg = "yellow" } # Class attributes, html tag attributes.
+
+'type' = { fg = "orange"} # Variable type, like integer or string, including program defined classes, structs etc..
+#'type.builtin' = { } # Primitive types of the language (string, int, float).
+#'type.enum.variant' = { } # A variant of an enum.
+
+'constructor' = { fg = "light-blue", modifiers = ["bold"]} # Constructor method for a class or struct. And in some cases applies to module names
+
+'constant' = { fg = "light-blue", modifiers = ["bold"] } # Constant value
+'constant.builtin' = { fg = "mid-blue", modifiers = ["bold"] } # Special constants like `true`, `false`, `none`, etc.
+'constant.builtin.boolean' = { } # True or False.
+'constant.character' = { fg = "light-green"} # Constant of character type.
+'constant.character.escape' = { fg = "purple", modifiers = ["bold"] } # escape codes like \n.
+'constant.numeric'  = { fg = "purple"} # constant integer or float value.
+# 'constant.numeric.integer' = { } # constant integer value.
+# 'constant.numeric.float' = { } # constant float value.
+
+'string' = { fg = "light-green" } # String literal.
+'string.regexp' = { } # Regular expression literal.
+'string.special' = { fg = "red" } # Strings containing a path, URL, etc.
+# 'string.special.path' = { } # String containing a file path.
+# 'string.special.url' = { } # String containing a web URL.
+# 'string.special.symbol' = { } # Erlang/Elixir atoms, Ruby symbols, Clojure keywords.
+
+'comment' = { fg = "gray", modifiers = ["italic"] } # This is a comment.
+'comment.line' = { } # Line comments, like this.
+'comment.line.documentation' = { } # Doc comments, e.g '///' in rust.
+'comment.block' = { } # Block comments, like /* this */ in some languages.
+'comment.block.documentation' = { } # Doc comments, e.g '/** */' in rust.
+
+'variable' = { fg = "light-orange" }  # Variable names.
+# 'variable.builtin' = { } # Language reserved variables: `this`, `self`, `super`, etc.
+# 'variable.parameter' = { } # Function parameters.
+'variable.other.member' = { fg = "orange" } # Fields of composite data types (e.g. structs, unions).
+
+'label' = { fg = "purple" } # Loop labels in rust.
+
+'punctuation' =  { fg = "yellow", modifiers = ["bold"] } # (){}[]:;,.
+# 'punctuation.delimiter' = { fg = "yellow" } # Commas and colons.
+# 'punctuation.bracket' = { fg = "yellow" } # Parentheses, angle brackets, etc.
+
+'keyword' = { fg = "pink", modifiers = ["bold"] } # Language reserved keywords.
+'keyword.control' = { fg = "pink", modifiers = ["bold"] } # Control keywords.
+'keyword.control.conditional' = { fg = "pink", modifiers = ["bold"] } # 'if', 'else', 'elif'.
+# 'keyword.control.repeat' = { } # 'for', 'while', 'loop'.
+'keyword.control.import' = { fg = "pink", modifiers = ["italic"] } # 'import', 'export' ('use'?).
+# 'keyword.control.return' = { } # 'return' in most languages.
+'keyword.control.exception' = {fg = "pink", modifiers = ["bold"] } # 'raise' in python.
+'keyword.operator' = { fg = "pink" } # 'or', 'and', 'in'.
+'keyword.directive' = { fg = "purple" } # Preprocessor directives (#if in C).
+'keyword.function' = { fg= "red" } # The keyword to define a function: 'def', 'fun', 'fn'.
+
+'operator' = { fg = "pink", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
+
+'function' = { fg = "mid-blue"}
+'function.builtin' = { fg = "dark-blue" }
+'function.method' = { fg = "dark-blue" } # Class / Struct methods.
+'function.macro' = { fg = "purple" } # Like macros in rust.
+# 'function.special' = { fg = "yellow" } # Preprocessor in C.
+
+'tag' = { fg = "yellow"} # As in <body> for html.
+
+'namespace' = { fg = "mid-blue" } # * Namespace keyword in java, C#, etc.
+
+# Markup ==============================
+# Colors for markup languages, like Markdown or XML.
+
+'markup.heading' = { } # Markdown headings
+'markup.heading.1' = { } # Markdown heading 1 color.
+'markup.heading.2' = { } # Markdown heading 2 color.
+'markup.heading.3' = { } # Markdown heading 3 color.
+'markup.heading.4' = { } # Markdown heading 4 color.
+'markup.heading.5' = { } # Markdown heading 5 color.
+'markup.heading.6' = { } # Markdown heading 6 color.
+'markup.heading.marker' = { fg = "red" } # Hashtag color on Markdown headings.
+
+'markup.list' = { fg = "red" }
+'markup.list.numbered' = { } # Numbered list.
+'markup.list.unnumbered' = { } # Bullet point list.
+
+'markup.bold' = { modifiers = ["bold"] } # Bold text.
+'markup.italic' = { modifiers = ["italic"] } # Italicised text.
+"markup.strikethrough" = { modifiers = ["crossed_out"] } # Crossed out text.
+
+'markup.link' = { fg = "light-blue", modifiers = ["underlined"] }
+'markup.link.url' = { } # Urls pointed to by links.
+'markup.link.label' = { } # Non-URL link references.
+'markup.link.text' = { fg = "purple"} # URL and image descriptions in links.
+
+'markup.quote' = { } # `> Quotes` in Markdown.
+
+
+# Markup - Interface ==============================
+# "These scopes are used for theming the editor interface."
+
+'markup.normal' = { }
+'markup.normal.completion' = { } # For completion doc popup ui.
+'markup.normal.raw' = { } # For hover popup ui.
+
+'markup.heading.completion' = { } # Headings for completion doc popup ui.
+'markup.heading.raw' = { } # Headings for hover popup ui.
+
+'markup.raw' = { } # Code block in Markdown.
+'markup.raw.block' = { } # Multiline (```) codeblock in Markdown.
+'markup.raw.inline' = { } # `Inline code block` in Markdown.
+'markup.raw.inline.completion' = { } # ?
+'markup.raw.inline.hover' = { } # ?
+
+# Diff ==============================
+# Version control changes.
+
+'diff.plus' = "light-green" # { } # Additions.
+'diff.minus' = "red" # { } # Deletions.
+'diff.delta' = "yellow" # { } # Modifications.
+# 'diff.delta.moved' = { } # Renamed or moved files / changes.
+
+
+[palette] # Define your custom colors here.
+dark-green = "#00262a" # backgrounds
+mid-green = "#073a40" # highlights
+autocomp-green = "#0d6772" # lighter than mid-green
+light-green = "#48e9a7" # strings
+
+pink = "#df769b"
+yellow = "#ffd800"
+purple = "#918cff"
+white = "#b1cace"
+orange = "#ffa864"
+light-orange = "#fff2c5"
+gray = "#5b858b" # mainly for comments/background text
+light-gray = "#2a3c41" # used when whitespace rendering is enabled and for indent-guides
+red = "#e34e1b"
+
+dark-blue = "#19a2b7"
+mid-blue = "#47ace8"
+light-blue = "#87efff"
+

@@ -1,0 +1,108 @@
+# Varua: an easy on the eyes color palette based on Gruvbox Material and Everforest by sainnhe.
+# Author : Kamek <b.kamek@gmail.com>
+
+"constant.character.escape" = "orange"
+"type" = "blue"
+"constant" = "purple"
+"constant.numeric" = "purple"
+"string" = "green"
+"comment" = "grey0"
+"variable" = "fg"
+"variable.builtin" = "blue"
+"variable.parameter" = "fg"
+"variable.other.member" = "fg"
+"label" = "aqua"
+"punctuation" = "grey2"
+"punctuation.delimiter" = "grey2"
+"punctuation.bracket" = "fg"
+"keyword" = "purple"
+"operator" = "orange"
+"function" = "green"
+"function.builtin" = "blue"
+"function.macro" = "aqua"
+"tag" = "yellow"
+"namespace" = "aqua"
+"attribute" = "aqua"
+"constructor" = "aqua"
+"module" = "blue"
+"special" = "orange"
+
+"markup.heading.marker" = "grey2"
+"markup.heading.1" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "orange", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
+"markup.list" = "red"
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.text" = "purple"
+"markup.quote" = "grey2"
+"markup.raw" = "green"
+
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "red"
+
+"ui.background" = { bg = "bg0" }
+"ui.cursorline.primary" = { bg = "bg6" }
+"ui.cursor" = { fg = "bg0", bg = "fg" }
+"ui.cursor.match" = { fg = "orange", bg = "bg_yellow" }
+"ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
+"ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.linenr" = "grey0"
+"ui.linenr.selected" = "fg"
+"ui.statusline" = { fg = "fg", bg = "bg2" }
+"ui.statusline.inactive" = { fg = "grey0", bg = "bg1" }
+"ui.popup" = { fg = "grey0", bg = "bg2" }
+"ui.window" = { fg = "grey0", bg = "bg1" }
+"ui.help" = { fg = "fg", bg = "bg1" }
+"ui.text" = "fg"
+"ui.text.focus" = "fg"
+"ui.menu" = { fg = "fg", bg = "bg2" }
+"ui.menu.selected" = { fg = "fg", bg = "bg1" }
+"ui.selection" = { bg = "bg3" }
+"ui.virtual.whitespace" = "grey0"
+"ui.statusline.insert" = { bg = "green", fg = "bg2" }
+"ui.statusline.select" = { bg = "blue", fg = "bg2" }
+"ui.virtual.wrap" = { fg = "grey0" }
+"ui.virtual.inlay-hint" = { fg = "grey1" }
+"ui.virtual.ruler" = { bg = "bg2"}
+
+"hint" = "blue"
+"info" = "aqua"
+"warning" = "yellow"
+"error" = "red"
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
+
+[palette]
+bg0 = "#282828"
+bg1 = "#45403d"
+bg2 = "#32302f"
+bg3 = "#3c3836"
+bg4 = "#4c555b"
+bg5 = "#53605c"
+bg6 = "#2c2c2c"
+bg_visual = "#503946"
+bg_red = "#4e3e43"
+bg_green = "#404d44"
+bg_blue = "#394f5a"
+bg_yellow = "#4a4940"
+
+fg = "#dfbf8e"
+red = "#e67e80"
+orange = "#e69875"
+yellow = "#dbbc7f"
+green = "#a7c080"
+aqua = "#83c092"
+blue = "#7fbbb3"
+purple = "#d699b6"
+grey0 = "#928374"
+grey1 = "#859289"
+grey2 = "#9da9a0"

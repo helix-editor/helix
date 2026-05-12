@@ -1,0 +1,120 @@
+attribute_color = "attribute_color"
+keyword = "keyword_foreground_color"
+"keyword.directive" = "light_blue" 
+namespace = "light_blue"
+punctuation = "punctuation_color"
+"punctuation.delimiter" = "punctuation_color"
+operator = "operator_color"
+special = "label"
+"variable.other.member" = "white"
+variable = "variable"
+"variable.parameter" = { fg = "variable" }
+"variable.builtin" = {fg = "built_in", modifiers=["bold","italic"]}
+type = "white"
+"type.builtin" = "white" 
+constructor = "light_blue"
+function = "white"
+"function.macro" = {fg ="light_blue" }
+"function.builtin" = "white"
+tag = "tag"
+comment = { fg = "comment_color", modifiers = ["italic"] }
+constant = {fg ="white"}
+"constant.builtin" = "white"
+string = {fg="string", modifiers=["italic"]}
+"constant.numeric" = "constant_numeric_foreground_color"
+"constant.character.escape" = "label"
+# used for lifetimes
+label = "label"
+
+"markup.heading" = "light_blue"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "link_url_foreground_color", modifiers = ["underlined"] }
+"markup.link.text" = "markup_link_foreground_color"
+"markup.raw" = "markup_raw_foreground_color"
+
+"diff.plus" = "#35bf86"
+"diff.minus" = "#f22c86"
+"diff.delta" = "info"
+
+"ui.background" = { bg = "black" }
+"ui.background.separator" = { fg = "window_color" }
+"ui.linenr" = { fg = "window_color" }
+"ui.linenr.selected" = { fg = "light_blue" }
+"ui.statusline" = { fg = "statusline_foreground_color", bg = "black" }
+"ui.statusline.inactive" = { fg = "statusline_inactive_foreground_color", bg = "black" }
+"ui.virtual.ruler" = { bg = "dark"}
+
+"ui.popup" = {  fg = "menu_normal_text_color", bg = "menu_background_color"  }
+"ui.window" = { fg = "dark"}
+"ui.help" = {  fg = "menu_normal_text_color", bg = "menu_background_color"  }
+
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "white" }
+"ui.text.inactive" = "comment_color"
+"ui.virtual" = { fg = "#008DFF" }
+
+"ui.virtual.indent-guide" = { fg = "window_color" }
+
+"ui.selection" = { bg = "#4f46e5" }
+"ui.selection.primary" = { bg = "#4f46e5" }
+"ui.cursor.select" = { bg = "cursor_normal_bg_color" }
+"ui.cursor.primary.insert" = { bg = "#f43f5e", fg = "white" }
+"ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
+"ui.cursorline.primary" = { bg = "dark"}
+"ui.highlight" = { bg = "dark" }
+"ui.highlight.frameline" = { bg = "#634450" }
+"ui.debug" = { fg = "#634450" }
+"ui.debug.breakpoint" = { fg = "debug_breakpoint" }
+"ui.menu" = { fg = "menu_normal_text_color", bg = "menu_background_color" }
+"ui.menu.selected" = { fg = "menu_background_color", bg = "white" }
+"ui.menu.scroll" = { fg = "menu_scroll", bg = "window_color" }
+
+"diagnostic.hint" = { underline = { color = "hint", style = "curl" } }
+"diagnostic.info" = { underline = { color = "info", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+warning = "warning"
+error = "#f43f5e"
+info = "info"
+hint = "#38bdf8"
+
+[palette]
+label = "#efba5d"
+constant_numeric_foreground_color = "#E8DCA0"
+tag = "#eccdba"
+markup_link_foreground_color = "#eccdba"
+markup_raw_foreground_color = "#eccdba"
+keyword_foreground_color="#eccdba" # alternative color "#ecc1ba"
+comment_color = "#697C81"
+link_url_foreground_color="#b8b8b8"
+debug_breakpoint = "#f47868"
+window_color = "#484a4d"
+light_blue = "#bee0ec" #change name 
+text="#bfdbfe"
+black = "#000000"
+white = "#ffffff"
+dark= "#111111"
+punctuation_color = "#a4a0e8"
+string="#6ee7b7"
+attribute_color="#dbbfef"
+operator_color="#bee0ec"
+menu_background_color="#1e3a8a"
+menu_normal_text_color="#93c5fd"
+statusline_active_background_color="#111111"
+statusline_inactive_background_color="#0e0e0e"
+statusline_inactive_foreground_color="#b8b8b8"
+popup_background_color="#1e3a8a"
+cursor_normal_bg_color="#6366f1"
+warning="#ffcd1c"
+error = "#f43f5e"
+hint = "#38bdf8"
+info = "#6366f1"
+variable="#c7d2fe"
+menu_scroll="#93c5fd"
+built_in="#10b981"
+statusline_foreground_color="#6366f1"

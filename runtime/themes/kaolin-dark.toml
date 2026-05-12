@@ -1,0 +1,110 @@
+# Author : thlsrms <thlsrmsdev@gmail.com>
+
+# Original author: kaolin-dark by Ogden Webb: github.com/ogdenwebb/emacs-kaolin-themes
+# Kaolin Dark Theme - A dark jade theme inspired by Sierra.vim : github.com/AlessandroYorba/Sierra
+
+"attribute" = "constant"
+"keyword" = { fg = "hint" }
+"keyword.directive" = "info"
+"namespace" = "constant"
+"punctuation" = "fg0"
+"punctuation.delimiter" = "fg0"
+"operator" = "fg0"
+"special" = "constant"
+"variable.other.member" = { fg = "violet7", modifiers = ["italic"] }
+"variable" = "ultramarine4_dark"
+"variable.builtin" = "hint"
+"variable.parameter" = "ultramarine4_dark"
+"type" = "type"
+"type.builtin" = "info"
+"constructor" = { fg = "type" }
+"function" = { fg = "info" }
+"function.macro" = "constant"
+"function.builtin" = "selection0"
+"tag" = "#7aaaa5"
+"comment" = { fg = "gray0", modifiers = ["italic"] }
+"constant" = { fg = "constant" }
+"constant.builtin" = { fg = "info" }
+"string" = "hint"
+"constant.numeric" = "info"
+"constant.character.escape" = { fg = "hint", modifiers = ["bold"] }
+"label" = "constant"
+"module" = "info"
+
+"diff.plus" = "green0"
+"diff.delta" = "warn"
+"diff.minus" = "error"
+
+"warning" = "warn"
+"error" = "error"
+"info" = "info"
+"hint" = "hint"
+
+"diagnostic.error" = { underline = { style = "curl", color = "error" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "warn" } }
+"diagnostic.info" = { underline = { style = "curl", color = "info" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "hint" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"ui.background" = { bg = "bg0" }
+"ui.linenr" = { fg = "gray0" }
+"ui.linenr.selected" = { fg = "gray1", modifiers = ["bold"] }
+"ui.cursorline" = { bg = "bg1" }
+"ui.cursorline.secondary" = { bg = "bg2" }
+"ui.cursorcolumn.primary" = { bg = "bg1" }
+"ui.cursorcolumn.secondary" = { bg = "bg2" }
+"ui.statusline" = { fg = "info", bg = "bg1" }
+"ui.statusline.normal" = { fg = "hint", bg = "bg1", modifiers = ["reversed", "bold"] }
+"ui.statusline.insert" = { fg = "green0", bg = "bg1", modifiers = ["reversed", "bold"] }
+"ui.statusline.select" = { fg = "ultramarine4_dark", bg = "bg1", modifiers = ["reversed", "bold"] }
+"ui.statusline.inactive" = { fg = "gray0", bg = "bg1" }
+"ui.popup" = { bg = "bg1" }
+"ui.window" = { fg= "bg1", bg = "bg0" }
+"ui.help" = { bg = "bg1", fg = "fg0" }
+"ui.text" = { fg = "fg1" }
+"ui.text.focus" = { fg = "selection0" }
+"ui.selection" = { bg = "selection1" }
+"ui.selection.primary" = { bg = "selection1" }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "bg1", bg = "ultramarine4_dark" }
+"ui.menu" = { fg = "fg0", bg = "bg1" }
+"ui.menu.selected" = { fg = "selection0", bg = "bg2", modifiers = ["bold"] }
+"ui.virtual.wrap" = "bg2"
+"ui.virtual.whitespace" = "fg1"
+"ui.virtual.indent-guide" = "bg2"
+"ui.virtual.ruler" = { bg = "bg1" }
+"ui.virtual.inlay-hint" = "gray1"
+"ui.virtual.inlay-hint.parameter" = { fg = "gray1", modifiers = ["dim"] }
+"ui.virtual.inlay-hint.type" = { fg = "gray1", modifiers = ["dim"] }
+"ui.debug.breakpoint" = "error"
+"ui.debug.active" = "warn"
+
+"markup.heading" = "info"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "warn", underline = { style = "line" } }
+"markup.link.text" = "selection0"
+"markup.raw" = "selection0"
+
+[palette]
+# kaolin-dark palette
+bg0 = "#18181b" # black1
+bg1 = "#222225" # black2
+bg2 = "#303035" # black4
+fg0 = "#e6e6e8" # white1
+fg1 = "#adadb9" # whiet4
+gray0 = "#545c5e" # gray3
+gray1 = "#919a9c" # gray9
+green0 = "#6fb593" # spring-green3
+selection0 = "#68f3ca" # aquamarine3
+selection1 = "#2e403b" # aquamarine6
+type = "#cd9575" # vermilion4
+hint = "#4d9391" # teal1
+info = "#80bcb6" # teal4
+warn = "#dbac66" # orange1
+error = "#cd5c60" # red1
+constant = "#ab98b5" # purple4
+ultramarine4_dark = "#968cc7"
+violet7 = "#766884"

@@ -1,0 +1,46 @@
+# Author: Alexis Mousset <contact@amousset.me>
+# modus_operandi.toml variant
+# Version 4.6.0
+
+inherits = "modus_operandi"
+
+"comment" = "red-faint"
+
+"ui.cursor.primary" = { fg = "bg-main", bg = "red-intense" }
+
+[palette]
+# Basic values
+bg-main = "#fbf7f0"
+bg-dim = "#efe9dd"
+bg-active = "#c9b9b0"
+bg-inactive = "#dfd5cf"
+border = "#9f9690"
+
+# Common accent backgrounds
+bg-red-nuanced = "#ffe8e8"
+bg-green-nuanced = "#e0f6e0"
+bg-yellow-nuanced = "#f8f0d0"
+bg-blue-nuanced = "#ecedff"
+bg-magenta-nuanced = "#f8e6f5"
+bg-cyan-nuanced = "#e0f2fa"
+
+# Special purpose
+bg-completion = "#f0c1cf"
+bg-hl-line = "#f1d5d0"
+bg-region = "#c2bcb5"
+
+bg-mode-line-active = "#cab9b2"
+border-mode-line-active = "#545454"
+bg-mode-line-inactive = "#dfd9cf"
+border-mode-line-inactive = "#a59a94"
+
+bg-tab-bar = "#e0d4ce"
+bg-tab-current = "#fbf7f0"
+bg-tab-other = "#c8b8b2"
+
+# Diffs
+bg-added = "#c3ebc1"
+bg-removed = "#f4d0cf"
+
+# Paren match
+bg-paren-match = "#7fdfcf"

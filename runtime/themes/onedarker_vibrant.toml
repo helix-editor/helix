@@ -1,0 +1,121 @@
+# Author: Based on M47E theme by Mhammed Talhaouy (MIT License)
+# Adapted for Helix editor - Vibrant OneDarker variant with aggressive color saturation
+
+# SYNTAX HIGHLIGHTING
+"attribute" = "electric_cyan"
+"comment" = { fg = "bright_gray", modifiers = ["italic"] }
+"constant" = "neon_orange"
+"constant.builtin" = "hot_magenta"
+"constant.character" = "lime_green"
+"constant.character.escape" = "electric_cyan"
+"constant.numeric" = "electric_yellow"
+"constructor" = "sky_blue"
+"diff.delta" = "sky_blue"
+"diff.minus" = "hot_pink"
+"diff.plus" = "lime_green"
+"function" = "sky_blue"
+"function.builtin" = "hot_magenta"
+"function.macro" = "electric_cyan"
+"keyword" = "hot_pink"
+"keyword.control" = "hot_magenta"
+"keyword.directive" = "hot_magenta"
+"label" = "sky_blue"
+"module" = "electric_yellow"
+"namespace" = "electric_yellow"
+"operator" = "hot_pink"
+"punctuation" = "bright_white"
+"punctuation.delimiter" = "bright_white"
+"special" = "electric_cyan"
+"string" = "lime_green"
+"string.regexp" = "electric_cyan"
+"tag" = "hot_pink"
+"type" = "electric_yellow"
+"type.builtin" = "hot_magenta"
+"type.enum.variant" = "electric_cyan"
+"variable" = "bright_white"
+"variable.builtin" = "hot_magenta"
+"variable.other.member" = "bright_white"
+"variable.parameter" = "neon_orange"
+
+# MARKUP
+"markup.heading" = { fg = "sky_blue", modifiers = ["bold"] }
+"markup.list" = "hot_pink"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "electric_cyan", underline = { style = "line" } }
+"markup.link.text" = "sky_blue"
+"markup.quote" = "electric_yellow"
+"markup.raw" = "neon_orange"
+
+# UI INTERFACE
+"ui.background" = { bg = "ultra_black" }
+"ui.cursor" = { bg = "electric_yellow", fg = "ultra_black" }
+"ui.cursor.primary" = { bg = "electric_yellow", fg = "ultra_black" }
+"ui.cursor.match" = { bg = "hot_magenta", fg = "ultra_black" }
+"ui.cursor.select" = { bg = "selection_purple" }
+"ui.cursorline.primary" = { bg = "darker_surface" }
+"ui.gutter" = { bg = "ultra_black" }
+"ui.gutter.selected" = { bg = "darker_surface" }
+"ui.linenr" = "darker_gray"
+"ui.linenr.selected" = { fg = "electric_yellow", modifiers = ["bold"] }
+"ui.menu" = { fg = "bright_white", bg = "darker_popup" }
+"ui.menu.selected" = { fg = "ultra_black", bg = "electric_cyan" }
+"ui.menu.scroll" = { fg = "bright_white", bg = "bright_gray" }
+"ui.popup" = { fg = "bright_white", bg = "darker_popup" }
+"ui.popup.info" = { fg = "electric_cyan", bg = "darker_popup" }
+"ui.selection" = { bg = "selection_purple" }
+"ui.selection.primary" = { bg = "selection_purple" }
+"ui.statusline" = { fg = "bright_white", bg = "darker_status" }
+"ui.statusline.inactive" = { fg = "bright_gray", bg = "darker_status" }
+"ui.statusline.normal" = { fg = "ultra_black", bg = "sky_blue" }
+"ui.statusline.insert" = { fg = "ultra_black", bg = "lime_green" }
+"ui.statusline.select" = { fg = "ultra_black", bg = "hot_magenta" }
+"ui.text" = "bright_white"
+"ui.text.focus" = { fg = "electric_yellow", bg = "darker_selection", modifiers = ["bold"] }
+"ui.virtual.indent-guide" = "darker_indent"
+"ui.virtual.inlay-hint" = { fg = "bright_gray", bg = "darker_hint" }
+"ui.virtual.jump-label" = { fg = "ultra_black", bg = "electric_yellow", modifiers = ["bold"] }
+"ui.virtual.ruler" = { bg = "darker_ruler" }
+"ui.virtual.whitespace" = "darker_whitespace"
+"ui.virtual.wrap" = "bright_gray"
+"ui.window" = "darker_border"
+"ui.help" = { fg = "bright_white", bg = "darker_popup" }
+
+# DIAGNOSTICS
+"error" = "hot_pink"
+"warning" = "electric_yellow"
+"info" = "sky_blue"
+"hint" = "electric_cyan"
+"diagnostic.error" = { underline = { color = "hot_pink", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "electric_yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "sky_blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "electric_cyan", style = "curl" } }
+
+[palette]
+# Vibrant colors with ORIGINAL OneDarker backgrounds
+ultra_black = "#16181A"       # SAME as original OneDarker black
+bright_white = "#d5dae6"      # Enhanced white
+bright_gray = "#b4bcc8"       # Enhanced gray
+darker_gray = "#7a8590"       # Enhanced medium gray
+
+# MORE vibrant OneDarker colors - increased saturation
+hot_pink = "#ff5d8f"          # More vibrant red (was #D05C65)
+lime_green = "#5dd75d"        # More vibrant green (was #7DA869)
+electric_yellow = "#e8d154"   # More vibrant yellow (was #D5B06B)
+sky_blue = "#2fa5f0"          # More vibrant blue (was #519FDF)
+hot_magenta = "#d147ff"       # More vibrant purple (was #B668CD)
+electric_cyan = "#1abde0"     # More vibrant cyan (was #46A6B2)
+neon_orange = "#ff8f35"       # More vibrant gold (same as OneDark: #D19A66)
+
+# UI backgrounds - SAME as original OneDarker
+darker_surface = "#2C323C"    # SAME as original light-black
+darker_popup = "#12100E"      # SAME as original dark-black
+darker_status = "#252D30"     # SAME as original gray
+selection_purple = "#d147ff"  # Semi-transparent enhanced purple
+darker_selection = "#2C323C"  # SAME as original light-black
+darker_border = "#252D30"     # SAME as original gray
+darker_indent = "#2C323C"     # SAME as original light-black
+darker_hint = "#2C323C"       # SAME as original light-black
+darker_ruler = "#252D30"      # SAME as original gray
+darker_whitespace = "#252D30" # SAME as original gray

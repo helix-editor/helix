@@ -1,0 +1,5 @@
+# Deprecation notice
+#
+# This theme has moved to jetbrains_cyan_light, make sure to update your configuration accordingly.
+
+inherits = "jetbrains_cyan_light"
