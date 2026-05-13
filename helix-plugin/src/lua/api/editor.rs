@@ -118,7 +118,11 @@ pub fn register_editor_api(lua: &Lua, helix_table: &LuaTable) -> Result<()> {
         let config = editor.config();
         let table = lua.create_table()?;
 
-        table.set("scrolloff", config.scrolloff)?;
+        let scrolloff = lua.create_table()?;
+        scrolloff.set("vertical", config.scrolloff.vertical)?;
+        scrolloff.set("horizontal", config.scrolloff.horizontal)?;
+
+        table.set("scrolloff", scrolloff)?;
         table.set("mouse", config.mouse)?;
         table.set("cursorline", config.cursorline)?;
         table.set("cursorcolumn", config.cursorcolumn)?;

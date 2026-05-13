@@ -54,7 +54,6 @@ thiserror.workspace = true
 
 kstring = "2.0"
 
-mlua = { version = "0.10", features = ["lua54", "async", "send", "serialize", "vendored"] }
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
 crossterm = { version = "0.28", optional = true }

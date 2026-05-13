@@ -63,8 +63,6 @@ use arc_swap::{
     ArcSwap,
 };
 
-use mlua::{IntoLua, Lua, Value};
-
 pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 pub const DEFAULT_AUTO_RELOAD_INTERVAL: u64 = 3000;
@@ -338,12 +336,24 @@ pub struct ScrolloffConfig {
     pub vertical: usize,
 }
 
-impl IntoLua for ScrolloffConfig {
-    fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
-        let table = lua.create_table()?;
-        table.set("horizontal", self.horizontal)?;
-        table.set("vertical", self.vertical)?;
-        Ok(Value::Table(table))
+fn deserialize_scrolloff_config<'de, D>(deserializer: D) -> Result<ScrolloffConfig, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum ScrolloffConfigDe {
+        Legacy(usize),
+        Split(ScrolloffConfig),
+    }
+
+    let scrolloff = ScrolloffConfigDe::deserialize(deserializer)?;
+    match scrolloff {
+        ScrolloffConfigDe::Legacy(u) => Ok(ScrolloffConfig {
+            horizontal: u,
+            vertical: u,
+        }),
+        ScrolloffConfigDe::Split(s) => Ok(s),
     }
 }
 
@@ -362,7 +372,7 @@ pub struct Config {
     /// Whether to enable the welcome screen
     pub welcome_screen: bool,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
-    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_scrolloff_config")]
     pub scrolloff: ScrolloffConfig,
     /// Number of lines to scroll at once. Defaults to 3
     pub scroll_lines: isize,
