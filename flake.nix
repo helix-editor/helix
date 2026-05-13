@@ -80,6 +80,7 @@
               export RUST_BACKTRACE="1"
               export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"
             '';
+            LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
           };
       })
       pkgsFor;
