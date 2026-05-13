@@ -1,6 +1,6 @@
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
-    quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
+    quick_query_workspace_with_explicit_untrust, TrustType, WorkspaceTrust,
 };
 use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
 
@@ -9,13 +9,8 @@ use crate::{compositor::Compositor, job, ui};
 const ID: &str = "workspace-trust-select";
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
-    register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        let doc = doc!(event.editor, &event.doc);
-
-        // If there is no servers to be loaded, then the workspace might not be trusted yet
-        if doc.language_servers().next().is_none()
-            && quick_query_workspace_with_explicit_untrust(event.editor.config().insecure).is_none()
-        {
+    register_hook!(move |_event: &mut DocumentDidOpen<'_>| {
+        if quick_query_workspace_with_explicit_untrust(TrustType::Select).is_none() {
             job::dispatch_blocking(|_editor, compositor| prompt(compositor));
         }
         Ok(())
@@ -30,6 +25,14 @@ pub fn prompt(compositor: &mut Compositor) {
 const TRUST_MESSAGE: &str = "Trust this workspace?
 
 Trusted workspaces may load local config files and auto-start language servers. Config and language servers can execute arbitrary code. Only trust workspaces which you know contain harmless config and code.";
+
+#[derive(Default, Clone, Copy, Debug)]
+pub enum TrustUntrustStatus {
+    DenyAlways,
+    #[default]
+    DenyOnce,
+    AllowAlways,
+}
 
 fn select() -> ui::Select<TrustUntrustStatus> {
     ui::Select::new(

@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::bail;
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_loader::workspace_trust::{set_implicit_trust_level, ImplicitTrustLevel};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{
     current_ref, doc,
@@ -348,6 +349,7 @@ pub struct AppBuilder {
 
 impl Default for AppBuilder {
     fn default() -> Self {
+        set_implicit_trust_level(ImplicitTrustLevel::All);
         Self {
             args: Args::default(),
             config: test_config(),

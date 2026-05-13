@@ -5,14 +5,19 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-pub static WORKSPACE_TRUST_CACHE: Lazy<Mutex<HashMap<std::path::PathBuf, TrustUntrustStatus>>> =
+pub static WORKSPACE_TRUST_CACHE: Lazy<Mutex<HashMap<std::path::PathBuf, TrustStatus>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-use once_cell::sync::Lazy;
+pub static WORKSPACE_IMPLICIT_TRUST_LEVEL: Lazy<Mutex<ImplicitTrustLevel>> =
+    Lazy::new(|| Mutex::new(ImplicitTrustLevel::None));
 
-use crate::{data_dir, workspace_exclude_file, workspace_trust_file};
+use crate::{
+    data_dir, workspace_config_file, workspace_exclude_file, workspace_lang_config_file,
+    workspace_trust_file,
+};
 
 pub struct WorkspaceTrust {
     trusted: HashSet<PathBuf>,
@@ -23,6 +28,28 @@ pub struct WorkspaceTrust {
 pub enum TrustStatus {
     Untrusted,
     Trusted,
+}
+
+/// Level at which trust is applied implicitly:
+///
+/// `None`: don't trust anything implicitly;
+/// `Lsp`: trust LSP server implicitly;
+/// `All`: trust everything implicitly.
+#[derive(Default)]
+pub enum ImplicitTrustLevel {
+    #[default]
+    None,
+    Lsp,
+    All,
+}
+
+/// Declares what kind of subsystem is querying trust
+///
+/// Anything that doesn't touch LSP or Select pop-up menu should choose `Other`
+pub enum TrustType {
+    Lsp,
+    Select,
+    Other,
 }
 
 impl WorkspaceTrust {
@@ -116,7 +143,7 @@ impl WorkspaceTrust {
         self.trusted.insert(workspace.clone());
         self.write_trust_to_file();
         let mut cache = WORKSPACE_TRUST_CACHE.lock();
-        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
+        cache.insert(workspace, TrustStatus::Trusted);
     }
 
     /// Remove trusted mark from current workspace
@@ -127,7 +154,7 @@ impl WorkspaceTrust {
             self.write_trust_to_file();
         }
         let mut cache = WORKSPACE_TRUST_CACHE.lock();
-        cache.insert(workspace, TrustUntrustStatus::DenyOnce);
+        cache.insert(workspace, TrustStatus::Untrusted);
     }
 
     /// Mark current workspace excluded.
@@ -144,16 +171,8 @@ impl WorkspaceTrust {
         }
         let workspace = crate::find_workspace().0;
         let mut cache = WORKSPACE_TRUST_CACHE.lock();
-        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
+        cache.insert(workspace, TrustStatus::Untrusted);
     }
-}
-
-#[derive(Default, Clone, Copy, Debug)]
-pub enum TrustUntrustStatus {
-    DenyAlways,
-    #[default]
-    DenyOnce,
-    AllowAlways,
 }
 
 fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
@@ -188,16 +207,46 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
     false
 }
 
-pub fn quick_query_workspace(insecure: bool) -> TrustStatus {
-    match quick_query_workspace_with_explicit_untrust(insecure) {
-        Some(TrustUntrustStatus::AllowAlways) => TrustStatus::Trusted,
+/// Sets the level of implicit untrust
+///
+/// Should be called when the level is known,
+/// otherwise implicit untrust defaults to `None`
+pub fn set_implicit_trust_level(trust_level: ImplicitTrustLevel) {
+    let mut global_trust_level = WORKSPACE_IMPLICIT_TRUST_LEVEL.lock();
+    *global_trust_level = trust_level;
+}
+
+pub fn quick_query_workspace(trust_type: TrustType) -> TrustStatus {
+    match quick_query_workspace_with_explicit_untrust(trust_type) {
+        Some(status) => status,
         _ => TrustStatus::Untrusted,
     }
 }
 
-pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> Option<TrustUntrustStatus> {
-    if insecure {
-        return Some(TrustUntrustStatus::AllowAlways);
+/// `None` indicates that trust level is unknown;
+///
+/// `value` in `Some(value)` is known trust status.
+pub fn quick_query_workspace_with_explicit_untrust(trust_type: TrustType) -> Option<TrustStatus> {
+    let trust_level = WORKSPACE_IMPLICIT_TRUST_LEVEL.lock();
+
+    if let ImplicitTrustLevel::All = *trust_level {
+        return Some(TrustStatus::Trusted);
+    }
+
+    // no let-chains in our rust edition
+    if let TrustType::Lsp = trust_type {
+        if let ImplicitTrustLevel::Lsp = *trust_level {
+            return Some(TrustStatus::Trusted);
+        };
+    }
+
+    // no let-chains in our rust edition
+    if let TrustType::Select = trust_type {
+        if let ImplicitTrustLevel::Lsp = *trust_level {
+            if !(workspace_config_file().exists() || workspace_lang_config_file().exists()) {
+                return Some(TrustStatus::Trusted);
+            }
+        };
     }
 
     let workspace = crate::find_workspace().0;
@@ -207,19 +256,14 @@ pub fn quick_query_workspace_with_explicit_untrust(insecure: bool) -> Option<Tru
     }
 
     if is_path_in_file(&workspace, &workspace_trust_file()) {
-        cache.insert(workspace, TrustUntrustStatus::AllowAlways);
-        return Some(TrustUntrustStatus::AllowAlways);
+        cache.insert(workspace, TrustStatus::Trusted);
+        return Some(TrustStatus::Trusted);
     }
 
     if is_path_in_file(&workspace, &workspace_exclude_file()) {
-        cache.insert(workspace, TrustUntrustStatus::DenyAlways);
-        return Some(TrustUntrustStatus::DenyAlways);
+        cache.insert(workspace, TrustStatus::Untrusted);
+        return Some(TrustStatus::Untrusted);
     }
-
-    // NOTE: Eagerly caching DenyOnce here, so that we only return None on the
-    //       very first call. This allows helix_loader to not have a separate
-    //       cache to trace whether a prompt has already been shown.
-    cache.insert(workspace, TrustUntrustStatus::DenyOnce);
 
     None
 }

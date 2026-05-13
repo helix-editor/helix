@@ -10,11 +10,13 @@ pub fn default_lang_config() -> toml::Value {
 }
 
 /// User configured languages.toml file, merged with the default config.
-pub fn user_lang_config(insecure: bool) -> Result<toml::Value, toml::de::Error> {
+pub fn user_lang_config() -> Result<toml::Value, toml::de::Error> {
     let global_config = crate::lang_config_file();
     let workspace_config = crate::workspace_lang_config_file();
 
-    let files = if let TrustStatus::Trusted = quick_query_workspace(insecure) {
+    let files = if let TrustStatus::Trusted =
+        quick_query_workspace(crate::workspace_trust::TrustType::Other)
+    {
         vec![global_config, workspace_config]
     } else {
         vec![global_config]
