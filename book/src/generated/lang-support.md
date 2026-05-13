@@ -188,6 +188,7 @@
 | mint |  |  |  |  |  | `mint` |
 | miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
+| moonbit | ✓ | ✓ | ✓ | ✓ |  | `moonbit-lsp` |
 | move | ✓ |  |  |  |  |  |
 | msbuild | ✓ |  | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
