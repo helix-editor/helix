@@ -22,9 +22,19 @@ Lists of trusted and excluded workspaces, delimited by newline characters, are s
 
 ## Configuration
 
-You can disable workspace trust completely with:
-
 ```toml
 [editor]
-insecure = true
+# This option will disable workspace trust feature altogether.
+workspace-implicit-trust-level = "all"
+
+
+# This will make Helix prompt only when there is local configuration
+# present in the workspace.
+
+# LSP will start automatically without an explicit confirmation.
+workspace-implicit-trust-level = "lsp"
+
+
+# This is the default option.
+workspace-implicit-trust-level = "none"
 ```

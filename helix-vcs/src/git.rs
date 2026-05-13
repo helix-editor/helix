@@ -1,6 +1,8 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
+use helix_loader::find_workspace_in;
+use helix_loader::workspace_trust::{quick_query_workspace, TrustStatus};
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -85,7 +87,7 @@ pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool)
 
 fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
     // custom open options
-    let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
+    let git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
     // On windows various configuration options are bundled as part of the installations
     // This path depends on the install location of git and therefore requires some overhead to lookup
@@ -99,30 +101,26 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
         includes: true,
         git_binary: cfg!(windows),
     };
-    // change options for config permissions without touching anything else
-    git_open_opts_map.reduced = git_open_opts_map
-        .reduced
-        .permissions(gix::open::Permissions {
-            config,
-            ..gix::open::Permissions::default_for_level(gix::sec::Trust::Reduced)
-        });
-    git_open_opts_map.full = git_open_opts_map.full.permissions(gix::open::Permissions {
-        config,
-        ..gix::open::Permissions::default_for_level(gix::sec::Trust::Full)
-    });
 
-    let open_options = gix::discover::upwards::Options {
-        dot_git_only: true,
-        ..Default::default()
+    let opts = if let TrustStatus::Trusted =
+        quick_query_workspace(helix_loader::workspace_trust::TrustType::Other)
+    {
+        git_open_opts_map.full.permissions(gix::open::Permissions {
+            config,
+            ..gix::open::Permissions::default_for_level(gix::sec::Trust::Full)
+        })
+    } else {
+        git_open_opts_map
+            .reduced
+            .permissions(gix::open::Permissions {
+                config,
+                ..gix::open::Permissions::default_for_level(gix::sec::Trust::Reduced)
+            })
     };
 
-    let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
-        path,
-        open_options,
-        git_open_opts_map,
-    )?;
+    let (workspace, _) = find_workspace_in(path);
 
-    Ok(res)
+    Ok(ThreadSafeRepository::open_opts(workspace, opts)?)
 }
 
 /// Emulates the result of running `git status` from the command line.

@@ -1,45 +1,24 @@
-use std::{collections::HashSet, path::PathBuf};
-
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
-    quick_query_workspace_with_explicit_untrust, TrustUntrustStatus, WorkspaceTrust,
+    cache_non_trust_in_current_workspace, quick_query_workspace_with_explicit_untrust, TrustType,
+    WorkspaceTrust,
 };
 use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
-use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 
 use crate::{compositor::Compositor, job, ui};
 
 const ID: &str = "workspace-trust-select";
 
-/// A set of canonicalized workspace paths which have been prompted for trust at runtime.
-static PROMPTED_WORKSPACES: Lazy<Mutex<HashSet<PathBuf>>> =
-    Lazy::new(|| Mutex::new(HashSet::new()));
-
 pub(super) fn register_hooks(_handlers: &Handlers) {
-    register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        let doc = doc!(event.editor, &event.doc);
-
-        // If there is no servers to be loaded, then the workspace might not be trusted yet
-        if doc.language_servers().next().is_none() {
-            if let TrustUntrustStatus::DenyOnce =
-                quick_query_workspace_with_explicit_untrust(event.editor.config().insecure)
-            {
-                let (workspace, _) = helix_loader::find_workspace();
-                job::dispatch_blocking(|_editor, compositor| prompt(workspace, compositor));
-            }
+    register_hook!(move |_event: &mut DocumentDidOpen<'_>| {
+        if quick_query_workspace_with_explicit_untrust(TrustType::Select).is_none() {
+            job::dispatch_blocking(|_editor, compositor| prompt(compositor));
         }
         Ok(())
     });
 }
 
-pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
-    let mut workspaces = PROMPTED_WORKSPACES.lock();
-    if workspaces.contains(&path) {
-        return;
-    } else {
-        workspaces.insert(path.clone());
-    }
+pub fn prompt(compositor: &mut Compositor) {
     let select = select();
     compositor.replace_or_push(ID, select);
 }
@@ -47,6 +26,14 @@ pub fn prompt(path: PathBuf, compositor: &mut Compositor) {
 const TRUST_MESSAGE: &str = "Trust this workspace?
 
 Trusted workspaces can load local Helix config files and automatically start language servers, both of which may execute arbitrary code. Only trust workspaces you know are safe.";
+
+#[derive(Default, Clone, Copy, Debug)]
+pub enum TrustUntrustStatus {
+    DenyAlways,
+    #[default]
+    DenyOnce,
+    AllowAlways,
+}
 
 fn select() -> ui::Select<TrustUntrustStatus> {
     ui::Select::new(
@@ -65,7 +52,7 @@ fn select() -> ui::Select<TrustUntrustStatus> {
                         trust.exclude_workspace();
                     }
                     TrustUntrustStatus::DenyOnce => {
-                        // Do nothing
+                        cache_non_trust_in_current_workspace();
                     }
                     TrustUntrustStatus::AllowAlways => {
                         trust.trust_workspace();

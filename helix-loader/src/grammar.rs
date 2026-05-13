@@ -226,7 +226,7 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config(false)
+    let config: Configuration = crate::config::user_lang_config()
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -248,7 +248,7 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
 }
 
 pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    let config: Configuration = crate::config::user_lang_config(false)
+    let config: Configuration = crate::config::user_lang_config()
         .context("Could not parse languages.toml")?
         .try_into()?;
 

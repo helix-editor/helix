@@ -15,7 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
-use helix_loader::workspace_trust::TrustStatus;
+use helix_loader::workspace_trust::{ImplicitTrustLevel, TrustStatus};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -433,7 +433,7 @@ pub struct Config {
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
     /// Whether to implicitly trust every workspace or not
-    pub insecure: bool,
+    pub workspace_implicit_trust_level: ImplicitTrustLevelConfigWrapper,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -469,6 +469,25 @@ pub enum KittyKeyboardProtocolConfig {
     Auto,
     Disabled,
     Enabled,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum ImplicitTrustLevelConfigWrapper {
+    #[default]
+    None,
+    Lsp,
+    All,
+}
+
+impl From<ImplicitTrustLevelConfigWrapper> for ImplicitTrustLevel {
+    fn from(value: ImplicitTrustLevelConfigWrapper) -> Self {
+        match value {
+            ImplicitTrustLevelConfigWrapper::None => ImplicitTrustLevel::None,
+            ImplicitTrustLevelConfigWrapper::Lsp => ImplicitTrustLevel::Lsp,
+            ImplicitTrustLevelConfigWrapper::All => ImplicitTrustLevel::All,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1156,7 +1175,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
-            insecure: false,
+            workspace_implicit_trust_level: ImplicitTrustLevelConfigWrapper::default(),
         }
     }
 }
@@ -1742,8 +1761,10 @@ impl Editor {
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        if let TrustStatus::Untrusted =
-            helix_loader::workspace_trust::quick_query_workspace(self.config.load().insecure)
+        if TrustStatus::Untrusted
+            == helix_loader::workspace_trust::quick_query_workspace(
+                helix_loader::workspace_trust::TrustType::Lsp,
+            )
         {
             self.set_status(
                 "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",
