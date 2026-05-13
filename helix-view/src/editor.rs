@@ -1761,10 +1761,10 @@ impl Editor {
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
-        if  TrustStatus::Untrusted
+        if TrustStatus::Untrusted
             == helix_loader::workspace_trust::quick_query_workspace(
-            helix_loader::workspace_trust::TrustType::Lsp,
-        )
+                helix_loader::workspace_trust::TrustType::Lsp,
+            )
         {
             self.set_status(
                 "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",
