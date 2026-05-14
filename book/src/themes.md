@@ -207,7 +207,7 @@ We use a similar set of scopes as
 - `variable` - Variables
   - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
-    - `mutable` - Mutable language varaibles (e.g. `mut self` in Rust)
+    - `mutable` - Mutable language variables (e.g. `mut self` in Rust)
   - `parameter` - Function parameters
     - `mutable` - Mutable function parameters (e.g. marked with `mut` in Rust)
   - `other`

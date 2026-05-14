@@ -241,7 +241,15 @@
 (escape_sequence) @constant.character.escape
 
 (regex) @string.regexp
-(number) @constant.numeric.integer
+
+; future-proof fall-back, and `TypedArray` values (looks like float, but is int)
+(number) @constant.numeric
+; https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#prod-NumericLiteral
+((number) @constant.numeric.float
+  (#match? @constant.numeric.float "[^n]$"))
+((number) @constant.numeric.integer
+  (#match? @constant.numeric.integer "^[^.][^.\-]*n$"))
+
 
 ; Special identifiers
 ;--------------------

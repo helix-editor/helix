@@ -190,16 +190,16 @@ where
     write(context, Span::styled(content, style));
 }
 
-// TODO think about handling multiple language servers
 fn render_lsp_spinner<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let language_server = context.doc.language_servers().next();
     write(
         context,
-        language_server
-            .and_then(|srv| {
+        context
+            .doc
+            .language_servers()
+            .find_map(|srv| {
                 context
                     .spinners
                     .get(srv.id())
