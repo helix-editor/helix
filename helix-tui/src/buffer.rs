@@ -1,6 +1,6 @@
 //! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
 use crate::text::{Span, Spans};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::graphemes::{grapheme_width, str_width};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -160,7 +160,7 @@ impl Buffer {
         let height = lines.len() as u16;
         let width = lines
             .iter()
-            .map(|i| i.as_ref().width() as u16)
+            .map(|i| str_width(i.as_ref()) as u16)
             .max()
             .unwrap_or_default();
         let mut buffer = Buffer::empty(Rect {
@@ -339,7 +339,11 @@ impl Buffer {
         let mut graphemes = string.grapheme_indices(true);
 
         if truncate_start {
-            for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+            for _ in 0..graphemes
+                .next()
+                .map(|(_, g)| grapheme_width(g))
+                .unwrap_or_default()
+            {
                 self.content[index].set_symbol("…");
                 index += 1;
                 rendered_width += 1;
@@ -347,11 +351,11 @@ impl Buffer {
         }
 
         for (byte_offset, s) in graphemes {
-            let grapheme_width = s.width();
-            if truncate_end && rendered_width + grapheme_width >= width {
+            let symbol_width = grapheme_width(s);
+            if truncate_end && rendered_width + symbol_width >= width {
                 break;
             }
-            if grapheme_width == 0 {
+            if symbol_width == 0 {
                 continue;
             }
 
@@ -359,12 +363,12 @@ impl Buffer {
             self.content[index].set_style(style(byte_offset));
 
             // Reset following cells if multi-width (they would be hidden by the grapheme):
-            for i in index + 1..index + grapheme_width {
+            for i in index + 1..index + symbol_width {
                 self.content[i].reset();
             }
 
-            index += grapheme_width;
-            rendered_width += grapheme_width;
+            index += symbol_width;
+            rendered_width += symbol_width;
         }
 
         if truncate_end {
@@ -404,33 +408,33 @@ impl Buffer {
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         if !truncate_start {
             for (byte_offset, s) in graphemes {
-                let width = s.width();
-                if width == 0 {
+                let symbol_width = grapheme_width(s);
+                if symbol_width == 0 {
                     continue;
                 }
                 // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
                 // change dimensions to usize or u32 and someone resizes the terminal to 1x2^32.
-                if width > max_offset.saturating_sub(x_offset) {
+                if symbol_width > max_offset.saturating_sub(x_offset) {
                     break;
                 }
 
                 self.content[index].set_symbol(s);
                 self.content[index].set_style(style(byte_offset));
                 // Reset following cells if multi-width (they would be hidden by the grapheme),
-                for i in index + 1..index + width {
+                for i in index + 1..index + symbol_width {
                     self.content[i].reset();
                 }
-                index += width;
-                x_offset += width;
+                index += symbol_width;
+                x_offset += symbol_width;
             }
-            if ellipsis && x_offset - (x as usize) < string.width() {
+            if ellipsis && x_offset - (x as usize) < str_width(string) {
                 self.content[index].set_symbol("…");
             }
         } else {
             let mut start_index = self.index_of(x, y);
             let mut index = self.index_of(max_offset as u16, y);
 
-            let content_width = string.width();
+            let content_width = str_width(string);
             let truncated = content_width > width;
             if ellipsis && truncated {
                 self.content[start_index].set_symbol("…");
@@ -440,11 +444,11 @@ impl Buffer {
                 index -= width - content_width;
             }
             for (byte_offset, s) in graphemes.rev() {
-                let width = s.width();
-                if width == 0 {
+                let symbol_width = grapheme_width(s);
+                if symbol_width == 0 {
                     continue;
                 }
-                let start = index - width;
+                let start = index - symbol_width;
                 if start < start_index {
                     break;
                 }
@@ -453,8 +457,8 @@ impl Buffer {
                 for i in start + 1..index {
                     self.content[i].reset();
                 }
-                index -= width;
-                x_offset += width;
+                index -= symbol_width;
+                x_offset += symbol_width;
             }
         }
         (x_offset as u16, y)
@@ -480,24 +484,24 @@ impl Buffer {
         let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
 
         for s in string.graphemes(true) {
-            let width = s.width();
-            if width == 0 {
+            let symbol_width = grapheme_width(s);
+            if symbol_width == 0 {
                 continue;
             }
             // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
             // change dimensions to usize or u32 and someone resizes the terminal to 1x2^32.
-            if width > max_x_offset.saturating_sub(x_offset) {
+            if symbol_width > max_x_offset.saturating_sub(x_offset) {
                 break;
             }
 
             self.content[index].set_symbol(s);
             self.content[index].set_style(style);
             // Reset following cells if multi-width (they would be hidden by the grapheme),
-            for i in index + 1..index + width {
+            for i in index + 1..index + symbol_width {
                 self.content[i].reset();
             }
-            index += width;
-            x_offset += width;
+            index += symbol_width;
+            x_offset += symbol_width;
         }
 
         (x_offset as u16, y)
@@ -526,11 +530,11 @@ impl Buffer {
         }
         for span in spans.0.iter().rev() {
             for s in span.content.graphemes(true).rev() {
-                let width = s.width();
-                if width == 0 {
+                let symbol_width = grapheme_width(s);
+                if symbol_width == 0 {
                     continue;
                 }
-                let start = index - width;
+                let start = index - symbol_width;
                 if start < start_index {
                     break;
                 }
@@ -539,8 +543,8 @@ impl Buffer {
                 for i in start + 1..index {
                     self.content[i].reset();
                 }
-                index -= width;
-                x_offset += width;
+                index -= symbol_width;
+                x_offset += symbol_width;
             }
         }
         (x_offset as u16, y)
@@ -711,10 +715,10 @@ impl Buffer {
                 updates.push((x, y, &next_buffer[i]));
             }
 
-            let current_width = current.symbol.width();
+            let current_width = str_width(current.symbol.as_str());
             to_skip = current_width.saturating_sub(1);
 
-            let affected_width = std::cmp::max(current_width, previous.symbol.width());
+            let affected_width = std::cmp::max(current_width, str_width(previous.symbol.as_str()));
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
@@ -808,19 +812,19 @@ mod tests {
     }
 
     #[test]
-    fn buffer_set_string_zero_width() {
+    fn buffer_set_string_non_rendering_grapheme() {
         let area = Rect::new(0, 0, 1, 1);
         let mut buffer = Buffer::empty(area);
 
         // U+200B is the zero-width space codepoint
-        assert_eq!("\u{200B}".width(), 0);
+        assert_eq!(str_width("\u{200B}"), 1);
 
-        // Leading grapheme with zero width
+        // Leading grapheme still consumes a cell so it remains editable.
         let s = "\u{200B}a";
         buffer.set_stringn(0, 0, s, 1, Style::default());
-        assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
+        assert_eq!(buffer, Buffer::with_lines(vec!["\u{200B}"]));
 
-        // Trailing grapheme with zero width
+        // A trailing grapheme is still truncated once the available cell is consumed.
         let s = "a\u{200B}";
         buffer.set_stringn(0, 0, s, 1, Style::default());
         assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
