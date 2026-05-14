@@ -3,7 +3,7 @@
 //! Based on <https://github.com/cessen/led/blob/c4fa72405f510b7fd16052f90a598c429b3104a6/src/graphemes.rs>
 use crate::widechar_width::WcLookupTable;
 use ropey::{str_utils::byte_to_char_idx, RopeSlice};
-use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
+use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete, UnicodeSegmentation};
 use unicode_width::UnicodeWidthStr;
 
 use std::borrow::Cow;
@@ -145,6 +145,19 @@ pub fn grapheme_width(g: &str) -> usize {
     } else {
         UnicodeWidthStr::width(g).max(1)
     }
+}
+
+#[must_use]
+pub fn str_width(s: &str) -> usize {
+    UnicodeSegmentation::graphemes(s, true)
+        .map(grapheme_width)
+        .sum()
+}
+
+#[must_use]
+pub fn char_width(c: char) -> usize {
+    let mut buf = [0; 4];
+    grapheme_width(c.encode_utf8(&mut buf))
 }
 
 // NOTE: for byte indexing versions of these functions see `RopeSliceExt`'s
