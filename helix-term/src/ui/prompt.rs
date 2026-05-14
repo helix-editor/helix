@@ -1,6 +1,7 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
+use helix_core::graphemes::{grapheme_width, str_width};
 use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
@@ -13,7 +14,6 @@ use tui::widgets::{Block, Widget};
 
 use helix_core::{
     unicode::segmentation::{GraphemeCursor, UnicodeSegmentation},
-    unicode::width::UnicodeWidthStr,
     Position,
 };
 use helix_view::{
@@ -413,7 +413,7 @@ impl Prompt {
         let max_len = self
             .completion
             .iter()
-            .map(|(_, completion)| completion.content.len() as u16)
+            .map(|(_, completion)| completion.width() as u16)
             .max()
             .unwrap_or(BASE_WIDTH)
             .max(BASE_WIDTH);
@@ -516,7 +516,7 @@ impl Prompt {
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
         self.line_area = area
-            .clip_left(self.prompt.len() as u16)
+            .clip_left(str_width(self.prompt.as_ref()) as u16)
             .clip_top(line)
             .clip_right(2);
 
@@ -544,7 +544,7 @@ impl Prompt {
         } else {
             let line_width = self.line_area.width as usize;
 
-            if self.line.width() < line_width {
+            if str_width(&self.line) < line_width {
                 self.anchor = 0;
             } else if self.cursor <= self.anchor {
                 // Ensure the grapheme under the cursor is in view.
@@ -553,14 +553,14 @@ impl Prompt {
                     .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or_default();
-            } else if self.line[self.anchor..self.cursor].width() > line_width {
+            } else if str_width(&self.line[self.anchor..self.cursor]) > line_width {
                 // Set the anchor to the last grapheme cluster before the width is exceeded.
                 let mut width = 0;
                 self.anchor = self.line[..self.cursor]
                     .grapheme_indices(true)
                     .rev()
                     .find_map(|(idx, g)| {
-                        width += g.width();
+                        width += grapheme_width(g);
                         if width > line_width {
                             Some(idx + g.len())
                         } else {
@@ -571,16 +571,16 @@ impl Prompt {
             }
 
             self.truncate_start = self.anchor > 0;
-            self.truncate_end = self.line[self.anchor..].width() > line_width;
+            self.truncate_end = str_width(&self.line[self.anchor..]) > line_width;
 
             // if we keep inserting characters just before the end elipsis, we move the anchor
             // so that those new characters are displayed
-            if self.truncate_end && self.line[self.anchor..self.cursor].width() >= line_width {
+            if self.truncate_end && str_width(&self.line[self.anchor..self.cursor]) >= line_width {
                 // Move the anchor forward by one non-zero-width grapheme.
                 self.anchor += self.line[self.anchor..]
                     .grapheme_indices(true)
                     .find_map(|(idx, g)| {
-                        if g.width() > 0 {
+                        if grapheme_width(g) > 0 {
                             Some(idx + g.len())
                         } else {
                             None
@@ -768,14 +768,14 @@ impl Component for Prompt {
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let area = area
-            .clip_left(self.prompt.len() as u16)
+            .clip_left(str_width(self.prompt.as_ref()) as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
+        let mut col = area.left() as usize + str_width(&self.line[self.anchor..self.cursor]);
 
         // ensure the cursor does not go beyond elipses
         if self.truncate_end
-            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
+            && str_width(&self.line[self.anchor..self.cursor]) >= self.line_area.width as usize
         {
             col -= 1;
         }
@@ -784,7 +784,7 @@ impl Component for Prompt {
             col += self.line[self.cursor..]
                 .graphemes(true)
                 .next()
-                .map_or(0, |g| g.width());
+                .map_or(0, grapheme_width);
         }
 
         let line = area.height as usize - 1;
