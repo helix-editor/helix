@@ -3868,7 +3868,7 @@ scope = "source.fs"
 roots = ["*.slnx", "*.sln", "*.fsproj"]
 injection-regex = "fsharp"
 file-types = ["fs", "fsx", "fsi", "fsscript"]
-comment-token = "//"
+comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "(*", end = "*)" }
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
