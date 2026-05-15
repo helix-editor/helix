@@ -25,7 +25,10 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::fs::Access;
+    use rustix::{
+        fs::Access,
+        process::{getegid, geteuid},
+    };
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -95,12 +98,19 @@ mod imp {
         Ok(())
     }
 
-    pub fn write_with_perms(path: &Path, contents: &[u8], perms: u32) -> io::Result<()> {
+    pub fn write_sensitive_file(path: &Path, contents: &[u8]) -> io::Result<()> {
         use std::io::Write;
+        let uid = geteuid();
+        let gid = getegid();
         let mut f = std::fs::File::create(path)?;
+
+        // `rustix` version is used instead of one defined above
+        // to avoid converting `uid` and `gid` to u32
+        // and then back to `Uid` and `Gid`.
+        _ = rustix::fs::chown(path, Some(uid), Some(gid));
         let mut p = f.metadata()?.permissions();
-        p.set_mode(perms);
-        std::fs::set_permissions(path, p)?;
+        p.set_mode(0o0640);
+        _ = std::fs::set_permissions(path, p);
         f.write_all(contents)
     }
 
@@ -514,14 +524,15 @@ pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
 }
 
-/// Same [`fs::write`][std::fs::write], but sets mode bits on Unix targets
-pub fn write_with_perms<P: AsRef<Path>, C: AsRef<[u8]>>(
+/// Write file while trying to set sensible mode, owner and group.
+///
+/// On non-unix systems, this is nothing more than a `std::fs::write`.
+pub fn write_sensitive_file<P: AsRef<Path>, C: AsRef<[u8]>>(
     path: P,
     contents: C,
-    perms: u32,
 ) -> io::Result<()> {
     #[cfg(unix)]
-    return imp::write_with_perms(path.as_ref(), contents.as_ref(), perms);
+    return imp::write_sensitive_file(path.as_ref(), contents.as_ref());
     #[cfg(not(unix))]
     return std::fs::write(path.as_ref(), contents.as_ref());
 }
