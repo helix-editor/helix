@@ -3376,6 +3376,7 @@ fn jumplist_picker(cx: &mut Context) {
         selection: Selection,
         text: String,
         is_current: bool,
+        mark: Option<char>,
     }
 
     for (view, _) in cx.editor.tree.views_mut() {
@@ -3385,7 +3386,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     }
 
-    let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
+    let new_meta = |view: &View, doc_id: DocumentId, selection: Selection, mark: Option<char>| {
         let doc = &cx.editor.documents.get(&doc_id);
         let text = doc.map_or("".into(), |d| {
             selection
@@ -3401,10 +3402,23 @@ fn jumplist_picker(cx: &mut Context) {
             selection,
             text,
             is_current: view.doc == doc_id,
+            mark,
         }
     };
 
     let columns = [
+        ui::PickerColumn::new("key", |item: &JumpMeta, _| {
+            let mut marks = Vec::new();
+            if let Some(mark) = item.mark {
+                marks.push(mark.to_string());
+            }
+
+            if marks.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", marks.join("")).into()
+            }
+        }),
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
         ui::PickerColumn::new("path", |item: &JumpMeta, _| {
             let path = item
@@ -3432,31 +3446,36 @@ fn jumplist_picker(cx: &mut Context) {
         ui::PickerColumn::new("contents", |item: &JumpMeta, _| item.text.as_str().into()),
     ];
 
-    let picker = Picker::new(
-        columns,
-        1, // path
-        cx.editor.tree.views().flat_map(|(view, _)| {
-            view.jumps
-                .iter()
-                .rev()
-                .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
-        }),
-        (),
-        |cx, meta, action| {
-            cx.editor.switch(meta.id, action);
-            let config = cx.editor.config();
-            let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
-            doc.set_selection(view.id, meta.selection.clone());
-            if action.align_view(view, doc.id()) {
-                view.ensure_cursor_in_view_center(doc, config.scrolloff);
-            }
-        },
-    )
-    .with_preview(|editor, meta| {
-        let doc = &editor.documents.get(&meta.id)?;
-        let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
-    });
+    let picker =
+        Picker::new(
+            columns,
+            0, // path
+            cx.editor.tree.views().flat_map(|(view, _)| {
+                let jumps = view.jumps.iter().rev().map(|(doc_id, selection, mark)| {
+                    new_meta(view, *doc_id, selection.clone(), *mark)
+                });
+                let marks = view.jumps.iter_marks().map(|(doc_id, selection, mark)| {
+                    new_meta(view, *doc_id, selection.clone(), *mark)
+                });
+
+                marks.chain(jumps)
+            }),
+            (),
+            |cx, meta, action| {
+                cx.editor.switch(meta.id, action);
+                let config = cx.editor.config();
+                let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
+                doc.set_selection(view.id, meta.selection.clone());
+                if action.align_view(view, doc.id()) {
+                    view.ensure_cursor_in_view_center(doc, config.scrolloff);
+                }
+            },
+        )
+        .with_preview(|editor, meta| {
+            let doc = &editor.documents.get(&meta.id)?;
+            let line = meta.selection.primary().cursor_line(doc.text().slice(..));
+            Some((meta.id.into(), Some((line, line))))
+        });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -3934,7 +3953,13 @@ fn normal_mode(cx: &mut Context) {
 // Store a jump on the jumplist.
 fn push_jump(view: &mut View, doc: &mut Document) {
     doc.append_changes_to_history(view);
-    let jump = (doc.id(), doc.selection(view.id).clone());
+    let jump = (doc.id(), doc.selection(view.id).clone(), None);
+    view.jumps.push(jump);
+}
+
+fn push_jump_with_mark(view: &mut View, doc: &mut Document, mark: Option<char>) {
+    doc.append_changes_to_history(view);
+    let jump = (doc.id(), doc.selection(view.id).clone(), mark);
     view.jumps.push(jump);
 }
 

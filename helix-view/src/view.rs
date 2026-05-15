@@ -24,19 +24,24 @@ use std::{
 
 const JUMP_LIST_CAPACITY: usize = 30;
 
-type Jump = (DocumentId, Selection);
+type Jump = (DocumentId, Selection, Option<char>);
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
     jumps: VecDeque<Jump>,
     current: usize,
+    marks: HashMap<char, Jump>,
 }
 
 impl JumpList {
     pub fn new(initial: Jump) -> Self {
         let mut jumps = VecDeque::with_capacity(JUMP_LIST_CAPACITY);
         jumps.push_back(initial);
-        Self { jumps, current: 0 }
+        Self {
+            jumps,
+            current: 0,
+            marks: HashMap::new(),
+        }
     }
 
     fn push_impl(&mut self, jump: Jump) -> usize {
@@ -56,8 +61,22 @@ impl JumpList {
         num_removed_from_front
     }
 
+    fn add_mark_impl(&mut self, jump: Jump) {
+        if let Some(mark) = jump.2 {
+            self.marks.insert(mark, jump);
+        }
+    }
+
     pub fn push(&mut self, jump: Jump) {
-        self.push_impl(jump);
+        if jump.2.is_none() {
+            self.push_impl(jump);
+        } else {
+            self.add_mark_impl(jump);
+        }
+    }
+
+    pub fn get_jump_with_mark(&self, mark: char) -> Option<&Jump> {
+        self.marks.get(&mark)
     }
 
     pub(crate) fn forward(&mut self, count: usize) -> Option<&Jump> {
@@ -78,14 +97,14 @@ impl JumpList {
     ) -> Option<&Jump> {
         if let Some(mut current) = self.current.checked_sub(count) {
             if self.current == self.jumps.len() {
-                let jump = (doc.id(), doc.selection(view_id).clone());
+                let jump = (doc.id(), doc.selection(view_id).clone(), None);
                 let num_removed = self.push_impl(jump);
                 current = current.saturating_sub(num_removed);
             }
             self.current = current;
 
             // Avoid jumping to the current location.
-            let (doc_id, selection) = self.jumps.get(self.current)?;
+            let (doc_id, selection, _) = self.jumps.get(self.current)?;
             if doc.id() == *doc_id && doc.selection(view_id) == selection {
                 self.current = self.current.checked_sub(1)?;
             }
@@ -96,11 +115,15 @@ impl JumpList {
     }
 
     pub fn remove(&mut self, doc_id: &DocumentId) {
-        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+        self.jumps.retain(|(other_id, _, _)| other_id != doc_id);
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
         self.jumps.iter()
+    }
+
+    pub fn iter_marks(&self) -> impl Iterator<Item = &Jump> {
+        self.marks.iter().map(|m| m.1)
     }
 
     /// Applies a [`Transaction`] of changes to the jumplist.
@@ -109,7 +132,7 @@ impl JumpList {
     fn apply(&mut self, transaction: &Transaction, doc: &Document) {
         let text = doc.text().slice(..);
 
-        for (doc_id, selection) in &mut self.jumps {
+        for (doc_id, selection, _) in &mut self.jumps {
             if doc.id() == *doc_id {
                 *selection = selection
                     .clone()
@@ -175,7 +198,7 @@ impl View {
             id: ViewId::default(),
             doc,
             area: Rect::default(), // will get calculated upon inserting into tree
-            jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            jumps: JumpList::new((doc, Selection::point(0), None)), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),

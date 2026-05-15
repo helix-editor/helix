@@ -174,6 +174,70 @@ fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow
     Ok(())
 }
 
+fn mark(context: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let cx = crate::commands::Context {
+        editor: context.editor,
+        count: None,
+        register: None,
+        callback: Vec::new(),
+        on_next_key_callback: None,
+        jobs: context.jobs,
+    };
+
+    let (view, doc) = current!(cx.editor);
+
+    let mark = args
+        .get(0)
+        .as_ref()
+        .map(|arg| {
+            let mark = arg.chars().next();
+            if mark.is_some() {
+                mark
+            } else {
+                None
+            }
+        })
+        .ok_or(anyhow!("No <mark> provided"))?;
+
+    push_jump_with_mark(view, doc, mark);
+    Ok(())
+}
+
+fn jump_to_mark(
+    context: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mark = args
+        .get(0)
+        .as_ref()
+        .and_then(|arg| {
+            let mark = arg.chars().next();
+            if mark.is_some() {
+                mark
+            } else {
+                None
+            }
+        })
+        .ok_or(anyhow!("No <mark> provided "))?;
+
+    let view = view!(context.editor);
+
+    if view.jumps.get_jump_with_mark(mark).is_some() {
+        context.editor.jump_to_mark(view.id, mark);
+    }
+
+    Ok(())
+}
+
 fn buffer_close_by_ids_impl(
     cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
@@ -2141,7 +2205,7 @@ pub(super) fn goto_line_number(
                 .expect("update_goto_line_number_preview should always set last_selection");
 
             let (view, doc) = current!(cx.editor);
-            view.jumps.push((doc.id(), last_selection));
+            view.jumps.push((doc.id(), last_selection, None));
         }
 
         // When a user hits backspace and there are no numbers left,
@@ -2951,6 +3015,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (1, None),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "mark",
+        aliases: &["m"],
+        doc: "Add selection to jumplist with assigned key.",
+        fun: mark,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        }
+    },
+    TypableCommand {
+        name: "jump_to_mark",
+        aliases: &["jtm"],
+        doc: "Jump to a jumplist item using assigned key.",
+        fun: jump_to_mark,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        }
     },
     TypableCommand {
         name: "buffer-close",
