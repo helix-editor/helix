@@ -49,7 +49,7 @@ pub enum ImplicitTrustLevel {
 /// Anything that doesn't touch LSP or Select pop-up menu should choose `Other`
 pub enum TrustType {
     Lsp,
-    Select,
+    Select { language_servers_to_load: bool },
     Other,
 }
 
@@ -253,12 +253,21 @@ pub fn quick_query_workspace_with_explicit_untrust(trust_type: TrustType) -> Opt
     }
 
     // no let-chains in our rust edition
-    if let TrustType::Select = trust_type {
+    if let TrustType::Select {
+        language_servers_to_load,
+    } = trust_type
+    {
         if let ImplicitTrustLevel::Lsp = *trust_level {
             if !(workspace_config_file().exists() || workspace_lang_config_file().exists()) {
                 return Some(TrustStatus::Trusted);
             }
         };
+        if !language_servers_to_load
+            && !workspace_config_file().exists()
+            && !workspace_lang_config_file().exists()
+        {
+            return Some(TrustStatus::Trusted);
+        }
     }
 
     let workspace = crate::find_workspace().0;

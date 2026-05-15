@@ -1,8 +1,10 @@
+use helix_core::config::user_lang_config;
 use helix_event::register_hook;
 use helix_loader::workspace_trust::{
     cache_non_trust_in_current_workspace, quick_query_workspace_with_explicit_untrust, TrustType,
     WorkspaceTrust,
 };
+use helix_stdx::env::which;
 use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
 
 use crate::{compositor::Compositor, job, ui};
@@ -10,10 +12,40 @@ use crate::{compositor::Compositor, job, ui};
 const ID: &str = "workspace-trust-select";
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
-    register_hook!(move |_event: &mut DocumentDidOpen<'_>| {
-        if quick_query_workspace_with_explicit_untrust(TrustType::Select).is_none() {
+    register_hook!(move |event: &mut DocumentDidOpen<'_>| {
+        let doc_id = event.doc;
+        let lang = if let Some(doc) = event.editor.document(doc_id) {
+            doc.language_config()
+        } else {
+            None
+        };
+
+        let language_servers_to_load = if let Some(lang) = lang {
+            if lang.language_servers.is_empty() {
+                false
+            } else if let Ok(config) = user_lang_config() {
+                lang.language_servers.iter().any(|a| {
+                    if let Some(val) = config.language_server.get(&a.name) {
+                        which(val.command.as_str()).is_ok()
+                    } else {
+                        false
+                    }
+                })
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if quick_query_workspace_with_explicit_untrust(TrustType::Select {
+            language_servers_to_load,
+        })
+        .is_none()
+        {
             job::dispatch_blocking(|_editor, compositor| prompt(compositor));
         }
+
         Ok(())
     });
 }
