@@ -51,6 +51,7 @@ struct Package {
 
 #[derive(Deserialize, Debug)]
 struct Classes {
+    #[serde(default)]
     class: Vec<Class>,
 }
 
@@ -65,7 +66,8 @@ struct Class {
 
 #[derive(Deserialize, Debug)]
 struct Lines {
-    line: Option<Vec<Line>>,
+    #[serde(default)]
+    line: Vec<Line>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -152,10 +154,8 @@ impl From<RawCoverage> for Coverage {
         for package in coverage.packages.package {
             for class in package.classes.class {
                 let mut lines = HashMap::new();
-                if let Some(class_lines) = class.lines.line {
-                    for line in class_lines {
-                        lines.insert(line.number - 1, line.hits > 0);
-                    }
+                for line in class.lines.line {
+                    lines.insert(line.number - 1, line.hits > 0);
                 }
                 for source in &coverage.sources.source {
                     // it is ambiguous to which source a coverage class might belong
@@ -214,6 +214,10 @@ mod tests {
                         <line number="7" hits="1"/>
                     </lines>
                 </class>
+            </classes>
+        </package>
+        <package name="empty package">
+            <classes>
             </classes>
         </package>
     </packages>
