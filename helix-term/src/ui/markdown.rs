@@ -179,6 +179,7 @@ impl Markdown {
 
         let mut options = Options::empty();
         options.insert(Options::ENABLE_STRIKETHROUGH);
+        options.insert(Options::ENABLE_TABLES);
         let parser = Parser::new_ext(&self.contents, options);
 
         // TODO: if possible, render links as terminal hyperlinks: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
@@ -186,6 +187,8 @@ impl Markdown {
         let mut spans = Vec::new();
         let mut lines = Vec::new();
         let mut list_stack = Vec::new();
+        let mut table_row: Vec<String> = Vec::new();
+        let mut table_cell = String::new();
 
         let get_indent = |level: usize| {
             if level < 1 {
@@ -225,6 +228,30 @@ impl Markdown {
 
         for event in parser {
             match event {
+                Event::Start(Tag::Table(_)) => {
+                    push_line(&mut spans, &mut lines);
+                    table_row.clear();
+                    table_cell.clear();
+                }
+                Event::End(TagEnd::Table) => {
+                    if !table_row.is_empty() {
+                        let row = table_row.join(" | ");
+                        lines.push(Spans::from(Span::styled(row, text_style)));
+                        table_row.clear();
+                    }
+                    lines.push(Spans::default());
+                }
+                Event::End(TagEnd::TableRow) => {
+                    if !table_row.is_empty() {
+                        let row = table_row.join(" | ");
+                        lines.push(Spans::from(Span::styled(row, text_style)));
+                        table_row.clear();
+                    }
+                }
+                Event::End(TagEnd::TableCell) => {
+                    table_row.push(table_cell.trim().to_string());
+                    table_cell.clear();
+                }
                 Event::Start(Tag::List(list)) => {
                     // if the list stack is not empty this is a sub list, in that
                     // case we need to push the current line before proceeding
@@ -294,7 +321,9 @@ impl Markdown {
                     }
                 }
                 Event::Text(text) => {
-                    if let Some(Tag::CodeBlock(kind)) = tags.last() {
+                    if tags.iter().any(|t| matches!(t, Tag::TableCell)) {
+                        table_cell.push_str(&text);
+                    } else if let Some(Tag::CodeBlock(kind)) = tags.last() {
                         let language = match kind {
                             CodeBlockKind::Fenced(language) => language,
                             CodeBlockKind::Indented => "",
