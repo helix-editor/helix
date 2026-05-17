@@ -226,7 +226,13 @@ impl Application {
                     editor.new_file(Action::VerticalSplit);
                 } else {
                     editor.set_status(format!(
-                        "Loaded {} file{}.",
+                        "{}Loaded {} file{}.",
+                        // Append new status to the previous one, if there is one.
+                        if let Some((prev_status, _)) = editor.get_status() {
+                            format!("{} | ", prev_status)
+                        } else {
+                            String::new()
+                        },
                         nr_of_files,
                         if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
                     ));

@@ -146,7 +146,7 @@ FLAGS:
         }
     };
 
-    let workspace_trust = WorkspaceTrust::new(config.editor.workspace_implicit_trust_level.into());
+    let workspace_trust = WorkspaceTrust::new(config.editor.workspace_trust.level.into());
 
     let lang_loader =
         helix_core::config::user_lang_loader(&workspace_trust).unwrap_or_else(|err| {

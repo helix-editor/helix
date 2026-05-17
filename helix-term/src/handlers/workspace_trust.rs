@@ -42,7 +42,13 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             })
             .is_none()
         {
-            job::dispatch_blocking(|_editor, compositor| prompt(compositor));
+            if event.editor.config().workspace_trust.selector {
+                job::dispatch_blocking(|_editor, compositor| prompt(compositor));
+            } else {
+                event.editor.set_status(
+                "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",
+            );
+            }
         }
 
         Ok(())

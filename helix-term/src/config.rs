@@ -127,7 +127,7 @@ impl Config {
         let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
 
-        let trust_level = global_parsed.editor.workspace_implicit_trust_level.into();
+        let trust_level = global_parsed.editor.workspace_trust.level.into();
         let wst = WorkspaceTrust::new(trust_level);
         if wst
             .query_status(helix_loader::workspace_trust::TrustType::Other)
