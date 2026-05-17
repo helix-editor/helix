@@ -32,13 +32,3 @@ When installing from source or pre-built binaries:
 - **Shell completions**: completion scripts for bash, fish, zsh, and other shells live in
   [`contrib/completion/`](https://github.com/helix-editor/helix/tree/master/contrib/completion).
   Install them using your shell's standard completion path.
-
-## Desktop entry and shell completions
-
-When installing from source or pre-built binaries:
-
-- **Desktop entry** (Linux): install [`contrib/Helix.desktop`](https://github.com/helix-editor/helix/blob/master/contrib/Helix.desktop)
-  to `~/.local/share/applications/` or `/usr/share/applications/`.
-- **Shell completions**: completion scripts for bash, fish, zsh, and other shells live in
-  [`contrib/completion/`](https://github.com/helix-editor/helix/tree/master/contrib/completion).
-  Install them using your shell's standard completion path.
