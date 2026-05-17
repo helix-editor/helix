@@ -13,7 +13,7 @@ Helix does not trust any workspace by default and will prompt you to choose the 
 
 ## Changing workspace trust status
 
-You can always make the current workspace trusted by running the `:workspace-trust` command, and untrust it using `:workspace-untrust`.
+You can always make the current workspace trusted by running the `:workspace-trust` command, and untrust it using `:workspace-untrust` or `:workspace-exclude`, with latter disabling all further prompts in it.
 
 Lists of trusted and excluded workspaces, delimited by newline characters, are stored in:
 
@@ -23,18 +23,21 @@ Lists of trusted and excluded workspaces, delimited by newline characters, are s
 ## Configuration
 
 ```toml
-[editor]
+[editor.workspace-trust]
 # This option will disable workspace trust feature altogether.
-workspace-implicit-trust-level = "all"
+level = "all"
 
 
 # This will make Helix prompt only when there is local configuration
 # present in the workspace.
-
 # LSP will start automatically without an explicit confirmation.
-workspace-implicit-trust-level = "lsp"
+level = "lsp"
 
 
 # This is the default option.
-workspace-implicit-trust-level = "none"
+level = "none"
+
+
+# Disable pop-up selector, leaving status bar reminder instead.
+selector = false
 ```

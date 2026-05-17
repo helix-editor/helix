@@ -68,7 +68,6 @@
 | `editor-config` | Whether to read settings from [EditorConfig](https://editorconfig.org) files | `true` |
 | `rainbow-brackets` | Whether to render rainbow colors for matching brackets. Requires tree-sitter `rainbows.scm` queries for the language. | `false` |
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
-| `workspace-implicit-trust-level` | `none` (default) — no implicit trust; `lsp` — implicit trust for LSP; `all` — implicit trust for everything, no workspace trust features enabled.
 
 [^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
 
@@ -528,4 +527,24 @@ Example:
 enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
+```
+
+### `[editor.workspace-trust]` Section
+
+Options for workspace trust.
+
+| Key        | Description                                                                 | Default  |
+| ---        | ---                                                                         | ---      |
+| `level`    | Level of implicit trust. Allowed values are: `"none"`, `"lsp"` and `"all"`. | `"none"` |
+| `selector` | Whether to show trust selector pop-up.                                      | `true`   |
+
+Example:
+
+```toml
+[editor.workspace-trust]
+# Always start LSP
+level = "lsp"
+
+# Disable pop-up selector, leaving status bar reminder instead.
+selector = false
 ```
