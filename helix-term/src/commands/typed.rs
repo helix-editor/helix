@@ -1508,9 +1508,10 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
+    doc.reload(view, &cx.editor.diff_providers, &cx.editor.workspace_trust)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })?;
     if let Some(path) = doc.path().map(ToOwned::to_owned) {
         cx.editor
             .language_servers
@@ -1552,7 +1553,8 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers) {
+        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, &cx.editor.workspace_trust)
+        {
             cx.editor.set_error(format!("{}", error));
             continue;
         }
@@ -4438,7 +4440,7 @@ fn trust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).trust_workspace();
+    cx.editor.workspace_trust.trust_workspace();
 
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     // HACK
@@ -4446,7 +4448,7 @@ fn trust_workspace(
 }
 
 fn untrust_workspace(
-    _cx: &mut compositor::Context,
+    cx: &mut compositor::Context,
     _args: Args<'_>,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
@@ -4454,6 +4456,6 @@ fn untrust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).untrust_workspace();
+    cx.editor.workspace_trust.untrust_workspace();
     Ok(())
 }

@@ -1,6 +1,6 @@
 use crate::config::{Config, ConfigLoadError};
 use helix_core::config::{default_lang_config, user_lang_config};
-use helix_loader::grammar::load_runtime_file;
+use helix_loader::{grammar::load_runtime_file, workspace_trust::WorkspaceTrust};
 use std::{
     collections::HashSet,
     io::{IsTerminal, Write},
@@ -155,15 +155,17 @@ pub fn languages_all() -> std::io::Result<()> {
 }
 
 pub fn languages_selection() -> std::io::Result<()> {
-    let selection = helix_loader::grammar::get_grammar_names().unwrap_or_default();
+    let wst = WorkspaceTrust::new_bogus();
+    let selection = helix_loader::grammar::get_grammar_names(&wst).unwrap_or_default();
     languages(selection)
 }
 
 fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
+    let wst = WorkspaceTrust::new_bogus();
 
-    let mut syn_loader_conf = match user_lang_config() {
+    let mut syn_loader_conf = match user_lang_config(&wst) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -282,8 +284,9 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
 pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
+    let wst = WorkspaceTrust::new_bogus();
 
-    let syn_loader_conf = match user_lang_config() {
+    let syn_loader_conf = match user_lang_config(&wst) {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();

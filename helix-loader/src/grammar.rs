@@ -13,6 +13,8 @@ use std::{
 use tempfile::TempPath;
 use tree_house::tree_sitter::Grammar;
 
+use crate::workspace_trust::WorkspaceTrust;
+
 #[cfg(target_os = "macos")]
 const DYLIB_EXTENSION: &str = "dylib";
 
@@ -226,7 +228,8 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config()
+    let wst = WorkspaceTrust::new_bogus();
+    let config: Configuration = crate::config::user_lang_config(&wst)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -247,8 +250,8 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
     Ok(grammars)
 }
 
-pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    let config: Configuration = crate::config::user_lang_config()
+pub fn get_grammar_names(wst: &WorkspaceTrust) -> Result<Option<HashSet<String>>> {
+    let config: Configuration = crate::config::user_lang_config(wst)
         .context("Could not parse languages.toml")?
         .try_into()?;
 

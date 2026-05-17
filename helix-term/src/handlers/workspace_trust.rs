@@ -1,9 +1,6 @@
 use helix_core::config::user_lang_config;
 use helix_event::register_hook;
-use helix_loader::workspace_trust::{
-    cache_non_trust_in_current_workspace, quick_query_workspace_with_explicit_untrust, TrustType,
-    WorkspaceTrust,
-};
+use helix_loader::workspace_trust::TrustType;
 use helix_stdx::env::which;
 use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
 
@@ -14,6 +11,7 @@ const ID: &str = "workspace-trust-select";
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let doc_id = event.doc;
+        let wst = &event.editor.workspace_trust;
         let lang = if let Some(doc) = event.editor.document(doc_id) {
             doc.language_config()
         } else {
@@ -23,7 +21,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         let language_servers_to_load = if let Some(lang) = lang {
             if lang.language_servers.is_empty() {
                 false
-            } else if let Ok(config) = user_lang_config() {
+            } else if let Ok(config) = user_lang_config(wst) {
                 lang.language_servers.iter().any(|a| {
                     if let Some(val) = config.language_server.get(&a.name) {
                         which(val.command.as_str()).is_ok()
@@ -38,10 +36,11 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             false
         };
 
-        if quick_query_workspace_with_explicit_untrust(TrustType::Select {
-            language_servers_to_load,
-        })
-        .is_none()
+        if wst
+            .query_status_with_explicit_untrust(TrustType::Select {
+                language_servers_to_load,
+            })
+            .is_none()
         {
             job::dispatch_blocking(|_editor, compositor| prompt(compositor));
         }
@@ -78,13 +77,13 @@ fn select() -> ui::Select<TrustUntrustStatus> {
         (),
         move |editor, option, event| {
             if event == ui::PromptEvent::Validate {
-                let mut trust = WorkspaceTrust::load(true);
+                let trust = &editor.workspace_trust;
                 match option {
                     TrustUntrustStatus::DenyAlways => {
                         trust.exclude_workspace();
                     }
                     TrustUntrustStatus::DenyOnce => {
-                        cache_non_trust_in_current_workspace();
+                        trust.cache_non_trust_in_current_workspace();
                     }
                     TrustUntrustStatus::AllowAlways => {
                         trust.trust_workspace();

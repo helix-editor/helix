@@ -13,6 +13,7 @@ use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
+use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -1271,6 +1272,7 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
+        wst: &WorkspaceTrust,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
@@ -1297,12 +1299,12 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
+        match provider_registry.get_diff_base(&path, wst) {
             Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.version_control_head = provider_registry.get_current_head_name(&path, wst);
 
         Ok(())
     }
