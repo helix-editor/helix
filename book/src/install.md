@@ -22,3 +22,23 @@ To set up Helix:
 2. Copy the `runtime` directory to a location that `hx` searches for runtime files. A typical location on Linux/macOS is `~/.config/helix/runtime`.
 
 To see the runtime directories that `hx` searches, run `hx --health`. If necessary, you can override the default runtime location by setting the `HELIX_RUNTIME` environment variable.
+
+## Desktop entry and shell completions
+
+When installing from source or pre-built binaries:
+
+- **Desktop entry** (Linux): install [`contrib/Helix.desktop`](https://github.com/helix-editor/helix/blob/master/contrib/Helix.desktop)
+  to `~/.local/share/applications/` or `/usr/share/applications/`.
+- **Shell completions**: completion scripts for bash, fish, zsh, and other shells live in
+  [`contrib/completion/`](https://github.com/helix-editor/helix/tree/master/contrib/completion).
+  Install them using your shell's standard completion path.
+
+## Desktop entry and shell completions
+
+When installing from source or pre-built binaries:
+
+- **Desktop entry** (Linux): install [`contrib/Helix.desktop`](https://github.com/helix-editor/helix/blob/master/contrib/Helix.desktop)
+  to `~/.local/share/applications/` or `/usr/share/applications/`.
+- **Shell completions**: completion scripts for bash, fish, zsh, and other shells live in
+  [`contrib/completion/`](https://github.com/helix-editor/helix/tree/master/contrib/completion).
+  Install them using your shell's standard completion path.
