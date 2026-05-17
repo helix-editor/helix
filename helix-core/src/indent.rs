@@ -188,8 +188,48 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
             _ => IndentStyle::Spaces(indent as u8),
         })
     } else {
-        None
+        detect_indent_from_leading_whitespace(document_text)
     }
+}
+
+/// Fallback for short files where indent *increases* are too sparse to score.
+fn detect_indent_from_leading_whitespace(document_text: &Rope) -> Option<IndentStyle> {
+    let mut tab_lines = 0usize;
+    let mut space_widths = [0usize; MAX_INDENT as usize + 1];
+
+    for line in document_text.lines().take(1000) {
+        let mut chars = line.chars();
+        match chars.next() {
+            Some('\t') => tab_lines += 1,
+            Some(' ') => {
+                let mut width = 1usize;
+                for c in chars {
+                    if c == ' ' && width < MAX_INDENT as usize {
+                        width += 1;
+                    } else {
+                        break;
+                    }
+                }
+                space_widths[width] += 1;
+            }
+            _ => {}
+        }
+    }
+
+    let space_lines: usize = space_widths.iter().sum();
+    if tab_lines >= 2 && tab_lines >= space_lines.saturating_mul(2) {
+        return Some(IndentStyle::Tabs);
+    }
+    if space_lines >= 2 && space_lines >= tab_lines.saturating_mul(2) {
+        let (width, _) = space_widths
+            .iter()
+            .enumerate()
+            .filter(|(_, count)| **count > 0)
+            .max_by_key(|(_, count)| *count)?;
+        return Some(IndentStyle::Spaces(width as u8));
+    }
+
+    None
 }
 
 /// To determine indentation of a newly inserted line, figure out the indentation at the last col
@@ -1115,6 +1155,18 @@ pub fn get_scopes<'a>(syntax: Option<&'a Syntax>, text: RopeSlice, pos: usize) -
 mod test {
     use super::*;
     use crate::Rope;
+
+    #[test]
+    fn auto_detect_indent_from_leading_whitespace_on_small_files() {
+        let text = Rope::from("fn main() {\n\tprintln!(\"a\");\n\tprintln!(\"b\");\n}\n");
+        assert_eq!(auto_detect_indent_style(&text), Some(IndentStyle::Tabs));
+
+        let text = Rope::from("fn main() {\n    let x = 1;\n    let y = 2;\n}\n");
+        assert_eq!(
+            auto_detect_indent_style(&text),
+            Some(IndentStyle::Spaces(4))
+        );
+    }
 
     #[test]
     fn test_indent_level() {
