@@ -114,8 +114,13 @@ impl WorkspaceTrustMutable {
     /// Remove trusted mark from current workspace
     fn untrust_workspace(&mut self, workspace: &Path) {
         if self.trusted.remove(workspace) {
-            // only update the file if there was a change
             self.write_trust_to_file();
+        }
+
+        if let Some(excluded) = self.excluded.as_mut() {
+            if excluded.remove(workspace) {
+                self.write_exclusion_to_file();
+            }
         }
     }
     /// Mark current workspace excluded.
@@ -125,6 +130,7 @@ impl WorkspaceTrustMutable {
         self.trusted.remove(workspace);
         if let Some(excluded) = &mut self.excluded {
             excluded.insert(workspace.to_path_buf());
+            self.write_trust_to_file();
             self.write_exclusion_to_file();
         } else {
             log::error!("Called exclude_workspace() when self.untrusted is None");
@@ -195,10 +201,10 @@ impl WorkspaceTrust {
     /// Remove trusted mark from current workspace
     pub fn untrust_workspace(&self) {
         let workspace = crate::find_workspace().0;
-        let mut mutable = WorkspaceTrustMutable::load(false);
+        let mut mutable = WorkspaceTrustMutable::load(true);
         mutable.untrust_workspace(&workspace);
         let mut cache = self.cache.lock();
-        cache.insert(workspace, TrustStatus::Untrusted);
+        cache.remove(&workspace);
     }
 
     /// Mark current workspace excluded.

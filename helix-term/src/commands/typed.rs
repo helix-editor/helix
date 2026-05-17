@@ -3996,8 +3996,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-untrust",
         aliases: &[],
-        doc: "Remove current workspace from the list of trusted workspaces.",
+        doc: "Remove current workspace from the lists of trusted and excluded workspaces.",
         fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-exclude",
+        aliases: &[],
+        doc: "Remove current workspace from the list of trusted workspaces and exclude it.",
+        fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
     }
@@ -4457,5 +4465,18 @@ fn untrust_workspace(
     }
 
     cx.editor.workspace_trust.untrust_workspace();
+    Ok(())
+}
+
+fn exclude_workspace(
+    cx: &mut compositor::Context,
+    _args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.workspace_trust.exclude_workspace();
     Ok(())
 }
