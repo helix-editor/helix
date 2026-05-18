@@ -133,7 +133,7 @@ FLAGS:
 
     let default_config = {
         let config = Config::default();
-        let workspace_trust = WorkspaceTrust::new(config.editor.workspace_trust.level.into());
+        let workspace_trust = WorkspaceTrust::new(config.editor.workspace_trust.clone().into());
         (config, workspace_trust)
     };
 

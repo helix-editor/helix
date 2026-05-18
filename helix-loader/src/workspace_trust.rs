@@ -1,4 +1,10 @@
+use crate::{
+    data_dir, workspace_config_file, workspace_exclude_file, workspace_lang_config_file,
+    workspace_trust_file,
+};
+use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use helix_stdx::faccess::write_sensitive_file;
+use parking_lot::Mutex;
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -7,17 +13,17 @@ use std::{
     sync::Arc,
 };
 
-use parking_lot::Mutex;
-
-use crate::{
-    data_dir, workspace_config_file, workspace_exclude_file, workspace_lang_config_file,
-    workspace_trust_file,
-};
-
 #[derive(Clone)]
 pub struct WorkspaceTrust {
     cache: Arc<Mutex<HashMap<PathBuf, Option<TrustStatus>>>>,
     trust_level: ImplicitTrustLevel,
+    trust_globs: GlobSet,
+    exclude_globs: GlobSet,
+}
+
+pub struct Config {
+    pub trust_level: ImplicitTrustLevel,
+    pub globs: Vec<String>,
 }
 
 struct WorkspaceTrustMutable {
@@ -176,9 +182,48 @@ pub enum TrustType {
 }
 
 impl WorkspaceTrust {
-    pub fn new(trust_level: ImplicitTrustLevel) -> Self {
+    pub fn new(config: Config) -> Self {
+        let expand_home = |path: &str| {
+            if let Some(home) = crate::home_dir().to_str() {
+                #[cfg(not(windows))]
+                let expanded = format!("{home}/");
+                #[cfg(windows)]
+                let expanded = format!("{home}\\");
+                path.replace("~/", &expanded)
+            } else {
+                path.to_string()
+            }
+        };
+
         let cache = Arc::new(Mutex::new(HashMap::new()));
-        Self { cache, trust_level }
+
+        let mut trust_builder = GlobSetBuilder::new();
+        let mut exclude_builder = GlobSetBuilder::new();
+        for string in config.globs {
+            if let Some(Ok(glob)) = string
+                .strip_prefix('!')
+                .map(expand_home)
+                .as_deref()
+                .map(|v| GlobBuilder::new(v).literal_separator(true).build())
+            {
+                exclude_builder.add(glob);
+            } else if let Ok(glob) = GlobBuilder::new(&expand_home(&string))
+                .literal_separator(true)
+                .build()
+            {
+                trust_builder.add(glob);
+            }
+        }
+
+        let trust_globs = trust_builder.build().unwrap_or_default();
+        let exclude_globs = exclude_builder.build().unwrap_or_default();
+
+        Self {
+            cache,
+            trust_level: config.trust_level,
+            trust_globs,
+            exclude_globs,
+        }
     }
 
     pub fn new_bogus() -> Self {
@@ -186,6 +231,8 @@ impl WorkspaceTrust {
         Self {
             cache,
             trust_level: ImplicitTrustLevel::All,
+            trust_globs: Default::default(),
+            exclude_globs: Default::default(),
         }
     }
 
@@ -271,12 +318,16 @@ impl WorkspaceTrust {
             return *trust;
         }
 
-        if is_path_in_file(&workspace, &workspace_trust_file()) {
+        if is_path_in_file(&workspace, &workspace_trust_file())
+            || self.trust_globs.is_match(&workspace)
+        {
             cache.insert(workspace, Some(TrustStatus::Trusted));
             return Some(TrustStatus::Trusted);
         }
 
-        if is_path_in_file(&workspace, &workspace_exclude_file()) {
+        if is_path_in_file(&workspace, &workspace_exclude_file())
+            || self.exclude_globs.is_match(&workspace)
+        {
             cache.insert(workspace, Some(TrustStatus::Untrusted));
             return Some(TrustStatus::Untrusted);
         }
@@ -316,4 +367,49 @@ fn is_path_in_file(needle: &Path, haystack_path: &Path) -> bool {
     }
 
     false
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        home_dir,
+        workspace_trust::{Config, TrustStatus, WorkspaceTrust},
+    };
+    use helix_stdx::env::set_current_working_dir;
+
+    #[test]
+    fn workspace_trust_home_expansion() {
+        // I sure hope that this will never backfire and we will never
+        // get bugreports saying that people get some garbage directories
+        // in their $HOME after running `cargo test --workspace`
+        let temp_dir = tempfile::tempdir_in(home_dir()).unwrap();
+        let temp_path = temp_dir.path();
+
+        let globs = vec!["~/**".to_string()];
+        let wst_globbed = WorkspaceTrust::new(Config {
+            trust_level: super::ImplicitTrustLevel::None,
+            globs,
+        });
+
+        let wst_empty = WorkspaceTrust::new(Config {
+            trust_level: super::ImplicitTrustLevel::None,
+            globs: Vec::new(),
+        });
+
+        set_current_working_dir(temp_path).unwrap();
+
+        // I would print something helpful here, but debug-print
+        // of globsets is REALLY verbose, that wouldn't help much.
+        assert_eq!(
+            wst_globbed.query_status(super::TrustType::Other),
+            TrustStatus::Trusted,
+            "WorkspaceTrust::new() doesn't expand '~/' properly."
+        );
+
+        assert_eq!(
+            wst_empty.query_status(super::TrustType::Other),
+            TrustStatus::Untrusted,
+            "This is a sanity check. The test itself is likely wrong."
+        );
+    }
 }

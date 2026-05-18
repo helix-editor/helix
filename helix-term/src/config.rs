@@ -130,8 +130,8 @@ impl Config {
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
 
         let wst = wst.unwrap_or_else(|| {
-            let trust_level = global_parsed.editor.workspace_trust.level.into();
-            WorkspaceTrust::new(trust_level)
+            let wst_config = global_parsed.editor.workspace_trust.clone().into();
+            WorkspaceTrust::new(wst_config)
         });
         if wst
             .query_status(helix_loader::workspace_trust::TrustType::Other)

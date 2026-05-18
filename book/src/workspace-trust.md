@@ -20,6 +20,7 @@ Lists of trusted and excluded workspaces, delimited by newline characters, are s
 - Linux and macOS: `~/.local/share/helix/trusted_workspaces` and `~/.local/share/helix/excluded_workspaces`
 - Windows: `%AppData%\Roaming\helix\trusted_workspaces` and `%AppData%\Roaming\helix\excluded_workspaces`
 
+
 ## Configuration
 
 ```toml
@@ -40,4 +41,33 @@ level = "none"
 
 # Disable pop-up selector, leaving status bar reminder instead.
 selector = false
+
+
+# Trust recursively every workspace in `~/work` and exclude every workspace
+# that contains "contrib" in its name.
+globs = [ "~/work/**", "!*contrib*" ]
 ```
+
+### Glob syntax
+
+For more info about syntax see [globset docs](https://docs.rs/globset/latest/globset/#syntax)
+(`literal_separator` option is enabled).
+
+Additional syntax:
+
+  - all `~/` will be expanded to `$HOME`;
+  - globs prefixed with `!` will be excluded instead of trusted.
+
+For example, this is valid:
+
+````toml
+[editor]
+# Exclude `$HOME/coding/helix/contrib` and all subdirectories.
+workspace-trust.globs = [ "!{~/coding/helix/contrib/**,~/coding/helix/contrib}" ]
+
+# Same thing, but with a smaller nesting.
+workspace-trust.globs = [ "!~/coding/helix/{contrib/**,contrib}" ]
+
+# Same, but without nesting.
+workspace-trust.globs = [ "!~/coding/helix/contrib/**", "!~/coding/helix/contrib" ]
+````

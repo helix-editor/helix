@@ -22,6 +22,7 @@
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
+- [`[editor.workspace-trust]` Section](#editorworkspace-trust-section)
 
 ### `[editor]` Section
 
@@ -537,6 +538,7 @@ Options for workspace trust.
 | ---        | ---                                                                         | ---      |
 | `level`    | Level of implicit trust. Allowed values are: `"none"`, `"lsp"` and `"all"`. | `"none"` |
 | `selector` | Whether to show trust selector pop-up.                                      | `true`   |
+| `globs`    | Globbed paths indicating trust or exclusion. See ["Workspace trust" section](./workspace-trust.md#glob-syntax). | [  ]     |
 
 Example:
 
@@ -547,4 +549,7 @@ level = "lsp"
 
 # Disable pop-up selector, leaving status bar reminder instead.
 selector = false
+
+# Trust all workspaces in ~/work non-recursively
+globs = [ "~/work/*" ]
 ```

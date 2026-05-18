@@ -471,11 +471,12 @@ pub enum KittyKeyboardProtocolConfig {
     Enabled,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct WorkspaceTrustConfig {
     pub level: ImplicitTrustLevelConfigWrapper,
     pub selector: bool,
+    pub globs: Vec<String>,
 }
 
 impl Default for WorkspaceTrustConfig {
@@ -483,6 +484,7 @@ impl Default for WorkspaceTrustConfig {
         Self {
             level: Default::default(),
             selector: true,
+            globs: Default::default(),
         }
     }
 }
@@ -502,6 +504,15 @@ impl From<ImplicitTrustLevelConfigWrapper> for ImplicitTrustLevel {
             ImplicitTrustLevelConfigWrapper::None => ImplicitTrustLevel::None,
             ImplicitTrustLevelConfigWrapper::Lsp => ImplicitTrustLevel::Lsp,
             ImplicitTrustLevelConfigWrapper::All => ImplicitTrustLevel::All,
+        }
+    }
+}
+
+impl From<WorkspaceTrustConfig> for helix_loader::workspace_trust::Config {
+    fn from(value: WorkspaceTrustConfig) -> Self {
+        Self {
+            trust_level: value.level.into(),
+            globs: value.globs,
         }
     }
 }

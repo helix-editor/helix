@@ -140,6 +140,11 @@ pub fn data_dir() -> PathBuf {
     path
 }
 
+pub fn home_dir() -> PathBuf {
+    let strategy = choose_base_strategy().expect("Unable to find home directory!");
+    strategy.home_dir().to_path_buf()
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
