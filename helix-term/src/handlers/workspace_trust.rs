@@ -70,15 +70,28 @@ pub enum TrustUntrustStatus {
     #[default]
     DenyOnce,
     AllowAlways,
+    AllowOnce,
 }
 
 fn select() -> ui::Select<TrustUntrustStatus> {
+    let reload_everything = move |editor: &mut helix_view::Editor| {
+        let documents: Vec<DocumentId> = editor.documents.keys().cloned().collect();
+        for document_id in documents.iter() {
+            editor.launch_language_servers(*document_id);
+        }
+
+        let _ = editor
+            .config_events
+            .0
+            .send(helix_view::editor::ConfigEvent::Refresh);
+    };
     ui::Select::new(
         TRUST_MESSAGE,
         [
             TrustUntrustStatus::DenyOnce,
             TrustUntrustStatus::DenyAlways,
             TrustUntrustStatus::AllowAlways,
+            TrustUntrustStatus::AllowOnce,
         ],
         (),
         move |editor, option, event| {
@@ -93,16 +106,11 @@ fn select() -> ui::Select<TrustUntrustStatus> {
                     }
                     TrustUntrustStatus::AllowAlways => {
                         trust.trust_workspace();
-
-                        let documents: Vec<DocumentId> = editor.documents.keys().cloned().collect();
-                        for document_id in documents.iter() {
-                            editor.launch_language_servers(*document_id);
-                        }
-
-                        let _ = editor
-                            .config_events
-                            .0
-                            .send(helix_view::editor::ConfigEvent::Refresh);
+                        reload_everything(editor);
+                    }
+                    TrustUntrustStatus::AllowOnce => {
+                        trust.cache_trust_in_current_workspace();
+                        reload_everything(editor);
                     }
                 }
             }
@@ -118,6 +126,7 @@ impl crate::ui::menu::Item for TrustUntrustStatus {
             TrustUntrustStatus::DenyAlways => "Never",
             TrustUntrustStatus::DenyOnce => "Not now",
             TrustUntrustStatus::AllowAlways => "Always",
+            TrustUntrustStatus::AllowOnce => "Only now",
         }
         .into()
     }

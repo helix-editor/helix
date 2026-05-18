@@ -13,7 +13,7 @@ Helix does not trust any workspace by default and will prompt you to choose the 
 
 ## Changing workspace trust status
 
-You can always make the current workspace trusted by running the `:workspace-trust` command, and untrust it using `:workspace-untrust` or `:workspace-exclude`, with latter disabling all further prompts in it.
+You can always make the current workspace trusted by running the `:workspace-trust` command, and untrust it using `:workspace-untrust` or `:workspace-exclude`, with latter disabling all further prompts in it. If you wish to trust workspace only once, use `:workspace-trust-once`.
 
 Lists of trusted and excluded workspaces, delimited by newline characters, are stored in:
 

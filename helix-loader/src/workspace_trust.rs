@@ -16,7 +16,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct WorkspaceTrust {
-    cache: Arc<Mutex<HashMap<PathBuf, TrustStatus>>>,
+    cache: Arc<Mutex<HashMap<PathBuf, Option<TrustStatus>>>>,
     trust_level: ImplicitTrustLevel,
 }
 
@@ -195,7 +195,7 @@ impl WorkspaceTrust {
         let mut mutable = WorkspaceTrustMutable::load(false);
         mutable.trust_workspace(&workspace);
         let mut cache = self.cache.lock();
-        cache.insert(workspace, TrustStatus::Trusted);
+        cache.insert(workspace, Some(TrustStatus::Trusted));
     }
 
     /// Remove trusted mark from current workspace
@@ -204,7 +204,7 @@ impl WorkspaceTrust {
         let mut mutable = WorkspaceTrustMutable::load(true);
         mutable.untrust_workspace(&workspace);
         let mut cache = self.cache.lock();
-        cache.remove(&workspace);
+        cache.insert(workspace, None);
     }
 
     /// Mark current workspace excluded.
@@ -213,12 +213,17 @@ impl WorkspaceTrust {
         let mut mutable = WorkspaceTrustMutable::load(true);
         mutable.exclude_workspace(&workspace);
         let mut cache = self.cache.lock();
-        cache.insert(workspace, TrustStatus::Untrusted);
+        cache.insert(workspace, Some(TrustStatus::Untrusted));
     }
 
     pub fn cache_non_trust_in_current_workspace(&self) {
         let mut cache = self.cache.lock();
-        cache.insert(crate::find_workspace().0, TrustStatus::Untrusted);
+        cache.insert(crate::find_workspace().0, Some(TrustStatus::Untrusted));
+    }
+
+    pub fn cache_trust_in_current_workspace(&self) {
+        let mut cache = self.cache.lock();
+        cache.insert(crate::find_workspace().0, Some(TrustStatus::Trusted));
     }
 
     /// Query trust in current workspace.
@@ -263,19 +268,20 @@ impl WorkspaceTrust {
         let mut cache = self.cache.lock();
         let workspace = crate::find_workspace().0;
         if let Some(trust) = cache.get(&workspace) {
-            return Some(*trust);
+            return *trust;
         }
 
         if is_path_in_file(&workspace, &workspace_trust_file()) {
-            cache.insert(workspace, TrustStatus::Trusted);
+            cache.insert(workspace, Some(TrustStatus::Trusted));
             return Some(TrustStatus::Trusted);
         }
 
         if is_path_in_file(&workspace, &workspace_exclude_file()) {
-            cache.insert(workspace, TrustStatus::Untrusted);
+            cache.insert(workspace, Some(TrustStatus::Untrusted));
             return Some(TrustStatus::Untrusted);
         }
 
+        cache.insert(workspace, None);
         None
     }
 }

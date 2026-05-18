@@ -118,7 +118,9 @@ impl Config {
         Ok(res)
     }
 
-    pub fn load_default() -> Result<Config, ConfigLoadError> {
+    pub fn load_default(
+        wst: Option<WorkspaceTrust>,
+    ) -> Result<(Config, WorkspaceTrust), ConfigLoadError> {
         let global_config =
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error)?;
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
@@ -127,15 +129,17 @@ impl Config {
         let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
 
-        let trust_level = global_parsed.editor.workspace_trust.level.into();
-        let wst = WorkspaceTrust::new(trust_level);
+        let wst = wst.unwrap_or_else(|| {
+            let trust_level = global_parsed.editor.workspace_trust.level.into();
+            WorkspaceTrust::new(trust_level)
+        });
         if wst
             .query_status(helix_loader::workspace_trust::TrustType::Other)
             .is_trusted()
         {
-            Config::load(Ok(&global_config), local_config)
+            Config::load(Ok(&global_config), local_config).map(|conf| (conf, wst))
         } else {
-            Ok(global_parsed)
+            Ok((global_parsed, wst))
         }
     }
 }

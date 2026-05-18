@@ -432,13 +432,14 @@ impl Application {
 
     fn refresh_config(&mut self) {
         let mut refresh_config = || -> Result<(), Error> {
-            let default_config = Config::load_default()
-                .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
+            let (default_config, workspace_trust) =
+                Config::load_default(Some(self.editor.workspace_trust.clone()))
+                    .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
 
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader(&self.editor.workspace_trust)?;
+            let lang_loader = helix_core::config::user_lang_loader(&workspace_trust)?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,
@@ -446,6 +447,8 @@ impl Application {
                 &mut self.terminal,
                 self.theme_mode,
             );
+
+            self.editor.workspace_trust = workspace_trust;
 
             // Re-parse any open documents with the new language config.
             let lang_loader = self.editor.syn_loader.load();

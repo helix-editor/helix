@@ -97,6 +97,7 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
-| `:workspace-trust` | Add current workspace to the list of trusted workspaces. |
-| `:workspace-untrust` | Remove current workspace from the lists of trusted and excluded workspaces. |
-| `:workspace-exclude` | Remove current workspace from the list of trusted workspaces and exclude it. |
+| `:workspace-trust` | Trust current workspace permanently. |
+| `:workspace-untrust` | Untrust current workspace without excluding it. |
+| `:workspace-exclude` | Untrust current workspace and exclude it. |
+| `:workspace-trust-once` | Trust current workspace only until restart. |

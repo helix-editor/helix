@@ -3988,7 +3988,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-trust",
         aliases: &[],
-        doc: "Add current workspace to the list of trusted workspaces.",
+        doc: "Trust current workspace permanently.",
         fun: trust_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
@@ -3996,7 +3996,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-untrust",
         aliases: &[],
-        doc: "Remove current workspace from the lists of trusted and excluded workspaces.",
+        doc: "Untrust current workspace without excluding it.",
         fun: untrust_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
@@ -4004,8 +4004,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-exclude",
         aliases: &[],
-        doc: "Remove current workspace from the list of trusted workspaces and exclude it.",
+        doc: "Untrust current workspace and exclude it.",
         fun: exclude_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-trust-once",
+        aliases: &[],
+        doc: "Trust current workspace only until restart.",
+        fun: trust_workspace_once,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
     }
@@ -4449,6 +4457,23 @@ fn trust_workspace(
     }
 
     cx.editor.workspace_trust.trust_workspace();
+
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    // HACK
+    lsp_restart(cx, args, event)
+}
+
+fn trust_workspace_once(
+    cx: &mut compositor::Context,
+    args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.workspace_trust.untrust_workspace();
+    cx.editor.workspace_trust.cache_trust_in_current_workspace();
 
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     // HACK

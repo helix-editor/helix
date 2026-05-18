@@ -116,8 +116,8 @@ pub fn clipboard() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
+    let config = match Config::load_default(None) {
+        Ok(config) => config.0,
         Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
             Config::default()
         }
