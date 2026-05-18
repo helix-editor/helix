@@ -1634,6 +1634,9 @@ impl Editor {
         let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
         doc.replace_diagnostics(diagnostics, &[], None);
         doc.reset_all_inlay_hints();
+        doc.document_links.clear();
+        doc.color_swatches = None;
+        doc.clear_all_document_highlights();
     }
 
     /// Launch a language server for a given document

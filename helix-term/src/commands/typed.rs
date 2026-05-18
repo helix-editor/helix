@@ -1813,6 +1813,9 @@ fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
                 doc.clear_diagnostics_for_language_server(client.id());
                 doc.reset_all_inlay_hints();
                 doc.inlay_hints_oudated = true;
+                doc.document_links.clear();
+                doc.color_swatches = None;
+                doc.clear_all_document_highlights();
             }
         }
     }
