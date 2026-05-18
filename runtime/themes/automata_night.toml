@@ -1,0 +1,130 @@
+"tag" = { fg = "light-yellow" }
+"attribute" = { fg = "yellow" }
+"comment" = { fg = "whitespace" }
+"constant" = { fg = "light-yellow" }
+"constant.numeric" = { fg = "yellow", modifier=["bold"] }
+"constant.builtin" = { fg = "light-green" }
+"constant.character.escape" = { fg = "light-yellow" }
+"constructor" = { fg = "yellow" }
+"function" = { fg = "caramel" }
+"function.builtin" = { fg = "light-blue" }
+"function.macro" = { fg = "light-blue" }
+"keyword" = { fg = "light-green" }
+"keyword.control" = { fg = "white" }
+"keyword.control.import" = { fg = "light-red" }
+"keyword.directive" = { fg = "light-green" }
+"keyword.storage" = { fg = "blue" }
+"label" = { fg = "blue" }
+"namespace" = { fg = "blue" }
+"operator" = { fg = "light-white" }
+"keyword.operator" = { fg = "light-red" }
+"special" = { fg = "white" }
+"string" = { fg = "light-aqua" }
+"string.escape" = "light-green"
+"string.regex" = "light-red"
+"string.special" = "light-green"
+"type" = { fg = "yellow" }
+"variable" = { fg = "light-yellow" }
+"variable.builtin" = { fg = "light-yellow" }
+"variable.parameter" = { fg = "light-yellow" }
+"variable.other.member" = { fg = "light-yellow" }
+
+"markup.heading" = { fg = "light-red", modifiers = ["bold"] }
+"markup.raw.inline" = { fg = "blue" }
+"markup.bold" = { fg = "bright-white", modifiers = ["bold"] }
+"markup.italic" = { fg = "bright-white", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.list" = { fg = "green" }
+"markup.quote" = { fg = "white" }
+"markup.link.url" = { fg = "yellow", modifiers = ["bold", "underlined"]}
+"markup.link.text" = { fg = "light-yellow" }
+
+"diff.plus" = "light-green"
+"diff.delta" = "light-purple"
+"diff.minus" = "light-red"
+
+"diagnostic.info".underline = { color = "blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "green", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "light-red", modifiers = ["bold"] }
+
+"ui.background" = {bg = "black"}
+
+"ui.virtual" = { fg = "light-black" }
+"ui.virtual.indent-guide" = { fg = "light-black" }
+"ui.virtual.whitespace" = { fg = "whitespace" }
+"ui.virtual.ruler" = { bg = "whitespace" }
+"ui.virtual.inlay-hint" = { fg = "whitespace" }
+"ui.virtual.jump-label" = { fg = "whitespace", modifiers = ["bold"] }
+"ui.virtual.wrap" = { fg = "whitespace" }
+
+"ui.cursor" = { bg = "white", fg = "black" }
+"ui.cursor.insert" = { fg = "black", bg = "light-white" }
+"ui.cursor.primary.insert" = { fg = "black", bg = "light-white" }
+"ui.cursor.primary" = { fg = "yellow", bg = "black", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "black", bg = "yellow"}
+
+"ui.selection" = { bg = "whitespace" }
+"ui.selection.primary" = { bg = "whitespace" }
+
+"ui.cursorline.primary" = { fg = "white", bg = "cursor-line" }
+
+"ui.highlight" = { bg = "light-white" }
+"ui.highlight.frameline" = { }
+
+"ui.gutter" = { fg = "light-green", bg = "light-black"}
+"ui.gutter.selected" = {fg = "light-black", bg="caramel"}
+"ui.linenr" = { fg = "light-green", bg = "light-black" }
+"ui.linenr.selected" = { fg = "light-white", bg="caramel" }
+
+"ui.statusline" = { fg = "black", bg="caramel", modifier = ["bold"] }
+"ui.statusline.normal" = { fg = "red", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "red", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "red", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "white", bg = "light-black" }
+"ui.bufferline.active" = { fg = "black", bg = "caramel" }
+"ui.bufferline.background" = { bg = "light-black" }
+
+"ui.text" = { fg = "white" }
+"ui.text.focus" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.text.info" = { fg = "red", modifiers = ["bold"] }
+
+"ui.help" = { bg = "black", fg = "white" }
+"ui.popup" = { bg = "black", fg = "white" }
+"ui.window" = {bg = "black", fg = "white" }
+"ui.debug" = { fg = "light-red" }
+"ui.menu" = { bg = "light-black", fg = "light-green" }
+"ui.menu.selected" = { bg = "yellow", fg = "blue" }
+"ui.menu.scroll" = { bg = "light-black", fg = "blue" }
+"ui.picker.header" = { bg = "light-black", fg = "light-yellow" }
+"ui.picker.header.column" = { bg = "red", fg = "blue" }
+"ui.picker.header.column.active" = { bg = "light-red", fg = "light-blue" }
+
+[palette]
+black="#1A1313"
+light-black="#30231E"
+red="#B34750"
+light-red="#D94B43B"
+green="#6B997B"
+light-green="#77D989"
+yellow="#EBA123"
+light-yellow="#FFCA80"
+caramel="#CC7E39"
+blue="#7A97CC"
+light-blue="#61B8F2"
+purple="#9E7ACC"
+light-purple="#CC6A84"
+aqua="#4CD6D9"
+light-aqua="#8DCBCC"
+white="#E0DBC1"
+light-white="#FAF4DE"
+bright-white="#E6DFC3"
+whitespace="#918E82"
+cursor-line="#5C3016"
