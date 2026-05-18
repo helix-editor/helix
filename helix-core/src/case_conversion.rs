@@ -85,51 +85,50 @@ mod tests {
     }
 
     #[test]
-    fn test_camel_case_mixed_case(){
+    fn test_camel_case_mixed_case() {
         let result = to_camel_case("OttO_boTTO".chars());
         assert_eq!(result.as_ref() as &str, "ottoBotto");
     }
-    
+
     #[test]
-    fn test_camel_case_includes_nums(){
+    fn test_camel_case_includes_nums() {
         let result = to_camel_case("Ott0_b0TT0".chars());
         assert_eq!(result.as_ref() as &str, "ott0B0tt0");
     }
 
     #[test]
-    fn test_camel_case_one_word_lower(){
+    fn test_camel_case_one_word_lower() {
         let result = to_camel_case("otto".chars());
         assert_eq!(result.as_ref() as &str, "otto");
     }
 
     #[test]
-    fn test_camel_case_one_word_upper(){
+    fn test_camel_case_one_word_upper() {
         let result = to_camel_case("OTTO".chars());
         assert_eq!(result.as_ref() as &str, "otto");
     }
 
     #[test]
-    fn test_camel_case_one_char_lower(){
+    fn test_camel_case_one_char_lower() {
         let result = to_camel_case("o".chars());
         assert_eq!(result.as_ref() as &str, "o");
     }
 
     #[test]
-    fn test_camel_case_one_char_upper(){
+    fn test_camel_case_one_char_upper() {
         let result = to_camel_case("O".chars());
         assert_eq!(result.as_ref() as &str, "o");
     }
 
     #[test]
-    fn test_camel_case_many_words_separators(){
+    fn test_camel_case_many_words_separators() {
         let result = to_camel_case("otto_botto_the_dog".chars());
         assert_eq!(result.as_ref() as &str, "ottoBottoTheDog");
     }
 
     #[test]
-    fn test_camel_case_empty_string(){
+    fn test_camel_case_empty_string() {
         let result = to_camel_case("".chars());
         assert_eq!(result.as_ref() as &str, "");
     }
-
 }
