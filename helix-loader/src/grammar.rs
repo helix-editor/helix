@@ -352,6 +352,19 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         return Ok(FetchStatus::NonGit);
     };
 
+    // Validate remote URL scheme to prevent git protocol exploitation
+    // (e.g., the ext:: protocol handler which can execute arbitrary commands).
+    let allowed_schemes = ["https://", "http://", "git://", "ssh://"];
+    if !allowed_schemes.iter().any(|s| remote.starts_with(s))
+        && !remote.starts_with('/')
+        && !remote.starts_with('.')
+    {
+        return Err(anyhow!(
+            "Grammar remote '{}' uses a disallowed URL scheme",
+            remote
+        ));
+    }
+
     let repo = VendoredGrammar::new(&grammar.grammar_id);
 
     // WARN: Must init before other operations are done.
