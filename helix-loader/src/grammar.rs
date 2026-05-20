@@ -298,6 +298,18 @@ impl VendoredGrammar {
         git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
         git(&self.dir, ["checkout", rev])?;
 
+        // Verify the checked-out commit matches the expected revision to detect
+        // MITM substitution or upstream repository tampering before compilation.
+        let expected = git(&self.dir, ["rev-parse", rev])?;
+        let actual = git(&self.dir, ["rev-parse", "HEAD"])?;
+        if expected != actual {
+            return Err(anyhow!(
+                "Revision mismatch after checkout: expected commit {}, got {}",
+                expected,
+                actual
+            ));
+        }
+
         Ok(())
     }
 
