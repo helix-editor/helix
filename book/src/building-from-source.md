@@ -248,6 +248,11 @@ imported — no further calls are needed.
 
 #### Nushell
 
+> 💡 The commands below use `$nu.default-config-dir`, which requires
+> Nushell **≥ 0.87** (October 2024). On older versions, replace
+> `$nu.default-config-dir` with `$nu.config-path | path dirname` in the
+> snippets below.
+
 Run the install inside `nu` so the source and the later `source` line
 agree on the same config-dir path:
 
