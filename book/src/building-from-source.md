@@ -236,24 +236,30 @@ mkdir -p ~/.config/elvish/lib
 cp contrib/completion/hx.elv ~/.config/elvish/lib/hx.elv
 ```
 
-Then load the script from your `~/.config/elvish/rc.elv`:
+Then import the module from your `~/.config/elvish/rc.elv`:
 
 ```elvish
-eval (slurp < ~/.config/elvish/lib/hx.elv)
+use hx
 ```
+
+The script sets `edit:completion:arg-completer[hx]` as a top-level
+side-effect, so the completer is registered as soon as the module is
+imported — no further calls are needed.
 
 #### Nushell
 
-```sh
-mkdir -p "$(dirname "$(nu -c '$nu.config-path')")/completions"
-cp contrib/completion/hx.nu \
-   "$(dirname "$(nu -c '$nu.config-path')")/completions/hx.nu"
-```
-
-Then source it from your Nushell config (find it with `$nu.config-path`):
+Run the install inside `nu` so the source and the later `source` line
+agree on the same config-dir path:
 
 ```nu
-source ($nu.default-config-dir | path join "completions" "hx.nu")
+mkdir ($nu.default-config-dir | path join completions)
+cp contrib/completion/hx.nu ($nu.default-config-dir | path join completions hx.nu)
+```
+
+Then add this to your Nushell config (find it with `$nu.config-path`):
+
+```nu
+source ($nu.default-config-dir | path join completions hx.nu)
 ```
 
 > 💡 The `+N` line-number syntax is not currently supported in Nushell, so it
