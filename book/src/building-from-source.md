@@ -7,6 +7,7 @@
   - [Note to packagers](#note-to-packagers)
 - [Validating the installation](#validating-the-installation)
 - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+- [Install shell completions](#install-shell-completions)
 - [Building the Debian package](#building-the-debian-package)
 
 Requirements:
@@ -172,6 +173,75 @@ file. For example, to use `kitty`:
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+### Install shell completions
+
+Shell completion scripts for Helix are included in the source tree under
+`contrib/completion/`. Distribution packages install them automatically; when
+you build from source you can install them by hand for your shell of choice.
+
+The commands below assume you cloned the repository into `~/src/helix`; adjust
+the paths if you cloned elsewhere.
+
+#### Bash
+
+```sh
+mkdir -p ~/.local/share/bash-completion/completions
+cp ~/src/helix/contrib/completion/hx.bash \
+   ~/.local/share/bash-completion/completions/hx
+```
+
+Restart your shell, or `source` the file from `~/.bashrc` to load it in the
+current session.
+
+#### Zsh
+
+```sh
+mkdir -p ~/.zfunc
+cp ~/src/helix/contrib/completion/hx.zsh ~/.zfunc/_hx
+```
+
+Then make sure `~/.zfunc` is on `$fpath` and that completions are initialised
+in your `~/.zshrc`:
+
+```sh
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+#### Fish
+
+```sh
+mkdir -p ~/.config/fish/completions
+cp ~/src/helix/contrib/completion/hx.fish \
+   ~/.config/fish/completions/hx.fish
+```
+
+Fish picks the completions up automatically — no shell restart required.
+
+#### Elvish
+
+```sh
+mkdir -p ~/.config/elvish/lib
+cp ~/src/helix/contrib/completion/hx.elv ~/.config/elvish/lib/hx.elv
+```
+
+Then load the module from your `~/.config/elvish/rc.elv`:
+
+```elvish
+use hx
+```
+
+#### Nushell
+
+Source the completion script from your Nushell config (find it with `$nu.config-path`):
+
+```nu
+source ~/src/helix/contrib/completion/hx.nu
+```
+
+> 💡 The `+N` line-number syntax is not currently supported in Nushell, so it
+> is not proposed by autocomplete. See [nushell/nushell#13418](https://github.com/nushell/nushell/issues/13418).
 
 ### Building the Debian package
 
