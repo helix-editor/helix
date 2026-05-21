@@ -180,14 +180,17 @@ Shell completion scripts for Helix are included in the source tree under
 `contrib/completion/`. Distribution packages install them automatically; when
 you build from source you can install them by hand for your shell of choice.
 
-The commands below assume you cloned the repository into `~/src/helix`; adjust
-the paths if you cloned elsewhere.
+> 💡 No PowerShell completion is shipped yet, so the instructions below cover
+> Bash, Zsh, Fish, Elvish, and Nushell only.
+
+The commands below assume you are running them from the root of the Helix
+source tree (the directory you cloned into).
 
 #### Bash
 
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
-cp ~/src/helix/contrib/completion/hx.bash \
+cp contrib/completion/hx.bash \
    ~/.local/share/bash-completion/completions/hx
 ```
 
@@ -198,7 +201,7 @@ current session.
 
 ```sh
 mkdir -p ~/.zfunc
-cp ~/src/helix/contrib/completion/hx.zsh ~/.zfunc/_hx
+cp contrib/completion/hx.zsh ~/.zfunc/_hx
 ```
 
 Then make sure `~/.zfunc` is on `$fpath` and that completions are initialised
@@ -209,35 +212,48 @@ fpath=(~/.zfunc $fpath)
 autoload -Uz compinit && compinit
 ```
 
+> 💡 If your `~/.zshrc` already runs `compinit` (oh-my-zsh, prezto, zinit,
+> and similar frameworks all do), add only the `fpath=…` line and place it
+> **before** the framework's init line. Calling `compinit` a second time is
+> slow and can cause `_hx: function definition file not found` if ordered
+> incorrectly.
+
 #### Fish
 
 ```sh
 mkdir -p ~/.config/fish/completions
-cp ~/src/helix/contrib/completion/hx.fish \
+cp contrib/completion/hx.fish \
    ~/.config/fish/completions/hx.fish
 ```
 
-Fish picks the completions up automatically — no shell restart required.
+Fish loads completions for new shells automatically. To use them in the
+current session without restarting, run `exec fish`.
 
 #### Elvish
 
 ```sh
 mkdir -p ~/.config/elvish/lib
-cp ~/src/helix/contrib/completion/hx.elv ~/.config/elvish/lib/hx.elv
+cp contrib/completion/hx.elv ~/.config/elvish/lib/hx.elv
 ```
 
-Then load the module from your `~/.config/elvish/rc.elv`:
+Then load the script from your `~/.config/elvish/rc.elv`:
 
 ```elvish
-use hx
+eval (slurp < ~/.config/elvish/lib/hx.elv)
 ```
 
 #### Nushell
 
-Source the completion script from your Nushell config (find it with `$nu.config-path`):
+```sh
+mkdir -p "$(dirname "$(nu -c '$nu.config-path')")/completions"
+cp contrib/completion/hx.nu \
+   "$(dirname "$(nu -c '$nu.config-path')")/completions/hx.nu"
+```
+
+Then source it from your Nushell config (find it with `$nu.config-path`):
 
 ```nu
-source ~/src/helix/contrib/completion/hx.nu
+source ($nu.default-config-dir | path join "completions" "hx.nu")
 ```
 
 > 💡 The `+N` line-number syntax is not currently supported in Nushell, so it
