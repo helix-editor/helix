@@ -629,6 +629,13 @@ pub mod steel_implementations {
             Ok(Self::new(rope))
         }
 
+        pub fn remove(&self, start: usize, end: usize) -> Result<Self, RopeyError> {
+            let slice = self.to_slice();
+            let mut rope = ropey::Rope::from(slice);
+            rope.try_remove(start..end)?;
+            Ok(Self::new(rope))
+        }
+
         pub fn try_line_to_char(&self, line: usize) -> Result<usize, RopeyError> {
             self.to_slice().try_line_to_char(line).map_err(RopeyError)
         }
@@ -1084,6 +1091,22 @@ Returns a new rope value.
             "rope-insert-char",
             SteelRopeSlice::insert_char,
             "Insert a character at the given index"
+        );
+
+        register_value!(
+            "rope-remove",
+            SteelRopeSlice::remove,
+            r#"Remove the character range `[start, end)` from the rope.
+Indices are character indices. Returns a new rope.
+
+```scheme
+(rope-remove rope start end) -> Rope?
+```
+
+* rope : Rope?
+* start : (and positive? int?)
+* end : (and positive? int?)
+"#
         );
 
         module
