@@ -60,13 +60,14 @@ ARGS:
 
 FLAGS:
     -h, --help                     Print help information
+    --strict                       Bail on error for commands that can fail.
     --tutor                        Load the tutorial
     --health [CATEGORY]            Check for potential errors in editor setup
                                    CATEGORY can be a language or one of 'clipboard', 'languages',
                                    'all-languages' or 'all'. 'languages' is filtered according to
                                    user config, 'all-languages' and 'all' are not. If not specified,
                                    the default is the same as 'all', but with languages filtering.
-    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml
+    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml.
     -c, --config <file>            Specify a file to use for configuration
     -v                             Increase logging verbosity each use for up to 3 times
     --log <file>                   Specify a file to use for logging
@@ -105,12 +106,12 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
+        helix_loader::grammar::fetch_grammars(args.strict)?;
         return Ok(0);
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars(None)?;
+        helix_loader::grammar::build_grammars(None, args.strict)?;
         return Ok(0);
     }
 
