@@ -2597,6 +2597,19 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         colon_style: cx.editor.theme.get("punctuation"),
     };
 
+    let contents_column =
+        PickerColumn::new("contents", |item: &FileResult, _config: &GlobalSearchConfig| {
+            Cell::from(item.content.as_str())
+        });
+    // In regex mode the query is a regex, not a fuzzy pattern, so the picker
+    // must not apply its own nucleo fuzzy filter to the column contents on top
+    // of the grep results — that would discard valid regex matches whose lines
+    // don't happen to also be a fuzzy match for the regex source text.
+    let contents_column = if fuzzy {
+        contents_column
+    } else {
+        contents_column.without_filtering()
+    };
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
@@ -2620,9 +2633,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                 Span::styled((item.line_num + 1).to_string(), config.number_style),
             ]))
         }),
-        PickerColumn::new("contents", |item: &FileResult, _config: &GlobalSearchConfig| {
-            Cell::from(item.content.as_str())
-        }),
+        contents_column,
     ];
 
     let get_files = |query: &str,
