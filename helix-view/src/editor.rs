@@ -205,6 +205,14 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// Whether to sort file picker entries alphabetically by file name. Defaults to true.
+    ///
+    /// Disabling this allows the `ignore` crate's walker to traverse the
+    /// directory tree in parallel, which can noticeably speed up the initial
+    /// listing on slow filesystems (e.g. Windows / WSL on a large repository).
+    /// Sort order only matters as a secondary tie-breaker before any query is
+    /// entered; once you start typing, matches are ranked by score.
+    pub sort: bool,
 }
 
 impl Default for FilePickerConfig {
@@ -219,6 +227,7 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            sort: true,
         }
     }
 }
