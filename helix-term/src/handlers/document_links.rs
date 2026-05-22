@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use futures_util::{stream::FuturesOrdered, StreamExt};
+use futures_util::{stream::FuturesUnordered, StreamExt};
 use helix_core::{syntax::config::LanguageServerFeature, Assoc};
 use helix_event::{cancelable_future, register_hook};
 use helix_view::{
@@ -49,7 +49,7 @@ fn request_document_links(editor: &mut Editor, doc_id: DocumentId) {
     let cancel = doc.document_link_controller.restart();
 
     let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentLinks)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .filter_map(|language_server| {

@@ -253,16 +253,22 @@ pub enum ExpansionKind {
     ///
     /// For example `%sh{echo hello}`.
     Shell,
+    /// Expand registers from the editor's state.
+    ///
+    /// For example `%reg{a}`.
+    Register,
 }
 
 impl ExpansionKind {
-    pub const VARIANTS: &'static [Self] = &[Self::Variable, Self::Unicode, Self::Shell];
+    pub const VARIANTS: &'static [Self] =
+        &[Self::Variable, Self::Unicode, Self::Shell, Self::Register];
 
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Variable => "",
             Self::Unicode => "u",
             Self::Shell => "sh",
+            Self::Register => "reg",
         }
     }
 
@@ -271,6 +277,7 @@ impl ExpansionKind {
             "" => Some(Self::Variable),
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
+            "reg" => Some(Self::Register),
             _ => None,
         }
     }

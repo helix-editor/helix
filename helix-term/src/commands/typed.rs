@@ -3976,6 +3976,22 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             ..Signature::DEFAULT
         },
     },
+    TypableCommand {
+        name: "workspace-trust",
+        aliases: &[],
+        doc: "Add current workspace to the list of trusted workspaces.",
+        fun: trust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-untrust",
+        aliases: &[],
+        doc: "Remove current workspace from the list of trusted workspaces.",
+        fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -4245,6 +4261,9 @@ pub fn complete_command_args(
             complete_variable_expansion(&token.content, offset + token.content_start)
         }
         TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
+        TokenKind::Expansion(ExpansionKind::Register) => {
+            complete_register_expansion(editor, &token.content, offset + token.content_start)
+        }
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
         }
@@ -4370,6 +4389,22 @@ fn complete_variable_expansion(content: &str, offset: usize) -> Vec<ui::prompt::
     .collect()
 }
 
+fn complete_register_expansion(
+    editor: &Editor,
+    content: &str,
+    offset: usize,
+) -> Vec<ui::prompt::Completion> {
+    let register_names: Vec<String> = editor
+        .registers
+        .iter_preview()
+        .map(|(ch, _)| ch.to_string())
+        .collect();
+    fuzzy_match(content, register_names, false)
+        .into_iter()
+        .map(|(name, _)| (offset.., name.to_string().into()))
+        .collect()
+}
+
 fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Completion> {
     use command_line::ExpansionKind;
 
@@ -4385,4 +4420,33 @@ fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Comp
     .into_iter()
     .map(|(name, _)| (offset.., (*name).into()))
     .collect()
+}
+
+fn trust_workspace(
+    cx: &mut compositor::Context,
+    args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    helix_loader::workspace_trust::WorkspaceTrust::load(false).trust_workspace();
+
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    // HACK
+    lsp_restart(cx, args, event)
+}
+
+fn untrust_workspace(
+    _cx: &mut compositor::Context,
+    _args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    helix_loader::workspace_trust::WorkspaceTrust::load(false).untrust_workspace();
+    Ok(())
 }

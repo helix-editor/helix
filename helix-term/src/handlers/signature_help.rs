@@ -336,10 +336,8 @@ pub(super) fn register_hooks(handlers: &Handlers) {
                     compositor.remove(SignatureHelp::ID);
                 }));
             }
-            (_, Mode::Insert) => {
-                if event.cx.editor.config().lsp.auto_signature_help {
-                    send_blocking(&tx, SignatureHelpEvent::Trigger);
-                }
+            (_, Mode::Insert) if event.cx.editor.config().lsp.auto_signature_help => {
+                send_blocking(&tx, SignatureHelpEvent::Trigger);
             }
             _ => (),
         }
