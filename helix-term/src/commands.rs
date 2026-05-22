@@ -48,6 +48,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     expansion,
+    graphics::Modifier,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -2583,6 +2584,9 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         line_num: usize,
         /// The content of the matching line (for fuzzy ranking)
         content: String,
+        /// Byte ranges within `content` to highlight. Only populated in regex
+        /// mode — fuzzy mode relies on nucleo's per-column indices.
+        match_ranges: Vec<std::ops::Range<usize>>,
     }
 
     impl FileResult {
@@ -2591,6 +2595,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                 path: path.to_path_buf(),
                 line_num,
                 content: content.trim().to_string(),
+                match_ranges: Vec::new(),
             }
         }
     }
@@ -2602,6 +2607,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         directory_style: Style,
         number_style: Style,
         colon_style: Style,
+        match_style: Style,
     }
 
     /// Fuzzy-search an open document's rope, pushing matching lines to the injector.
@@ -2683,12 +2689,39 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         directory_style: cx.editor.theme.get("ui.text.directory"),
         number_style: cx.editor.theme.get("constant.numeric.integer"),
         colon_style: cx.editor.theme.get("punctuation"),
+        match_style: cx.editor.theme.get("special").add_modifier(Modifier::BOLD),
     };
 
-    let contents_column =
-        PickerColumn::new("contents", |item: &FileResult, _config: &GlobalSearchConfig| {
-            Cell::from(item.content.as_str())
-        });
+    let contents_column = PickerColumn::new(
+        "contents",
+        |item: &FileResult, config: &GlobalSearchConfig| {
+            // Fuzzy mode: nucleo applies per-column highlights to the cell text.
+            // Regex mode: nucleo can't see the column (it's not filterable in
+            // regex mode), so build the highlighted spans here from the byte
+            // ranges captured during search.
+            if item.match_ranges.is_empty() {
+                return Cell::from(item.content.as_str());
+            }
+            let mut spans = Vec::with_capacity(item.match_ranges.len() * 2 + 1);
+            let mut prev_end = 0;
+            for range in &item.match_ranges {
+                let start = range.start.min(item.content.len());
+                let end = range.end.min(item.content.len());
+                if start < prev_end || end <= start {
+                    continue;
+                }
+                if start > prev_end {
+                    spans.push(Span::raw(&item.content[prev_end..start]));
+                }
+                spans.push(Span::styled(&item.content[start..end], config.match_style));
+                prev_end = end;
+            }
+            if prev_end < item.content.len() {
+                spans.push(Span::raw(&item.content[prev_end..]));
+            }
+            Cell::from(Spans::from(spans))
+        },
+    );
     // In regex mode the query is a regex, not a fuzzy pattern, so the picker
     // must not apply its own nucleo fuzzy filter to the column contents on top
     // of the grep results — that would discard valid regex matches whose lines
@@ -2754,10 +2787,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                     Some(matcher)
                 }
                 Err(err) => {
-                    log::info!(
-                        "Failed to compile search pattern in global search: {}",
-                        err
-                    );
+                    log::info!("Failed to compile search pattern in global search: {}", err);
                     return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
                 }
             }
@@ -2832,13 +2862,26 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                             // Non-fuzzy: use grep searcher with regex
                             let mut stop = false;
                             let sink = sinks::UTF8(|line_num, line_content| {
-                                stop = injector
-                                    .push(FileResult::new(
-                                        entry.path(),
-                                        line_num as usize - 1,
-                                        line_content,
-                                    ))
-                                    .is_err();
+                                use grep_matcher::Matcher;
+                                let mut result = FileResult::new(
+                                    entry.path(),
+                                    line_num as usize - 1,
+                                    line_content,
+                                );
+                                // Re-run the matcher against the trimmed
+                                // content so the highlight byte ranges line up
+                                // with what's actually displayed in the picker.
+                                let mut pos = 0;
+                                while let Ok(Some(m)) =
+                                    regex_matcher.find_at(result.content.as_bytes(), pos)
+                                {
+                                    if m.end() == m.start() {
+                                        break;
+                                    }
+                                    result.match_ranges.push(m.start()..m.end());
+                                    pos = m.end();
+                                }
+                                stop = injector.push(result).is_err();
 
                                 Ok(!stop)
                             });
@@ -2949,11 +2992,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         let mut ranges = Vec::new();
 
         if search_fuzzy {
-            let pattern = NucleoPattern::parse(
-                query,
-                CaseMatching::Smart,
-                Normalization::Smart,
-            );
+            let pattern = NucleoPattern::parse(query, CaseMatching::Smart, Normalization::Smart);
             let mut matcher = MATCHER.lock();
             matcher.config = nucleo::Config::DEFAULT;
             let mut buf = Vec::new();
@@ -2968,7 +3007,10 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
 
                 indices.clear();
                 let haystack = Utf32Str::new(&line_text, &mut buf);
-                if pattern.indices(haystack, &mut matcher, &mut indices).is_some() {
+                if pattern
+                    .indices(haystack, &mut matcher, &mut indices)
+                    .is_some()
+                {
                     indices.sort_unstable();
                     indices.dedup();
                     for &idx in &indices {

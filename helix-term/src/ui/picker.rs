@@ -41,9 +41,8 @@ use std::{
 
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
-    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    syntax::OverlayHighlights, text_annotations::TextAnnotations,
-    unicode::segmentation::UnicodeSegmentation, Position,
+    char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction, syntax::OverlayHighlights,
+    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
     editor::Action,
@@ -1017,13 +1016,9 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 if !query.is_empty() {
                     let ranges = hfn(doc, (start, end), &query);
                     if !ranges.is_empty() {
-                        if let Some(highlight) =
-                            cx.editor.theme.find_highlight_exact("special")
-                        {
-                            overlay_highlights.push(OverlayHighlights::Homogeneous {
-                                highlight,
-                                ranges,
-                            });
+                        if let Some(highlight) = cx.editor.theme.find_highlight_exact("special") {
+                            overlay_highlights
+                                .push(OverlayHighlights::Homogeneous { highlight, ranges });
                         }
                     }
                 }
