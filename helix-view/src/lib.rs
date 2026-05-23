@@ -3,6 +3,7 @@ pub mod macros;
 
 pub mod annotations;
 pub mod clipboard;
+pub mod coverage;
 pub mod document;
 pub mod editor;
 pub mod events;
