@@ -480,6 +480,8 @@ impl Buffer {
         let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
 
         for s in string.graphemes(true) {
+            let s = if s == "\n" { " " } else { s };
+
             let width = s.width();
             if width == 0 {
                 continue;
