@@ -84,6 +84,7 @@ use std::{
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
+    sync::Mutex,
 };
 
 use once_cell::sync::Lazy;
@@ -2561,26 +2562,43 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
-fn global_search(cx: &mut Context) {
-    #[derive(Debug)]
-    struct FileResult {
-        path: PathBuf,
-        /// 0 indexed line start
-        line_start: usize,
-        /// 0 indexed line end
-        line_end: usize,
-    }
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct FileResult {
+    path: PathBuf,
+    relative_path: PathBuf,
+    /// 0 indexed line start
+    line_start: usize,
+    /// 0 indexed line end
+    line_end: usize,
+}
 
-    impl FileResult {
-        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
-            Self {
-                path: path.to_path_buf(),
-                line_start,
-                line_end,
-            }
+impl FileResult {
+    fn new(path: &Path, search_root: &Path, line_start: usize, line_end: usize) -> Self {
+        let relative_path = path
+            .strip_prefix(search_root)
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| helix_stdx::path::get_relative_path(path).into_owned());
+
+        Self {
+            path: path.to_path_buf(),
+            relative_path,
+            line_start,
+            line_end,
         }
     }
+}
 
+fn sort_global_search_results(results: &mut [FileResult]) {
+    results.sort_by(|left, right| {
+        (left.relative_path.as_path(), left.line_start, left.line_end).cmp(&(
+            right.relative_path.as_path(),
+            right.line_start,
+            right.line_end,
+        ))
+    });
+}
+
+fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
@@ -2600,7 +2618,7 @@ fn global_search(cx: &mut Context) {
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            let path = helix_stdx::path::get_relative_path(&item.path);
+            let path = item.relative_path.as_path();
 
             let directories = path
                 .parent()
@@ -2670,7 +2688,8 @@ fn global_search(cx: &mut Context) {
                 .binary_detection(BinaryDetection::quit(b'\x00'))
                 .multi_line(true)
                 .build();
-            WalkBuilder::new(search_root)
+            let results = Mutex::new(Vec::new());
+            WalkBuilder::new(search_root.clone())
                 .hidden(config.file_picker_config.hidden)
                 .parents(config.file_picker_config.parents)
                 .ignore(config.file_picker_config.ignore)
@@ -2690,7 +2709,13 @@ fn global_search(cx: &mut Context) {
                     let matcher = matcher.clone();
                     let injector = injector.clone();
                     let documents = &documents;
+                    let results = &results;
+                    let search_root = search_root.clone();
                     Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                        if injector.is_cancelled() {
+                            return WalkState::Quit;
+                        }
+
                         let entry = match entry {
                             Ok(entry) => entry,
                             Err(_) => return WalkState::Continue,
@@ -2700,15 +2725,24 @@ fn global_search(cx: &mut Context) {
                             return WalkState::Continue;
                         }
 
-                        let mut stop = false;
+                        let mut cancelled = false;
+                        let mut local_results = Vec::new();
                         let sink = sinks::UTF8(|line_start, line_content| {
+                            if injector.is_cancelled() {
+                                cancelled = true;
+                                return Ok(false);
+                            }
+
                             let line_start = line_start as usize - 1;
                             let line_end = line_start + line_content.lines().count() - 1;
-                            stop = injector
-                                .push(FileResult::new(entry.path(), line_start, line_end))
-                                .is_err();
+                            local_results.push(FileResult::new(
+                                entry.path(),
+                                &search_root,
+                                line_start,
+                                line_end,
+                            ));
 
-                            Ok(!stop)
+                            Ok(true)
                         });
                         let doc = documents.iter().find(|&(doc_path, _)| {
                             doc_path
@@ -2739,13 +2773,29 @@ fn global_search(cx: &mut Context) {
                         if let Err(err) = result {
                             log::error!("Global search error: {}, {}", entry.path().display(), err);
                         }
-                        if stop {
+
+                        if cancelled || injector.is_cancelled() {
                             WalkState::Quit
                         } else {
+                            if !local_results.is_empty() {
+                                results.lock().unwrap().extend(local_results);
+                            }
                             WalkState::Continue
                         }
                     })
                 });
+
+            if injector.is_cancelled() {
+                return Ok(());
+            }
+
+            let mut results = results.into_inner().unwrap();
+            sort_global_search_results(&mut results);
+            for result in results {
+                if injector.push(result).is_err() {
+                    break;
+                }
+            }
             Ok(())
         }
         .boxed()
@@ -2808,6 +2858,61 @@ fn global_search(cx: &mut Context) {
     .with_dynamic_query(get_files, Some(275));
 
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{sort_global_search_results, FileResult};
+    use std::path::PathBuf;
+
+    #[test]
+    fn global_search_results_sort_by_path_then_line_range() {
+        let root = tempfile::tempdir().unwrap();
+        let mut results = vec![
+            FileResult::new(&root.path().join("b.rs"), root.path(), 3, 3),
+            FileResult::new(&root.path().join("a.rs"), root.path(), 4, 5),
+            FileResult::new(&root.path().join("a.rs"), root.path(), 1, 1),
+            FileResult::new(&root.path().join("a").join("nested.rs"), root.path(), 0, 2),
+            FileResult::new(&root.path().join("a.rs"), root.path(), 4, 4),
+        ];
+
+        sort_global_search_results(&mut results);
+
+        let ordered: Vec<_> = results
+            .into_iter()
+            .map(|result| (result.relative_path, result.line_start, result.line_end))
+            .collect();
+
+        assert_eq!(
+            ordered,
+            vec![
+                (PathBuf::from("a").join("nested.rs"), 0, 2),
+                (PathBuf::from("a.rs"), 1, 1),
+                (PathBuf::from("a.rs"), 4, 4),
+                (PathBuf::from("a.rs"), 4, 5),
+                (PathBuf::from("b.rs"), 3, 3),
+            ]
+        );
+    }
+
+    #[test]
+    fn global_search_result_sorting_is_deterministic() {
+        let root = tempfile::tempdir().unwrap();
+        let input = vec![
+            FileResult::new(&root.path().join("z.rs"), root.path(), 8, 8),
+            FileResult::new(&root.path().join("a.rs"), root.path(), 2, 2),
+            FileResult::new(&root.path().join("m.rs"), root.path(), 1, 4),
+            FileResult::new(&root.path().join("a.rs"), root.path(), 1, 1),
+        ];
+
+        let mut first = input.clone();
+        let mut second = input.into_iter().rev().collect::<Vec<_>>();
+
+        sort_global_search_results(&mut first);
+        sort_global_search_results(&mut second);
+
+        assert_eq!(first, second);
+    }
 }
 
 enum Extend {
