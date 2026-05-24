@@ -14,6 +14,9 @@ use crate::{
 };
 
 use helix_core::{
+    conflict::{
+        conflict_at, conflict_pair_sections, conflict_refine_pair, find_conflicts, refine_diff,
+    },
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -144,6 +147,10 @@ impl EditorView {
         }
 
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+
+        if let Some(overlay) = Self::doc_conflict_refine_highlights(doc, view, theme) {
+            overlays.push(overlay);
+        }
 
         if is_focused {
             if config.lsp.auto_document_highlight {
@@ -657,6 +664,49 @@ impl EditorView {
             ranges.extend(tabstop.ranges.iter().map(|range| range.start..range.end));
         }
         Some(OverlayHighlights::Homogeneous { highlight, ranges })
+    }
+
+    /// Word-level diff highlights for the conflict region the cursor is in.
+    ///
+    /// Returns `None` when the cursor is not inside a conflict, when there are
+    /// no differing tokens, or when the required theme scopes are absent.
+    pub fn doc_conflict_refine_highlights(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+    ) -> Option<OverlayHighlights> {
+        let removed_hl = theme
+            .find_highlight("diff.conflict.removed")
+            .or_else(|| theme.find_highlight("diff.minus"))?;
+        let added_hl = theme
+            .find_highlight("diff.conflict.added")
+            .or_else(|| theme.find_highlight("diff.plus"))?;
+
+        let text = doc.text();
+        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+        let conflicts = find_conflicts(text);
+        let idx = conflict_at(&conflicts, cursor)?;
+        let region = &conflicts[idx];
+
+        let pair = conflict_refine_pair(&doc.conflict_refine_state, region);
+        let (left, right) = conflict_pair_sections(region, pair)?;
+
+        let (removed, added) = refine_diff(text, left, right);
+        if removed.is_empty() && added.is_empty() {
+            return None;
+        }
+
+        // Merge removed and added into a single heterogeneous span list,
+        // sorted by start position (they belong to disjoint sections of the
+        // document so they can never overlap).
+        let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = removed
+            .into_iter()
+            .map(|r| (removed_hl, r))
+            .chain(added.into_iter().map(|r| (added_hl, r)))
+            .collect();
+        spans.sort_unstable_by_key(|(_, r)| r.start);
+
+        Some(OverlayHighlights::Heterogenous { highlights: spans })
     }
 
     /// Render bufferline at the top

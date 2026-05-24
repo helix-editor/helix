@@ -281,6 +281,7 @@
 | `conflict_accept_incoming` | Accept incoming change (>>>>>>> side) | normal: `` <space>xi ``, select: `` <space>xi `` |
 | `conflict_accept_base` | Accept base change (||||||| side, diff3 only) | normal: `` <space>xb ``, select: `` <space>xb `` |
 | `conflict_accept_all` | Accept all changes | normal: `` <space>xa ``, select: `` <space>xa `` |
+| `conflict_cycle_diffs` | Cycle word-level conflict diffs | normal: `` <space>xr ``, select: `` <space>xr `` |
 | `goto_next_entry` | Goto next pairing | normal: `` ]e ``, select: `` ]e `` |
 | `goto_prev_entry` | Goto previous pairing | normal: `` [e ``, select: `` [e `` |
 | `goto_next_paragraph` | Goto next paragraph | normal: `` ]p ``, select: `` ]p `` |

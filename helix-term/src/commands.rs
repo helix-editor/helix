@@ -584,6 +584,7 @@ impl MappableCommand {
         conflict_accept_incoming, "Accept incoming change (>>>>>>> side)",
         conflict_accept_base, "Accept base change (||||||| side, diff3 only)",
         conflict_accept_all, "Accept all changes",
+        conflict_cycle_diffs, "Cycle word-level conflict diffs",
         goto_next_entry, "Goto next pairing",
         goto_prev_entry, "Goto previous pairing",
         goto_next_paragraph, "Goto next paragraph",
@@ -6295,6 +6296,29 @@ fn conflict_accept_base(cx: &mut Context) {
 
 fn conflict_accept_all(cx: &mut Context) {
     resolve_conflict_impl(cx, ConflictResolution::All);
+}
+
+fn conflict_cycle_diffs(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+
+    let conflicts = helix_core::conflict::find_conflicts(text);
+    let idx = match helix_core::conflict::conflict_at(&conflicts, cursor) {
+        Some(i) => i,
+        None => return,
+    };
+    let region = &conflicts[idx];
+
+    // 2-way conflicts have no base section — refine is a no-op.
+    if region.num_refine_pairs() == 0 {
+        return;
+    }
+
+    let key = region.start;
+    let current = doc.conflict_refine_state.get(&key).copied().unwrap_or(0);
+    let next = (current + 1) % region.num_refine_pairs();
+    doc.conflict_refine_state.insert(key, next);
 }
 
 #[derive(Clone, Copy)]

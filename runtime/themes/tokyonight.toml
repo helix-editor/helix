@@ -57,6 +57,8 @@ variable = { fg = "fg" }
 "diff.delta.moved" = { fg = "blue" }
 "diff.minus" = { fg = "delete" }
 "diff.plus" = { fg = "add" }
+"diff.conflict.removed" = { bg = "#372731" }
+"diff.conflict.added"   = { bg = "#243b47" }
 
 error = { fg = "error" }
 warning = { fg = "yellow" }

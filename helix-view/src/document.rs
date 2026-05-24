@@ -225,6 +225,15 @@ pub struct Document {
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+
+    /// Per-conflict refine pair state.
+    ///
+    /// Maps `ConflictRegion::start` (char position) to a pair index.
+    /// Defaults to 0 (first pair). N-way conflicts have C(n,2) pairs total.
+    ///
+    /// Entries become stale when the document is edited before the conflict,
+    /// causing a graceful reset to pair 0 (same behavior as smerge).
+    pub conflict_refine_state: HashMap<usize, usize>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -764,6 +773,7 @@ impl Document {
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
+            conflict_refine_state: HashMap::new(),
         }
     }
 
@@ -1030,7 +1040,9 @@ impl Document {
                     if force {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
-                        bail!("can't save file, parent directory does not exist (use :w! to create it)");
+                        bail!(
+                            "can't save file, parent directory does not exist (use :w! to create it)"
+                        );
                     }
                 }
             }
@@ -1244,12 +1256,18 @@ impl Document {
                 Ok(metadata) => match metadata.modified() {
                     Ok(mtime) => mtime,
                     Err(err) => {
-                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                        log::debug!(
+                            "Could not fetch file system's mtime, falling back to current system time: {}",
+                            err
+                        );
                         SystemTime::now()
                     }
                 },
                 Err(err) => {
-                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                    log::debug!(
+                        "Could not fetch file system's mtime, falling back to current system time: {}",
+                        err
+                    );
                     SystemTime::now()
                 }
             },

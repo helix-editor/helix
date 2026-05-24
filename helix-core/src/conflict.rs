@@ -36,6 +36,11 @@
 //!
 //! All three formats are unified into [`ConflictRegion`] with a `Vec<Section>`.
 
+use std::collections::HashMap;
+use std::ops::Range;
+
+use imara_diff::{Algorithm, Diff, InternedInput};
+
 use crate::Rope;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -83,6 +88,32 @@ pub struct ConflictRegion {
     pub sections: Vec<Section>,
     /// Exclusive end past the `>>>>>>> ...` line.
     pub end: usize,
+}
+
+impl ConflictRegion {
+    /// Number of C(N, 2) word-diff pairs that can be shown via refine.
+    pub fn num_refine_pairs(&self) -> usize {
+        let n = self.sections.len();
+        n * n.saturating_sub(1) / 2
+    }
+
+    /// Return the pair of section indices for refine `pair` index.
+    ///
+    /// Pairs are enumerated as (0,1), (0,2), …, (0,n-1), (1,2), …, (n-2,n-1).
+    /// Returns `None` if `pair >= num_refine_pairs()`.
+    pub fn refine_pair_indices(&self, pair: usize) -> Option<(usize, usize)> {
+        let n = self.sections.len();
+        let mut idx = 0;
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if idx == pair {
+                    return Some((i, j));
+                }
+                idx += 1;
+            }
+        }
+        None
+    }
 }
 
 // ── Parser ────────────────────────────────────────────────────────────────────
@@ -370,6 +401,135 @@ pub fn all_sides_content(text: &Rope, region: &ConflictRegion) -> String {
         .filter(|s| s.kind == SectionKind::Side)
         .map(|s| text.slice(s.content_start..s.content_end).to_string())
         .collect()
+}
+
+// ── Refine (word-level diff) ──────────────────────────────────────────────────
+
+/// Returns the content ranges `(left, right)` for refine pair `pair`.
+///
+/// Pairs are enumerated in (i, j) order with i < j over all section indices.
+/// Returns `None` if `pair >= region.num_refine_pairs()`.
+pub fn conflict_pair_sections(
+    region: &ConflictRegion,
+    pair: usize,
+) -> Option<((usize, usize), (usize, usize))> {
+    let (i, j) = region.refine_pair_indices(pair)?;
+    // When one section is Base, put it on the left (before) so that
+    // removed=red highlights what the base had, added=green highlights
+    // what the Side added on top.  Side↔Side pairs keep their order.
+    let (i, j) = match (region.sections[i].kind, region.sections[j].kind) {
+        (SectionKind::Side, SectionKind::Base) => (j, i),
+        _ => (i, j),
+    };
+    let left = (
+        region.sections[i].content_start,
+        region.sections[i].content_end,
+    );
+    let right = (
+        region.sections[j].content_start,
+        region.sections[j].content_end,
+    );
+    Some((left, right))
+}
+
+/// Look up the active refine pair for a conflict.
+///
+/// Defaults to `0` if no entry is present.
+pub fn conflict_refine_pair(state: &HashMap<usize, usize>, region: &ConflictRegion) -> usize {
+    let pair = state.get(&region.start).copied().unwrap_or(0);
+    let max = region.num_refine_pairs().saturating_sub(1);
+    pair.min(max)
+}
+
+// ── Word-level diff ───────────────────────────────────────────────────────────
+
+/// A word-token source backed by a contiguous substring of a `Rope`.
+///
+/// Tokens are non-whitespace runs of characters.
+/// To avoid double allocation, token strings are built on-demand during
+/// `tokenize()` rather than pre-collecting them. This amortizes the cost
+/// across the single `InternedInput::new()` call.
+struct WordTokens<'a> {
+    text: &'a Rope,
+    positions: Vec<(usize, usize)>,
+}
+
+impl<'a> WordTokens<'a> {
+    fn new(text: &'a Rope, start: usize, end: usize) -> Self {
+        let mut positions = Vec::new();
+        let mut tok_start: Option<usize> = None;
+        for (i, ch) in text.slice(start..end).chars().enumerate() {
+            let pos = start + i;
+            if ch.is_whitespace() {
+                if let Some(s) = tok_start.take() {
+                    positions.push((s, pos));
+                }
+            } else if tok_start.is_none() {
+                tok_start = Some(pos);
+            }
+        }
+        if let Some(s) = tok_start {
+            positions.push((s, end));
+        }
+        Self { text, positions }
+    }
+}
+
+impl<'a> imara_diff::TokenSource for WordTokens<'a> {
+    type Token = String;
+    type Tokenizer = Box<dyn Iterator<Item = String> + 'a>;
+
+    fn tokenize(&self) -> Self::Tokenizer {
+        let text = self.text;
+        let positions = self.positions.clone();
+        Box::new(
+            positions
+                .into_iter()
+                .map(move |(s, e)| text.slice(s..e).chars().collect()),
+        )
+    }
+
+    fn estimate_tokens(&self) -> u32 {
+        self.positions.len() as u32
+    }
+}
+
+/// Compute word-level diff between two sections of `text`.
+///
+/// Returns `(removed_ranges, added_ranges)` as half-open char-index intervals.
+pub fn refine_diff(
+    text: &Rope,
+    left: (usize, usize),
+    right: (usize, usize),
+) -> (Vec<Range<usize>>, Vec<Range<usize>>) {
+    let left_tokens = WordTokens::new(text, left.0, left.1);
+    let right_tokens = WordTokens::new(text, right.0, right.1);
+
+    let left_positions = left_tokens.positions.clone();
+    let right_positions = right_tokens.positions.clone();
+
+    let input = InternedInput::new(left_tokens, right_tokens);
+    let diff = Diff::compute(Algorithm::Histogram, &input);
+
+    let mut removed: Vec<Range<usize>> = Vec::new();
+    let mut added: Vec<Range<usize>> = Vec::new();
+
+    for hunk in diff.hunks() {
+        for &(s, e) in &left_positions[hunk.before.start as usize..hunk.before.end as usize] {
+            match removed.last_mut() {
+                Some(r) if r.end == s => r.end = e,
+                _ => removed.push(s..e),
+            }
+        }
+        for &(s, e) in &right_positions[hunk.after.start as usize..hunk.after.end as usize] {
+            match added.last_mut() {
+                Some(r) if r.end == s => r.end = e,
+                _ => added.push(s..e),
+            }
+        }
+    }
+
+    (removed, added)
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -758,5 +918,159 @@ mod tests {
         assert_eq!(r.slice(s..e).to_string(), "shared content\n");
         let (s, e) = incoming_content(c);
         assert_eq!(r.slice(s..e).to_string(), "more\n");
+    }
+
+    // ── refine_diff ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn refine_diff_cases() {
+        for &(current, incoming) in &[
+            ("hello world", "hello world"),        // identical
+            ("hello world", "hello rust"),         // single word
+            ("foo bar", "baz qux"),                // completely different
+            ("hello world test", "hello foo bar"), // adjacent words
+        ] {
+            let text = format!(
+                "<<<<<<< HEAD\n{}\n=======\n{}\n>>>>>>> b\n",
+                current, incoming
+            );
+            let r = Rope::from(text.as_str());
+            let c = &find_conflicts(&r)[0];
+            let (removed, added) = refine_diff(&r, current_content(c), incoming_content(c));
+
+            if current == incoming {
+                assert!(removed.is_empty());
+                assert!(added.is_empty());
+                continue;
+            }
+
+            assert!(
+                !removed.is_empty(),
+                "expected removed for '{}' vs '{}'",
+                current,
+                incoming
+            );
+            assert!(
+                !added.is_empty(),
+                "expected added for '{}' vs '{}'",
+                current,
+                incoming
+            );
+
+            let removed_text: String = removed
+                .iter()
+                .map(|range| r.slice(range.clone()).to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let added_text: String = added
+                .iter()
+                .map(|range| r.slice(range.clone()).to_string())
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            for word in current.split_whitespace() {
+                if !incoming.contains(word) {
+                    assert!(
+                        removed_text.contains(word),
+                        "'{word}' missing from removed: '{removed_text}'"
+                    );
+                }
+            }
+            for word in incoming.split_whitespace() {
+                if !current.contains(word) {
+                    assert!(
+                        added_text.contains(word),
+                        "'{word}' missing from added: '{added_text}'"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn refine_diff_identical_sections() {
+        // When both sides are identical, refine_diff should return no ranges.
+        let text = "<<<<<<< HEAD\nhello world\n=======\nhello world\n>>>>>>> branch\n";
+        let r = rope(text);
+        let conflicts = find_conflicts(&r);
+        let left = current_content(&conflicts[0]);
+        let right = incoming_content(&conflicts[0]);
+        let (removed, added) = refine_diff(&r, left, right);
+        assert!(
+            removed.is_empty(),
+            "expected no removed ranges, got {:?}",
+            removed
+        );
+        assert!(
+            added.is_empty(),
+            "expected no added ranges, got {:?}",
+            added
+        );
+    }
+
+    #[test]
+    fn refine_diff_single_word_change() {
+        // "hello world" vs "hello rust" — only "world"/"rust" differ.
+        let text = "<<<<<<< HEAD\nhello world\n=======\nhello rust\n>>>>>>> branch\n";
+        let r = rope(text);
+        let conflicts = find_conflicts(&r);
+        let left = current_content(&conflicts[0]);
+        let right = incoming_content(&conflicts[0]);
+        let (removed, added) = refine_diff(&r, left, right);
+
+        assert_eq!(
+            removed.len(),
+            1,
+            "expected 1 removed range, got {:?}",
+            removed
+        );
+        assert_eq!(added.len(), 1, "expected 1 added range, got {:?}", added);
+
+        let removed_word: String = r.slice(removed[0].clone()).chars().collect();
+        let added_word: String = r.slice(added[0].clone()).chars().collect();
+        assert_eq!(removed_word, "world");
+        assert_eq!(added_word, "rust");
+    }
+
+    #[test]
+    fn refine_diff_completely_different() {
+        // No words in common — all tokens should be flagged.
+        let text = "<<<<<<< HEAD\nfoo bar\n=======\nbaz qux\n>>>>>>> branch\n";
+        let r = rope(text);
+        let conflicts = find_conflicts(&r);
+        let left = current_content(&conflicts[0]);
+        let right = incoming_content(&conflicts[0]);
+        let (removed, added) = refine_diff(&r, left, right);
+
+        // Both "foo" and "bar" removed; "baz" and "qux" added (may be merged).
+        assert!(!removed.is_empty(), "expected removed ranges");
+        assert!(!added.is_empty(), "expected added ranges");
+
+        let removed_text: String = removed
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let added_text: String = added
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            removed_text.contains("foo"),
+            "expected 'foo' in removed: {removed_text}"
+        );
+        assert!(
+            removed_text.contains("bar"),
+            "expected 'bar' in removed: {removed_text}"
+        );
+        assert!(
+            added_text.contains("baz"),
+            "expected 'baz' in added: {added_text}"
+        );
+        assert!(
+            added_text.contains("qux"),
+            "expected 'qux' in added: {added_text}"
+        );
     }
 }

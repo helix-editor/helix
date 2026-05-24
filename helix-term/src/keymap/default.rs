@@ -299,6 +299,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "i" => conflict_accept_incoming,
                 "b" => conflict_accept_base,
                 "a" => conflict_accept_all,
+                "r" => conflict_cycle_diffs,
             },
         },
         "z" => { "View"
