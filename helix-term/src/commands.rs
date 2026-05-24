@@ -584,6 +584,7 @@ impl MappableCommand {
         conflict_accept_incoming, "Accept incoming change (>>>>>>> side)",
         conflict_accept_base, "Accept base change (||||||| side, diff3 only)",
         conflict_accept_all, "Accept all changes",
+        conflict_accept_at_cursor, "Accept change at cursor",
         conflict_cycle_diffs, "Cycle word-level conflict diffs",
         goto_next_entry, "Goto next pairing",
         goto_prev_entry, "Goto previous pairing",
@@ -6298,6 +6299,25 @@ fn conflict_accept_all(cx: &mut Context) {
     resolve_conflict_impl(cx, ConflictResolution::All);
 }
 
+fn conflict_accept_at_cursor(cx: &mut Context) {
+    use helix_core::conflict::{conflict_at, conflict_section_at, find_conflicts};
+    let resolution = {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text();
+        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+        let conflicts = find_conflicts(text);
+        let idx = match conflict_at(&conflicts, cursor) {
+            Some(i) => i,
+            None => return,
+        };
+        match conflict_section_at(&conflicts[idx], text, cursor) {
+            Some(section_idx) => ConflictResolution::Section(section_idx),
+            None => return, // on ======= line, no-op
+        }
+    };
+    resolve_conflict_impl(cx, resolution);
+}
+
 fn conflict_cycle_diffs(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
@@ -6327,6 +6347,7 @@ enum ConflictResolution {
     Incoming,
     Base,
     All,
+    Section(usize),
 }
 
 fn resolve_conflict_impl(cx: &mut Context, resolution: ConflictResolution) {
@@ -6363,6 +6384,10 @@ fn resolve_conflict_impl(cx: &mut Context, resolution: ConflictResolution) {
                     ConflictResolution::All => {
                         Some(helix_core::conflict::all_sides_content(text, region))
                     }
+                    ConflictResolution::Section(idx) => region.sections.get(idx).map(|section| {
+                        let (s, e) = (section.content_start, section.content_end);
+                        text.slice(s..e).to_string()
+                    }),
                 };
 
                 match replacement {
