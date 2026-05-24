@@ -405,7 +405,19 @@ impl EditorView {
             }
         };
 
+        let conflicts = helix_core::conflict::find_conflicts(doc.text());
+
         for diagnostic in doc.diagnostics() {
+            // Skip diagnostics that overlap any conflict region. The LSP sees
+            // conflict markers as broken code and produces spurious diagnostics
+            // that are distracting and meaningless to the user.
+            if conflicts
+                .iter()
+                .any(|c| diagnostic.range.start < c.end && diagnostic.range.end > c.start)
+            {
+                continue;
+            }
+
             // Separate diagnostics into different Vecs by severity.
             let vec = match diagnostic.severity {
                 Some(Severity::Info) => &mut info_vec,
