@@ -580,6 +580,10 @@ impl MappableCommand {
         goto_prev_xml_element, "Goto previous (X)HTML element",
         goto_next_conflict, "Goto next conflict",
         goto_prev_conflict, "Goto previous conflict",
+        conflict_accept_current, "Accept current change (<<<<<<< side)",
+        conflict_accept_incoming, "Accept incoming change (>>>>>>> side)",
+        conflict_accept_base, "Accept base change (||||||| side, diff3 only)",
+        conflict_accept_all, "Accept all changes",
         goto_next_entry, "Goto next pairing",
         goto_prev_entry, "Goto previous pairing",
         goto_next_paragraph, "Goto next paragraph",
@@ -6275,6 +6279,97 @@ fn goto_conflict_impl(cx: &mut Context, direction: Direction) {
         doc.set_selection(view.id, selection);
     };
     cx.editor.apply_motion(motion);
+}
+
+fn conflict_accept_current(cx: &mut Context) {
+    resolve_conflict_impl(cx, ConflictResolution::Current);
+}
+
+fn conflict_accept_incoming(cx: &mut Context) {
+    resolve_conflict_impl(cx, ConflictResolution::Incoming);
+}
+
+fn conflict_accept_base(cx: &mut Context) {
+    resolve_conflict_impl(cx, ConflictResolution::Base);
+}
+
+fn conflict_accept_all(cx: &mut Context) {
+    resolve_conflict_impl(cx, ConflictResolution::All);
+}
+
+#[derive(Clone, Copy)]
+enum ConflictResolution {
+    Current,
+    Incoming,
+    Base,
+    All,
+}
+
+fn resolve_conflict_impl(cx: &mut Context, resolution: ConflictResolution) {
+    // Phase 1 (read): compute the transaction inside a block to release borrows.
+    enum Outcome {
+        Apply(helix_view::ViewId, Transaction, usize), // view_id, transaction, cursor_pos
+        Status(&'static str),
+    }
+
+    let outcome = {
+        let (view, doc) = current!(cx.editor);
+        let text = doc.text();
+        let conflicts = helix_core::conflict::find_conflicts(text);
+
+        if conflicts.is_empty() {
+            Outcome::Status("No conflict markers in current buffer")
+        } else {
+            let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+
+            if let Some(idx) = helix_core::conflict::conflict_at(&conflicts, cursor) {
+                let region = &conflicts[idx];
+
+                let replacement: Option<String> = match resolution {
+                    ConflictResolution::Current => {
+                        let (s, e) = helix_core::conflict::current_content(region);
+                        Some(text.slice(s..e).to_string())
+                    }
+                    ConflictResolution::Incoming => {
+                        let (s, e) = helix_core::conflict::incoming_content(region);
+                        Some(text.slice(s..e).to_string())
+                    }
+                    ConflictResolution::Base => helix_core::conflict::base_content(region)
+                        .map(|(s, e)| text.slice(s..e).to_string()),
+                    ConflictResolution::All => {
+                        Some(helix_core::conflict::all_sides_content(text, region))
+                    }
+                };
+
+                match replacement {
+                    Some(s) => {
+                        let cursor_pos = region.start;
+                        let transaction = Transaction::change(
+                            text,
+                            std::iter::once((region.start, region.end, Some(s.into()))),
+                        );
+                        Outcome::Apply(view.id, transaction, cursor_pos)
+                    }
+                    None => Outcome::Status("No base section (not a diff3 conflict)"),
+                }
+            } else {
+                Outcome::Status("Cursor is not inside a conflict region")
+            }
+        }
+    };
+
+    // Phase 2: act on the outcome (borrows from phase 1 are released).
+    match outcome {
+        Outcome::Status(msg) => cx.editor.set_status(msg),
+        Outcome::Apply(view_id, transaction, cursor_pos) => {
+            let (view, doc) = current!(cx.editor);
+            doc.apply(&transaction, view_id);
+            // Place cursor at the start of the resolved content.
+            let selection = Selection::point(cursor_pos);
+            doc.set_selection(view_id, selection);
+            doc.append_changes_to_history(view);
+        }
+    }
 }
 
 fn goto_next_entry(cx: &mut Context) {

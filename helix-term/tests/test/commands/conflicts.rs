@@ -144,7 +144,135 @@ async fn goto_next_conflict_count() -> anyhow::Result<()> {
     Ok(())
 }
 
-// ─── goto_prev_conflict ([X) ──────────────────────────────────────────────────
+// ─── Resolution commands (<space>x{c,i,b,a}) ─────────────────────────────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn accept_current_two_way() -> anyhow::Result<()> {
+    test((
+        indoc::indoc! {"\
+            before
+            <<<<<<< HEAD
+            #[o|]#urs line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+        "<space>xc",
+        indoc::indoc! {"\
+            before
+            #[o|]#urs line
+            after
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn accept_incoming_two_way() -> anyhow::Result<()> {
+    test((
+        indoc::indoc! {"\
+            before
+            <<<<<<< HEAD
+            #[o|]#urs line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+        "<space>xi",
+        indoc::indoc! {"\
+            before
+            #[t|]#heirs line
+            after
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn accept_all_two_way() -> anyhow::Result<()> {
+    test((
+        indoc::indoc! {"\
+            before
+            <<<<<<< HEAD
+            #[o|]#urs line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+        "<space>xa",
+        indoc::indoc! {"\
+            before
+            #[o|]#urs line
+            theirs line
+            after
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn accept_base_three_way() -> anyhow::Result<()> {
+    test((
+        indoc::indoc! {"\
+            before
+            <<<<<<< HEAD
+            #[o|]#urs line
+            ||||||| base
+            base line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+        "<space>xb",
+        indoc::indoc! {"\
+            before
+            #[b|]#ase line
+            after
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn accept_current_cursor_outside_conflict() -> anyhow::Result<()> {
+    // Cursor outside any conflict → no change
+    test((
+        indoc::indoc! {"\
+            #[b|]#efore
+            <<<<<<< HEAD
+            ours line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+        "<space>xc",
+        indoc::indoc! {"\
+            #[b|]#efore
+            <<<<<<< HEAD
+            ours line
+            =======
+            theirs line
+            >>>>>>> branch
+            after
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn goto_prev_conflict_from_after() -> anyhow::Result<()> {
