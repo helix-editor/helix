@@ -91,27 +91,81 @@ pub struct ConflictRegion {
 }
 
 impl ConflictRegion {
-    /// Number of C(N, 2) word-diff pairs that can be shown via refine.
+    /// Number of word-diff pairs available via refine.
+    ///
+    /// Only phase-1 (each side vs adjacent base) and phase-2 (side–side) pairs
+    /// are counted; remaining pairs involving bases are never shown.
     pub fn num_refine_pairs(&self) -> usize {
         let n = self.sections.len();
-        n * n.saturating_sub(1) / 2
+        let mut count = 0;
+
+        // Phase 1
+        for i in 1..n {
+            if i == 1 || self.sections[i - 1].kind == SectionKind::Base {
+                count += 1;
+            }
+        }
+        // Phase 2
+        for skip in 1..n {
+            for i in 0..(n - skip) {
+                let (a, b) = (i, i + skip);
+                if self.sections[a].kind == SectionKind::Side
+                    && self.sections[b].kind == SectionKind::Side
+                    && !((a == 0 || self.sections[a].kind == SectionKind::Base) && b == a + 1)
+                {
+                    count += 1;
+                }
+            }
+        }
+        count
     }
 
     /// Return the pair of section indices for refine `pair` index.
     ///
-    /// Pairs are enumerated as (0,1), (0,2), …, (0,n-1), (1,2), …, (n-2,n-1).
+    /// Pairs are ordered so comparisons relevant to N-way conflicts come first:
+    ///   1. Each Side compared against its adjacent Base — `(0,1)` first, then
+    ///      all `(i,i+1)` where section `i` is a **Base**.
+    ///   2. All Side–Side pairs (both sections are `Side`), with the left side
+    ///      fixed as long as possible before advancing.
+    ///
+    /// For a standard git diff3 3-section conflict (Side,Base,Side) this still
+    /// produces (0,1)=current↔base, (1,2)=base↔incoming, (0,2)=current↔incoming.
     /// Returns `None` if `pair >= num_refine_pairs()`.
     pub fn refine_pair_indices(&self, pair: usize) -> Option<(usize, usize)> {
         let n = self.sections.len();
+        if pair >= self.num_refine_pairs() {
+            return None;
+        }
         let mut idx = 0;
-        for i in 0..n {
-            for j in (i + 1)..n {
+
+        // Phase 1: (0,1) first, then all (i,i+1) where sections[i] is Base.
+        for i in 1..n {
+            let in_phase1 = i == 1 || self.sections[i - 1].kind == SectionKind::Base;
+            if in_phase1 {
                 if idx == pair {
-                    return Some((i, j));
+                    return Some((i - 1, i));
                 }
                 idx += 1;
             }
         }
+
+        // Phase 2: Side–Side pairs, left side fixed as long as possible.
+        let side_indices: Vec<usize> = (0..n)
+            .filter(|i| self.sections[*i].kind == SectionKind::Side)
+            .collect();
+        for a_idx in 0..side_indices.len() {
+            for b_idx in (a_idx + 1)..side_indices.len() {
+                let (a, b) = (side_indices[a_idx], side_indices[b_idx]);
+                let already = (a == 0 || self.sections[a].kind == SectionKind::Base) && b == a + 1;
+                if !already {
+                    if idx == pair {
+                        return Some((a, b));
+                    }
+                    idx += 1;
+                }
+            }
+        }
+
         None
     }
 }
@@ -856,6 +910,107 @@ mod tests {
         assert_eq!(conflict_section_at(c, &r, close), Some(2));
     }
 
+    // ── refine pairs ──────────────────────────────────────────────────────────
+
+    type RefinePairCase<'a> = (&'a str, usize, &'a [(usize, usize)]);
+
+    #[test]
+    fn refine_pairs_cases() {
+        let cases: &[RefinePairCase<'_>] = &[
+            (
+                "<<<<<<< HEAD\ncurrent\n=======\nincoming\n>>>>>>> b\n",
+                1,
+                &[(0, 1)],
+            ),
+            (
+                "<<<<<<< HEAD\ncurrent\n||||||| base\nbase\n=======\nincoming\n>>>>>>> b\n",
+                3,
+                &[(0, 1), (1, 2), (0, 2)],
+            ),
+        ];
+        for &(text, num_pairs, pairs) in cases {
+            let c = &find_conflicts(&rope(text))[0];
+            assert_eq!(c.num_refine_pairs(), num_pairs);
+            for (i, &expected) in pairs.iter().enumerate() {
+                assert_eq!(c.refine_pair_indices(i), Some(expected));
+            }
+            assert_eq!(c.refine_pair_indices(pairs.len()), None);
+        }
+    }
+
+    #[test]
+    fn refine_pairs_four_sections() {
+        // 4 sections [S0,B1,S2,S3], pairs only from phases 1+2:
+        //   phase 1: (0,1),(1,2) = 2
+        //   phase 2 (Side–Side, fixed left): (0,2),(0,3),(2,3) = 3
+        //   total: 5  (pair (1,3)=B1,S3 is excluded)
+        let text = concat!(
+            "<<<<<<< Conflict\n",
+            "+++++++ s1\nA\n",
+            "------- base\nB\n",
+            "+++++++ s2\nC\n",
+            "+++++++ s3\nD\n",
+            ">>>>>>> Conflict ends\n",
+        );
+        let c = &find_conflicts(&rope(text))[0];
+        assert_eq!(c.sections.len(), 4);
+        assert_eq!(c.num_refine_pairs(), 5);
+        assert_eq!(c.refine_pair_indices(0), Some((0, 1)));
+        assert_eq!(c.refine_pair_indices(1), Some((1, 2)));
+        assert_eq!(c.refine_pair_indices(2), Some((0, 2)));
+        assert_eq!(c.refine_pair_indices(3), Some((0, 3)));
+        assert_eq!(c.refine_pair_indices(4), Some((2, 3)));
+        assert_eq!(c.refine_pair_indices(5), None);
+    }
+
+    #[test]
+    fn pair_sections_put_base_on_left() {
+        // diff3: sections = [Side(current), Base, Side(incoming)]
+        // Skip-distance ordering: (0,1), (1,2), (0,2)
+        // Pair 0 = (Side, Base) → MUST swap → left=base, right=current
+        // Pair 1 = (Base, Side) → already base-left, NO swap
+        // Pair 2 = (Side, Side) → order preserved
+        let text = "<<<<<<< HEAD\ncurrent\n||||||| base\nbase\n=======\nincoming\n>>>>>>> b\n";
+        let r = rope(text);
+        let c = &find_conflicts(&r)[0];
+
+        // pair 0 => indices (0,1) = (Side, Base) -> MUST swap to (Base, Side)
+        let (left, right) = conflict_pair_sections(c, 0).unwrap();
+        assert_eq!(r.slice(left.0..left.1).to_string(), "base\n"); // base on left (red)
+        assert_eq!(r.slice(right.0..right.1).to_string(), "current\n"); // side on right (green)
+
+        // pair 1 => indices (1,2) = (Base, Side) -> already base-left, NO swap
+        let (left, right) = conflict_pair_sections(c, 1).unwrap();
+        assert_eq!(r.slice(left.0..left.1).to_string(), "base\n"); // base on left
+        assert_eq!(r.slice(right.0..right.1).to_string(), "incoming\n"); // side on right
+
+        // pair 2 => indices (0,2) = (Side, Side) -> order preserved
+        let (left, right) = conflict_pair_sections(c, 2).unwrap();
+        assert_eq!(r.slice(left.0..left.1).to_string(), "current\n");
+        assert_eq!(r.slice(right.0..right.1).to_string(), "incoming\n");
+
+        assert!(conflict_pair_sections(c, 3).is_none());
+    }
+
+    #[test]
+    fn refine_pair_clamped_and_default() {
+        let text = "<<<<<<< HEAD\ncurrent\n=======\nincoming\n>>>>>>> b\n"; // 1 pair, max idx 0
+        let r = rope(text);
+        let c = &find_conflicts(&r)[0];
+
+        // Stale/out-of-range selection gets clamped to valid range
+        let mut state = HashMap::new();
+        state.insert(c.start, 99);
+        assert_eq!(conflict_refine_pair(&state, c), 0);
+
+        // Empty state defaults to 0
+        assert_eq!(conflict_refine_pair(&HashMap::new(), c), 0);
+
+        // Valid index passes through
+        state.clear();
+        state.insert(c.start, 0);
+        assert_eq!(conflict_refine_pair(&state, c), 0);
+    }
     #[test]
     fn all_sides_content_concatenates() {
         let text = concat!(
