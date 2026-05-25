@@ -33,6 +33,7 @@
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
 | common-lisp | ✓ | ✓ |  | ✓ | ✓ | `cl-lsp` |
+| concerto | ✓ | ✓ | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
