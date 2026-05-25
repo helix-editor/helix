@@ -1257,7 +1257,7 @@ impl EditorView {
 
                     let (view, doc) = current!(cxt.editor);
 
-                    let Some(path) = doc.pathbuf() else {
+                    let Some(path) = doc.path().map(ToOwned::to_owned) else {
                         return EventResult::Ignored(None);
                     };
 

@@ -322,7 +322,11 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         let injector = injector.clone();
         let loader = editor.syn_loader.load();
 
-        let documents: HashSet<_> = editor.documents().filter_map(Document::pathbuf).collect();
+        let documents: HashSet<_> = editor
+            .documents()
+            .filter_map(Document::path)
+            .map(ToOwned::to_owned)
+            .collect();
 
         async move {
             let searcher = state.searcher_builder.build();

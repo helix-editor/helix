@@ -2000,12 +2000,6 @@ impl Document {
         self.path.as_deref()
     }
 
-    #[inline]
-    /// Owned file path on disk.
-    pub fn pathbuf(&self) -> Option<PathBuf> {
-        self.path.clone()
-    }
-
     /// File path as a URL.
     pub fn url(&self) -> Option<Url> {
         Url::from_file_path(self.path()?).ok()

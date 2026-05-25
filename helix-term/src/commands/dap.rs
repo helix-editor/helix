@@ -390,7 +390,7 @@ fn debug_parameter_prompt(
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let Some(path) = doc.pathbuf() else {
+    let Some(path) = doc.path().map(ToOwned::to_owned) else {
         cx.editor
             .set_error("Can't set breakpoint: document has no path");
         return;
@@ -643,7 +643,7 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let Some(path) = doc!(cx.editor).pathbuf() else {
+        let Some(path) = doc!(cx.editor).path().map(ToOwned::to_owned) else {
             return;
         };
         let callback = Box::pin(async move {
@@ -684,7 +684,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
 pub fn dap_edit_log(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let Some(path) = doc!(cx.editor).pathbuf() else {
+        let Some(path) = doc!(cx.editor).path().map(ToOwned::to_owned) else {
             return;
         };
         let callback = Box::pin(async move {

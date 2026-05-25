@@ -2552,7 +2552,7 @@ fn global_search(cx: &mut Context) {
 
         let documents: Vec<_> = editor
             .documents()
-            .map(|doc| (doc.pathbuf(), doc.text().to_owned()))
+            .map(|doc| (doc.path().map(ToOwned::to_owned), doc.text().to_owned()))
             .collect();
 
         let matcher = match RegexMatcherBuilder::new()
@@ -3212,7 +3212,7 @@ fn buffer_picker(cx: &mut Context) {
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
-        path: doc.pathbuf(),
+        path: doc.path().map(ToOwned::to_owned),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3309,7 +3309,7 @@ fn jumplist_picker(cx: &mut Context) {
 
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|doc| doc.pathbuf()),
+            path: doc.and_then(|doc| doc.path().map(ToOwned::to_owned)),
             selection,
             text,
             is_current: view.doc == doc_id,

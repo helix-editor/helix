@@ -1512,7 +1512,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
-    if let Some(path) = doc.pathbuf() {
+    if let Some(path) = doc.path().map(ToOwned::to_owned) {
         cx.editor
             .language_servers
             .file_event_handler
@@ -1558,7 +1558,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
             continue;
         }
 
-        if let Some(path) = doc.pathbuf() {
+        if let Some(path) = doc.path().map(ToOwned::to_owned) {
             cx.editor
                 .language_servers
                 .file_event_handler
@@ -2736,7 +2736,8 @@ fn move_buffer_impl(
 ) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
-        .pathbuf()
+        .path()
+        .map(ToOwned::to_owned)
         .context("Scratch buffer cannot be moved. Use :write instead")?;
 
     // if new_path is a directory, append the original file name
