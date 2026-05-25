@@ -1,0 +1,40 @@
+# Author : Micheal Andreuzza <michael@andreuzza.com>
+# License: MIT
+
+# Sunset for Helix
+inherit = "default_dark"
+
+[ui]
+primary = { background = "#202231", foreground = "#dee0ef" }
+cursor = { normal = { background = "#d1918f", foreground = "#202231" } }
+selection = { primary = { background = "#6B6D7C26", foreground = "#dee0ef" } }
+highlight = { background = "#6B6D7C26", foreground = "#dee0ef" }
+
+[syntax]
+comment = { fg = "#8d8f9e", modifiers = ["italic"] }
+keyword = { fg = "#709bbd" }
+string = { fg = "#a392dc" }
+function = { fg = "#d1918f", modifiers = ["italic"] }
+variable = { fg = "#d6b4b4", modifiers = ["italic"] }
+type = { fg = "#a0b6e8" }
+constant = { fg = "#709bbd" }
+attribute = { fg = "#d1918f", modifiers = ["italic"] }
+punctuation = { fg = "#6b6d7c" }
+
+[palette]
+0 = "#363847"
+1 = "#d1918f"
+2 = "#709bbd"
+3 = "#a392dc"
+4 = "#a0b6e8"
+5 = "#aac9d4"
+6 = "#d6b4b4"
+7 = "#dee0ef"
+8 = "#6b6d7c"
+9 = "#d1918f"
+10 = "#709bbd"
+11 = "#a392dc"
+12 = "#a0b6e8"
+13 = "#aac9d4"
+14 = "#d6b4b4"
+15 = "#dee0ef"

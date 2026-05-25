@@ -1,0 +1,40 @@
+# Author : Micheal Andreuzza <michael@andreuzza.com>
+# License: MIT
+
+# Morning for Helix
+inherit = "default_light"
+
+[ui]
+primary = { background = "#f6f7fb", foreground = "#3f4363" }
+cursor = { normal = { background = "#6d7296", foreground = "#f6f7fb" } }
+selection = { primary = { background = "#5a567018", foreground = "#3f4363" } }
+highlight = { background = "#5a567018", foreground = "#3f4363" }
+
+[syntax]
+comment = { fg = "#6d7296", modifiers = ["italic"] }
+keyword = { fg = "#2f7aab" }
+string = { fg = "#785fd0" }
+function = { fg = "#c25a4d", modifiers = ["italic"] }
+variable = { fg = "#e58678", modifiers = ["italic"] }
+type = { fg = "#6288d8" }
+constant = { fg = "#2f7aab" }
+attribute = { fg = "#c25a4d", modifiers = ["italic"] }
+punctuation = { fg = "#505575" }
+
+[palette]
+0 = "#ccd0dc"
+1 = "#c25a4d"
+2 = "#2f7aab"
+3 = "#785fd0"
+4 = "#6288d8"
+5 = "#629aa5"
+6 = "#e58678"
+7 = "#3f4363"
+8 = "#505575"
+9 = "#c25a4d"
+10 = "#2f7aab"
+11 = "#785fd0"
+12 = "#6288d8"
+13 = "#629aa5"
+14 = "#e58678"
+15 = "#3f4363"
