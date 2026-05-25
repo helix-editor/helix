@@ -46,7 +46,7 @@
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
-| debian | ✓ |  |  |  |  |  |
+| debian | ✓ |  |  |  |  | `debian-lsp` |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
