@@ -15,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
+use helix_loader::workspace_trust::TrustStatus;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -431,6 +432,8 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    /// Whether to implicitly trust every workspace or not
+    pub insecure: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1153,6 +1156,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            insecure: false,
         }
     }
 }
@@ -1633,7 +1637,7 @@ impl Editor {
     }
 
     /// Launch a language server for a given document
-    fn launch_language_servers(&mut self, doc_id: DocumentId) {
+    pub fn launch_language_servers(&mut self, doc_id: DocumentId) {
         if !self.config().lsp.enable {
             return;
         }
@@ -1644,14 +1648,23 @@ impl Editor {
         let Some(doc_url) = doc.url() else {
             return;
         };
-        let (lang, path) = (doc.language.clone(), doc.path().cloned());
+        let (lang, path) = (doc.language.clone(), doc.path());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
+
+        if let TrustStatus::Untrusted =
+            helix_loader::workspace_trust::quick_query_workspace(self.config.load().insecure)
+        {
+            self.set_status(
+                "Current workspace is not trusted. Run `:workspace-trust` to enable all features.",
+            );
+            return;
+        };
 
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(language, path, root_dirs, config.lsp.snippets)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
@@ -2166,12 +2179,12 @@ impl Editor {
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
         self.documents()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     /// Returns all supported diagnostics for the document

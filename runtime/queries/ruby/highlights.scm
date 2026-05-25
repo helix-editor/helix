@@ -66,10 +66,10 @@
 ] @constant.numeric.integer
 
 [
-  (nil)
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
+(nil) @constant.builtin
 
 (interpolation
   "#{" @punctuation.special

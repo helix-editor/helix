@@ -86,7 +86,7 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
-pub fn fetch_grammars() -> Result<()> {
+pub fn fetch_grammars(strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     // We do not need to fetch local grammars.
@@ -141,13 +141,15 @@ pub fn fetch_grammars() -> Result<()> {
         for (i, (grammar, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar} {error}", i + 1);
         }
-        bail!("{len} grammars failed to fetch");
+        if strict {
+            bail!("{len} grammars failed to fetch");
+        }
     }
 
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>) -> Result<()> {
+pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
     let grammars = get_grammar_configs()?;
@@ -184,7 +186,9 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
         for (i, (grammar_id, error)) in errors.into_iter().enumerate() {
             println!("Failure {}/{len}: {grammar_id} {error}", i + 1);
         }
-        bail!("{len} grammars failed to build");
+        if strict {
+            bail!("{len} grammars failed to build");
+        }
     }
 
     Ok(())
@@ -195,7 +199,7 @@ pub fn build_grammars(target: Option<String>) -> Result<()> {
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config()
+    let config: Configuration = crate::config::user_lang_config(false)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -217,7 +221,7 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
 }
 
 pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    let config: Configuration = crate::config::user_lang_config()
+    let config: Configuration = crate::config::user_lang_config(false)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -537,7 +541,7 @@ fn build_tree_sitter_library(
                     ));
                 }
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
 
@@ -594,7 +598,7 @@ fn build_tree_sitter_library(
                 }
 
                 command.arg(&object_file);
-                _path_guard = TempPath::from_path(object_file);
+                _path_guard = TempPath::try_from_path(object_file).unwrap();
             }
         }
         command.arg("-xc").arg("-std=c11").arg(parser_path);

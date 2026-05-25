@@ -38,3 +38,9 @@
   (default_case)
   (type_case)
 ] @extend
+
+; Handle ERROR nodes for when auto-pairs is disabled.
+; Typing an opening delimiter without a closing one produces an ERROR node.
+(ERROR "{") @indent @extend
+(ERROR "(") @indent
+(ERROR "[") @indent

@@ -33,6 +33,7 @@
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
 | common-lisp | ✓ | ✓ |  | ✓ | ✓ | `cl-lsp` |
+| concerto | ✓ | ✓ | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
@@ -45,7 +46,7 @@
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
-| debian | ✓ |  |  |  |  |  |
+| debian | ✓ |  |  |  |  | `debian-lsp` |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
@@ -60,6 +61,7 @@
 | dune | ✓ |  |  |  |  |  |
 | dunstrc | ✓ |  |  |  |  |  |
 | earthfile | ✓ | ✓ | ✓ |  |  | `earthlyls` |
+| ebnf | ✓ |  |  |  |  | `ebnfer` |
 | edoc | ✓ |  |  |  |  |  |
 | eex | ✓ |  |  |  |  |  |
 | eiffel | ✓ | ✓ | ✓ |  |  | `eiffel-language-server` |
@@ -230,7 +232,7 @@
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
 | qmv |  |  |  |  |  |  |
 | quarto | ✓ |  | ✓ |  |  |  |
@@ -276,7 +278,7 @@
 | strictdoc | ✓ |  |  | ✓ |  |  |
 | styx | ✓ | ✓ | ✓ |  | ✓ | `styx` |
 | supercollider | ✓ |  |  |  |  |  |
-| svelte | ✓ | ✓ | ✓ |  | ✓ | `svelteserver` |
+| svelte | ✓ | ✓ | ✓ | ✓ | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |

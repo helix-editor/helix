@@ -35,6 +35,10 @@
  CapsLock key is not pressed and hold the j key until you reach
  the first lesson.
 
+ This tutor opens in an unnamed buffer.
+ * To quit without saving changes, use :q!.
+ * To save your changes to a file, use :w <path> and then :q.
+
 
 
 
