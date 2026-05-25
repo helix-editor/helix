@@ -332,6 +332,46 @@ impl Editor {
                         log::info!("{}", output);
                         self.set_status(format!("{} {}", prefix, output));
                     }
+                    Event::ProgressStart(body) => {
+                        let status = {
+                            let debugger = match self.debug_adapters.get_client_mut(id) {
+                                Some(debugger) => debugger,
+                                None => return false,
+                            };
+
+                            debugger.progress_start(body)
+                        };
+
+                        self.set_status(status);
+                    }
+                    Event::ProgressUpdate(body) => {
+                        let status = {
+                            let debugger = match self.debug_adapters.get_client_mut(id) {
+                                Some(debugger) => debugger,
+                                None => return false,
+                            };
+
+                            debugger.progress_update(body)
+                        };
+
+                        if let Some(status) = status {
+                            self.set_status(status);
+                        }
+                    }
+                    Event::ProgressEnd(body) => {
+                        let status = {
+                            let debugger = match self.debug_adapters.get_client_mut(id) {
+                                Some(debugger) => debugger,
+                                None => return false,
+                            };
+
+                            debugger.progress_end(body)
+                        };
+
+                        if let Some(status) = status {
+                            self.set_status(status);
+                        }
+                    }
                     Event::Initialized(_) => {
                         self.set_status("Debugger initialized...");
                         let debugger = match self.debug_adapters.get_client_mut(id) {
