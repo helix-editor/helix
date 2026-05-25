@@ -2493,6 +2493,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-ron", rev 
 
 [[language]]
 name = "robot"
+language-id="robotframework"
 scope = "source.robot"
 injection-regex = "robot"
 file-types = ["robot", "resource"]
@@ -2502,7 +2503,7 @@ language-servers = [ "robotcode", "robotframework_ls" ]
 
 [[grammar]]
 name = "robot"
-source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "322e4cc65754d2b3fdef4f2f8a71e0762e3d13af" }
+source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "0f010f439e7873db42d3aabae8a48a8f61a89910" }
 
 [[language]]
 name = "r"
