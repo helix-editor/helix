@@ -23,56 +23,56 @@
 
 ; Type declarations define types
 (concept_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (asset_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (participant_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (transaction_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (event_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (enum_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (scalar_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 (map_declaration
-  name: (type_identifier) @local.definition)
+  name: (type_identifier) @local.definition.type)
 
 ; Property declarations define properties
 (string_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (boolean_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (datetime_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (integer_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (long_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (double_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (object_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (relationship_field
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 (enum_property
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.variable.other.member)
 
 ; References
 ; ----------
