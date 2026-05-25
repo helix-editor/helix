@@ -210,7 +210,7 @@ fn buffer_close_by_ids_impl(
     Ok(())
 }
 
-fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> {
+fn buffer_gather_ids_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> {
     // No arguments implies current document
     if args.is_empty() {
         let doc_id = view!(editor).doc;
@@ -222,7 +222,10 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
+
+            if doc.id().to_string() == arg {
+                Some(doc.id())
+            } else if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path{
                 Some(doc.id())
             } else {
                 None
@@ -254,7 +257,7 @@ fn buffer_close(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -267,7 +270,7 @@ fn force_buffer_close(
         return Ok(());
     }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, true)
 }
 
@@ -535,7 +538,7 @@ fn write_buffer_close(
         },
     )?;
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -557,7 +560,7 @@ fn force_write_buffer_close(
         },
     )?;
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    let document_ids = buffer_gather_ids_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
