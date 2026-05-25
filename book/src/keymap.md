@@ -404,7 +404,8 @@ escaping from insert mode to normal mode.
 | `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
-| `Tab`                                       | [Smart tab] (configurable)  | `smart_tab`              | 
+| `Tab`                                       | [Smart tab] (configurable)  | `smart_tab`              |
+| `Shift-Tab`                                 | Insert tab                  | `insert_tab`             |
 
 [Smart tab]: ./editor.md#editorsmart-tab-section
 
