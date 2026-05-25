@@ -2563,18 +2563,18 @@ fn make_search_word_bounded(cx: &mut Context) {
 
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
-    struct FileResult {
-        path: PathBuf,
+    struct FileResult<'a> {
+        path: Cow<'a, Path>,
         /// 0 indexed line start
         line_start: usize,
         /// 0 indexed line end
         line_end: usize,
     }
 
-    impl FileResult {
+    impl FileResult<'_> {
         fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
             Self {
-                path: path.to_path_buf(),
+                path: helix_stdx::path::get_relative_path(path.to_path_buf()),
                 line_start,
                 line_end,
             }
@@ -2584,42 +2584,21 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        directory_style: Style,
-        number_style: Style,
-        colon_style: Style,
+        style: PathStyleConfig,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
+        style: PathStyleConfig::new(&cx.editor.theme),
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            let path = helix_stdx::path::get_relative_path(&item.path);
-
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-
-            let filename = item
-                .path
-                .file_name()
-                .expect("global search paths are normalized (can't end in `..`)")
-                .to_string_lossy();
-
-            Cell::from(Spans::from(vec![
-                Span::styled(directories, config.directory_style),
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_start + 1).to_string(), config.number_style),
-            ]))
+            config
+                .style
+                .stylize(Some(&item.path), Some(item.line_start))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -2802,7 +2781,7 @@ fn global_search(cx: &mut Context) {
              line_start,
              line_end,
              ..
-         }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
+         }| { Some((path.as_ref().into(), Some((*line_start, *line_end)))) },
     )
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
@@ -3287,12 +3266,54 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
+struct PathStyleConfig {
+    directory_style: Style,
+    number_style: Style,
+    colon_style: Style,
+}
+
+impl PathStyleConfig {
+    fn new(theme: &helix_view::Theme) -> Self {
+        Self {
+            directory_style: theme.get("ui.text.directory"),
+            number_style: theme.get("constant.numeric.integer"),
+            colon_style: theme.get("punctuation"),
+        }
+    }
+
+    fn stylize<'a>(&self, path: Option<&'a Path>, line: Option<usize>) -> Cell<'a> {
+        let mut spans = Vec::new();
+        if let Some(path) = path {
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+            spans.push(Span::styled(directories, self.directory_style));
+        }
+        let filename = path.as_ref().map_or(SCRATCH_BUFFER_NAME.into(), |path| {
+            path.file_name()
+                .expect("all document names are normalized (can't end in `..`)")
+                .to_string_lossy()
+        });
+        spans.push(Span::raw(filename));
+        if let Some(line) = line {
+            spans.extend([
+                Span::styled(":", self.colon_style),
+                Span::styled((line + 1).to_string(), self.number_style),
+            ]);
+        }
+
+        Cell::from(Spans::from(spans))
+    }
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    struct BufferMeta {
+    struct BufferMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3300,7 +3321,10 @@ fn buffer_picker(cx: &mut Context) {
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
-        path: doc.path().map(ToOwned::to_owned),
+        path: doc
+            .path()
+            .map(ToOwned::to_owned)
+            .map(helix_stdx::path::get_relative_path),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3328,16 +3352,8 @@ fn buffer_picker(cx: &mut Context) {
             }
             flags.into()
         }),
-        PickerColumn::new("path", |meta: &BufferMeta, _| {
-            let path = meta
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        PickerColumn::new("path", |meta: &BufferMeta, config: &PathStyleConfig| {
+            config.stylize(meta.path.as_deref(), None)
         }),
     ];
 
@@ -3354,9 +3370,15 @@ fn buffer_picker(cx: &mut Context) {
         0
     };
 
-    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
-        cx.editor.switch(meta.id, action);
-    })
+    let picker = Picker::new(
+        columns,
+        2,
+        items,
+        PathStyleConfig::new(&cx.editor.theme),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+        },
+    )
     .with_initial_cursor(initial_cursor)
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
@@ -3409,45 +3431,10 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    struct JumpListConfig {
-        directory_style: Style,
-        number_style: Style,
-        colon_style: Style,
-    }
-
-    let config = JumpListConfig {
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
-    };
-
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
-        ui::PickerColumn::new("path", |item: &JumpMeta, config: &JumpListConfig| {
-            let mut spans = Vec::new();
-            if let Some(ref path) = item.path {
-                let directories = path
-                    .parent()
-                    .filter(|p| !p.as_os_str().is_empty())
-                    .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                    .unwrap_or_default();
-                spans.push(Span::styled(directories, config.directory_style));
-            }
-            let filename = item
-                .path
-                .as_ref()
-                .map_or(SCRATCH_BUFFER_NAME.into(), |path| {
-                    path.file_name()
-                        .expect("all document names are normalized (can't end in `..`)")
-                        .to_string_lossy()
-                });
-            spans.extend([
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_start + 1).to_string(), config.number_style),
-            ]);
-
-            Cell::from(Spans::from(spans))
+        ui::PickerColumn::new("path", |item: &JumpMeta, config: &PathStyleConfig| {
+            config.stylize(item.path.as_deref(), Some(item.line_start))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3473,7 +3460,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        config,
+        PathStyleConfig::new(&cx.editor.theme),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
