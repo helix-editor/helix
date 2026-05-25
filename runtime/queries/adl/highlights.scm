@@ -28,10 +28,10 @@
 (number) @constant.numeric
 
 [
-  (null)
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
+(null) @constant.builtin
 
 (escape_sequence) @constant.character.escape
 
