@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos] #, x86_64-win-gnu, win32-msvc
+        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos, aarch64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
           # WARN: When changing this to a newer version, make sure that the GLIBC isnt too new, as this can cause issues
@@ -87,6 +87,11 @@ jobs:
           os: macos-latest
           rust: stable
           target: aarch64-apple-darwin
+          cross: false
+        - build: aarch64-windows
+          os: windows-11-arm
+          rust: stable
+          target: aarch64-pc-windows-msvc
           cross: false
         # - build: riscv64-linux
         #   os: ubuntu-22.04
@@ -214,7 +219,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [ "${{ runner.os }}" = "Windows" ]; then
             cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
           else
             cp "target/${{ matrix.target }}/opt/hx" "dist/"
@@ -256,6 +261,7 @@ jobs:
 
           for dir in bins-* ; do
               platform=${dir#"bins-"}
+              exe=""
               if [[ $platform =~ "windows" ]]; then
                   exe=".exe"
               fi
