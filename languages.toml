@@ -2282,7 +2282,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "git-config"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-git-config", rev = "9c2a1b7894e6d9eedfe99805b829b4ecd871375e" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-git-config", rev = "0fbc9f99d5a28865f9de8427fb0672d66f9d83a5" }
 
 [[language]]
 name = "git-attributes"
