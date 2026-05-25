@@ -21,22 +21,27 @@
 "notitle" @keyword.operator
 "via" @keyword.operator
 
+;; Identifiers (variables)
+(identifier) @variable
+
 ;; Function calls
 (function_call
-  name: (identifier) @function
-)
+  (expression_list
+    (expression
+      (identifier) @variable.parameter)))
+
 (function_call
-  (identifier) @variable.parameter
-)
+  name: (_) @function)
+
 (builtin_function) @function.builtin
 
 ;; Function definitions
 (function_definition
-  name: (identifier) @function
-)
+  name: (identifier) @function)
 
-;; Identifiers (variables)
-(identifier) @variable
+(function_definition
+  (parameter_list
+    (_) @variable.parameter))
 
 ;; Numbers (distinct integer/float if desired):
 (number) @constant.numeric.float

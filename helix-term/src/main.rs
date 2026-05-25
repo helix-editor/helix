@@ -60,13 +60,14 @@ ARGS:
 
 FLAGS:
     -h, --help                     Print help information
+    --strict                       Bail on error for commands that can fail.
     --tutor                        Load the tutorial
     --health [CATEGORY]            Check for potential errors in editor setup
                                    CATEGORY can be a language or one of 'clipboard', 'languages',
                                    'all-languages' or 'all'. 'languages' is filtered according to
                                    user config, 'all-languages' and 'all' are not. If not specified,
                                    the default is the same as 'all', but with languages filtering.
-    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml
+    -g, --grammar {{fetch|build}}    Fetch or builds tree-sitter grammars listed in languages.toml.
     -c, --config <file>            Specify a file to use for configuration
     -v                             Increase logging verbosity each use for up to 3 times
     --log <file>                   Specify a file to use for logging
@@ -105,12 +106,12 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
+        helix_loader::grammar::fetch_grammars(args.strict)?;
         return Ok(0);
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars(None)?;
+        helix_loader::grammar::build_grammars(None, args.strict)?;
         return Ok(0);
     }
 
@@ -123,6 +124,10 @@ FLAGS:
     } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
         // If the first file is a directory, it will be the working directory unless -w was specified
         helix_stdx::env::set_current_working_dir(path)?;
+    } else if let Err(err) = std::env::current_dir() {
+        eprintln!("Couldn't determine the current working directory: {err}");
+        eprintln!("Check that it still exists, or pass an initial directory with `--working-dir`");
+        return Ok(1);
     }
 
     let config = match Config::load_default() {
@@ -140,14 +145,15 @@ FLAGS:
         }
     };
 
-    let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
-        eprintln!("{}", err);
-        eprintln!("Press <ENTER> to continue with default language config");
-        use std::io::Read;
-        // This waits for an enter press.
-        let _ = std::io::stdin().read(&mut []);
-        helix_core::config::default_lang_loader()
-    });
+    let lang_loader =
+        helix_core::config::user_lang_loader(config.editor.insecure).unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            eprintln!("Press <ENTER> to continue with default language config");
+            use std::io::Read;
+            // This waits for an enter press.
+            let _ = std::io::stdin().read(&mut []);
+            helix_core::config::default_lang_loader()
+        });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;

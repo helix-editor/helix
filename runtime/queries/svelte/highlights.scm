@@ -36,3 +36,5 @@
   "/"
   "@"
 ] @punctuation.delimiter
+
+(snippet_name) @function

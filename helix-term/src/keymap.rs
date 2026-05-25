@@ -2,11 +2,15 @@ pub mod default;
 pub mod macros;
 
 pub use crate::commands::MappableCommand;
+pub use default::default;
+
 use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
 use helix_view::{document::Mode, info::Info, input::KeyEvent};
+use indexmap::IndexMap;
+use macros::key;
 use serde::Deserialize;
 use std::{
     borrow::Cow,
@@ -15,39 +19,22 @@ use std::{
     sync::Arc,
 };
 
-pub use default::default;
-use macros::key;
-
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct KeyTrieNode {
     /// A label for keys coming under this node, like "Goto mode"
+    #[serde(skip)]
     name: String,
-    map: HashMap<KeyEvent, KeyTrie>,
-    order: Vec<KeyEvent>,
+    #[serde(flatten)]
+    map: IndexMap<KeyEvent, KeyTrie>,
+    #[serde(skip)]
     pub is_sticky: bool,
 }
 
-impl<'de> Deserialize<'de> for KeyTrieNode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let map = HashMap::<KeyEvent, KeyTrie>::deserialize(deserializer)?;
-        let order = map.keys().copied().collect::<Vec<_>>(); // NOTE: map.keys() has arbitrary order
-        Ok(Self {
-            map,
-            order,
-            ..Default::default()
-        })
-    }
-}
-
 impl KeyTrieNode {
-    pub fn new(name: &str, map: HashMap<KeyEvent, KeyTrie>, order: Vec<KeyEvent>) -> Self {
+    pub fn new(name: &str, map: IndexMap<KeyEvent, KeyTrie>) -> Self {
         Self {
             name: name.to_string(),
             map,
-            order,
             is_sticky: false,
         }
     }
@@ -64,11 +51,6 @@ impl KeyTrieNode {
                 }
             }
             self.map.insert(key, trie);
-        }
-        for &key in self.map.keys() {
-            if !self.order.contains(&key) {
-                self.order.push(key);
-            }
         }
     }
 
@@ -92,12 +74,6 @@ impl KeyTrieNode {
                 None => body.push((BTreeSet::from([key]), desc)),
             }
         }
-        body.sort_unstable_by_key(|(keys, _)| {
-            self.order
-                .iter()
-                .position(|&k| k == *keys.iter().next().unwrap())
-                .unwrap()
-        });
 
         let body: Vec<_> = body
             .into_iter()
@@ -117,7 +93,7 @@ impl PartialEq for KeyTrieNode {
 }
 
 impl Deref for KeyTrieNode {
-    type Target = HashMap<KeyEvent, KeyTrie>;
+    type Target = IndexMap<KeyEvent, KeyTrie>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
@@ -197,13 +173,11 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
     where
         M: serde::de::MapAccess<'de>,
     {
-        let mut mapping = HashMap::new();
-        let mut order = Vec::new();
+        let mut mapping = IndexMap::new();
         while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
             mapping.insert(key, value);
-            order.push(key);
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping, order)))
+        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping)))
     }
 }
 
@@ -256,6 +230,7 @@ impl KeyTrie {
         self.node_mut().unwrap().merge(node);
     }
 
+    /// Descend a trie following the given path of keys
     pub fn search(&self, keys: &[KeyEvent]) -> Option<&KeyTrie> {
         let mut trie = self;
         for key in keys {
@@ -402,8 +377,11 @@ pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, Key
 mod tests {
     use super::macros::keymap;
     use super::*;
+    use crate::commands::MappableCommand;
     use arc_swap::access::Constant;
     use helix_core::hashmap;
+    use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
+    use indexmap::indexmap;
 
     #[test]
     #[should_panic]
@@ -502,19 +480,22 @@ mod tests {
                 },
             })
         };
-        let mut merged_keyamp = default();
-        merge_keys(&mut merged_keyamp, keymap.clone());
-        assert_ne!(keymap, merged_keyamp);
-        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
+        let mut merged_keymap = default();
+        merge_keys(&mut merged_keymap, keymap.clone());
+        assert_ne!(keymap, merged_keymap);
+        let keymap = merged_keymap.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap.search(&[key!(' '), key!('s'), key!('v')]).unwrap(),
             &KeyTrie::MappableCommand(MappableCommand::vsplit),
             "Leaf should be present in merged subnode"
         );
-        // Make sure an order was set during merge
-        let node = keymap.search(&[crate::key!(' ')]).unwrap();
-        assert!(!node.node().unwrap().order.as_slice().is_empty())
+        // Merged nodes were ordered at the end
+        let node = keymap.search(&[key!(' '), key!('s')]).unwrap();
+        assert_eq!(
+            node.node().unwrap().keys().copied().collect::<Vec<_>>(),
+            vec![key!('v'), key!('c')]
+        );
     }
 
     #[test]
@@ -574,11 +555,38 @@ mod tests {
         )
     }
 
+    /// Deserialize into KeyTrieNode
+    #[test]
+    fn deserialize_node() {
+        let keys = r#"
+"+" = "select_all"
+a = "append_mode"
+        "#;
+        let expectation = KeyTrie::Node(KeyTrieNode::new(
+            "",
+            indexmap! {
+                key!('+') => KeyTrie::MappableCommand(
+                    MappableCommand::select_all
+                ),
+                key!('a') => KeyTrie::MappableCommand(
+                    MappableCommand::append_mode
+                ),
+            },
+        ));
+
+        assert_eq!(toml::from_str(keys), Ok(expectation));
+
+        // Other fields in KeyTrieNode CANNOT be deserialized
+        let invalid = r#"
+name = "name"
+is_sticky = false
+        "#;
+        let result = toml::from_str::<KeyTrieNode>(invalid);
+        assert!(result.is_err_and(|error| error.message().contains("Invalid key code 'is_sticky'")));
+    }
+
     #[test]
     fn escaped_keymap() {
-        use crate::commands::MappableCommand;
-        use helix_view::input::{KeyCode, KeyEvent, KeyModifiers};
-
         let keys = r#"
 "+" = [
     "select_all",
@@ -593,7 +601,7 @@ mod tests {
 
         let expectation = KeyTrie::Node(KeyTrieNode::new(
             "",
-            hashmap! {
+            indexmap! {
                 key => KeyTrie::Sequence(vec!{
                     MappableCommand::select_all,
                     MappableCommand::Typable {
@@ -603,7 +611,6 @@ mod tests {
                     },
                 })
             },
-            vec![key],
         ));
 
         assert_eq!(toml::from_str(keys), Ok(expectation));

@@ -79,7 +79,7 @@ fn open_external_url_callback(
     async {
         for cmd in commands {
             let mut command: tokio::process::Command = cmd.into();
-            if command.output().await.is_ok() {
+            if command.status().await.is_ok() {
                 return Ok(job::Callback::Editor(Box::new(|_| {})));
             }
         }

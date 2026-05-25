@@ -147,9 +147,6 @@
 (integer_literal) @constant.numeric.integer
 (floating_point_literal) @constant.numeric.float
 
-
-(symbol_literal) @string.special.symbol
-
 [
 (string)
 (character_literal)

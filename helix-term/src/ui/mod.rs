@@ -126,11 +126,13 @@ pub fn raw_regex_prompt(
                         false
                     };
 
+                    let is_crlf = doc!(cx.editor).line_ending == helix_core::LineEnding::Crlf;
                     match rope::RegexBuilder::new()
                         .syntax(
                             rope::Config::new()
                                 .case_insensitive(case_insensitive)
-                                .multi_line(true),
+                                .multi_line(true)
+                                .crlf(is_crlf),
                         )
                         .build(input)
                     {
@@ -743,8 +745,8 @@ pub mod completers {
                 .flatten()
                 .filter_map(|res| {
                     let entry = res.ok()?;
-                    let metadata = entry.metadata().ok()?;
-                    if metadata.is_file() || metadata.is_symlink() {
+                    let file_type = entry.file_type().ok()?;
+                    if file_type.is_file() || file_type.is_symlink() {
                         entry.file_name().into_string().ok()
                     } else {
                         None
