@@ -3387,28 +3387,24 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = &cx.editor.documents.get(&doc_id);
-        let text = doc.map_or("".into(), |d| {
-            selection
-                .fragments(d.text().slice(..))
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-                .join(" ")
-        });
-        let line_start = doc.map_or(0usize, |d| {
-            selection.primary().cursor_line(d.text().slice(..))
-        });
+        let doc = doc!(cx.editor, &doc_id);
+        let text = doc.text().slice(..);
+        let contents = selection
+            .fragments(text)
+            .map(Cow::into_owned)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let line_start = selection.primary().cursor_line(text);
 
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|d| {
-                d.path()
-                    .map(ToOwned::to_owned)
-                    .map(|p| helix_stdx::path::get_relative_path(p))
-            }),
+            path: doc
+                .path()
+                .map(ToOwned::to_owned)
+                .map(helix_stdx::path::get_relative_path),
             selection,
             line_start,
-            text,
+            text: contents,
             is_current: view.doc == doc_id,
         }
     };
@@ -3428,28 +3424,30 @@ fn jumplist_picker(cx: &mut Context) {
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
         ui::PickerColumn::new("path", |item: &JumpMeta, config: &JumpListConfig| {
+            let mut spans = Vec::new();
             if let Some(ref path) = item.path {
                 let directories = path
                     .parent()
                     .filter(|p| !p.as_os_str().is_empty())
                     .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                    .unwrap_or_default()
-                    .clone();
-
-                let filename = path
-                    .file_name()
-                    .map(|f| f.to_string_lossy())
-                    .unwrap_or(SCRATCH_BUFFER_NAME.into());
-
-                Cell::from(Spans::from(vec![
-                    Span::styled(directories, config.directory_style),
-                    Span::raw(filename),
-                    Span::styled(":", config.colon_style),
-                    Span::styled((item.line_start + 1).to_string(), config.number_style),
-                ]))
-            } else {
-                "".into()
+                    .unwrap_or_default();
+                spans.push(Span::styled(directories, config.directory_style));
             }
+            let filename = item
+                .path
+                .as_ref()
+                .map_or(SCRATCH_BUFFER_NAME.into(), |path| {
+                    path.file_name()
+                        .expect("all document names are normalized (can't end in `..`)")
+                        .to_string_lossy()
+                });
+            spans.extend([
+                Span::raw(filename),
+                Span::styled(":", config.colon_style),
+                Span::styled((item.line_start + 1).to_string(), config.number_style),
+            ]);
+
+            Cell::from(Spans::from(spans))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
