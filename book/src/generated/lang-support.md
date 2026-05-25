@@ -276,7 +276,7 @@
 | strictdoc | ✓ |  |  | ✓ |  |  |
 | styx | ✓ | ✓ | ✓ |  | ✓ | `styx` |
 | supercollider | ✓ |  |  |  |  |  |
-| svelte | ✓ | ✓ | ✓ |  | ✓ | `svelteserver` |
+| svelte | ✓ | ✓ | ✓ | ✓ | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
