@@ -181,7 +181,7 @@
 "ui.virtual.indent-guide" = { fg = "indent-guide" }
 "ui.virtual.inlay-hint" = { fg = "muted", bg = "inlay-bg" }
 "ui.virtual.inlay-hint.parameter" = { fg = "slate", bg = "inlay-bg", modifiers = ["italic"] }
-"ui.virtual.inlay-hint.type" = { fg = "purple", bg = "inlay-bg" }
+"ui.virtual.inlay-hint.type" = { fg = "muted", bg = "inlay-bg", modifiers = ["italic"] }
 "ui.virtual.wrap" = { fg = "muted" }
 "ui.virtual.jump-label" = { fg = "bg", bg = "red", modifiers = ["bold"] }
 
