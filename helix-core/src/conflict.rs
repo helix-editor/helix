@@ -415,6 +415,31 @@ fn git_sep_line_end(region: &ConflictRegion, text: &Rope) -> Option<usize> {
     }
 }
 
+/// Returns the document line numbers of every conflict marker line in `text`:
+/// the opening `<<<<<<<`, every section marker (`|||||||`, `=======`, `+++++++`,
+/// `-------`), and the closing `>>>>>>>`.
+///
+/// The returned `Vec` is sorted and deduplicated.
+pub fn conflict_marker_lines(text: &Rope) -> Vec<usize> {
+    let mut lines: Vec<usize> = find_conflicts(text)
+        .iter()
+        .flat_map(|region| {
+            // Section marker lines (includes the opening <<<<<<< via sections[0].marker_start).
+            let section_lines = region
+                .sections
+                .iter()
+                .map(|s| text.char_to_line(s.marker_start));
+            // Closing >>>>>>> line — `end` is exclusive and points past the trailing
+            // newline, so subtract 1 to land somewhere on the last line.
+            let end_line = std::iter::once(text.char_to_line(region.end.saturating_sub(1)));
+            section_lines.chain(end_line)
+        })
+        .collect();
+    lines.sort_unstable();
+    lines.dedup();
+    lines
+}
+
 // ── Content helpers ───────────────────────────────────────────────────────────
 
 /// Return the char range of the first `Side` section ("current" change).
@@ -1011,6 +1036,23 @@ mod tests {
         state.insert(c.start, 0);
         assert_eq!(conflict_refine_pair(&state, c), 0);
     }
+    #[test]
+    fn conflict_marker_lines_returns_sorted() {
+        let text = concat!(
+            "before\n",
+            "<<<<<<< HEAD\nours\n||||||| base\nbase\n=======\ntheirs\n>>>>>>> b\n",
+            "after\n",
+        );
+        let r = rope(text);
+        let lines = conflict_marker_lines(&r);
+        assert!(!lines.is_empty());
+        for i in 0..lines.len() - 1 {
+            assert!(lines[i] < lines[i + 1]);
+        }
+        let dedup_check: Vec<_> = lines.iter().collect();
+        assert_eq!(dedup_check.len(), lines.len());
+    }
+
     #[test]
     fn all_sides_content_concatenates() {
         let text = concat!(

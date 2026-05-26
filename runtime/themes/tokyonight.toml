@@ -57,8 +57,12 @@ variable = { fg = "fg" }
 "diff.delta.moved" = { fg = "blue" }
 "diff.minus" = { fg = "delete" }
 "diff.plus" = { fg = "add" }
-"diff.conflict.removed" = { bg = "#372731" }
-"diff.conflict.added"   = { bg = "#243b47" }
+"diff.conflict.removed"  = { bg = "#662644" }
+"diff.conflict.added"    = { bg = "#005572" }
+"diff.conflict.marker"   = { bg = "#1f242e" }
+"diff.conflict.current"  = { bg = "#092334" }
+"diff.conflict.base"     = { bg = "#1e2025" }
+"diff.conflict.incoming" = { bg = "#142610" }
 
 error = { fg = "error" }
 warning = { fg = "yellow" }
