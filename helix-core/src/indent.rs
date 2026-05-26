@@ -207,20 +207,28 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: us
     len / indent_width
 }
 
-/// Create a string of tabs & spaces that has the same visual width as the given RopeSlice (independent of the tab width).
-fn whitespace_with_same_width(text: RopeSlice) -> String {
-    let mut s = String::new();
+/// Create a string of whitespace that has the same visual width as the given RopeSlice.
+fn whitespace_with_same_width(
+    text: RopeSlice,
+    indent_style: &IndentStyle,
+    tab_width: usize,
+) -> String {
+    let mut width = 0;
     for grapheme in text.graphemes() {
         if grapheme == "\t" {
-            s.push('\t');
+            width += tab_width_at(width, tab_width as u16);
         } else {
-            s.extend(std::iter::repeat_n(
-                ' ',
-                grapheme_width(&Cow::from(grapheme)),
-            ));
+            width += grapheme_width(&Cow::from(grapheme));
         }
     }
-    s
+    match indent_style {
+        IndentStyle::Tabs => {
+            let tabs = width / tab_width;
+            let spaces = width % tab_width;
+            format!("{}{}", "\t".repeat(tabs), " ".repeat(spaces))
+        }
+        IndentStyle::Spaces(_) => " ".repeat(width),
+    }
 }
 
 /// normalizes indentation to tabs/spaces based on user configuration
@@ -550,8 +558,9 @@ impl<'a> Indentation<'a> {
     }
     pub fn to_string(&self, indent_style: &IndentStyle, tab_width: usize) -> String {
         add_indent_level(
-            self.align
-                .map_or_else(String::new, whitespace_with_same_width),
+            self.align.map_or_else(String::new, |align| {
+                whitespace_with_same_width(align, indent_style, tab_width)
+            }),
             self.net_indent(),
             indent_style,
             tab_width,

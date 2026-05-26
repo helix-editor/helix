@@ -232,3 +232,53 @@ fn test_treesitter_indent(
         }
     }
 }
+
+#[test]
+fn test_treesitter_indent_newline_cpp_align() {
+    let loader = Loader::new(indent_tests_config()).unwrap();
+
+    let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    runtime.push("../runtime");
+    std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+
+    let language = loader.language_for_name("cpp").unwrap();
+    // Override indent config with tab-width = 8, unit = "\t"
+    let tab_width = 8;
+    let indent_style = IndentStyle::from_str("\t");
+    let indent_query = loader.indent_query(language).unwrap();
+    let indent_width = indent_style.indent_width(tab_width);
+
+    // Line: \tprint_ip_address(127, 0, 0, 1);
+    // where \t is a tab
+    let code = "\tprint_ip_address(127, 0, 0, 1);\n";
+    let doc = Rope::from_str(code);
+    let text = doc.slice(..);
+
+    let syntax = Syntax::new(text, language, &loader).unwrap();
+
+    // Position right before the second '0' in the arguments.
+    // Char positions: \t(0) + "print_ip_address(127, "(1..23) = 23
+    let pos = 23;
+    let line = 0;
+
+    let indent = treesitter_indent_for_pos(
+        indent_query,
+        &syntax,
+        tab_width,
+        indent_width,
+        text,
+        line,
+        pos,
+        true,
+    )
+    .unwrap()
+    .to_string(&indent_style, tab_width);
+
+    // With tab_width=8, width of "\tprint_ip_address(" is 8 + 17 = 25.
+    // 25 / 8 = 3 tabs, 25 % 8 = 1 space.
+    assert_eq!(
+        indent, "\t\t\t ",
+        "Expected 3 tabs + 1 space alignment for column 25, got {:?}",
+        indent
+    );
+}
