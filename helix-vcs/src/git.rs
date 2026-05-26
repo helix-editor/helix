@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -81,6 +81,22 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
 
 pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     status(&open_repo(cwd)?.to_thread_local(), f)
+}
+
+/// Returns paths tracked by the repository index.
+pub fn tracked_files(cwd: &Path) -> Result<Vec<PathBuf>> {
+    let repo = open_repo(cwd)?.to_thread_local();
+    let work_dir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("working tree not found"))?;
+    let index = repo.index_or_empty()?;
+    let mut files = Vec::with_capacity(index.entries().len());
+
+    for entry in index.entries() {
+        files.push(work_dir.join(entry.path(&index).to_path()?));
+    }
+
+    Ok(files)
 }
 
 fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {

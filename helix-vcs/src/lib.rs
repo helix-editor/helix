@@ -75,6 +75,20 @@ impl DiffProviderRegistry {
             }
         });
     }
+
+    /// Returns paths tracked by the first available VCS provider.
+    pub fn tracked_files(&self, cwd: &Path) -> Option<Vec<PathBuf>> {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.tracked_files(cwd) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::debug!("{err:#?}");
+                    log::debug!("failed to get tracked files for {}", cwd.display());
+                    None
+                }
+            })
+    }
 }
 
 impl Default for DiffProviderRegistry {
@@ -126,6 +140,14 @@ impl DiffProvider {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::for_each_changed_file(cwd, f),
+            Self::None => bail!("No diff support compiled in"),
+        }
+    }
+
+    fn tracked_files(&self, cwd: &Path) -> Result<Vec<PathBuf>> {
+        match self {
+            #[cfg(feature = "git")]
+            Self::Git => git::tracked_files(cwd),
             Self::None => bail!("No diff support compiled in"),
         }
     }
