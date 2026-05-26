@@ -160,18 +160,18 @@
 "ui.bufferline.active" = { fg = "fg", bg = "bg", modifiers = ["bold"] }
 "ui.bufferline.background" = { bg = "sidebar" }
 
-"ui.popup" = { fg = "fg", bg = "bg" }
-"ui.popup.info" = { fg = "fg", bg = "bg" }
-"ui.window" = { fg = "chrome-border" }
-"ui.help" = { fg = "fg", bg = "bg" }
+"ui.popup" = { fg = "fg", bg = "popup-bg" }
+"ui.popup.info" = { fg = "fg", bg = "popup-bg" }
+"ui.window" = { fg = "popup-border" }
+"ui.help" = { fg = "fg", bg = "popup-bg" }
 
 "ui.picker.header" = { fg = "accent-dark", modifiers = ["bold"] }
 "ui.picker.header.column" = { fg = "muted" }
 "ui.picker.header.column.active" = { fg = "accent", modifiers = ["bold"], underline = { style = "line" } }
 
-"ui.menu" = { fg = "fg", bg = "bg" }
+"ui.menu" = { fg = "fg", bg = "popup-bg" }
 "ui.menu.selected" = { fg = "fg", bg = "menu-sel", modifiers = ["bold"] }
-"ui.menu.scroll" = { fg = "accent", bg = "sidebar" }
+"ui.menu.scroll" = { fg = "accent", bg = "popup-bg" }
 
 "ui.highlight" = { bg = "line-hl" }
 "ui.highlight.frameline" = { bg = "line-hl" }
@@ -254,5 +254,7 @@ chrome-border = "#c9d0d9"
 ruler = "#ececec"
 indent-guide = "#d0d0d0"
 inlay-bg = "#ececec"
+popup-bg = "#ffffff"
+popup-border = "#a8a8a8"
 menu-sel = "#c4d9b1"
 peek-bg = "#F2F8FC"
