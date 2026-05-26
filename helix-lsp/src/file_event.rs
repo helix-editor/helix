@@ -1,4 +1,5 @@
-use std::{collections::HashMap, path::PathBuf, sync::Weak};
+use hashbrown::HashMap;
+use std::{path::PathBuf, sync::Weak};
 
 use globset::{GlobBuilder, GlobSetBuilder};
 use tokio::sync::mpsc;

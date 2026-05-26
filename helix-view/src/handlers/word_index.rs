@@ -5,7 +5,7 @@
 
 use std::{borrow::Cow, iter, sync::Arc, time::Duration};
 
-use foldhash::HashMap;
+use hashbrown::HashMap;
 use helix_core::{
     chars::char_is_word, diff::compare_ropes, fuzzy::fuzzy_match, ChangeSet, Rope, RopeSlice,
 };
@@ -526,9 +526,8 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-
     use super::*;
+    use hashbrown::{HashMap, HashSet};
     use quickcheck::{Arbitrary, Gen};
 
     impl WordIndex {
@@ -540,7 +539,7 @@ mod tests {
         /// The full reference-counted word multiset. Unlike [`WordIndex::words`] this keeps the
         /// counts, which the incremental update path must hold exactly in step with a fresh index:
         /// a word is only freed once its count falls to zero, so any drift leaks stale words.
-        fn counts(&self) -> std::collections::HashMap<String, u32> {
+        fn counts(&self) -> HashMap<String, u32> {
             let inner = self.inner.read();
             inner
                 .words

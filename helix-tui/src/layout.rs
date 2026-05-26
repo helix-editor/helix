@@ -1,11 +1,11 @@
 //! Layout engine for terminal
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 use cassowary::strength::{REQUIRED, WEAK};
 use cassowary::WeightedRelation::*;
 use cassowary::{Constraint as CassowaryConstraint, Expression, Solver, Variable};
+use hashbrown::HashMap;
 
 use helix_view::graphics::{Margin, Rect};
 

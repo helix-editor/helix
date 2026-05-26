@@ -4,10 +4,10 @@ use crate::{
     Error, LanguageServerId, Result,
 };
 use anyhow::Context;
+use hashbrown::HashMap;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::{

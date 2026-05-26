@@ -37,8 +37,8 @@
 //! repository that happens to land under a matching directory, including ones cloned there later. An
 //! explicit exclude still wins over a matching glob.
 
+use hashbrown::HashMap;
 use std::{
-    collections::HashMap,
     fmt::Write,
     fs,
     path::{Path, PathBuf},

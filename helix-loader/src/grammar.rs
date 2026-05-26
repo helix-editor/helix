@@ -1,11 +1,11 @@
 use anyhow::{anyhow, bail, Context, Result};
+use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::{
-    collections::HashSet,
     path::{Path, PathBuf},
     process::Command,
     sync::mpsc::channel,

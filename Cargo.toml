@@ -58,6 +58,7 @@ globset = "0.4"
 etcetera = "0.11"
 arc-swap = "1.9"
 arrayvec = "0.7"
+hashbrown = { version = "0.17", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
 
 # dev dependencies
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }

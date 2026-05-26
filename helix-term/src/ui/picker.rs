@@ -28,9 +28,9 @@ use tui::{
 
 use tui::widgets::Widget;
 
+use hashbrown::HashMap;
 use std::{
     borrow::Cow,
-    collections::HashMap,
     io::Read,
     path::Path,
     sync::{

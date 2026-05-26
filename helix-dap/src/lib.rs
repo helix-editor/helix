@@ -6,8 +6,8 @@ pub use client::Client;
 pub use helix_dap_types::*;
 pub use transport::{Payload, Response, Transport};
 
+use hashbrown::HashMap;
 use serde::de::DeserializeOwned;
-use std::collections::HashMap;
 
 use thiserror::Error;
 #[derive(Error, Debug)]

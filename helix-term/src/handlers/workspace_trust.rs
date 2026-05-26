@@ -1,5 +1,5 @@
+use hashbrown::HashSet;
 use std::{
-    collections::HashSet,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
