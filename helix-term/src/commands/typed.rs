@@ -4399,11 +4399,7 @@ fn complete_variable_expansion(content: &str, offset: usize) -> CompletionResult
     .collect()
 }
 
-fn complete_register_expansion(
-    editor: &Editor,
-    content: &str,
-    offset: usize,
-) -> CompletionResult {
+fn complete_register_expansion(editor: &Editor, content: &str, offset: usize) -> CompletionResult {
     let register_names: Vec<String> = editor
         .registers
         .iter_preview()
