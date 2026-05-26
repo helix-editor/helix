@@ -7017,7 +7017,8 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                let (view, doc) = current!(cx.editor);
+                let doc = doc_mut!(cx.editor, &doc);
+                let view = view_mut!(cx.editor, view_id);
                 push_jump(view, doc);
                 doc.set_selection(view_id, range.into());
             }
