@@ -492,7 +492,7 @@ impl Editor {
 
                         let process = match std::process::Command::new(&config.command)
                             .args(&config.args)
-                            .arg(arguments.args.join(" "))
+                            .args(&arguments.args)
                             .spawn()
                         {
                             Ok(process) => process,
