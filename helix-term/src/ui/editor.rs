@@ -15,8 +15,8 @@ use crate::{
 
 use helix_core::{
     conflict::{
-        conflict_at, conflict_marker_lines, conflict_pair_sections, conflict_refine_pair,
-        find_conflicts, refine_diff,
+        conflict_marker_lines, conflict_pair_sections, conflict_refine_pair, find_conflicts,
+        refine_diff,
     },
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
@@ -706,27 +706,38 @@ impl EditorView {
             .or_else(|| theme.find_highlight("diff.plus"))?;
 
         let text = doc.text();
-        let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+        let view_offset = doc.view_offset(view.id);
+        let inner = view.inner_area(doc);
+        let first_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
+        let last_line = first_line + inner.height as usize;
+
         let conflicts = find_conflicts(text);
-        let idx = conflict_at(&conflicts, cursor)?;
-        let region = &conflicts[idx];
 
-        let pair = conflict_refine_pair(&doc.conflict_refine_state, region);
-        let (left, right) = conflict_pair_sections(region, pair)?;
+        // Accumulate word-diff spans for every conflict visible in the viewport.
+        let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = Vec::new();
+        for region in &conflicts {
+            let region_first_line = text.char_to_line(region.start);
+            let region_last_line = text.char_to_line(region.end);
+            if region_last_line < first_line || region_first_line > last_line {
+                continue;
+            }
 
-        let (removed, added) = refine_diff(text, left, right);
-        if removed.is_empty() && added.is_empty() {
+            let pair = conflict_refine_pair(&doc.conflict_refine_state, region);
+            let Some((left, right)) = conflict_pair_sections(region, pair) else {
+                continue;
+            };
+
+            let (removed, added) = refine_diff(text, left, right);
+            spans.extend(removed.into_iter().map(|r| (removed_hl, r)));
+            spans.extend(added.into_iter().map(|r| (added_hl, r)));
+        }
+
+        if spans.is_empty() {
             return None;
         }
 
-        // Merge removed and added into a single heterogeneous span list,
-        // sorted by start position (they belong to disjoint sections of the
-        // document so they can never overlap).
-        let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = removed
-            .into_iter()
-            .map(|r| (removed_hl, r))
-            .chain(added.into_iter().map(|r| (added_hl, r)))
-            .collect();
+        // Sort by start position — regions are disjoint so spans from different
+        // conflicts never overlap, but we need a consistent order for rendering.
         spans.sort_unstable_by_key(|(_, r)| r.start);
 
         Some(OverlayHighlights::Heterogenous { highlights: spans })
