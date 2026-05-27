@@ -297,6 +297,7 @@
 | tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
+| tolk | ✓ |  | ✓ |  |  |  |
 | toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tql | ✓ |  | ✓ |  |  |  |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
