@@ -2799,9 +2799,11 @@ fn yank_diagnostic(
         .diagnostics()
         .iter()
         .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
-        .map(|d| d.message.clone())
+        .map(|d| d.message.clone().into_string())
         .collect();
+
     let n = diag.len();
+
     if n == 0 {
         bail!("No diagnostics under primary selection");
     }

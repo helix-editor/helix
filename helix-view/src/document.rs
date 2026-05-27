@@ -2156,7 +2156,7 @@ impl Document {
         let code = match diagnostic.code.clone() {
             Some(x) => match x {
                 lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
-                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
+                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x.into())),
             },
             None => None,
         };
@@ -2186,11 +2186,11 @@ impl Document {
             starts_at_word,
             zero_width: start == end,
             line: diagnostic.range.start.line as usize,
-            message: diagnostic.message.clone(),
+            message: diagnostic.message.clone().into(),
             severity,
             code,
             tags,
-            source: diagnostic.source.clone(),
+            source: diagnostic.source.clone().map(|source| source.into()),
             data: diagnostic.data.clone(),
             provider,
         })
@@ -2220,11 +2220,9 @@ impl Document {
                     return true;
                 }
 
-                if let Some(source) = &d.source {
-                    unchanged_sources.contains(source)
-                } else {
-                    false
-                }
+                d.source
+                    .as_ref()
+                    .is_some_and(|source| unchanged_sources.iter().any(|s| **s == **source))
             });
         }
         self.diagnostics.extend(diagnostics);
