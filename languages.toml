@@ -4795,7 +4795,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ghostty"
-source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }
+source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "4a0fd2ae492c6bbfd13a134067ee4258f0e0f189" }
 
 [[language]]
 name = "tera"
