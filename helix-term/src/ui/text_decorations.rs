@@ -123,7 +123,11 @@ impl<'a> DecorationManager<'a> {
                         *hook_char_idx = decoration.skip_concealed_anchor(grapheme.char_idx)
                     }
                     Ordering::Equal => {
-                        *hook_char_idx = decoration.decorate_grapheme(renderer, grapheme)
+                        *hook_char_idx = decoration.decorate_grapheme(renderer, grapheme);
+                        // Break unconditionally so a decoration can return its own
+                        // char_idx to mean "wait for the next grapheme at this idx"
+                        // (e.g. skipping inline virtual annotations).
+                        break;
                     }
                     Ordering::Greater => break,
                 }
@@ -170,6 +174,12 @@ impl Decoration for Cursor<'_> {
         renderer: &mut TextRenderer,
         grapheme: &FormattedGrapheme,
     ) -> usize {
+        // Skip inline virtual annotations (e.g. inlay hints) that share a
+        // char_idx with the following real grapheme; wait for the real one so
+        // the block cursor renders on the document character, not the hint.
+        if grapheme.is_virtual() {
+            return self.primary_cursor;
+        }
         if renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width())
             && renderer.offset.row < grapheme.visual_pos.row
         {
