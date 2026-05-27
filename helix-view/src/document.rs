@@ -2015,8 +2015,8 @@ impl Document {
 
     #[inline]
     /// File path on disk.
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     /// File path as a URL.
@@ -2025,7 +2025,7 @@ impl Document {
     }
 
     pub fn uri(&self) -> Option<helix_core::Uri> {
-        Some(self.path()?.clone().into())
+        Some(self.path()?.into())
     }
 
     #[inline]

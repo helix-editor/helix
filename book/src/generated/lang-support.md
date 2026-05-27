@@ -33,6 +33,7 @@
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
 | common-lisp | ✓ | ✓ |  | ✓ | ✓ | `cl-lsp` |
+| concerto | ✓ | ✓ | ✓ |  |  |  |
 | cpon | ✓ |  | ✓ |  |  |  |
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
@@ -45,7 +46,7 @@
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
 | dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
-| debian | ✓ |  |  |  |  |  |
+| debian | ✓ |  |  |  |  | `debian-lsp` |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
 | dhall | ✓ | ✓ |  |  |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |  |  |
@@ -161,7 +162,7 @@
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ |  | `kotlin-language-server` |
 | koto | ✓ | ✓ | ✓ |  | ✓ | `koto-ls` |
-| latex | ✓ | ✓ |  |  |  | `texlab` |
+| latex | ✓ | ✓ | ✓ |  |  | `texlab` |
 | ld | ✓ |  | ✓ |  |  |  |
 | ldif | ✓ |  |  |  |  |  |
 | lean | ✓ |  |  |  |  | `lake` |
@@ -231,7 +232,7 @@
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp` |
+| python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
 | qmv |  |  |  |  |  |  |
 | quarto | ✓ |  | ✓ |  |  |  |
@@ -243,7 +244,7 @@
 | rescript | ✓ | ✓ |  |  |  | `rescript-language-server` |
 | ripple | ✓ |  |  | ✓ | ✓ | `ripple-language-server` |
 | rmarkdown | ✓ |  | ✓ |  |  | `R` |
-| robot | ✓ |  |  |  |  | `robotcode`, `robotframework_ls` |
+| robot | ✓ |  | ✓ |  |  | `robotcode`, `robotframework_ls` |
 | robots.txt | ✓ | ✓ |  | ✓ |  |  |
 | ron | ✓ |  | ✓ | ✓ | ✓ | `ron-lsp` |
 | rpmspec | ✓ |  |  |  |  |  |
@@ -268,7 +269,7 @@
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  |  | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
-| spade | ✓ |  | ✓ |  | ✓ | `spade-language-server` |
+| spade | ✓ |  | ✓ |  | ✓ | `swim` |
 | spicedb | ✓ |  |  | ✓ |  |  |
 | sql | ✓ | ✓ |  |  |  |  |
 | sshclientconfig | ✓ |  |  |  |  |  |
@@ -277,7 +278,7 @@
 | strictdoc | ✓ |  |  | ✓ |  |  |
 | styx | ✓ | ✓ | ✓ |  | ✓ | `styx` |
 | supercollider | ✓ |  |  |  |  |  |
-| svelte | ✓ | ✓ | ✓ |  | ✓ | `svelteserver` |
+| svelte | ✓ | ✓ | ✓ | ✓ | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
@@ -296,6 +297,7 @@
 | tilt | ✓ | ✓ | ✓ |  | ✓ | `tilt` |
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
+| tolk | ✓ |  | ✓ |  |  |  |
 | toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
 | tql | ✓ |  | ✓ |  |  |  |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |

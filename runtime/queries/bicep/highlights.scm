@@ -183,7 +183,7 @@
 
 (escape_sequence) @constant.character
 
-(number) @constant.number
+(number) @constant.numeric
 
 (boolean) @constant.builtin.boolean
 

@@ -1598,6 +1598,96 @@ impl Editor {
         Ok(())
     }
 
+    pub fn create_path(&mut self, path: &Path, is_dir: bool) -> io::Result<()> {
+        let path = canonicalize(path);
+        let language_servers: Vec<_> = self
+            .language_servers
+            .iter_clients()
+            .filter(|client| client.is_initialized())
+            .cloned()
+            .collect();
+        for language_server in language_servers {
+            let Some(request) = language_server.will_create(&path, is_dir) else {
+                continue;
+            };
+            let edit = match helix_lsp::block_on(request) {
+                Ok(edit) => edit.unwrap_or_default(),
+                Err(err) => {
+                    log::error!("invalid willCreate response: {err:?}");
+                    continue;
+                }
+            };
+            if let Err(err) = self.apply_workspace_edit(language_server.offset_encoding(), &edit) {
+                log::error!("failed to apply workspace edit: {err:?}")
+            }
+        }
+
+        if let Some(dir) = path.parent() {
+            if !dir.is_dir() {
+                fs::create_dir_all(dir)?;
+            }
+        }
+        if is_dir {
+            fs::create_dir(&path)?;
+        } else {
+            fs::write(&path, [])?;
+        }
+
+        for ls in self.language_servers.iter_clients() {
+            if !ls.is_initialized() {
+                continue;
+            }
+            ls.did_create(&path, is_dir);
+        }
+        self.language_servers.file_event_handler.file_changed(path);
+        Ok(())
+    }
+
+    pub fn delete_path(&mut self, path: &Path, recursive: bool) -> io::Result<()> {
+        let path = canonicalize(path);
+        let is_dir = path.is_dir();
+        let language_servers: Vec<_> = self
+            .language_servers
+            .iter_clients()
+            .filter(|client| client.is_initialized())
+            .cloned()
+            .collect();
+        for language_server in language_servers {
+            let Some(request) = language_server.will_delete(&path, is_dir) else {
+                continue;
+            };
+            let edit = match helix_lsp::block_on(request) {
+                Ok(edit) => edit.unwrap_or_default(),
+                Err(err) => {
+                    log::error!("invalid willDelete response: {err:?}");
+                    continue;
+                }
+            };
+            if let Err(err) = self.apply_workspace_edit(language_server.offset_encoding(), &edit) {
+                log::error!("failed to apply workspace edit: {err:?}")
+            }
+        }
+
+        if is_dir {
+            if recursive {
+                fs::remove_dir_all(&path)?;
+            } else {
+                fs::remove_dir(&path)?;
+            }
+        } else {
+            fs::remove_file(&path)?;
+        }
+
+        for ls in self.language_servers.iter_clients() {
+            if !ls.is_initialized() {
+                continue;
+            }
+            ls.did_delete(&path, is_dir);
+        }
+        self.language_servers.file_event_handler.file_changed(path);
+        Ok(())
+    }
+
     pub fn set_doc_path(&mut self, doc_id: DocumentId, path: &Path) {
         let doc = doc_mut!(self, &doc_id);
         let old_path = doc.path();
@@ -1648,7 +1738,7 @@ impl Editor {
         let Some(doc_url) = doc.url() else {
             return;
         };
-        let (lang, path) = (doc.language.clone(), doc.path().cloned());
+        let (lang, path) = (doc.language.clone(), doc.path());
         let config = doc.config.load();
         let root_dirs = &config.workspace_lsp_roots;
 
@@ -1664,7 +1754,7 @@ impl Editor {
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(language, path, root_dirs, config.lsp.snippets)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
@@ -2179,12 +2269,12 @@ impl Editor {
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
         self.documents()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
     }
 
     /// Returns all supported diagnostics for the document
