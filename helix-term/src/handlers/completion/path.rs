@@ -26,8 +26,8 @@ pub(crate) fn path_completion(
 
     let text = doc.text().clone();
     let cursor = selection.primary().cursor(text.slice(..));
-    let cur_line = text.char_to_line(cursor);
-    let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
+    let cur_line = text.byte_to_line_idx(cursor, helix_core::LINE_TYPE);
+    let start = text.line_to_byte_idx(cur_line, helix_core::LINE_TYPE).max(cursor.saturating_sub(1000));
     let line_until_cursor = text.slice(start..cursor);
 
     let (dir_path, typed_file_name) =

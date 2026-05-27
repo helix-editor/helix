@@ -14,13 +14,9 @@ pub trait RopeSliceExt<'a>: Sized {
     fn ends_with(self, text: &str) -> bool;
     fn starts_with(self, text: &str) -> bool;
     fn regex_input(self) -> RegexInput<RopeyCursor<'a>>;
-    fn regex_input_at_bytes<R: RangeBounds<usize>>(
-        self,
-        byte_range: R,
-    ) -> RegexInput<RopeyCursor<'a>>;
-    fn regex_input_at<R: RangeBounds<usize>>(self, char_range: R) -> RegexInput<RopeyCursor<'a>>;
-    fn first_non_whitespace_char(self) -> Option<usize>;
-    fn last_non_whitespace_char(self) -> Option<usize>;
+    fn regex_input_at<R: RangeBounds<usize>>(self, byte_range: R) -> RegexInput<RopeyCursor<'a>>;
+    fn first_non_whitespace_byte(self) -> Option<usize>;
+    fn last_non_whitespace_byte(self) -> Option<usize>;
     /// Finds the closest byte index not exceeding `byte_idx` which lies on a character boundary.
     ///
     /// If `byte_idx` already lies on a character boundary then it is returned as-is. When
@@ -186,7 +182,7 @@ pub trait RopeSliceExt<'a>: Sized {
     ///   graphemes.as_slice(),
     ///   &[(0, "😶‍🌫️".into()), (14, "🏴‍☠️".into()), (27, "🖼️".into())]
     /// );
-    /// let graphemes: Vec<_> = slice.grapheme_indices_at(slice.len_bytes()).reversed().collect();
+    /// let graphemes: Vec<_> = slice.grapheme_indices_at(slice.len()).reversed().collect();
     /// assert_eq!(
     ///   graphemes.as_slice(),
     ///   &[(27, "🖼️".into()), (14, "🏴‍☠️".into()), (0, "😶‍🌫️".into())]
@@ -221,7 +217,7 @@ pub trait RopeSliceExt<'a>: Sized {
     /// assert_eq!(slice.graphemes_at(byte_idx).next(), Some("🖼️".into()));
     /// byte_idx = slice.next_grapheme_boundary(byte_idx);
     /// assert_eq!(slice.graphemes_at(byte_idx).next(), None);
-    /// assert_eq!(byte_idx, slice.len_bytes());
+    /// assert_eq!(byte_idx, slice.len());
     /// ```
     fn next_grapheme_boundary(self, byte_idx: usize) -> usize {
         self.nth_next_grapheme_boundary(byte_idx, 1)
@@ -246,7 +242,7 @@ pub trait RopeSliceExt<'a>: Sized {
     /// # use helix_stdx::rope::RopeSliceExt;
     /// let text = Rope::from_str("😶‍🌫️🏴‍☠️🖼️");
     /// let slice = text.slice(..);
-    /// let mut byte_idx = text.len_bytes();
+    /// let mut byte_idx = text.len();
     /// assert_eq!(slice.graphemes_at(byte_idx).prev(), Some("🖼️".into()));
     /// byte_idx = slice.prev_grapheme_boundary(byte_idx);
     /// assert_eq!(slice.graphemes_at(byte_idx).prev(), Some("🏴‍☠️".into()));
@@ -279,44 +275,28 @@ pub trait RopeSliceExt<'a>: Sized {
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
     fn ends_with(self, text: &str) -> bool {
-        let len = self.len_bytes();
+        let len = self.len();
         if len < text.len() {
             return false;
         }
-        self.get_byte_slice(len - text.len()..)
-            .is_some_and(|end| end == text)
+        self.try_slice(len - text.len()..)
+            .is_ok_and(|end| end == text)
     }
 
     fn starts_with(self, text: &str) -> bool {
-        let len = self.len_bytes();
+        let len = self.len();
         if len < text.len() {
             return false;
         }
-        self.get_byte_slice(..text.len())
-            .is_some_and(|start| start == text)
+        self.try_slice(..text.len())
+            .is_ok_and(|start| start == text)
     }
 
     fn regex_input(self) -> RegexInput<RopeyCursor<'a>> {
         RegexInput::new(self)
     }
 
-    fn regex_input_at<R: RangeBounds<usize>>(self, char_range: R) -> RegexInput<RopeyCursor<'a>> {
-        let start_bound = match char_range.start_bound() {
-            Bound::Included(&val) => Bound::Included(self.char_to_byte(val)),
-            Bound::Excluded(&val) => Bound::Excluded(self.char_to_byte(val)),
-            Bound::Unbounded => Bound::Unbounded,
-        };
-        let end_bound = match char_range.end_bound() {
-            Bound::Included(&val) => Bound::Included(self.char_to_byte(val)),
-            Bound::Excluded(&val) => Bound::Excluded(self.char_to_byte(val)),
-            Bound::Unbounded => Bound::Unbounded,
-        };
-        self.regex_input_at_bytes((start_bound, end_bound))
-    }
-    fn regex_input_at_bytes<R: RangeBounds<usize>>(
-        self,
-        byte_range: R,
-    ) -> RegexInput<RopeyCursor<'a>> {
+    fn regex_input_at<R: RangeBounds<usize>>(self, byte_range: R) -> RegexInput<RopeyCursor<'a>> {
         let input = match byte_range.start_bound() {
             Bound::Included(&pos) | Bound::Excluded(&pos) => {
                 RegexInput::new(RopeyCursor::at(self, pos))
@@ -325,21 +305,21 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
         };
         input.range(byte_range)
     }
-    fn first_non_whitespace_char(self) -> Option<usize> {
-        self.chars().position(|ch| !ch.is_whitespace())
+    fn first_non_whitespace_byte(self) -> Option<usize> {
+        self.char_indices()
+            .find_map(|(byte_idx, ch)| (!ch.is_whitespace()).then_some(byte_idx))
     }
-    fn last_non_whitespace_char(self) -> Option<usize> {
-        self.chars_at(self.len_chars())
+    fn last_non_whitespace_byte(self) -> Option<usize> {
+        self.char_indices_at(self.len())
             .reversed()
-            .position(|ch| !ch.is_whitespace())
-            .map(|pos| self.len_chars() - pos - 1)
+            .find_map(|(byte_idx, ch)| (!ch.is_whitespace()).then_some(byte_idx))
     }
 
     // These three are adapted from std:
 
     fn floor_char_boundary(self, byte_idx: usize) -> usize {
-        if byte_idx >= self.len_bytes() {
-            self.len_bytes()
+        if byte_idx >= self.len() {
+            self.len()
         } else {
             let offset = self
                 .bytes_at(byte_idx + 1)
@@ -354,10 +334,10 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
     }
 
     fn ceil_char_boundary(self, byte_idx: usize) -> usize {
-        if byte_idx > self.len_bytes() {
-            self.len_bytes()
+        if byte_idx > self.len() {
+            self.len()
         } else {
-            let upper_bound = self.len_bytes().min(byte_idx + 4);
+            let upper_bound = self.len().min(byte_idx + 4);
             self.bytes_at(byte_idx)
                 .position(is_utf8_char_boundary)
                 .map_or(upper_bound, |pos| pos + byte_idx)
@@ -369,35 +349,35 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             return true;
         }
 
-        if byte_idx >= self.len_bytes() {
-            byte_idx == self.len_bytes()
+        if byte_idx >= self.len() {
+            byte_idx == self.len()
         } else {
             is_utf8_char_boundary(self.bytes_at(byte_idx).next().unwrap())
         }
     }
 
     fn floor_grapheme_boundary(self, mut byte_idx: usize) -> usize {
-        if byte_idx >= self.len_bytes() {
-            return self.len_bytes();
+        if byte_idx >= self.len() {
+            return self.len();
         }
 
         byte_idx = self.ceil_char_boundary(byte_idx + 1);
 
-        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+        let (mut chunk, mut chunk_byte_idx) = self.chunk(byte_idx);
 
-        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len(), true);
 
         loop {
             match cursor.prev_boundary(chunk, chunk_byte_idx) {
                 Ok(None) => return 0,
                 Ok(Some(boundary)) => return boundary,
                 Err(GraphemeIncomplete::PrevChunk) => {
-                    let (ch, ch_byte_idx, _, _) = self.chunk_at_byte(chunk_byte_idx - 1);
+                    let (ch, ch_byte_idx) = self.chunk(chunk_byte_idx - 1);
                     chunk = ch;
                     chunk_byte_idx = ch_byte_idx;
                 }
                 Err(GraphemeIncomplete::PreContext(n)) => {
-                    let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                    let ctx_chunk = self.chunk(n - 1).0;
                     cursor.provide_context(ctx_chunk, n - ctx_chunk.len());
                 }
                 _ => unreachable!(),
@@ -406,8 +386,8 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
     }
 
     fn ceil_grapheme_boundary(self, mut byte_idx: usize) -> usize {
-        if byte_idx >= self.len_bytes() {
-            return self.len_bytes();
+        if byte_idx >= self.len() {
+            return self.len();
         }
 
         if byte_idx == 0 {
@@ -416,20 +396,20 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
 
         byte_idx = self.floor_char_boundary(byte_idx - 1);
 
-        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+        let (mut chunk, mut chunk_byte_idx) = self.chunk(byte_idx);
 
-        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len(), true);
 
         loop {
             match cursor.next_boundary(chunk, chunk_byte_idx) {
-                Ok(None) => return self.len_bytes(),
+                Ok(None) => return self.len(),
                 Ok(Some(boundary)) => return boundary,
                 Err(GraphemeIncomplete::NextChunk) => {
                     chunk_byte_idx += chunk.len();
-                    chunk = self.chunk_at_byte(chunk_byte_idx).0;
+                    chunk = self.chunk(chunk_byte_idx).0;
                 }
                 Err(GraphemeIncomplete::PreContext(n)) => {
-                    let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                    let ctx_chunk = self.chunk(n - 1).0;
                     cursor.provide_context(ctx_chunk, n - ctx_chunk.len());
                 }
                 _ => unreachable!(),
@@ -443,15 +423,15 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             return false;
         }
 
-        let (chunk, chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+        let (chunk, chunk_byte_idx) = self.chunk(byte_idx);
 
-        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len(), true);
 
         loop {
             match cursor.is_boundary(chunk, chunk_byte_idx) {
                 Ok(n) => return n,
                 Err(GraphemeIncomplete::PreContext(n)) => {
-                    let (ctx_chunk, ctx_byte_start, _, _) = self.chunk_at_byte(n - 1);
+                    let (ctx_chunk, ctx_byte_start) = self.chunk(n - 1);
                     cursor.provide_context(ctx_chunk, ctx_byte_start);
                 }
                 Err(_) => unreachable!(),
@@ -460,14 +440,14 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
     }
 
     fn graphemes_rev(self) -> RopeGraphemes<'a> {
-        self.graphemes_at(self.len_bytes()).reversed()
+        self.graphemes_at(self.len()).reversed()
     }
 
     fn graphemes_at(self, byte_idx: usize) -> RopeGraphemes<'a> {
         // Bounds check
-        assert!(byte_idx <= self.len_bytes());
+        assert!(byte_idx <= self.len());
 
-        let (mut chunks, chunk_byte_idx, _, _) = self.chunks_at_byte(byte_idx);
+        let (mut chunks, chunk_byte_idx) = self.chunks_at(byte_idx);
         let current_chunk = chunks.next().unwrap_or("");
 
         RopeGraphemes {
@@ -475,14 +455,14 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             chunks,
             current_chunk,
             chunk_byte_idx,
-            cursor: GraphemeCursor::new(byte_idx, self.len_bytes(), true),
+            cursor: GraphemeCursor::new(byte_idx, self.len(), true),
             is_reversed: false,
         }
     }
 
     fn grapheme_indices_at(self, byte_idx: usize) -> RopeGraphemeIndices<'a> {
         // Bounds check
-        assert!(byte_idx <= self.len_bytes());
+        assert!(byte_idx <= self.len());
         RopeGraphemeIndices {
             front_offset: byte_idx,
             iter: self.graphemes_at(byte_idx),
@@ -492,32 +472,32 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
 
     fn nth_next_grapheme_boundary(self, mut byte_idx: usize, n: usize) -> usize {
         // Bounds check
-        assert!(byte_idx <= self.len_bytes());
+        assert!(byte_idx <= self.len());
 
         byte_idx = self.floor_char_boundary(byte_idx);
 
         // Get the chunk with our byte index in it.
-        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+        let (mut chunk, mut chunk_byte_idx) = self.chunk(byte_idx);
 
         // Set up the grapheme cursor.
-        let mut gc = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+        let mut gc = GraphemeCursor::new(byte_idx, self.len(), true);
 
         // Find the nth next grapheme cluster boundary.
         for _ in 0..n {
             loop {
                 match gc.next_boundary(chunk, chunk_byte_idx) {
-                    Ok(None) => return self.len_bytes(),
+                    Ok(None) => return self.len(),
                     Ok(Some(boundary)) => {
                         byte_idx = boundary;
                         break;
                     }
                     Err(GraphemeIncomplete::NextChunk) => {
                         chunk_byte_idx += chunk.len();
-                        let (a, _, _, _) = self.chunk_at_byte(chunk_byte_idx);
+                        let (a, _) = self.chunk(chunk_byte_idx);
                         chunk = a;
                     }
                     Err(GraphemeIncomplete::PreContext(n)) => {
-                        let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                        let ctx_chunk = self.chunk(n - 1).0;
                         gc.provide_context(ctx_chunk, n - ctx_chunk.len());
                     }
                     _ => unreachable!(),
@@ -530,15 +510,15 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
 
     fn nth_prev_grapheme_boundary(self, mut byte_idx: usize, n: usize) -> usize {
         // Bounds check
-        assert!(byte_idx <= self.len_bytes());
+        assert!(byte_idx <= self.len());
 
         byte_idx = self.ceil_char_boundary(byte_idx);
 
         // Get the chunk with our byte index in it.
-        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+        let (mut chunk, mut chunk_byte_idx) = self.chunk(byte_idx);
 
         // Set up the grapheme cursor.
-        let mut gc = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+        let mut gc = GraphemeCursor::new(byte_idx, self.len(), true);
 
         for _ in 0..n {
             loop {
@@ -549,12 +529,12 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
                         break;
                     }
                     Err(GraphemeIncomplete::PrevChunk) => {
-                        let (a, b, _, _) = self.chunk_at_byte(chunk_byte_idx - 1);
+                        let (a, b) = self.chunk(chunk_byte_idx - 1);
                         chunk = a;
                         chunk_byte_idx = b;
                     }
                     Err(GraphemeIncomplete::PreContext(n)) => {
-                        let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                        let ctx_chunk = self.chunk(n - 1).0;
                         gc.provide_context(ctx_chunk, n - ctx_chunk.len());
                     }
                     _ => unreachable!(),
@@ -648,7 +628,7 @@ impl<'a> RopeGraphemes<'a> {
                     self.current_chunk = self.chunks.next().unwrap_or("");
                 }
                 Err(GraphemeIncomplete::PreContext(idx)) => {
-                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    let (chunk, byte_idx) = self.text.chunk(idx.saturating_sub(1));
                     self.cursor.provide_context(chunk, byte_idx);
                 }
                 _ => unreachable!(),
@@ -656,7 +636,7 @@ impl<'a> RopeGraphemes<'a> {
         }
 
         if a < self.chunk_byte_idx {
-            Some(self.text.byte_slice(a..b))
+            Some(self.text.slice(a..b))
         } else {
             let a2 = a - self.chunk_byte_idx;
             let b2 = b - self.chunk_byte_idx;
@@ -682,7 +662,7 @@ impl<'a> RopeGraphemes<'a> {
                     self.chunk_byte_idx -= self.current_chunk.len();
                 }
                 Err(GraphemeIncomplete::PreContext(idx)) => {
-                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    let (chunk, byte_idx) = self.text.chunk(idx.saturating_sub(1));
                     self.cursor.provide_context(chunk, byte_idx);
                 }
                 _ => unreachable!(),
@@ -690,7 +670,7 @@ impl<'a> RopeGraphemes<'a> {
         }
 
         if a >= self.chunk_byte_idx + self.current_chunk.len() {
-            Some(self.text.byte_slice(b..a))
+            Some(self.text.slice(b..a))
         } else {
             let a2 = a - self.chunk_byte_idx;
             let b2 = b - self.chunk_byte_idx;
@@ -750,13 +730,13 @@ impl<'a> RopeGraphemeIndices<'a> {
     fn next_impl(&mut self) -> Option<(usize, RopeSlice<'a>)> {
         let slice = self.iter.next()?;
         let idx = self.front_offset;
-        self.front_offset += slice.len_bytes();
+        self.front_offset += slice.len();
         Some((idx, slice))
     }
 
     fn prev_impl(&mut self) -> Option<(usize, RopeSlice<'a>)> {
         let slice = self.iter.prev()?;
-        self.front_offset -= slice.len_bytes();
+        self.front_offset -= slice.len();
         Some((self.front_offset, slice))
     }
 }
@@ -789,7 +769,7 @@ mod tests {
     fn char_boundaries() {
         let ascii = RopeSlice::from("ascii");
         // When the given index lies on a character boundary, the index should not change.
-        for byte_idx in 0..=ascii.len_bytes() {
+        for byte_idx in 0..=ascii.len() {
             assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
             assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
             assert!(ascii.is_char_boundary(byte_idx));
@@ -799,7 +779,7 @@ mod tests {
         // It returns the _character index_ of the given byte index, rounding up if it does not
         // already lie on a character boundary.
         fn byte_to_next_char(slice: RopeSlice, byte_idx: usize) -> usize {
-            slice.byte_to_char(slice.ceil_char_boundary(byte_idx))
+            slice.byte_to_char_idx(slice.ceil_char_boundary(byte_idx))
         }
 
         for i in 0..=6 {
@@ -824,7 +804,7 @@ mod tests {
     fn grapheme_boundaries() {
         let ascii = RopeSlice::from("ascii");
         // When the given index lies on a grapheme boundary, the index should not change.
-        for byte_idx in 0..=ascii.len_bytes() {
+        for byte_idx in 0..=ascii.len() {
             assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
             assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
             assert!(ascii.is_grapheme_boundary(byte_idx));
@@ -834,7 +814,7 @@ mod tests {
         // 13 bytes, hex: f0 9f 8f b4 + e2 80 8d + e2 98 a0 + ef b8 8f
         let g = RopeSlice::from("🏴‍☠️\r\n");
         let emoji_len = "🏴‍☠️".len();
-        let end = g.len_bytes();
+        let end = g.len();
 
         for byte_idx in 0..emoji_len {
             assert_eq!(g.floor_grapheme_boundary(byte_idx), 0);

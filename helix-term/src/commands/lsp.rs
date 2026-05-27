@@ -1298,7 +1298,7 @@ fn compute_inlay_hints_for_view(
         .next()?;
 
     let doc_text = doc.text();
-    let len_lines = doc_text.len_lines();
+    let len_lines = doc_text.len_lines(helix_core::LINE_TYPE);
 
     // Compute ~3 times the current view height of inlay hints, that way some scrolling
     // will not show half the view with hints and half without while still being faster
@@ -1306,7 +1306,7 @@ fn compute_inlay_hints_for_view(
     // longer than the view is).
     let view_height = view.inner_height();
     let first_visible_line =
-        doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
+        doc_text.byte_to_line_idx(doc.view_offset(view_id).anchor.min(doc_text.len()), helix_core::LINE_TYPE);
     let first_line = first_visible_line.saturating_sub(view_height);
     let last_line = first_visible_line
         .saturating_add(view_height.saturating_mul(2))
@@ -1326,8 +1326,8 @@ fn compute_inlay_hints_for_view(
     }
 
     let doc_slice = doc_text.slice(..);
-    let first_char_in_range = doc_slice.line_to_char(first_line);
-    let last_char_in_range = doc_slice.line_to_char(last_line);
+    let first_char_in_range = doc_slice.line_to_byte_idx(first_line, helix_core::LINE_TYPE);
+    let last_char_in_range = doc_slice.line_to_byte_idx(last_line, helix_core::LINE_TYPE);
 
     let range = helix_lsp::util::range_to_lsp_range(
         doc_text,

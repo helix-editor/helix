@@ -138,19 +138,19 @@ fn tags_iter<'a>(
         };
         let range = mat.node.byte_range();
         if pattern.is_some_and(|pattern| {
-            !pattern.is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
+            !pattern.is_match(text.regex_input_at(range.start as usize..range.end as usize))
         }) {
             continue;
         }
-        let start = text.byte_to_char(range.start as usize);
-        let end = text.byte_to_char(range.end as usize);
+        let start = range.start as usize;
+        let end = range.end as usize;
         return Some(Tag {
             kind,
             name: text.slice(start..end).to_string(),
             start,
             end,
-            start_line: text.char_to_line(start),
-            end_line: text.char_to_line(end),
+            start_line: text.byte_to_line_idx(start, helix_core::LINE_TYPE),
+            end_line: text.byte_to_line_idx(end, helix_core::LINE_TYPE),
             doc: doc.clone(),
         });
     })
@@ -419,7 +419,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             };
             let doc = doc_mut!(cx.editor, &doc_id);
             let view = view_mut!(cx.editor);
-            let len_chars = doc.text().len_chars();
+            let len_chars = doc.text().len();
             if tag.start >= len_chars || tag.end > len_chars {
                 cx.editor.set_error("The location you jumped to does not exist anymore because the file has changed.");
                 return;

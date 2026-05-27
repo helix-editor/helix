@@ -202,12 +202,12 @@ fn test_treesitter_indent(
     let syntax = Syntax::new(text, language, &loader).unwrap();
     let indent_query = loader.indent_query(language).unwrap();
 
-    for i in 0..doc.len_lines() {
-        let line = text.line(i);
+    for i in 0..doc.len_lines(helix_core::LINE_TYPE) {
+        let line = text.line(i, helix_core::LINE_TYPE);
         if ignored_lines.iter().any(|range| range.contains(&(i + 1))) {
             continue;
         }
-        if let Some(pos) = line.first_non_whitespace_char() {
+        if let Some(pos) = line.first_non_whitespace_byte() {
             let tab_width: usize = 4;
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
@@ -216,17 +216,17 @@ fn test_treesitter_indent(
                 indent_style.indent_width(tab_width),
                 text,
                 i,
-                text.line_to_char(i) + pos,
+                text.line_to_byte_idx(i, helix_core::LINE_TYPE) + pos,
                 false,
             )
             .unwrap()
             .to_string(&indent_style, tab_width);
             assert!(
-                line.get_slice(..pos).is_some_and(|s| s == suggested_indent),
+                line.try_slice(..pos).is_ok_and(|s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",
                 test_name,
                 i+1,
-                line.slice(..line.len_chars()-1),
+                line.slice(..line.len()-1),
                 suggested_indent,
             );
         }

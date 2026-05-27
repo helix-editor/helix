@@ -205,7 +205,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
     // replace the initial text with the input text
     let transaction = Transaction::change_by_selection(doc.text(), &sel, |_| {
-        (0, doc.text().len_chars(), Some((&test_case.in_text).into()))
+        (0, doc.text().len(), Some((&test_case.in_text).into()))
     })
     .with_selection(test_case.in_selection.clone());
 
@@ -390,7 +390,7 @@ impl AppBuilder {
             let (view, doc) = helix_view::current!(app.editor);
             let sel = doc.selection(view.id).clone();
             let trans = Transaction::change_by_selection(doc.text(), &sel, |_| {
-                (0, doc.text().len_chars(), Some((text.clone()).into()))
+                (0, doc.text().len(), Some((text.clone()).into()))
             })
             .with_selection(selection);
 

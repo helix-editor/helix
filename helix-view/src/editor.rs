@@ -2437,7 +2437,7 @@ impl Editor {
 
     /// Switches the editor into normal mode.
     pub fn enter_normal_mode(&mut self) {
-        use helix_core::graphemes;
+        use helix_stdx::rope::RopeSliceExt;
 
         if self.mode == Mode::Normal {
             return;
@@ -2454,7 +2454,7 @@ impl Editor {
             let selection = doc.selection(view.id).clone().transform(|range| {
                 let mut head = range.to();
                 if range.head > range.anchor {
-                    head = graphemes::prev_grapheme_boundary(text, head);
+                    head = text.prev_grapheme_boundary(head);
                 }
 
                 Range::new(range.from(), head)
@@ -2544,7 +2544,7 @@ impl Editor {
 fn try_restore_indent(doc: &mut Document, view: &mut View) {
     use helix_core::{
         chars::char_is_whitespace,
-        line_ending::{line_end_char_index, str_is_line_ending},
+        line_ending::{line_end_byte_index, str_is_line_ending},
         unicode::segmentation::UnicodeSegmentation,
         Operation, Transaction,
     };
@@ -2567,11 +2567,11 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     let text = doc.text().slice(..);
     let range = doc.selection(view.id).primary();
     let pos = range.cursor(text);
-    let line_end_pos = line_end_char_index(&text, range.cursor_line(text));
+    let line_end_pos = line_end_byte_index(&text, range.cursor_line(text));
 
     if inserted_a_new_blank_line(doc_changes, pos, line_end_pos) {
         // Removes tailing whitespaces for the primary selection only, preserving existing behavior
-        let line_start_pos = text.line_to_char(range.cursor_line(text));
+        let line_start_pos = text.line_to_byte_idx(range.cursor_line(text), helix_core::LINE_TYPE);
         let transaction =
             Transaction::change(doc.text(), [(line_start_pos, pos, None)].into_iter());
         doc.apply(&transaction, view.id);

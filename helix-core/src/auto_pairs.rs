@@ -1,7 +1,8 @@
 //! When typing the opening character of one of the possible pairs defined below,
 //! this module provides the functionality to insert the paired closing character.
 
-use crate::{graphemes, movement::Direction, Change, Deletion, Range, Rope, Tendril};
+use crate::{movement::Direction, Change, Deletion, Range, Rope, Tendril};
+use helix_stdx::rope::RopeSliceExt;
 use std::collections::HashMap;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
@@ -45,7 +46,7 @@ impl Pair {
 
     pub fn next_is_not_alpha(doc: &Rope, range: &Range) -> bool {
         let cursor = range.cursor(doc.slice(..));
-        let next_char = doc.get_char(cursor);
+        let next_char = doc.get_char(cursor).ok();
         next_char.map(|c| !c.is_alphanumeric()).unwrap_or(true)
     }
 
@@ -141,13 +142,13 @@ pub fn hook_delete(doc: &Rope, range: &Range, pairs: &AutoPairs) -> Option<(Dele
     let text = doc.slice(..);
     let cursor = range.cursor(text);
 
-    let cur = doc.get_char(cursor)?;
+    let cur = doc.get_char(cursor).ok()?;
     let prev = prev_char(doc, cursor)?;
 
     // check for whitespace surrounding a pair
-    if doc.len_chars() >= 4 && prev.is_whitespace() && cur.is_whitespace() {
-        let second_prev = doc.get_char(graphemes::nth_prev_grapheme_boundary(text, cursor, 2))?;
-        let second_next = doc.get_char(graphemes::next_grapheme_boundary(text, cursor))?;
+    if doc.len() >= 4 && prev.is_whitespace() && cur.is_whitespace() {
+        let second_prev = doc.get_char(text.nth_prev_grapheme_boundary(cursor, 2)).ok()?;
+        let second_next = doc.get_char(text.next_grapheme_boundary(cursor)).ok()?;
         log::debug!("second_prev: {}, second_next: {}", second_prev, second_next);
 
         if let Some(pair) = pairs.get(second_prev) {
@@ -170,12 +171,12 @@ pub fn handle_delete(doc: &Rope, range: &Range) -> Option<(Deletion, Range)> {
     let text = doc.slice(..);
     let cursor = range.cursor(text);
 
-    let end_next = graphemes::next_grapheme_boundary(text, cursor);
-    let end_prev = graphemes::prev_grapheme_boundary(text, cursor);
+    let end_next = text.next_grapheme_boundary(cursor);
+    let end_prev = text.prev_grapheme_boundary(cursor);
 
     let delete = (end_prev, end_next);
     let size_delete = end_next - end_prev;
-    let next_head = graphemes::next_grapheme_boundary(text, range.head) - size_delete;
+    let next_head = text.next_grapheme_boundary(range.head) - size_delete;
 
     // if the range is a single grapheme cursor, we do not want to shrink the
     // range, just move it, so we only subtract the size of the closing pair char
@@ -196,7 +197,7 @@ pub fn handle_delete(doc: &Rope, range: &Range) -> Option<(Deletion, Range)> {
         delete,
         range,
         next_range,
-        text.len_chars()
+        text.len()
     );
 
     Some((delete, next_range))
@@ -210,7 +211,7 @@ fn handle_insert_whitespace(
 ) -> Option<(Change, Range)> {
     let text = doc.slice(..);
     let cursor = range.cursor(text);
-    let cur = doc.get_char(cursor)?;
+    let cur = doc.get_char(cursor).ok()?;
     let prev = prev_char(doc, cursor)?;
     let pair = pairs.get(cur)?;
 
@@ -231,7 +232,7 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
         return None;
     }
 
-    doc.get_char(pos - 1)
+    doc.get_char(pos - 1).ok()
 }
 
 /// calculate what the resulting range should be for an auto pair insertion
@@ -253,7 +254,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
     // [foo(])\r\n - anchor: 0, head: 5
 
     // inserting at the very end of the document after the last newline
-    if start_range.head == doc.len_chars() && start_range.anchor == doc.len_chars() {
+    if start_range.head == doc.len() && start_range.anchor == doc.len() {
         return Range::new(start_range.anchor + 1, start_range.head + 1);
     }
 
@@ -263,7 +264,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
     // just skip over graphemes
     if len_inserted == 0 {
         let end_anchor = if single_grapheme {
-            graphemes::next_grapheme_boundary(doc_slice, start_range.anchor)
+            doc_slice.next_grapheme_boundary(start_range.anchor)
 
         // even for backward inserts with multiple grapheme selections,
         // we want the anchor to stay where it is so that the relative
@@ -276,7 +277,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
 
         return Range::new(
             end_anchor,
-            graphemes::next_grapheme_boundary(doc_slice, start_range.head),
+            doc_slice.next_grapheme_boundary(start_range.head),
         );
     }
 
@@ -299,7 +300,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
         // We must have a forward cursor, which means we must move to the
         // other end of the grapheme to get to where the new characters
         // are inserted, then move the head to where it should be
-        let prev_bound = graphemes::prev_grapheme_boundary(doc_slice, start_range.head);
+        let prev_bound = doc_slice.prev_grapheme_boundary(start_range.head);
         log::trace!("prev_bound: {}, len_inserted: {}", prev_bound, len_inserted);
 
         prev_bound + len_inserted
@@ -316,7 +317,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
 
         (_, Direction::Forward) => {
             if single_grapheme {
-                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.head) + 1
+                doc.slice(..).prev_grapheme_boundary(start_range.head) + 1
 
             // if we are appending, the anchor stays where it is; only offset
             // for multiple range insertions
@@ -330,7 +331,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
                 // if we're backward, then the head is at the first char
                 // of the typed char, so we need to add the length of
                 // the closing char
-                graphemes::prev_grapheme_boundary(doc.slice(..), start_range.anchor) + len_inserted
+                doc.slice(..).prev_grapheme_boundary(start_range.anchor) + len_inserted
             } else {
                 // when we are inserting in front of a selection, we need to move
                 // the anchor over by however many characters were inserted overall
@@ -344,7 +345,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
 
 fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
-    let next_char = doc.get_char(cursor);
+    let next_char = doc.get_char(cursor).ok();
     let len_inserted;
 
     // Since auto pairs are currently limited to single chars, we're either
@@ -372,7 +373,7 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
 
 fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
-    let next_char = doc.get_char(cursor);
+    let next_char = doc.get_char(cursor).ok();
 
     let change = if next_char == Some(pair.close) {
         // return transaction that moves past close
@@ -393,7 +394,7 @@ fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change
 fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
     let mut len_inserted = 0;
-    let next_char = doc.get_char(cursor);
+    let next_char = doc.get_char(cursor).ok();
 
     let change = if next_char == Some(pair.open) {
         // return transaction that moves past close

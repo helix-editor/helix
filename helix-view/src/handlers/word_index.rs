@@ -261,7 +261,7 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
     let mut cursor = Range::point(0);
     if text
         .get_char(cursor.anchor)
-        .is_some_and(|ch| !ch.is_whitespace())
+        .is_ok_and(|ch| !ch.is_whitespace())
     {
         let cursor_word_end = movement::move_next_word_end(text, cursor, 1);
         if cursor_word_end.anchor == 0 {
@@ -270,7 +270,7 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
     }
 
     iter::from_fn(move || {
-        while cursor.head <= text.len_chars() {
+        while cursor.head <= text.len() {
             let mut word = None;
             if text
                 .slice(..cursor.head)
@@ -285,7 +285,7 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
                     .take_while(|&c| !char_is_word(c))
                     .count();
                 let slice = cursor.slice(text);
-                if slice.len_chars() <= MAX_WORD_LEN {
+                if slice.len() <= MAX_WORD_LEN {
                     word = Some(slice);
                 }
             }
@@ -325,7 +325,7 @@ fn changed_windows<'a>(
         let operation = operations.next()?;
         let old_start = old_pos;
         let new_start = new_pos;
-        let len = operation.len_chars();
+        let len = operation.len();
         match operation {
             Retain(_) => {
                 old_pos += len;
@@ -338,7 +338,7 @@ fn changed_windows<'a>(
 
         // Scan ahead until a `Retain` is found which would end a window.
         while let Some(o) = operations.next_if(|op| !matches!(op, Retain(n) if *n > MAX_WORD_LEN)) {
-            let len = o.len_chars();
+            let len = o.len();
             match o {
                 Retain(_) => {
                     old_pos += len;
@@ -350,9 +350,9 @@ fn changed_windows<'a>(
         }
 
         let old_window = old_start.saturating_sub(MAX_WORD_LEN)
-            ..(old_pos + MAX_WORD_LEN).min(old_text.len_chars());
+            ..(old_pos + MAX_WORD_LEN).min(old_text.len());
         let new_window = new_start.saturating_sub(MAX_WORD_LEN)
-            ..(new_pos + MAX_WORD_LEN).min(new_text.len_chars());
+            ..(new_pos + MAX_WORD_LEN).min(new_text.len());
 
         return Some((old_text.slice(old_window), new_text.slice(new_window)));
     })
@@ -366,7 +366,7 @@ fn is_changeset_significant(changes: &ChangeSet) -> bool {
     for operation in changes.changes() {
         match operation {
             Retain(_) => continue,
-            Delete(_) | Insert(_) => diff += operation.len_chars(),
+            Delete(_) | Insert(_) => diff += operation.len(),
         }
     }
 

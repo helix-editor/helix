@@ -428,18 +428,18 @@ fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
     let mut pos = 0;
     let transaction = Transaction::delete(
         text,
-        text.lines().filter_map(|line| {
-            let line_end_len_chars = line_ending::get_line_ending(&line)
-                .map(|le| le.len_chars())
+        text.lines(helix_core::LINE_TYPE).filter_map(|line| {
+            let line_end_len = line_ending::get_line_ending(&line)
+                .map(|le| le.len())
                 .unwrap_or_default();
-            // Char after the last non-whitespace character or the beginning of the line if the
+            // Byte after the last non-whitespace byte or the beginning of the line if the
             // line is all whitespace:
             let first_trailing_whitespace =
-                pos + line.last_non_whitespace_char().map_or(0, |idx| idx + 1);
-            pos += line.len_chars();
-            // Char before the line ending character(s), or the final char in the text if there
+                pos + line.last_non_whitespace_byte().map_or(0, |idx| idx + 1);
+            pos += line.len();
+            // Byte before the line ending character(s), or the final byte in the text if there
             // is no line-ending on this line:
-            let line_end = pos - line_end_len_chars;
+            let line_end = pos - line_end_len;
             if first_trailing_whitespace != line_end {
                 Some((first_trailing_whitespace, line_end))
             } else {
@@ -454,18 +454,18 @@ fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
 fn trim_final_newlines(doc: &mut Document, view_id: ViewId) {
     let rope = doc.text();
     let mut text = rope.slice(..);
-    let mut total_char_len = 0;
-    let mut final_char_len = 0;
+    let mut total_byte_len = 0;
+    let mut final_byte_len = 0;
     while let Some(line_ending) = line_ending::get_line_ending(&text) {
-        total_char_len += line_ending.len_chars();
-        final_char_len = line_ending.len_chars();
-        text = text.slice(..text.len_chars() - line_ending.len_chars());
+        total_byte_len += line_ending.len();
+        final_byte_len = line_ending.len();
+        text = text.slice(..text.len() - line_ending.len());
     }
-    let chars_to_delete = total_char_len - final_char_len;
-    if chars_to_delete != 0 {
+    let bytes_to_delete = total_byte_len - final_byte_len;
+    if bytes_to_delete != 0 {
         let transaction = Transaction::delete(
             rope,
-            [(rope.len_chars() - chars_to_delete, rope.len_chars())].into_iter(),
+            [(rope.len() - bytes_to_delete, rope.len())].into_iter(),
         );
         doc.apply(&transaction, view_id);
     }
@@ -474,8 +474,8 @@ fn trim_final_newlines(doc: &mut Document, view_id: ViewId) {
 /// Ensure that the document is terminated with a line ending.
 fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
-    if text.len_chars() > 0 && line_ending::get_line_ending(&text.slice(..)).is_none() {
-        let eof = Selection::point(text.len_chars());
+    if text.len() > 0 && line_ending::get_line_ending(&text.slice(..)).is_none() {
+        let eof = Selection::point(text.len());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
         doc.apply(&insert, view_id);
     }
@@ -683,11 +683,11 @@ fn set_line_ending(
     let mut pos = 0;
     let transaction = Transaction::change(
         doc.text(),
-        doc.text().lines().filter_map(|line| {
-            pos += line.len_chars();
+        doc.text().lines(helix_core::LINE_TYPE).filter_map(|line| {
+            pos += line.len();
             match helix_core::line_ending::get_line_ending(&line) {
                 Some(ending) if ending != line_ending => {
-                    let start = pos - ending.len_chars();
+                    let start = pos - ending.len();
                     let end = pos;
                     Some((start, end, Some(line_ending.as_str().into())))
                 }
@@ -1389,7 +1389,7 @@ fn get_character_info(
     let text = doc.text().slice(..);
 
     let grapheme_start = doc.selection(view.id).primary().cursor(text);
-    let grapheme_end = graphemes::next_grapheme_boundary(text, grapheme_start);
+    let grapheme_end = text.next_grapheme_boundary(grapheme_start);
 
     if grapheme_start == grapheme_end {
         return Ok(());
@@ -1833,7 +1833,7 @@ fn tree_sitter_scopes(
     let text = doc.text().slice(..);
 
     let pos = doc.selection(view.id).primary().cursor(text);
-    let scopes = indent::get_scopes(doc.syntax(), text, pos);
+    let scopes = indent::get_scopes(doc.syntax(), pos);
 
     let contents = format!("```json\n{:?}\n````", scopes);
 
@@ -1868,17 +1868,17 @@ fn tree_sitter_highlight_name(
     };
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
-    let byte = text.char_to_byte(cursor) as u32;
+    let byte = cursor as u32;
     // Query the same range as the one used in syntax highlighting.
     let range = {
         // Calculate viewport byte ranges:
-        let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
+        let row = text.byte_to_line_idx(doc.view_offset(view.id).anchor.min(text.len()), helix_core::LINE_TYPE);
         // Saturating subs to make it inclusive zero indexing.
-        let last_line = text.len_lines().saturating_sub(1);
+        let last_line = text.len_lines(helix_core::LINE_TYPE).saturating_sub(1);
         let height = view.inner_area(doc).height;
         let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-        let start = text.line_to_byte(row.min(last_line)) as u32;
-        let end = text.line_to_byte(last_visible_line + 1) as u32;
+        let start = text.line_to_byte_idx(row.min(last_line), helix_core::LINE_TYPE) as u32;
+        let end = text.line_to_byte_idx(last_visible_line + 1, helix_core::LINE_TYPE) as u32;
 
         start..end
     };
@@ -1938,7 +1938,7 @@ fn tree_sitter_layers(
     let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
     let text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(text);
-    let byte = text.char_to_byte(cursor) as u32;
+    let byte = cursor as u32;
     let languages =
         syntax
             .layers_for_byte_range(byte, byte)
@@ -2422,9 +2422,8 @@ fn tree_sitter_subtree(
 
     if let Some(syntax) = doc.syntax() {
         let primary_selection = doc.selection(view.id).primary();
-        let text = doc.text();
-        let from = text.char_to_byte(primary_selection.from()) as u32;
-        let to = text.char_to_byte(primary_selection.to()) as u32;
+        let from = primary_selection.from() as u32;
+        let to = primary_selection.to() as u32;
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
@@ -2609,12 +2608,12 @@ fn reset_diff_change(
         diff.hunks_intersecting_line_ranges(doc.selection(view.id).line_ranges(doc_text))
             .map(|hunk| {
                 changes += 1;
-                let start = diff_base.line_to_char(hunk.before.start as usize);
-                let end = diff_base.line_to_char(hunk.before.end as usize);
+                let start = diff_base.line_to_byte_idx(hunk.before.start as usize, helix_core::LINE_TYPE);
+                let end = diff_base.line_to_byte_idx(hunk.before.end as usize, helix_core::LINE_TYPE);
                 let text: Tendril = diff_base.slice(start..end).chunks().collect();
                 (
-                    doc_text.line_to_char(hunk.after.start as usize),
-                    doc_text.line_to_char(hunk.after.end as usize),
+                    doc_text.line_to_byte_idx(hunk.after.start as usize, helix_core::LINE_TYPE),
+                    doc_text.line_to_byte_idx(hunk.after.end as usize, helix_core::LINE_TYPE),
                     (!text.is_empty()).then_some(text),
                 )
             }),

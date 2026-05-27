@@ -1,16 +1,13 @@
 use std::{borrow::Cow, cmp::Reverse, iter};
 
+use helix_stdx::rope::RopeSliceExt;
 use ropey::iter::Chars;
 
 use crate::{
     char_idx_at_visual_offset,
     chars::{categorize_char, char_is_line_ending, CharCategory},
     doc_formatter::TextFormat,
-    graphemes::{
-        next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
-        prev_grapheme_boundary,
-    },
-    line_ending::rope_is_line_ending,
+    line_ending::{line_newlines_backward, line_newlines_forward, line_is_newline},
     position::char_idx_at_visual_block_offset,
     syntax,
     text_annotations::TextAnnotations,
@@ -44,8 +41,8 @@ pub fn move_horizontally(
 
     // Compute the new position.
     let new_pos = match dir {
-        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
-        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+        Direction::Forward => slice.nth_next_grapheme_boundary(pos, count),
+        Direction::Backward => slice.nth_prev_grapheme_boundary(pos, count),
     };
 
     // Compute the final new range.
@@ -94,7 +91,7 @@ pub fn move_vertically_visual(
     }
 
     // Special-case to avoid moving to the end of the last non-empty line.
-    if behaviour == Movement::Extend && slice.line(slice.char_to_line(new_pos)).len_chars() == 0 {
+    if behaviour == Movement::Extend && slice.line(slice.byte_to_line_idx(new_pos, crate::LINE_TYPE), crate::LINE_TYPE).len() == 0 {
         return range;
     }
 
@@ -114,8 +111,8 @@ pub fn move_vertically(
 ) -> Range {
     annotations.clear_line_annotations();
     let pos = range.cursor(slice);
-    let line_idx = slice.char_to_line(pos);
-    let line_start = slice.line_to_char(line_idx);
+    let line_idx = slice.byte_to_line_idx(pos, crate::LINE_TYPE);
+    let line_start = slice.line_to_byte_idx(line_idx, crate::LINE_TYPE);
 
     // Compute the current position's 2d coordinates.
     let visual_pos = visual_offset_from_block(slice, line_start, pos, text_fmt, annotations).0;
@@ -123,7 +120,7 @@ pub fn move_vertically(
         .old_visual_position
         .map_or((visual_pos.row as u32, visual_pos.col as u32), |pos| pos);
     new_row = new_row.max(visual_pos.row as u32);
-    let line_idx = slice.char_to_line(pos);
+    let line_idx = slice.byte_to_line_idx(pos, crate::LINE_TYPE);
 
     // Compute the new position.
     let mut new_line_idx = match dir {
@@ -131,20 +128,20 @@ pub fn move_vertically(
         Direction::Backward => line_idx.saturating_sub(count),
     };
 
-    let line = if new_line_idx >= slice.len_lines() - 1 {
+    let line = if new_line_idx >= slice.len_lines(crate::LINE_TYPE) - 1 {
         // there is no line terminator for the last line
         // so the logic below is not necessary here
-        new_line_idx = slice.len_lines() - 1;
+        new_line_idx = slice.len_lines(crate::LINE_TYPE) - 1;
         slice
     } else {
         // char_idx_at_visual_block_offset returns a one-past-the-end index
         // in case it reaches the end of the slice
         // to avoid moving to the nextline in that case the line terminator is removed from the line
-        let new_line_end = prev_grapheme_boundary(slice, slice.line_to_char(new_line_idx + 1));
+        let new_line_end = slice.prev_grapheme_boundary(slice.line_to_byte_idx(new_line_idx + 1, crate::LINE_TYPE));
         slice.slice(..new_line_end)
     };
 
-    let new_line_start = line.line_to_char(new_line_idx);
+    let new_line_start = line.line_to_byte_idx(new_line_idx, crate::LINE_TYPE);
 
     let (new_pos, _) = char_idx_at_visual_block_offset(
         line,
@@ -156,7 +153,7 @@ pub fn move_vertically(
     );
 
     // Special-case to avoid moving to the end of the last non-empty line.
-    if behaviour == Movement::Extend && slice.line(new_line_idx).len_chars() == 0 {
+    if behaviour == Movement::Extend && slice.line(new_line_idx, crate::LINE_TYPE).len() == 0 {
         return range;
     }
 
@@ -225,7 +222,7 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     );
 
     // Special-case early-out.
-    if (is_prev && range.head == 0) || (!is_prev && range.head == slice.len_chars()) {
+    if (is_prev && range.head == 0) || (!is_prev && range.head == slice.len()) {
         return range;
     }
 
@@ -237,15 +234,15 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     #[allow(clippy::collapsible_else_if)] // Makes the structure clearer in this case.
     let start_range = if is_prev {
         if range.anchor < range.head {
-            Range::new(range.head, prev_grapheme_boundary(slice, range.head))
+            Range::new(range.head, slice.prev_grapheme_boundary(range.head))
         } else {
-            Range::new(next_grapheme_boundary(slice, range.head), range.head)
+            Range::new(slice.next_grapheme_boundary(range.head), range.head)
         }
     } else {
         if range.anchor < range.head {
-            Range::new(prev_grapheme_boundary(slice, range.head), range.head)
+            Range::new(slice.prev_grapheme_boundary(range.head), range.head)
         } else {
-            Range::new(range.head, next_grapheme_boundary(slice, range.head))
+            Range::new(range.head, slice.next_grapheme_boundary(range.head))
         }
     };
 
@@ -268,18 +265,16 @@ pub fn move_prev_paragraph(
     behavior: Movement,
 ) -> Range {
     let mut line = range.cursor_line(slice);
-    let first_char = slice.line_to_char(line) == range.cursor(slice);
-    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
-    let curr_line_empty = rope_is_line_ending(slice.line(line));
+    let first_char = slice.line_to_byte_idx(line, crate::LINE_TYPE) == range.cursor(slice);
+    let prev_line_empty = line_is_newline(slice, line.saturating_sub(1));
+    let curr_line_empty = line_is_newline(slice, line);
     let prev_empty_to_line = prev_line_empty && !curr_line_empty;
 
     // skip character before paragraph boundary
     if prev_empty_to_line && !first_char {
         line += 1;
     }
-    let mut lines = slice.lines_at(line);
-    lines.reverse();
-    let mut lines = lines.map(rope_is_line_ending).peekable();
+    let mut lines = line_newlines_backward(slice, line).peekable();
     let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| e).is_some() {
@@ -294,7 +289,7 @@ pub fn move_prev_paragraph(
         last_line = line;
     }
 
-    let head = slice.line_to_char(line);
+    let head = slice.line_to_byte_idx(line, crate::LINE_TYPE);
     let anchor = if behavior == Movement::Move {
         // exclude first character after paragraph boundary
         if prev_empty_to_line && first_char {
@@ -316,17 +311,19 @@ pub fn move_next_paragraph(
 ) -> Range {
     let mut line = range.cursor_line(slice);
     let last_char =
-        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
-    let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty =
-        rope_is_line_ending(slice.line(slice.len_lines().saturating_sub(1).min(line + 1)));
+        slice.prev_grapheme_boundary(slice.line_to_byte_idx(line + 1, crate::LINE_TYPE)) == range.cursor(slice);
+    let curr_line_empty = line_is_newline(slice, line);
+    let next_line_empty = line_is_newline(
+        slice,
+        slice.len_lines(crate::LINE_TYPE).saturating_sub(1).min(line + 1),
+    );
     let curr_empty_to_line = curr_line_empty && !next_line_empty;
 
     // skip character after paragraph boundary
     if curr_empty_to_line && last_char {
         line += 1;
     }
-    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut lines = line_newlines_forward(slice, line).peekable();
     let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| !e).is_some() {
@@ -340,7 +337,7 @@ pub fn move_next_paragraph(
         }
         last_line = line;
     }
-    let head = slice.line_to_char(line);
+    let head = slice.line_to_byte_idx(line, crate::LINE_TYPE);
     let anchor = if behavior == Movement::Move {
         if curr_empty_to_line && last_char {
             range.head
@@ -410,14 +407,14 @@ pub enum WordMotionTarget {
 }
 
 pub trait CharHelpers {
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range;
+    fn range_to_target(self, target: WordMotionTarget, origin: Range) -> Range;
 }
 
-impl CharHelpers for Chars<'_> {
+impl<'a> CharHelpers for Chars<'a> {
     /// Note: this only changes the anchor of the range if the head is effectively
     /// starting on a boundary (either directly or after skipping newline characters).
     /// Any other changes to the anchor should be handled by the calling code.
-    fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
+    fn range_to_target(mut self, target: WordMotionTarget, origin: Range) -> Range {
         let is_prev = matches!(
             target,
             WordMotionTarget::PrevWordStart
@@ -430,14 +427,15 @@ impl CharHelpers for Chars<'_> {
 
         // Reverse the iterator if needed for the motion direction.
         if is_prev {
-            self.reverse();
+            self = self.reversed();
         }
 
-        // Function to advance index in the appropriate motion direction.
-        let advance: &dyn Fn(&mut usize) = if is_prev {
-            &|idx| *idx = idx.saturating_sub(1)
+        // Advance `head` past `ch` in the appropriate motion direction.
+        // Movement is measured in **bytes**, so we step by the UTF-8 width of the char.
+        let advance: &dyn Fn(&mut usize, char) = if is_prev {
+            &|idx, ch| *idx = idx.saturating_sub(ch.len_utf8())
         } else {
-            &|idx| *idx += 1
+            &|idx, ch| *idx += ch.len_utf8()
         };
 
         // Initialize state variables.
@@ -454,8 +452,8 @@ impl CharHelpers for Chars<'_> {
         // Skip any initial newline characters.
         while let Some(ch) = self.next() {
             if char_is_line_ending(ch) {
+                advance(&mut head, ch);
                 prev_ch = Some(ch);
-                advance(&mut head);
             } else {
                 self.prev();
                 break;
@@ -476,15 +474,11 @@ impl CharHelpers for Chars<'_> {
                     break;
                 }
             }
+            advance(&mut head, next_ch);
             prev_ch = Some(next_ch);
-            advance(&mut head);
         }
 
-        // Un-reverse the iterator if needed.
-        if is_prev {
-            self.reverse();
-        }
-
+        // The iterator was consumed; no need to restore direction.
         Range::new(anchor, head)
     }
 }
@@ -573,7 +567,7 @@ pub fn goto_treesitter_object(
 ) -> Range {
     let textobject_query = loader.textobject_query(syntax.root_language());
     let get_range = move |range: Range| -> Option<Range> {
-        let byte_pos = slice.char_to_byte(range.cursor(slice));
+        let byte_pos = range.cursor(slice);
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
         let nodes = textobject_query?.capture_nodes_any(
@@ -595,15 +589,15 @@ pub fn goto_treesitter_object(
                 .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
         };
 
-        let len = slice.len_bytes();
+        let len = slice.len();
         let start_byte = node.start_byte();
         let end_byte = node.end_byte();
         if start_byte >= len || end_byte >= len {
             return None;
         }
 
-        let start_char = slice.byte_to_char(start_byte);
-        let end_char = slice.byte_to_char(end_byte);
+        let start_char = start_byte;
+        let end_char = end_byte;
 
         // head of range should be at beginning
         Some(Range::new(start_char, end_char))
@@ -637,8 +631,8 @@ pub fn move_parent_node_end(
     movement: Movement,
 ) -> Selection {
     selection.transform(|range| {
-        let start_from = text.char_to_byte(range.from()) as u32;
-        let start_to = text.char_to_byte(range.to()) as u32;
+        let start_from = range.from() as u32;
+        let start_to = range.to() as u32;
 
         let mut node = match syntax.named_descendant_for_byte_range(start_from, start_to) {
             Some(node) => node,
@@ -656,18 +650,18 @@ pub fn move_parent_node_end(
             // moving forward, we always want to move one past the end of the
             // current node, so use the end byte of the current node, which is an exclusive
             // end of the range
-            Direction::Forward => text.byte_to_char(node.end_byte() as usize),
+            Direction::Forward => node.end_byte() as usize,
 
             // moving backward, we want the cursor to land on the start char of
             // the current node, or if it is already at the start of a node, to traverse up to
             // the parent
             Direction::Backward => {
-                let end_head = text.byte_to_char(node.start_byte() as usize);
+                let end_head = node.start_byte() as usize;
 
                 // if we're already on the beginning, look up to the parent
                 if end_head == range.cursor(text) {
                     node = find_parent_start(&node).unwrap_or(node);
-                    text.byte_to_char(node.start_byte() as usize)
+                    node.start_byte() as usize
                 } else {
                     end_head
                 }
@@ -1061,9 +1055,11 @@ mod test {
                     (1, Range::new(0, 0), Range::new(1, 4)),
                     (1, Range::new(1, 4), Range::new(5, 8)),
                 ]),
+            // "ヒーリクス" is 5 katakana, each 3 bytes (15 bytes total); space at 15;
+            // "multibyte" starts at byte 16.
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 6)),
+                    (1, Range::new(0, 0), Range::new(0, 16)),
                 ]),
         ];
 
@@ -1317,9 +1313,11 @@ mod test {
                     (1, Range::new(0, 0), Range::new(1, 4)),
                     (1, Range::new(1, 4), Range::new(5, 8)),
                 ]),
+            // "ヒー" 6 bytes + ".." 2 bytes + "リクス" 9 bytes = 17, space at 17,
+            // "multibyte" starts at byte 18.
             ("ヒー..リクス multibyte characters behave as normal characters, including their interaction with punctuation",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 8)),
+                    (1, Range::new(0, 0), Range::new(0, 18)),
                 ]),
         ];
 
@@ -1404,7 +1402,7 @@ mod test {
                 ]),
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 6), Range::new(6, 0)),
+                    (1, Range::new(0, 16), Range::new(16, 0)),
                 ]),
         ];
 
@@ -1585,9 +1583,11 @@ mod test {
                     (1, Range::new(0, 8), Range::new(7, 4)),
                     (1, Range::new(7, 4), Range::new(3, 0)),
                 ]),
+            // "ヒーリ" 9 bytes + ".." 2 bytes + "クス" 6 bytes = 17, space at 17,
+            // "multibyte" starts at byte 18.
             ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
                 vec![
-                    (1, Range::new(0, 8), Range::new(8, 0)),
+                    (1, Range::new(0, 18), Range::new(18, 0)),
                 ]),
         ];
 
@@ -1669,9 +1669,10 @@ mod test {
                     (1, Range::new(0, 0), Range::new(1, 4)),
                     (1, Range::new(1, 4), Range::new(5, 8)),
                 ]),
+            // Cursor lands at byte position after ス, i.e. 15.
             ("ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(0, 0), Range::new(0, 15)),
                 ]),
         ];
 
@@ -1751,9 +1752,11 @@ mod test {
                     (1, Range::new(0, 8), Range::new(7, 4)),
                     (1, Range::new(7, 4), Range::new(3, 0)),
                 ]),
+            // "Test " 5 bytes + "ヒーリクス" 15 bytes = 20, space at 20, "multibyte" at 21.
+            // "Test" ends at byte 4 (the byte before the space).
             ("Test ヒーリクス multibyte characters behave as normal characters",
                 vec![
-                    (1, Range::new(0, 10), Range::new(10, 4)),
+                    (1, Range::new(0, 20), Range::new(20, 4)),
                 ]),
         ];
 
@@ -1919,9 +1922,10 @@ mod test {
                     (1, Range::new(0, 0), Range::new(1, 4)),
                     (1, Range::new(1, 4), Range::new(5, 8)),
                 ]),
+            // "ヒーリ..クス" total 17 bytes; cursor lands at byte 17 (after ス).
             ("ヒーリ..クス multibyte characters behave as normal characters, including  when they interact with punctuation",
                 vec![
-                    (1, Range::new(0, 0), Range::new(0, 7)),
+                    (1, Range::new(0, 0), Range::new(0, 17)),
                 ]),
         ];
 
@@ -2015,7 +2019,7 @@ mod test {
                 ]),
             ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
                 vec![
-                    (1, Range::new(0, 8), Range::new(7, 0)),
+                    (1, Range::new(0, 18), Range::new(17, 0)),
                 ]),
         ];
 

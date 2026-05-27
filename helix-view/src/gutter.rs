@@ -153,14 +153,14 @@ pub fn line_numbers<'doc>(
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
-    let draw_last = text.line_to_byte(last_line_in_view) < text.len_bytes();
+    let draw_last = text.line_to_byte_idx(last_line_in_view, helix_core::LINE_TYPE) < text.len();
 
     let linenr = theme.get("ui.linenr");
     let linenr_select = theme.get("ui.linenr.selected");
 
     let current_line = doc
         .text()
-        .char_to_line(doc.selection(view.id).primary().cursor(text));
+        .byte_to_line_idx(doc.selection(view.id).primary().cursor(text), helix_core::LINE_TYPE);
 
     let line_number = editor.config().line_number;
     let mode = editor.mode;
@@ -209,8 +209,8 @@ pub fn line_numbers<'doc>(
 /// `editor.gutters.line-numbers.min-width` settings.
 fn line_numbers_width(view: &View, doc: &Document) -> usize {
     let text = doc.text();
-    let last_line = text.len_lines().saturating_sub(1);
-    let draw_last = text.line_to_byte(last_line) < text.len_bytes();
+    let last_line = text.len_lines(helix_core::LINE_TYPE).saturating_sub(1);
+    let draw_last = text.line_to_byte_idx(last_line, helix_core::LINE_TYPE) < text.len();
     let last_drawn = if draw_last { last_line + 1 } else { last_line };
     let digits = count_digits(last_drawn);
     let n_min = view.gutters.line_numbers.min_width;

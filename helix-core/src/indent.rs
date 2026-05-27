@@ -85,7 +85,7 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
 
         // Loop through the lines, checking for and recording indentation
         // increases as we go.
-        'outer: for line in document_text.lines().take(1000) {
+        'outer: for line in document_text.lines(crate::LINE_TYPE).take(1000) {
             let mut c_iter = line.chars();
 
             // Is first character a tab or space?
@@ -234,7 +234,7 @@ pub fn normalize_indentation(
     tab_width: usize,
 ) -> usize {
     #[allow(deprecated)]
-    let off = crate::visual_coords_at_pos(prefix, prefix.len_chars(), tab_width).col;
+    let off = crate::visual_coords_at_pos(prefix, prefix.len(), tab_width).col;
     let mut len = 0;
     let mut original_len = 0;
     for ch in line.chars() {
@@ -271,12 +271,11 @@ fn add_indent_level(
         let base_indent_rope = RopeSlice::from(base_indent.as_str());
         #[allow(deprecated)]
         let base_indent_width =
-            crate::visual_coords_at_pos(base_indent_rope, base_indent_rope.len_chars(), tab_width)
-                .col;
+            crate::visual_coords_at_pos(base_indent_rope, base_indent_rope.len(), tab_width).col;
         let target_indent_width = base_indent_width
             .saturating_sub((-added_indent_level) as usize * indent_style.indent_width(tab_width));
         #[allow(deprecated)]
-        let char_end_idx = crate::pos_at_visual_coords(
+        let byte_end_idx = crate::pos_at_visual_coords(
             base_indent_rope,
             Position {
                 row: 0,
@@ -284,7 +283,6 @@ fn add_indent_level(
             },
             tab_width,
         );
-        let byte_end_idx = base_indent_rope.char_to_byte(char_end_idx);
         base_indent.truncate(byte_end_idx);
         base_indent
     }
@@ -293,14 +291,14 @@ fn add_indent_level(
 /// Return true if only whitespace comes before the node on its line.
 /// If given, new_line_byte_pos is treated the same way as any existing newline.
 fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>) -> bool {
-    let line = text.byte_to_line(node.start_byte() as usize);
-    let mut line_start_byte_pos = text.line_to_byte(line) as u32;
+    let line = text.byte_to_line_idx(node.start_byte() as usize, crate::LINE_TYPE);
+    let mut line_start_byte_pos = text.line_to_byte_idx(line, crate::LINE_TYPE) as u32;
     if let Some(pos) = new_line_byte_pos {
         if line_start_byte_pos < pos && pos <= node.start_byte() {
             line_start_byte_pos = pos;
         }
     }
-    text.byte_slice(line_start_byte_pos as usize..node.start_byte() as usize)
+    text.slice(line_start_byte_pos as usize..node.start_byte() as usize)
         .chars()
         .all(|c| c.is_whitespace())
 }
@@ -613,7 +611,7 @@ struct IndentQueryResult<'a> {
 }
 
 fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
-    let mut node_line = text.byte_to_line(node.start_byte() as usize);
+    let mut node_line = text.byte_to_line_idx(node.start_byte() as usize, crate::LINE_TYPE);
     // Adjust for the new line that will be inserted
     if new_line_byte_pos.is_some_and(|pos| node.start_byte() >= pos) {
         node_line += 1;
@@ -621,7 +619,7 @@ fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u
     node_line
 }
 fn get_node_end_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
-    let mut node_line = text.byte_to_line(node.end_byte() as usize);
+    let mut node_line = text.byte_to_line_idx(node.end_byte() as usize, crate::LINE_TYPE);
     // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
     if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
         node_line += 1;
@@ -716,10 +714,10 @@ fn query_indents<'a>(
                     log::error!("Invalid indent query: @align requires an accompanying @anchor.");
                     continue;
                 };
-                let line = text.byte_to_line(anchor.start_byte() as usize);
-                let line_start = text.line_to_byte(line);
+                let line = text.byte_to_line_idx(anchor.start_byte() as usize, crate::LINE_TYPE);
+                let line_start = text.line_to_byte_idx(line, crate::LINE_TYPE);
                 capture.capture_type = IndentCaptureType::Align(
-                    text.byte_slice(line_start..anchor.start_byte() as usize),
+                    text.slice(line_start..anchor.start_byte() as usize),
                 );
             }
             indent_captures
@@ -771,15 +769,14 @@ fn extend_nodes<'a>(
                         // - the cursor is on the same line as the end of the node OR
                         // - the line that the cursor is on is more indented than the
                         //   first line of the node
-                        if text.byte_to_line(deepest_preceding.end_byte() as usize) == line {
+                        if text.byte_to_line_idx(deepest_preceding.end_byte() as usize, crate::LINE_TYPE) == line {
                             extend_node = true;
                         } else {
                             let cursor_indent =
-                                indent_level_for_line(text.line(line), tab_width, indent_width);
+                                indent_level_for_line(text.line(line, crate::LINE_TYPE), tab_width, indent_width);
                             let node_indent = indent_level_for_line(
                                 text.line(
-                                    text.byte_to_line(deepest_preceding.start_byte() as usize),
-                                ),
+                                    text.byte_to_line_idx(deepest_preceding.start_byte() as usize, crate::LINE_TYPE), crate::LINE_TYPE,),
                                 tab_width,
                                 indent_width,
                             );
@@ -918,7 +915,7 @@ pub fn treesitter_indent_for_pos<'a>(
     pos: usize,
     new_line: bool,
 ) -> Option<Indentation<'a>> {
-    let byte_pos = text.char_to_byte(pos) as u32;
+    let byte_pos = pos as u32;
     let new_line_byte_pos = new_line.then_some(byte_pos);
     let (mut node, mut indent_captures) = init_indent_query(
         query,
@@ -984,7 +981,7 @@ pub fn treesitter_indent_for_pos<'a>(
         } else {
             // Only add the indentation for the line below if that line
             // is not after the line that the indentation is calculated for.
-            let node_start_line = text.byte_to_line(node.start_byte() as usize);
+            let node_start_line = text.byte_to_line_idx(node.start_byte() as usize, crate::LINE_TYPE);
             if node_start_line < line
                 || (new_line && node_start_line == line && node.start_byte() < byte_pos)
             {
@@ -1044,8 +1041,8 @@ pub fn indent_for_newline(
                 const MAX_ATTEMPTS: usize = 4;
                 let mut num_attempts = 0;
                 for line_idx in (0..=line_before).rev() {
-                    let line = text.line(line_idx);
-                    let first_non_whitespace_char = match line.first_non_whitespace_char() {
+                    let line = text.line(line_idx, crate::LINE_TYPE);
+                    let first_non_whitespace_char = match line.first_non_whitespace_byte() {
                         Some(i) => i,
                         None => {
                             continue;
@@ -1059,7 +1056,7 @@ pub fn indent_for_newline(
                             indent_width,
                             text,
                             line_idx,
-                            text.line_to_char(line_idx) + first_non_whitespace_char,
+                            text.line_to_byte_idx(line_idx, crate::LINE_TYPE) + first_non_whitespace_char,
                             false,
                         )?;
                         let leading_whitespace = line.slice(0..first_non_whitespace_char);
@@ -1082,14 +1079,14 @@ pub fn indent_for_newline(
         };
     }
     // Fallback in case we either don't have indent queries or they failed for some reason
-    let indent_level = indent_level_for_line(text.line(current_line), tab_width, indent_width);
+    let indent_level = indent_level_for_line(text.line(current_line, crate::LINE_TYPE), tab_width, indent_width);
     indent_style.as_str().repeat(indent_level)
 }
 
-pub fn get_scopes<'a>(syntax: Option<&'a Syntax>, text: RopeSlice, pos: usize) -> Vec<&'a str> {
+pub fn get_scopes<'a>(syntax: Option<&'a Syntax>, pos: usize) -> Vec<&'a str> {
     let mut scopes = Vec::new();
     if let Some(syntax) = syntax {
-        let pos = text.char_to_byte(pos) as u32;
+        let pos = pos as u32;
         let mut node = match syntax
             .tree()
             .root_node()

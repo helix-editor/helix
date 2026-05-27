@@ -2405,8 +2405,6 @@ dependencies = [
 [[package]]
 name = "regex-cursor"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0497c781d2f982ae8284d2932aee6a877e58a4541daa5e8fadc18cc75c23a61d"
 dependencies = [
  "log",
  "memchr",
@@ -2458,11 +2456,10 @@ dependencies = [
 
 [[package]]
 name = "ropey"
-version = "1.6.1"
+version = "2.0.0-beta.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93411e420bcd1a75ddd1dc3caf18c23155eda2c090631a85af21ba19e97093b5"
+checksum = "4045a00dc327d084a2bbf126976e14125b54f23bd30511d45b842eba76c52d74"
 dependencies = [
- "smallvec",
  "str_indices",
 ]
 
@@ -2974,8 +2971,6 @@ checksum = "756daf9b1013ebe47a8776667b466417e2d4c5679d441c26230efd9ef78692db"
 [[package]]
 name = "tree-house"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d00ea55222392f171ae004dd13b62edd09d995633abf0c13406a8df3547fb999"
 dependencies = [
  "arc-swap",
  "hashbrown 0.15.5",
@@ -2991,8 +2986,6 @@ dependencies = [
 [[package]]
 name = "tree-house-bindings"
 version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbbcbb59cca301d903c11b48b722b7c85f0e0001be2f65655cd417d98c6f3121"
 dependencies = [
  "cc",
  "libloading",

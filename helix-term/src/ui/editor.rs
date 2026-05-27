@@ -15,13 +15,13 @@ use crate::{
 
 use helix_core::{
     diagnostic::NumberOrString,
-    graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SCRATCH_BUFFER_NAME},
@@ -283,10 +283,10 @@ impl EditorView {
     ) -> std::ops::Range<usize> {
         // Calculate viewport byte ranges:
         // Saturating subs to make it inclusive zero indexing.
-        let last_line = text.len_lines().saturating_sub(1);
+        let last_line = text.len_lines(helix_core::LINE_TYPE).saturating_sub(1);
         let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
-        let start = text.line_to_byte(row.min(last_line));
-        let end = text.line_to_byte(last_visible_line + 1);
+        let start = text.line_to_byte_idx(row.min(last_line), helix_core::LINE_TYPE);
+        let end = text.line_to_byte_idx(last_visible_line + 1, helix_core::LINE_TYPE);
 
         start..end
     }
@@ -302,7 +302,7 @@ impl EditorView {
     ) -> Option<syntax::Highlighter<'editor>> {
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let row = text.byte_to_line_idx(anchor.min(text.len()), helix_core::LINE_TYPE);
         let range = Self::viewport_byte_range(text, row, height);
         let range = range.start as u32..range.end as u32;
 
@@ -317,10 +317,10 @@ impl EditorView {
         text_annotations: &TextAnnotations,
     ) -> OverlayHighlights {
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let row = text.byte_to_line_idx(anchor.min(text.len()), helix_core::LINE_TYPE);
 
         let mut range = Self::viewport_byte_range(text, row, height);
-        range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
+        range = range.start..range.end;
 
         text_annotations.collect_overlay_highlights(range)
     }
@@ -334,7 +334,7 @@ impl EditorView {
     ) -> Option<OverlayHighlights> {
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let row = text.byte_to_line_idx(anchor.min(text.len()), helix_core::LINE_TYPE);
         let visible_range = Self::viewport_byte_range(text, row, height);
         let start = syntax::child_for_byte_range(
             &syntax.tree().root_node(),
@@ -576,7 +576,7 @@ impl EditorView {
             };
 
             // Special-case: cursor at end of the rope.
-            if range.head == range.anchor && range.head == text.len_chars() {
+            if range.head == range.anchor && range.head == text.len() {
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
                     // Bar and underline cursors are drawn by the terminal
                     // BUG: If the editor area loses focus while having a bar or
@@ -591,7 +591,7 @@ impl EditorView {
             let range = range.min_width_1(text);
             if range.head > range.anchor {
                 // Standard case.
-                let cursor_start = prev_grapheme_boundary(text, range.head);
+                let cursor_start = text.prev_grapheme_boundary(range.head);
                 // non block cursors look like they exclude the cursor
                 let selection_end =
                     if selection_is_primary && !cursor_is_block && mode != Mode::Insert {
@@ -607,7 +607,7 @@ impl EditorView {
                 }
             } else {
                 // Reverse case.
-                let cursor_end = next_grapheme_boundary(text, range.head);
+                let cursor_end = text.next_grapheme_boundary(range.head);
                 // add block cursors
                 // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
                 if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
@@ -1264,7 +1264,7 @@ impl EditorView {
                     if let Some(char_idx) =
                         view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
                     {
-                        let line = doc.text().char_to_line(char_idx);
+                        let line = doc.text().byte_to_line_idx(char_idx, helix_core::LINE_TYPE);
                         commands::dap_toggle_breakpoint_impl(cxt, path, line);
                         return EventResult::Consumed(None);
                     }
@@ -1328,7 +1328,7 @@ impl EditorView {
                         doc.selection(view.id)
                             .primary()
                             .slice(doc.text().slice(..))
-                            .len_chars()
+                            .len()
                             > 1
                     }
                 };

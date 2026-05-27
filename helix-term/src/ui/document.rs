@@ -508,10 +508,8 @@ impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
             .and_then(|highlighter| {
                 let next_byte_idx = highlighter.next_event_offset();
                 (next_byte_idx != u32::MAX).then(|| {
-                    // Move the byte index to the nearest character boundary (rounding up) and
-                    // convert it to a character index.
-                    self.text
-                        .byte_to_char(self.text.ceil_char_boundary(next_byte_idx as usize))
+                    // Move the byte index to the nearest character boundary (rounding up).
+                    self.text.ceil_char_boundary(next_byte_idx as usize)
                 })
             })
             .unwrap_or(usize::MAX);

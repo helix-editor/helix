@@ -212,8 +212,8 @@ impl<'t> DocumentFormatter<'t> {
         char_idx: usize,
     ) -> Self {
         // TODO divide long lines into blocks to avoid bad performance for long lines
-        let block_line_idx = text.char_to_line(char_idx.min(text.len_chars()));
-        let block_char_idx = text.line_to_char(block_line_idx);
+        let block_line_idx = text.byte_to_line_idx(char_idx.min(text.len()), crate::LINE_TYPE);
+        let block_char_idx = text.line_to_byte_idx(block_line_idx, crate::LINE_TYPE);
         annotations.reset_pos(block_char_idx);
 
         DocumentFormatter {
@@ -263,7 +263,7 @@ impl<'t> DocumentFormatter<'t> {
             if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme(char_pos) {
                 (grapheme.into(), GraphemeSource::VirtualText { highlight })
             } else if let Some(grapheme) = self.graphemes.next() {
-                let codepoints = grapheme.len_chars() as u32;
+                let codepoints = grapheme.len() as u32;
 
                 let overlay = self.annotations.overlay_at(char_pos);
                 let grapheme = match overlay {

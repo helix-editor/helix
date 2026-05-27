@@ -18,8 +18,8 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
     tokens: &'a [S],
     line_num: usize,
 ) -> Option<&'a str> {
-    let line = text.line(line_num);
-    let start = line.first_non_whitespace_char()?;
+    let line = text.line(line_num, crate::LINE_TYPE);
+    let start = line.first_non_whitespace_byte()?;
 
     tokens
         .iter()
@@ -46,12 +46,12 @@ fn find_line_comment(
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
-    let token_len = token.chars().count();
+    let token_len = token.len();
 
     for line in lines {
-        let line_slice = text.line(line);
-        if let Some(pos) = line_slice.first_non_whitespace_char() {
-            let len = line_slice.len_chars();
+        let line_slice = text.line(line, crate::LINE_TYPE);
+        if let Some(pos) = line_slice.first_non_whitespace_byte() {
+            let len = line_slice.len();
 
             min = std::cmp::min(min, pos);
 
@@ -66,7 +66,7 @@ fn find_line_comment(
 
             // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
             // a margin of 0 is used for all lines.
-            if !matches!(line_slice.get_char(pos + token_len), Some(c) if c == ' ') {
+            if !matches!(line_slice.get_char(pos + token_len), Ok(c) if c == ' ') {
                 margin = 0;
             }
 
@@ -90,8 +90,8 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut min_next_line = 0;
     for selection in selection {
         let (start, end) = selection.line_range(text);
-        let start = start.clamp(min_next_line, text.len_lines());
-        let end = (end + 1).min(text.len_lines());
+        let start = start.clamp(min_next_line, text.len_lines(crate::LINE_TYPE));
+        let end = (end + 1).min(text.len_lines(crate::LINE_TYPE));
 
         lines.extend(start..end);
         min_next_line = end;
@@ -102,7 +102,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 
     for line in to_change {
-        let pos = text.line_to_char(line) + min;
+        let pos = text.line_to_byte_idx(line, crate::LINE_TYPE) + min;
 
         if !commented {
             // comment line
@@ -163,8 +163,8 @@ pub fn find_block_comments(
     for range in selection {
         let selection_slice = range.slice(text);
         if let (Some(start_pos), Some(end_pos)) = (
-            selection_slice.first_non_whitespace_char(),
-            selection_slice.last_non_whitespace_char(),
+            selection_slice.first_non_whitespace_byte(),
+            selection_slice.last_non_whitespace_byte(),
         ) {
             let mut line_commented = false;
             let mut after_start = 0;
@@ -172,8 +172,8 @@ pub fn find_block_comments(
             let len = (end_pos + 1) - start_pos;
 
             for BlockCommentToken { start, end } in &tokens {
-                let start_len = start.chars().count();
-                let end_len = end.chars().count();
+                let start_len = start.len();
+                let end_len = end.len();
                 after_start = start_pos + start_len;
                 before_end = end_pos.saturating_sub(end_len);
 
@@ -205,9 +205,9 @@ pub fn find_block_comments(
                     range: *range,
                     start_pos,
                     end_pos,
-                    start_margin: selection_slice.get_char(after_start) == Some(' '),
+                    start_margin: selection_slice.get_char(after_start) == Ok(' '),
                     end_margin: after_start != before_end
-                        && (selection_slice.get_char(before_end) == Some(' ')),
+                        && (selection_slice.get_char(before_end) == Ok(' ')),
                     start_token: start_token.to_string(),
                     end_token: end_token.to_string(),
                 });
@@ -279,7 +279,7 @@ pub fn create_block_comment_transaction(
                         Some(Tendril::from(format!(" {}", end_token))),
                     ));
 
-                    let offset = start_token.chars().count() + end_token.chars().count() + 2;
+                    let offset = start_token.len() + end_token.len() + 2;
                     ranges.push(
                         Range::new(from + offs, from + offs + end_pos + 1 + offset)
                             .with_direction(range.direction()),
@@ -315,10 +315,13 @@ pub fn split_lines_of_selection(text: RopeSlice, selection: &Selection) -> Selec
     let mut ranges = SmallVec::new();
     for range in selection.ranges() {
         let (line_start, line_end) = range.line_range(text.slice(..));
-        let mut pos = text.line_to_char(line_start);
-        for line in text.slice(pos..text.line_to_char(line_end + 1)).lines() {
+        let mut pos = text.line_to_byte_idx(line_start, crate::LINE_TYPE);
+        for line in text
+            .slice(pos..text.line_to_byte_idx(line_end + 1, crate::LINE_TYPE))
+            .lines(crate::LINE_TYPE)
+        {
             let start = pos;
-            pos += line.len_chars();
+            pos += line.len();
             ranges.push(Range::new(start, pos));
         }
     }
@@ -365,7 +368,7 @@ mod test {
             // four lines, two space indented, except for line 1 which is blank.
             let mut doc = Rope::from("  1\n\n  2\n  3");
             // select whole document
-            let selection = Selection::single(0, doc.len_chars() - 1);
+            let selection = Selection::single(0, doc.len() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
@@ -376,7 +379,7 @@ mod test {
         #[test]
         fn uncomment() {
             let mut doc = Rope::from("  # 1\n\n  # 2\n  # 3");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let mut selection = Selection::single(0, doc.len() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
@@ -389,7 +392,7 @@ mod test {
         #[test]
         fn uncomment_0_margin_comments() {
             let mut doc = Rope::from("  #1\n\n  #2\n  #3");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let mut selection = Selection::single(0, doc.len() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
@@ -402,7 +405,7 @@ mod test {
         #[test]
         fn uncomment_0_margin_comments_with_no_space() {
             let mut doc = Rope::from("#");
-            let mut selection = Selection::single(0, doc.len_chars() - 1);
+            let mut selection = Selection::single(0, doc.len() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
@@ -417,7 +420,7 @@ mod test {
         // three lines 5 characters.
         let mut doc = Rope::from("1\n2\n3");
         // select whole document
-        let selection = Selection::single(0, doc.len_chars());
+        let selection = Selection::single(0, doc.len());
 
         let text = doc.slice(..);
 
@@ -444,14 +447,14 @@ mod test {
         assert_eq!(doc, "/* 1\n2\n3 */");
 
         // uncomment
-        let selection = Selection::single(0, doc.len_chars());
+        let selection = Selection::single(0, doc.len());
         let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
         transaction.apply(&mut doc);
         assert_eq!(doc, "1\n2\n3");
 
         // don't panic when there is just a space in comment
         doc = Rope::from("/* */");
-        let selection = Selection::single(0, doc.len_chars());
+        let selection = Selection::single(0, doc.len());
         let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
         transaction.apply(&mut doc);
         assert_eq!(doc, "");

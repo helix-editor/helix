@@ -26,10 +26,13 @@ macro_rules! debugger {
 // general utils:
 pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Option<usize> {
     // 1-indexing to 0 indexing
-    let line = doc.try_line_to_char(line - 1).ok()?;
-    let pos = line + column.saturating_sub(1);
+    let line = line.checked_sub(1)?;
+    if line >= doc.len_lines(helix_core::LINE_TYPE) {
+        return None;
+    }
+    let line_start = doc.line_to_byte_idx(line, helix_core::LINE_TYPE);
     // TODO: this is probably utf-16 offsets
-    Some(pos)
+    Some(line_start + column.saturating_sub(1))
 }
 
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
@@ -75,7 +78,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
 
     let (view, doc) = current!(editor);
 
-    let text_end = doc.text().len_chars().saturating_sub(1);
+    let text_end = doc.text().len().saturating_sub(1);
     let start = dap_pos_to_pos(doc.text(), frame.line, frame.column).unwrap_or(0);
     let end = frame
         .end_line

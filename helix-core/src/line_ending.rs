@@ -33,6 +33,16 @@ impl LineEnding {
         }
     }
 
+    /// Length of this line ending in **bytes** when encoded as UTF-8.
+    ///
+    /// Most line endings are 1 byte (LF, CR, VT, FF), CRLF is 2 bytes,
+    /// NEL is 2 bytes, and LS / PS are 3 bytes — i.e. they differ from
+    /// `len_chars` only for the Unicode-specific line endings.
+    #[inline]
+    pub const fn len(&self) -> usize {
+        self.as_str().len()
+    }
+
     #[inline]
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -124,11 +134,42 @@ pub fn rope_is_line_ending(r: RopeSlice) -> bool {
     r.chunks().all(str_is_line_ending)
 }
 
+/// True when the given line contains only a line ending (or is empty).
+#[inline]
+pub fn line_is_newline(slice: RopeSlice, line: usize) -> bool {
+    rope_is_line_ending(slice.line(line, crate::LINE_TYPE))
+}
+
+/// For each line starting at `line` and walking forward, yields whether the line
+/// is just a line ending.
+#[inline]
+pub fn line_newlines_forward(
+    slice: RopeSlice<'_>,
+    line: usize,
+) -> impl Iterator<Item = bool> + '_ {
+    slice
+        .lines_at(line, crate::LINE_TYPE)
+        .map(rope_is_line_ending)
+}
+
+/// For each line starting at `line` and walking backward, yields whether the line
+/// is just a line ending.
+#[inline]
+pub fn line_newlines_backward(
+    slice: RopeSlice<'_>,
+    line: usize,
+) -> impl Iterator<Item = bool> + '_ {
+    slice
+        .lines_at(line, crate::LINE_TYPE)
+        .reversed()
+        .map(rope_is_line_ending)
+}
+
 /// Attempts to detect what line ending the passed document uses.
 pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
     // Return first matched line ending. Not all possible line endings
     // are being matched, as they might be special-use only
-    for line in doc.lines().take(100) {
+    for line in doc.lines(crate::LINE_TYPE).take(100) {
         match get_line_ending(&line) {
             None => {}
             #[cfg(feature = "unicode-lines")]
@@ -141,21 +182,19 @@ pub fn auto_detect_line_ending(doc: &Rope) -> Option<LineEnding> {
 
 /// Returns the passed line's line ending, if any.
 pub fn get_line_ending(line: &RopeSlice) -> Option<LineEnding> {
-    // Last character as str.
-    let g1 = line
-        .slice(line.len_chars().saturating_sub(1)..)
-        .as_str()
-        .unwrap();
+    let len = line.len();
+    // Last codepoint as str: floor the byte index to a char boundary so the
+    // resulting slice always begins on a valid UTF-8 start byte (necessary for
+    // multi-byte Unicode line endings like NEL / LS / PS).
+    let g1_start = line.floor_char_boundary(len.saturating_sub(1));
+    let g1 = line.slice(g1_start..).as_str().unwrap_or("");
 
-    // Last two characters as str, or empty str if they're not contiguous.
-    // It's fine to punt on the non-contiguous case, because Ropey guarantees
-    // that CRLF is always contiguous.
-    let g2 = line
-        .slice(line.len_chars().saturating_sub(2)..)
-        .as_str()
-        .unwrap_or("");
+    // Last two codepoints as str, or empty if they're non-contiguous.
+    // Ropey guarantees CRLF stays contiguous.
+    let g2_start = line.floor_char_boundary(len.saturating_sub(2));
+    let g2 = line.slice(g2_start..).as_str().unwrap_or("");
 
-    // First check the two-character case for CRLF, then check the single-character case.
+    // First check the two-codepoint case for CRLF, then the single-codepoint case.
     LineEnding::from_str(g2).or_else(|| LineEnding::from_str(g1))
 }
 
@@ -195,32 +234,25 @@ pub fn get_line_ending_of_str(line: &str) -> Option<LineEnding> {
     }
 }
 
-/// Returns the char index of the end of the given line, not including its line ending.
-pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
-    slice.line_to_char(line + 1)
-        - get_line_ending(&slice.line(line))
-            .map(|le| le.len_chars())
-            .unwrap_or(0)
-}
-
+/// Returns the byte index of the end of the given line, not including its line ending.
 pub fn line_end_byte_index(slice: &RopeSlice, line: usize) -> usize {
-    slice.line_to_byte(line + 1)
-        - get_line_ending(&slice.line(line))
-            .map(|le| le.as_str().len())
+    slice.line_to_byte_idx(line + 1, crate::LINE_TYPE)
+        - get_line_ending(&slice.line(line, crate::LINE_TYPE))
+            .map(|le| le.len())
             .unwrap_or(0)
 }
 
 /// Fetches line `line_idx` from the passed rope slice, sans any line ending.
 pub fn line_without_line_ending<'a>(slice: &'a RopeSlice, line_idx: usize) -> RopeSlice<'a> {
-    let start = slice.line_to_char(line_idx);
-    let end = line_end_char_index(slice, line_idx);
+    let start = slice.line_to_byte_idx(line_idx, crate::LINE_TYPE);
+    let end = line_end_byte_index(slice, line_idx);
     slice.slice(start..end)
 }
 
 /// Returns the char index of the end of the given RopeSlice, not including
 /// any final line ending.
 pub fn rope_end_without_line_ending(slice: &RopeSlice) -> usize {
-    slice.len_chars() - get_line_ending(slice).map(|le| le.len_chars()).unwrap_or(0)
+    slice.len() - get_line_ending(slice).map(|le| le.len()).unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -309,20 +341,20 @@ mod line_ending_tests {
     }
 
     #[test]
-    fn line_end_char_index_rope_slice() {
+    fn line_end_byte_index_rope_slice() {
         let r = Rope::from_str("Hello\rworld\nhow\r\nare you?");
         let s = &r.slice(..);
         #[cfg(not(feature = "unicode-lines"))]
         {
-            assert_eq!(line_end_char_index(s, 0), 11);
-            assert_eq!(line_end_char_index(s, 1), 15);
-            assert_eq!(line_end_char_index(s, 2), 25);
+            assert_eq!(line_end_byte_index(s, 0), 11);
+            assert_eq!(line_end_byte_index(s, 1), 15);
+            assert_eq!(line_end_byte_index(s, 2), 25);
         }
         #[cfg(feature = "unicode-lines")]
         {
-            assert_eq!(line_end_char_index(s, 0), 5);
-            assert_eq!(line_end_char_index(s, 1), 11);
-            assert_eq!(line_end_char_index(s, 2), 15);
+            assert_eq!(line_end_byte_index(s, 0), 5);
+            assert_eq!(line_end_byte_index(s, 1), 11);
+            assert_eq!(line_end_byte_index(s, 2), 15);
         }
     }
 }

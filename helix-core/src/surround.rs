@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 use crate::{
-    graphemes::next_grapheme_boundary,
     match_brackets::{
         self, find_matching_bracket, find_matching_bracket_fuzzy, get_pair, is_close_bracket,
         is_open_bracket,
@@ -9,6 +8,7 @@ use crate::{
     movement::Direction,
     search, Range, Selection, Syntax,
 };
+use helix_stdx::rope::RopeSliceExt;
 use ropey::RopeSlice;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -72,11 +72,11 @@ fn find_nth_closest_pairs_ts(
 
         // In case found brackets are partially inside current selection.
         if range.from() < opening || closing < range.to() - 1 {
-            closing = next_grapheme_boundary(text, closing);
+            closing = text.next_grapheme_boundary(closing);
         } else {
             skip -= 1;
             if skip != 0 {
-                closing = next_grapheme_boundary(text, closing);
+                closing = text.next_grapheme_boundary(closing);
             }
         }
     }
@@ -164,10 +164,10 @@ pub fn find_nth_pairs_pos(
     range: Range,
     n: usize,
 ) -> Result<(usize, usize)> {
-    if text.len_chars() < 2 {
+    if text.len() < 2 {
         return Err(Error::PairNotFound);
     }
-    if range.to() >= text.len_chars() {
+    if range.to() >= text.len() {
         return Err(Error::RangeExceedsText);
     }
 
@@ -175,7 +175,7 @@ pub fn find_nth_pairs_pos(
     let pos = range.cursor(text);
 
     let (open, close) = if open == close {
-        if Some(open) == text.get_char(pos) {
+        if Ok(open) == text.get_char(pos) {
             // Cursor is directly on match character for which the opening and closing pairs are the same. For instance: ", ', `
             //
             // This is potentially ambiguous, because there's no way to know which side of the char we should be searching on.
@@ -221,7 +221,7 @@ fn find_nth_open_pair(
     mut pos: usize,
     n: usize,
 ) -> Option<usize> {
-    if pos >= text.len_chars() {
+    if pos >= text.len() {
         return None;
     }
 
@@ -264,7 +264,7 @@ fn find_nth_close_pair(
     mut pos: usize,
     n: usize,
 ) -> Option<usize> {
-    if pos >= text.len_chars() {
+    if pos >= text.len() {
         return None;
     }
 

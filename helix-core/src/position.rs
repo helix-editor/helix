@@ -9,8 +9,8 @@ use helix_stdx::rope::RopeSliceExt;
 use crate::{
     chars::char_is_line_ending,
     doc_formatter::{DocumentFormatter, TextFormat},
-    graphemes::{ensure_grapheme_boundary_prev, grapheme_width},
-    line_ending::line_end_char_index,
+    graphemes::grapheme_width,
+    line_ending::line_end_byte_index,
     text_annotations::TextAnnotations,
     RopeSlice,
 };
@@ -94,10 +94,10 @@ impl From<(usize, usize)> for Position {
 /// column in `char` count which can be used for row:column display in
 /// status line. See [`visual_coords_at_pos`] for a visual one.
 pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
-    let line = text.char_to_line(pos);
+    let line = text.byte_to_line_idx(pos, crate::LINE_TYPE);
 
-    let line_start = text.line_to_char(line);
-    let pos = ensure_grapheme_boundary_prev(text, pos);
+    let line_start = text.line_to_byte_idx(line, crate::LINE_TYPE);
+    let pos = text.floor_grapheme_boundary(pos);
     let col = text.slice(line_start..pos).graphemes().count();
 
     Position::new(line, col)
@@ -116,10 +116,10 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 /// text and softwrap.
 #[deprecated = "Doesn't account for softwrap or decorations, use visual_offset_from_anchor instead"]
 pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Position {
-    let line = text.char_to_line(pos);
+    let line = text.byte_to_line_idx(pos, crate::LINE_TYPE);
 
-    let line_start = text.line_to_char(line);
-    let pos = ensure_grapheme_boundary_prev(text, pos);
+    let line_start = text.line_to_byte_idx(line, crate::LINE_TYPE);
+    let pos = text.floor_grapheme_boundary(pos);
 
     let mut col = 0;
 
@@ -262,7 +262,7 @@ pub fn visual_offset_from_anchor(
 pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending: bool) -> usize {
     let Position { mut row, col } = coords;
     if limit_before_line_ending {
-        let lines = text.len_lines() - 1;
+        let lines = text.len_lines(crate::LINE_TYPE) - 1;
 
         row = row.min(if crate::line_ending::get_line_ending(&text).is_some() {
             // if the last line is empty, don't jump to it
@@ -271,11 +271,14 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
             lines
         });
     };
-    let line_start = text.line_to_char(row);
+    let line_start = text.line_to_byte_idx(row, crate::LINE_TYPE);
     let line_end = if limit_before_line_ending {
-        line_end_char_index(&text, row)
+        line_end_byte_index(&text, row)
     } else {
-        text.line_to_char((row + 1).min(text.len_lines()))
+        text.line_to_byte_idx(
+            (row + 1).min(text.len_lines(crate::LINE_TYPE)),
+            crate::LINE_TYPE,
+        )
     };
 
     let mut col_char_offset = 0;
@@ -304,9 +307,9 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
 #[deprecated = "Doesn't account for softwrap or decorations, use char_idx_at_visual_offset instead"]
 pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize) -> usize {
     let Position { mut row, col } = coords;
-    row = row.min(text.len_lines() - 1);
-    let line_start = text.line_to_char(row);
-    let line_end = line_end_char_index(&text, row);
+    row = row.min(text.len_lines(crate::LINE_TYPE) - 1);
+    let line_start = text.line_to_byte_idx(row, crate::LINE_TYPE);
+    let line_end = line_end_byte_index(&text, row);
 
     let mut col_char_offset = 0;
     let mut cols_remaining = col;
@@ -466,39 +469,39 @@ mod test {
         let text = Rope::from("ḧëḷḷö\nẅöṛḷḋ");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 5).into()); // position on \n
-        assert_eq!(coords_at_pos(slice, 6), (1, 0).into()); // position on w
-        assert_eq!(coords_at_pos(slice, 7), (1, 1).into()); // position on o
-        assert_eq!(coords_at_pos(slice, 10), (1, 4).into()); // position on d
+        assert_eq!(coords_at_pos(slice, 13), (0, 5).into()); // position on \n
+        assert_eq!(coords_at_pos(slice, 14), (1, 0).into()); // position on w
+        assert_eq!(coords_at_pos(slice, 17), (1, 1).into()); // position on o
+        assert_eq!(coords_at_pos(slice, 25), (1, 4).into()); // position on d
 
         // Test with wide characters.
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 1), (0, 1).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 3), (0, 3).into());
-        assert_eq!(coords_at_pos(slice, 4), (0, 4).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 5).into());
-        assert_eq!(coords_at_pos(slice, 6), (1, 0).into());
+        assert_eq!(coords_at_pos(slice, 3), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 6), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 9), (0, 3).into());
+        assert_eq!(coords_at_pos(slice, 12), (0, 4).into());
+        assert_eq!(coords_at_pos(slice, 15), (0, 5).into());
+        assert_eq!(coords_at_pos(slice, 16), (1, 0).into());
 
         // Test with grapheme clusters.
         let text = Rope::from("a̐éö̲\r\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
-        assert_eq!(coords_at_pos(slice, 4), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 7), (0, 3).into());
-        assert_eq!(coords_at_pos(slice, 9), (1, 0).into());
+        assert_eq!(coords_at_pos(slice, 3), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 6), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 11), (0, 3).into());
+        assert_eq!(coords_at_pos(slice, 13), (1, 0).into());
 
         // Test with wide-character grapheme clusters.
         let text = Rope::from("किमपि\n");
         let slice = text.slice(..);
         assert_eq!(coords_at_pos(slice, 0), (0, 0).into());
-        assert_eq!(coords_at_pos(slice, 2), (0, 1).into());
-        assert_eq!(coords_at_pos(slice, 3), (0, 2).into());
-        assert_eq!(coords_at_pos(slice, 5), (0, 3).into());
-        assert_eq!(coords_at_pos(slice, 6), (1, 0).into());
+        assert_eq!(coords_at_pos(slice, 6), (0, 1).into());
+        assert_eq!(coords_at_pos(slice, 9), (0, 2).into());
+        assert_eq!(coords_at_pos(slice, 15), (0, 3).into());
+        assert_eq!(coords_at_pos(slice, 16), (1, 0).into());
 
         // Test with tabs.
         let text = Rope::from("\tHello\n");
@@ -568,23 +571,23 @@ mod test {
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 13, &text_fmt, &annot).0,
             (0, 5).into()
         ); // position on \n
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 14, &text_fmt, &annot).0,
             (1, 0).into()
-        ); // position on w
+        ); // position on ẅ
         assert_eq!(
-            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 17, &text_fmt, &annot).0,
             (1, 1).into()
-        ); // position on o
+        ); // position on ö
         assert_eq!(
-            visual_offset_from_block(slice, 0, 10, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 25, &text_fmt, &annot).0,
             (1, 4).into()
-        ); // position on d
+        ); // position on ḋ
 
-        // Test with wide characters.
+        // Test with wide characters (each kana is 3 bytes).
         let text = Rope::from("今日はいい\n");
         let slice = text.slice(..);
         assert_eq!(
@@ -592,27 +595,27 @@ mod test {
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 1, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
             (0, 4).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
             (0, 6).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 12, &text_fmt, &annot).0,
             (0, 8).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 15, &text_fmt, &annot).0,
             (0, 10).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 16, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
@@ -624,23 +627,23 @@ mod test {
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
             (0, 1).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 4, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 7, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
             (0, 3).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 11, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
-        // Test with wide-character grapheme clusters.
+        // Test with wide-character grapheme clusters (Devanagari codepoints are 3 bytes).
         // TODO: account for cluster.
         let text = Rope::from("किमपि\n");
         let slice = text.slice(..);
@@ -649,19 +652,19 @@ mod test {
             (0, 0).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 2, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
             (0, 2).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 3, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 9, &text_fmt, &annot).0,
             (0, 3).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 5, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 15, &text_fmt, &annot).0,
             (0, 5).into()
         );
         assert_eq!(
-            visual_offset_from_block(slice, 0, 6, &text_fmt, &annot).0,
+            visual_offset_from_block(slice, 0, 16, &text_fmt, &annot).0,
             (1, 0).into()
         );
 
@@ -851,14 +854,14 @@ mod test {
                 assert_eq!(
                     char_idx_at_visual_offset(
                         slice,
-                        slice.line_to_char(i as usize),
+                        slice.line_to_byte_idx(i as usize, crate::LINE_TYPE),
                         j,
                         3,
                         &text_fmt,
                         &TextAnnotations::default(),
                     )
                     .0,
-                    slice.line_to_char((i + j) as usize) + 3
+                    slice.line_to_byte_idx((i + j) as usize, crate::LINE_TYPE) + 3
                 );
             }
         }

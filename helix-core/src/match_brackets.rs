@@ -53,7 +53,7 @@ pub const PAIRS: [(char, char); BRACKETS.len() + 4] = {
 /// If no matching bracket is found, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket(syntax: &Syntax, doc: RopeSlice, pos: usize) -> Option<usize> {
-    if pos >= doc.len_chars() || !is_valid_pair(doc.char(pos)) {
+    if pos >= doc.len() || !is_valid_pair(doc.char(pos)) {
         return None;
     }
     find_pair(syntax, doc, pos, false)
@@ -80,7 +80,7 @@ fn find_pair(
     pos_: usize,
     traverse_parents: bool,
 ) -> Option<usize> {
-    let pos = doc.char_to_byte(pos_) as u32;
+    let pos = pos_ as u32;
 
     let root = syntax.tree_for_byte_range(pos, pos).root_node();
     let mut node = root.descendant_for_byte_range(pos, pos)?;
@@ -133,7 +133,7 @@ fn find_pair(
                 if find_pair_end(doc, sibling.prev_sibling(), start_char, end_char, Backward)
                     .is_some()
                 {
-                    return doc.try_byte_to_char(sibling.start_byte() as usize).ok();
+                    return Some(sibling.start_byte() as usize);
                 }
             }
         } else if node.is_named() {
@@ -149,8 +149,8 @@ fn find_pair(
     if node.child_count() != 0 {
         return None;
     }
-    let node_start = doc.byte_to_char(node.start_byte() as usize);
-    let node_text = doc.byte_slice(node.start_byte() as usize..node.end_byte() as usize);
+    let node_start = node.start_byte() as usize;
+    let node_text = doc.slice(node.start_byte() as usize..node.end_byte() as usize);
     find_matching_bracket_plaintext(node_text, pos_ - node_start).map(|pos| pos + node_start)
 }
 
@@ -167,7 +167,7 @@ fn find_pair(
 /// If no matching bracket is found, `None` is returned.
 #[must_use]
 pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Option<usize> {
-    let bracket = doc.get_char(cursor_pos)?;
+    let bracket = doc.get_char(cursor_pos).ok()?;
     let matching_bracket = {
         let pair = get_pair(bracket);
         if pair.0 == bracket {
@@ -309,8 +309,8 @@ fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
     if node.byte_range().len() != 1 {
         return None;
     }
-    let pos = doc.try_byte_to_char(node.start_byte() as usize).ok()?;
-    Some((pos, doc.char(pos)))
+    let pos = node.start_byte() as usize;
+    doc.get_char(pos).ok().map(|ch| (pos, ch))
 }
 
 #[cfg(test)]

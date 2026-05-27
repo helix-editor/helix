@@ -398,7 +398,7 @@ impl Loader {
 
         let marker = SHEBANG_REGEX
             .captures_iter(regex_cursor::Input::new(text))
-            .map(|cap| text.byte_slice(cap.get_group(1).unwrap().range()))
+            .map(|cap| text.slice(cap.get_group(1).unwrap().range()))
             .next()?;
         self.language_for_shebang_marker(marker)
     }
@@ -525,12 +525,11 @@ impl Syntax {
 
     pub fn update(
         &mut self,
-        old_source: RopeSlice,
         source: RopeSlice,
         changeset: &ChangeSet,
         loader: &Loader,
     ) -> Result<(), Error> {
-        let edits = generate_edits(old_source, changeset);
+        let edits = generate_edits(changeset);
         if edits.is_empty() {
             Ok(())
         } else {
@@ -686,10 +685,8 @@ impl Syntax {
                         .as_ref()
                         .is_some_and(|node| mat.node.parent().as_ref() != Some(node))
                     {
-                        let start = source
-                            .byte_to_char(source.floor_char_boundary(byte_range.start as usize));
-                        let end =
-                            source.byte_to_char(source.ceil_char_boundary(byte_range.end as usize));
+                        let start = source.floor_char_boundary(byte_range.start as usize);
+                        let end = source.ceil_char_boundary(byte_range.end as usize);
                         highlights.push((scope.highlight, start..end));
                     }
                 }
@@ -702,7 +699,7 @@ impl Syntax {
 
 pub type Highlighter<'a> = highlighter::Highlighter<'a, 'a, Loader>;
 
-fn generate_edits(old_text: RopeSlice, changeset: &ChangeSet) -> Vec<InputEdit> {
+fn generate_edits(changeset: &ChangeSet) -> Vec<InputEdit> {
     use crate::Operation::*;
     use tree_sitter::Point;
 
@@ -727,8 +724,8 @@ fn generate_edits(old_text: RopeSlice, changeset: &ChangeSet) -> Vec<InputEdit> 
         match change {
             Retain(_) => {}
             Delete(_) => {
-                let start_byte = old_text.char_to_byte(old_pos) as u32;
-                let old_end_byte = old_text.char_to_byte(old_end) as u32;
+                let start_byte = old_pos as u32;
+                let old_end_byte = old_end as u32;
 
                 // deletion
                 edits.push(InputEdit {
@@ -741,12 +738,12 @@ fn generate_edits(old_text: RopeSlice, changeset: &ChangeSet) -> Vec<InputEdit> 
                 });
             }
             Insert(s) => {
-                let start_byte = old_text.char_to_byte(old_pos) as u32;
+                let start_byte = old_pos as u32;
 
                 // a subsequent delete means a replace, consume it
                 if let Some(Delete(len)) = iter.peek() {
                     old_end = old_pos + len;
-                    let old_end_byte = old_text.char_to_byte(old_end) as u32;
+                    let old_end_byte = old_end as u32;
 
                     iter.next();
 
@@ -1260,7 +1257,7 @@ mod test {
             &doc,
             vec![(6, 11, Some("test".into())), (12, 17, None)].into_iter(),
         );
-        let edits = generate_edits(doc.slice(..), transaction.changes());
+        let edits = generate_edits(transaction.changes());
         // transaction.apply(&mut state);
 
         assert_eq!(
@@ -1289,7 +1286,7 @@ mod test {
         let mut doc = Rope::from("fn test() {}");
         let transaction =
             Transaction::change(&doc, vec![(8, 8, Some("a: u32".into()))].into_iter());
-        let edits = generate_edits(doc.slice(..), transaction.changes());
+        let edits = generate_edits(transaction.changes());
         transaction.apply(&mut doc);
 
         assert_eq!(doc, "fn test(a: u32) {}");

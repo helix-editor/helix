@@ -40,7 +40,7 @@ pub fn print(s: &str) -> (String, Selection) {
     let mut left = String::with_capacity(s.len());
 
     'outer: while let Some(c) = iter.next() {
-        let start = left.chars().count();
+        let start = left.len();
 
         if c != "#" {
             left.push_str(c);
@@ -107,8 +107,8 @@ pub fn print(s: &str) -> (String, Selection) {
             }
 
             let (anchor, head) = match head_at_beg {
-                true => (left.chars().count(), start),
-                false => (start, left.chars().count()),
+                true => (left.len(), start),
+                false => (start, left.len()),
             };
 
             ranges.push(Range::new(anchor, head));
@@ -152,7 +152,7 @@ pub fn print(s: &str) -> (String, Selection) {
 pub fn plain<R: Into<Rope>>(s: R, selection: &Selection) -> String {
     let s = s.into();
     let primary = selection.primary_index();
-    let mut out = String::with_capacity(s.len_bytes() + 5 * selection.len());
+    let mut out = String::with_capacity(s.len() + 5 * selection.len());
     out.push_str(&s.to_string());
 
     let mut insertion: Vec<_> = selection
@@ -167,7 +167,7 @@ pub fn plain<R: Into<Rope>>(s: R, selection: &Selection) -> String {
                 (false, false) => [(range.anchor, ")#"), (range.head, "#(|")],
             }
         })
-        .map(|(char_idx, marker)| (s.char_to_byte(char_idx), marker))
+        .map(|(byte_idx, marker)| (byte_idx, marker))
         .collect();
 
     // insert in reverse order
@@ -261,32 +261,36 @@ mod test {
 
     #[test]
     fn print_multi_byte_code_point() {
+        // U+201E („) and U+201C (“) are 3 bytes each in UTF-8.
         assert_eq!(
-            (String::from("„“"), Selection::single(1, 0)),
+            (String::from("„“"), Selection::single(3, 0)),
             print("#[|„]#“")
         );
         assert_eq!(
-            (String::from("„“"), Selection::single(2, 1)),
+            (String::from("„“"), Selection::single(6, 3)),
             print("„#[|“]#")
         );
         assert_eq!(
-            (String::from("„“"), Selection::single(0, 1)),
+            (String::from("„“"), Selection::single(0, 3)),
             print("#[„|]#“")
         );
         assert_eq!(
-            (String::from("„“"), Selection::single(1, 2)),
+            (String::from("„“"), Selection::single(3, 6)),
             print("„#[“|]#")
         );
+        // "they said " is 10 bytes, then „ at 10..13.
         assert_eq!(
-            (String::from("they said „hello“"), Selection::single(11, 10)),
+            (String::from("they said „hello“"), Selection::single(13, 10)),
             print("they said #[|„]#hello“")
         );
     }
 
     #[test]
     fn print_multi_code_point_grapheme() {
+        // Family emoji "👨‍👩‍👧‍👦" is 4+3+4+3+4+3+4 = 25 bytes (4 emoji + 3 ZWJs).
+        // "hello " = 6 bytes; the family spans 6..31; " goodbye" follows.
         assert_eq!(
-            (String::from("hello 👨‍👩‍👧‍👦 goodbye"), Selection::single(13, 6)),
+            (String::from("hello 👨‍👩‍👧‍👦 goodbye"), Selection::single(31, 6)),
             print("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
     }
@@ -352,23 +356,23 @@ mod test {
     #[test]
     fn plain_multi_byte_code_point() {
         assert_eq!(
-            plain("„“", &Selection::single(1, 0)),
+            plain("„“", &Selection::single(3, 0)),
             String::from("#[|„]#“")
         );
         assert_eq!(
-            plain("„“", &Selection::single(2, 1)),
+            plain("„“", &Selection::single(6, 3)),
             String::from("„#[|“]#")
         );
         assert_eq!(
-            plain("„“", &Selection::single(0, 1)),
+            plain("„“", &Selection::single(0, 3)),
             String::from("#[„|]#“")
         );
         assert_eq!(
-            plain("„“", &Selection::single(1, 2)),
+            plain("„“", &Selection::single(3, 6)),
             String::from("„#[“|]#")
         );
         assert_eq!(
-            plain("they said „hello“", &Selection::single(11, 10)),
+            plain("they said „hello“", &Selection::single(13, 10)),
             String::from("they said #[|„]#hello“")
         );
     }
@@ -376,7 +380,7 @@ mod test {
     #[test]
     fn plain_multi_code_point_grapheme() {
         assert_eq!(
-            plain("hello 👨‍👩‍👧‍👦 goodbye", &Selection::single(13, 6)),
+            plain("hello 👨‍👩‍👧‍👦 goodbye", &Selection::single(31, 6)),
             String::from("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
     }

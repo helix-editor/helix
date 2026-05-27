@@ -361,10 +361,10 @@ impl View {
     #[inline]
     pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {
         let doc_text = doc.text().slice(..);
-        let line = doc_text.char_to_line(doc.view_offset(self.id).anchor.min(doc_text.len_chars()));
+        let line = doc_text.byte_to_line_idx(doc.view_offset(self.id).anchor.min(doc_text.len()), helix_core::LINE_TYPE);
         // Saturating subs to make it inclusive zero indexing.
         (line + self.inner_height())
-            .min(doc_text.len_lines())
+            .min(doc_text.len_lines(helix_core::LINE_TYPE))
             .saturating_sub(1)
     }
 
@@ -381,7 +381,7 @@ impl View {
         let visual_height = doc.view_offset(self.id).vertical_offset + viewport.height as usize;
 
         // fast path when the EOF is not visible on the screen,
-        if self.estimate_last_doc_line(doc) < doc_text.len_lines() - 1 {
+        if self.estimate_last_doc_line(doc) < doc_text.len_lines(helix_core::LINE_TYPE) - 1 {
             return visual_height.saturating_sub(1);
         }
 

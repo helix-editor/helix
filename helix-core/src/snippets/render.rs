@@ -148,8 +148,8 @@ impl Snippet {
             selection,
             change_range,
             |replacement_start, replacement_end| {
-                let line_idx = doc.char_to_line(replacement_start);
-                let line_start = doc.line_to_char(line_idx);
+                let line_idx = doc.byte_to_line_idx(replacement_start, crate::LINE_TYPE);
+                let line_start = doc.line_to_byte_idx(line_idx, crate::LINE_TYPE);
                 let prefix = doc.slice(line_start..replacement_start);
                 let indent_len = prefix.chars().take_while(|c| c.is_whitespace()).count();
                 let indent = prefix.slice(..indent_len);
@@ -270,11 +270,11 @@ impl SnippetRender<'_> {
             }
         }
         self.text.push_str(text);
-        self.off += text.chars().count();
+        self.off += text.len();
     }
 
     fn push_newline(&mut self) {
-        self.off += self.ctx.line_ending.chars().count() + self.indent.len_chars();
+        self.off += self.ctx.line_ending.len() + self.indent.len();
         self.text.push_str(self.ctx.line_ending);
         self.text.extend(self.indent.chunks());
     }

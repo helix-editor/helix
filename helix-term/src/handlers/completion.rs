@@ -134,9 +134,7 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
                     }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
         });
 
-    let cursor_char = text
-        .get_bytes_at(text.len_bytes())
-        .and_then(|t| t.reversed().next());
+    let cursor_char = text.bytes_at(text.len()).reversed().next();
 
     #[cfg(windows)]
     let is_path_completion_trigger = matches!(cursor_char, Some(b'/' | b'\\'));

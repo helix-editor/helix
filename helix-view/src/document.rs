@@ -1392,7 +1392,7 @@ impl Document {
     /// a single cursor would go if it were on the first grapheme. If
     /// the text is empty, returns (0, 0).
     pub fn origin(&self) -> Range {
-        if self.text().len_chars() == 0 {
+        if self.text().len() == 0 {
             return Range::new(0, 0);
         }
 
@@ -1496,7 +1496,6 @@ impl Document {
         if let Some(syntax) = &mut self.syntax {
             let loader = self.syn_loader.load();
             if let Err(err) = syntax.update(
-                old_doc.slice(..),
                 self.text.slice(..),
                 transaction.changes(),
                 &loader,
@@ -1540,7 +1539,7 @@ impl Document {
             } else if diagnostic.range.start >= diagnostic.range.end {
                 return false;
             }
-            diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            diagnostic.line = self.text.byte_to_line_idx(diagnostic.range.start, helix_core::LINE_TYPE);
             true
         });
 
@@ -1580,7 +1579,7 @@ impl Document {
         }
 
         for highlights in self.document_highlights.values_mut() {
-            let text_len = self.text.len_chars();
+            let text_len = self.text.len();
             let mut updated = Vec::with_capacity(highlights.ranges.len());
             for mut range in highlights.ranges.drain(..) {
                 changes.update_positions(
@@ -2176,8 +2175,8 @@ impl Document {
         };
 
         let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
-        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
+            start != end && end != 0 && text.get_char(end - 1).is_ok_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_ok_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },
@@ -2267,7 +2266,7 @@ impl Document {
             .as_ref()
             .and_then(|syntax| {
                 let selection = self.selection(view.id).primary();
-                let (start, end) = selection.into_byte_range(self.text().slice(..));
+                let (start, end) = selection.byte_range();
                 let layer = syntax.layer_for_byte_range(start as u32, end as u32);
 
                 let lang_config = loader.language(syntax.layer(layer).language).config();

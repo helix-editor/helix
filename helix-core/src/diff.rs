@@ -19,7 +19,7 @@ impl ChangeSetBuilder<'_> {
     fn process_hunk(&mut self, before: Range<u32>, after: Range<u32>) {
         let len = self.file.before[self.pos as usize..before.start as usize]
             .iter()
-            .map(|&it| self.file.interner[it].len_chars())
+            .map(|&it| self.file.interner[it].len())
             .sum();
         self.res.retain(len);
         self.pos = before.end;
@@ -39,7 +39,7 @@ impl ChangeSetBuilder<'_> {
         {
             let remove = self.file.before[before.start as usize..before.end as usize]
                 .iter()
-                .map(|&it| self.file.interner[it].len_chars())
+                .map(|&it| self.file.interner[it].len())
                 .sum();
             self.res.delete(remove);
             let mut fragment = Tendril::new();
@@ -50,15 +50,15 @@ impl ChangeSetBuilder<'_> {
                     if after.start == 0 {
                         fragment = self.after.to_string().into();
                     } else {
-                        let start = self.after.line_to_char(after.start as usize);
+                        let start = self.after.line_to_byte_idx(after.start as usize, crate::LINE_TYPE);
                         fragment = self.after.slice(start..).to_string().into();
                     }
                 } else if after.start == 0 {
-                    let end = self.after.line_to_char(after.end as usize);
+                    let end = self.after.line_to_byte_idx(after.end as usize, crate::LINE_TYPE);
                     fragment = self.after.slice(..end).to_string().into();
                 } else {
-                    let start = self.after.line_to_char(after.start as usize);
-                    let end = self.after.line_to_char(after.end as usize);
+                    let start = self.after.line_to_byte_idx(after.start as usize, crate::LINE_TYPE);
+                    let end = self.after.line_to_byte_idx(after.end as usize, crate::LINE_TYPE);
                     fragment = self.after.slice(start..end).to_string().into();
                 }
             } else {
@@ -112,7 +112,7 @@ impl ChangeSetBuilder<'_> {
     fn finish(mut self) -> ChangeSet {
         let len = self.file.before[self.pos as usize..]
             .iter()
-            .map(|&it| self.file.interner[it].len_chars())
+            .map(|&it| self.file.interner[it].len())
             .sum();
 
         self.res.retain(len);
@@ -127,12 +127,12 @@ impl<'a> imara_diff::TokenSource for RopeLines<'a> {
     type Tokenizer = ropey::iter::Lines<'a>;
 
     fn tokenize(&self) -> Self::Tokenizer {
-        self.0.lines()
+        self.0.lines(crate::LINE_TYPE)
     }
 
     fn estimate_tokens(&self) -> u32 {
         // we can provide a perfect estimate which is very nice for performance
-        self.0.len_lines() as u32
+        self.0.len_lines(crate::LINE_TYPE) as u32
     }
 }
 

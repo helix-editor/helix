@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["regex-cursor", "tree-house"]
 members = [
   "helix-core",
   "helix-view",
@@ -20,6 +21,11 @@ members = [
 default-members = [
   "helix-term"
 ]
+
+[patch.crates-io]
+regex-cursor = { path = "regex-cursor" }
+tree-house = { path = "tree-house/highlighter" }
+tree-house-bindings = { path = "tree-house/bindings" }
 
 [profile.release]
 lto = "thin"
@@ -45,7 +51,7 @@ thiserror = "2.0"
 tempfile = "3.27.0"
 bitflags = "2.11"
 unicode-segmentation = "1.13"
-ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+ropey = { version = "2.0.0-beta.1", default-features = false, features = ["simd", "metric_chars", "metric_utf16", "metric_lines_lf"] }
 foldhash = "0.2"
 parking_lot = "0.12"
 futures-executor = "0.3"

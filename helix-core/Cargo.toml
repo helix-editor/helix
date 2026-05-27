@@ -12,7 +12,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-unicode-lines = ["ropey/unicode_lines"]
+unicode-lines = ["ropey/metric_lines_unicode"]
 integration = []
 
 [dependencies]

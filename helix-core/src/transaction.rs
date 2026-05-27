@@ -20,12 +20,16 @@ pub enum Operation {
 }
 
 impl Operation {
-    /// The number of characters affected by the operation.
-    pub fn len_chars(&self) -> usize {
+    /// The number of bytes affected by the operation.
+    pub fn len(&self) -> usize {
         match self {
             Self::Retain(n) | Self::Delete(n) => *n,
-            Self::Insert(s) => s.chars().count(),
+            Self::Insert(s) => s.len(),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -54,13 +58,28 @@ impl Assoc {
     }
 
     fn insert_offset(self, s: &str) -> usize {
-        let chars = s.chars().count();
+        let bytes = s.len();
         match self {
-            Assoc::After | Assoc::AfterSticky => chars,
-            Assoc::AfterWord => s.chars().take_while(|&c| char_is_word(c)).count(),
+            Assoc::After | Assoc::AfterSticky => bytes,
+            Assoc::AfterWord => s
+                .char_indices()
+                .take_while(|&(_, c)| char_is_word(c))
+                .map(|(i, c)| i + c.len_utf8())
+                .last()
+                .unwrap_or(0),
             // return position before inserted text
             Assoc::Before | Assoc::BeforeSticky => 0,
-            Assoc::BeforeWord => chars - s.chars().rev().take_while(|&c| char_is_word(c)).count(),
+            Assoc::BeforeWord => {
+                // Number of trailing word-character bytes.
+                let trailing = s
+                    .char_indices()
+                    .rev()
+                    .take_while(|&(_, c)| char_is_word(c))
+                    .last()
+                    .map(|(i, _)| bytes - i)
+                    .unwrap_or(0);
+                bytes - trailing
+            }
         }
     }
 
@@ -88,7 +107,7 @@ impl ChangeSet {
 
     #[must_use]
     pub fn new(doc: RopeSlice) -> Self {
-        let len = doc.len_chars();
+        let len = doc.len();
         Self {
             changes: Vec::new(),
             len,
@@ -126,8 +145,7 @@ impl ChangeSet {
             return;
         }
 
-        // Avoiding std::str::len() to account for UTF-8 characters.
-        self.len_after += fragment.chars().count();
+        self.len_after += fragment.len();
 
         let new_last = match self.changes.as_mut_slice() {
             [.., Insert(prev)] | [.., Insert(prev), Delete(_)] => {
@@ -221,7 +239,7 @@ impl ChangeSet {
                     }
                 },
                 (Some(Insert(mut s)), Some(Delete(j))) => {
-                    let len = s.chars().count();
+                    let len = s.len();
                     match len.cmp(&j) {
                         Ordering::Less => {
                             head_a = changes_a.next();
@@ -233,16 +251,16 @@ impl ChangeSet {
                         }
                         Ordering::Greater => {
                             // TODO: cover this with a test
-                            // figure out the byte index of the truncated string end
-                            let (pos, _) = s.char_indices().nth(j).unwrap();
-                            s.replace_range(0..pos, "");
+                            // Truncate from the front so that the remaining `s` matches
+                            // the delete amount `j` (in bytes).
+                            s.replace_range(0..j, "");
                             head_a = Some(Insert(s));
                             head_b = changes_b.next();
                         }
                     }
                 }
                 (Some(Insert(s)), Some(Retain(j))) => {
-                    let len = s.chars().count();
+                    let len = s.len();
                     match len.cmp(&j) {
                         Ordering::Less => {
                             changes.insert(s);
@@ -310,7 +328,7 @@ impl ChangeSet {
     /// Returns a new changeset that reverts this one. Useful for `undo` implementation.
     /// The document parameter expects the original document before this change was applied.
     pub fn invert(&self, original_doc: &Rope) -> Self {
-        assert!(original_doc.len_chars() == self.len);
+        assert!(original_doc.len() == self.len);
 
         let mut changes = Self::with_capacity(self.changes.len());
 
@@ -329,8 +347,7 @@ impl ChangeSet {
                     pos += n;
                 }
                 Insert(s) => {
-                    let chars = s.chars().count();
-                    changes.delete(chars);
+                    changes.delete(s.len());
                 }
             }
         }
@@ -340,7 +357,7 @@ impl ChangeSet {
 
     /// Returns true if applied successfully.
     pub fn apply(&self, text: &mut Rope) -> bool {
-        if text.len_chars() != self.len {
+        if text.len() != self.len {
             return false;
         }
 
@@ -358,7 +375,7 @@ impl ChangeSet {
                 }
                 Insert(s) => {
                     text.insert(pos, s);
-                    pos += s.chars().count();
+                    pos += s.len();
                 }
             }
         }
@@ -417,7 +434,7 @@ impl ChangeSet {
                                         old_pos -= i;
                                     }
                                     Insert(ins) => {
-                                        new_pos -= ins.chars().count();
+                                        new_pos -= ins.len();
                                     }
                                 }
                                 if old_pos <= **pos {
@@ -499,7 +516,7 @@ impl ChangeSet {
                         );
                     }
 
-                    new_pos += s.chars().count();
+                    new_pos += s.len();
                 }
             }
             old_pos = old_end;
@@ -533,7 +550,7 @@ impl ChangeSet {
     where
         I: Iterator<Item = Change>,
     {
-        let len = doc.len_chars();
+        let len = doc.len();
 
         let (lower, upper) = changes.size_hint();
         let size = upper.unwrap_or(lower);
@@ -668,7 +685,7 @@ impl Transaction {
     where
         I: Iterator<Item = Deletion>,
     {
-        let len = doc.len_chars();
+        let len = doc.len();
 
         let (lower, upper) = deletions.size_hint();
         let size = upper.unwrap_or(lower);
@@ -765,7 +782,7 @@ impl Transaction {
             let mut change_size = to as isize - from as isize;
 
             if let Some(ref text) = replacement {
-                change_size = text.chars().count() as isize - change_size;
+                change_size = text.len() as isize - change_size;
             } else {
                 change_size = -change_size;
             }
@@ -968,10 +985,12 @@ mod test {
     fn invert() {
         use Operation::*;
 
+        // "世界3 hello xz" — "世" and "界" are 3 bytes each, the rest is ASCII.
+        // Bytes: 世=3, 界=3, "3 " =2, "hello"=5, " xz"=3  →  total 16.
         let changes = ChangeSet {
-            changes: vec![Retain(4), Insert("test".into()), Delete(5), Retain(3)],
-            len: 12,
-            len_after: 11,
+            changes: vec![Retain(8), Insert("test".into()), Delete(5), Retain(3)],
+            len: 16,
+            len_after: 15,
         };
 
         let doc = Rope::from("世界3 hello xz");
@@ -1181,6 +1200,6 @@ mod test {
 
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
-        assert_eq!(changes.len_after, TEST_CASE.chars().count());
+        assert_eq!(changes.len_after, TEST_CASE.len());
     }
 }

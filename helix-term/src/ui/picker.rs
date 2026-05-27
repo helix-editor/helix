@@ -901,7 +901,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             let doc = match preview.document() {
                 Some(doc)
                     if range.is_none_or(|(start, end)| {
-                        start <= end && end <= doc.text().len_lines()
+                        start <= end && end <= doc.text().len_lines(helix_core::LINE_TYPE)
                     }) =>
                 {
                     doc
@@ -935,8 +935,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             if let Some((start_line, end_line)) = range {
                 let height = end_line - start_line;
                 let text = doc.text().slice(..);
-                let start = text.line_to_char(start_line);
-                let middle = text.line_to_char(start_line + height / 2);
+                let start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
+                let middle = text.line_to_byte_idx(start_line + height / 2, helix_core::LINE_TYPE);
                 if height < inner.height as usize {
                     let text_fmt = doc.text_format(inner.width, None);
                     let annotations = TextAnnotations::default();

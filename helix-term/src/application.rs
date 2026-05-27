@@ -611,8 +611,8 @@ impl Application {
 
         doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
-        let lines = doc_save_event.text.len_lines();
-        let size = doc_save_event.text.len_bytes();
+        let lines = doc_save_event.text.len_lines(helix_core::LINE_TYPE);
+        let size = doc_save_event.text.len();
 
         enum Size {
             Bytes(u16),

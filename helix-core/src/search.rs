@@ -31,7 +31,10 @@ pub fn find_nth_char<M: CharMatcher>(
         return None;
     }
 
-    let mut chars = text.get_chars_at(pos)?;
+    if pos > text.len() {
+        return None;
+    }
+    let mut chars = text.chars_at(pos);
 
     match direction {
         Direction::Forward => loop {

@@ -79,7 +79,7 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
-    use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
+    use helix_core::line_ending::line_end_byte_index;
     use helix_core::snippets::{RenderedSnippet, Snippet, SnippetRenderCtx};
     use helix_core::{chars, RopeSlice};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
@@ -149,12 +149,12 @@ pub mod util {
         offset_encoding: OffsetEncoding,
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
-        if pos_line > doc.len_lines() - 1 {
+        if pos_line > doc.len_lines(helix_core::LINE_TYPE) - 1 {
             // If it extends past the end, truncate it to the end. This is because the
             // way the LSP describes the range including the last newline is by
             // specifying a line number after what we would call the last line.
             log::warn!("LSP position {pos:?} out of range assuming EOF");
-            return Some(doc.len_chars());
+            return Some(doc.len());
         }
 
         // We need to be careful here to fully comply ith the LSP spec.
@@ -173,7 +173,7 @@ pub mod util {
         // This means that while the line must be in bounds the `character`
         // must be capped to the end of the line.
         // Note that the end of the line here is **before** the line terminator
-        // so we must use `line_end_char_index` instead of `doc.line_to_char(pos_line + 1)`
+        // so we must use `line_end_byte_index` instead of `doc.line_to_byte_idx(pos_line + 1, helix_core::LINE_TYPE)`
         //
         // FIXME: Helix does not fully comply with the LSP spec for line terminators.
         // The LSP standard requires that line terminators are ['\n', '\r\n', '\r'].
@@ -183,7 +183,7 @@ pub mod util {
 
         let line = match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line_start = doc.line_to_byte(pos_line);
+                let line_start = doc.line_to_byte_idx(pos_line, helix_core::LINE_TYPE);
                 let line_end = line_end_byte_index(&doc.slice(..), pos_line);
                 line_start..line_end
             }
@@ -192,13 +192,13 @@ pub mod util {
                 // ropey can do this just as easily as utf-8 byte translation
                 // but the functions are just missing.
                 // Translate to char first and then utf-16 as a workaround
-                let line_start = doc.line_to_char(pos_line);
-                let line_end = line_end_char_index(&doc.slice(..), pos_line);
-                doc.char_to_utf16_cu(line_start)..doc.char_to_utf16_cu(line_end)
+                let line_start = doc.line_to_byte_idx(pos_line, helix_core::LINE_TYPE);
+                let line_end = line_end_byte_index(&doc.slice(..), pos_line);
+                doc.byte_to_utf16_idx(line_start)..doc.byte_to_utf16_idx(line_end)
             }
             OffsetEncoding::Utf32 => {
-                let line_start = doc.line_to_char(pos_line);
-                let line_end = line_end_char_index(&doc.slice(..), pos_line);
+                let line_start = doc.line_to_byte_idx(pos_line, helix_core::LINE_TYPE);
+                let line_end = line_end_byte_index(&doc.slice(..), pos_line);
                 line_start..line_end
             }
         };
@@ -211,9 +211,11 @@ pub mod util {
             .min(line.end);
 
         match offset_encoding {
-            OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
-            OffsetEncoding::Utf16 => doc.try_utf16_cu_to_char(pos).ok(),
-            OffsetEncoding::Utf32 => Some(pos),
+            OffsetEncoding::Utf8 => Some(pos),
+            OffsetEncoding::Utf16 => {
+                (pos <= doc.len_utf16()).then(|| doc.utf16_to_byte_idx(pos))
+            }
+            OffsetEncoding::Utf32 => Some(doc.char_to_byte_idx(pos)),
         }
     }
 
@@ -227,23 +229,23 @@ pub mod util {
     ) -> lsp::Position {
         match offset_encoding {
             OffsetEncoding::Utf8 => {
-                let line = doc.char_to_line(pos);
-                let line_start = doc.line_to_byte(line);
-                let col = doc.char_to_byte(pos) - line_start;
+                let line = doc.byte_to_line_idx(pos, helix_core::LINE_TYPE);
+                let line_start = doc.line_to_byte_idx(line, helix_core::LINE_TYPE);
+                let col = pos - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
             OffsetEncoding::Utf16 => {
-                let line = doc.char_to_line(pos);
-                let line_start = doc.char_to_utf16_cu(doc.line_to_char(line));
-                let col = doc.char_to_utf16_cu(pos) - line_start;
+                let line = doc.byte_to_line_idx(pos, helix_core::LINE_TYPE);
+                let line_start = doc.byte_to_utf16_idx(doc.line_to_byte_idx(line, helix_core::LINE_TYPE));
+                let col = doc.byte_to_utf16_idx(pos) - line_start;
 
                 lsp::Position::new(line as u32, col as u32)
             }
             OffsetEncoding::Utf32 => {
-                let line = doc.char_to_line(pos);
-                let line_start = doc.line_to_char(line);
-                let col = pos - line_start;
+                let line = doc.byte_to_line_idx(pos, helix_core::LINE_TYPE);
+                let line_start = doc.line_to_byte_idx(line, helix_core::LINE_TYPE);
+                let col = doc.byte_to_char_idx(pos) - doc.byte_to_char_idx(line_start);
 
                 lsp::Position::new(line as u32, col as u32)
             }
@@ -316,7 +318,7 @@ pub mod util {
                     return None;
                 }
                 let end_offset = cursor as i128 + end_offset;
-                if end_offset > text.len_chars() as i128 {
+                if end_offset > text.len() as i128 {
                     return None;
                 }
                 (start_offset as usize, end_offset as usize)
@@ -424,7 +426,7 @@ pub mod util {
                 let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
                 let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
                 Some(start..end)
-            }) == Some(0..doc.len_chars());
+            }) == Some(0..doc.len());
             if is_document_replacement {
                 let new_text = Rope::from(edits.pop().unwrap().new_text);
                 return helix_core::diff::compare_ropes(doc, &new_text);

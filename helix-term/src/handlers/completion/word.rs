@@ -57,12 +57,12 @@ pub(super) fn completion(
     let typed_word_range = cursor.head..pos;
     let typed_word = text.slice(typed_word_range.clone());
     let edit_diff = if typed_word
-        .char(typed_word.len_chars().saturating_sub(1))
+        .char(typed_word.len().saturating_sub(1))
         .is_whitespace()
     {
         0
     } else {
-        typed_word.len_chars()
+        typed_word.len()
     };
 
     if handle.is_canceled() {
@@ -119,7 +119,7 @@ pub(super) fn retain_valid_completions(
     let cursor = doc.selection(view_id).primary().cursor(text);
     if text
         .get_char(cursor.saturating_sub(1))
-        .is_some_and(|ch| ch.is_whitespace())
+        .is_ok_and(|ch| ch.is_whitespace())
     {
         items.retain(|item| {
             !matches!(

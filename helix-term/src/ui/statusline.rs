@@ -380,7 +380,7 @@ fn render_total_line_numbers<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let total_line_numbers = context.doc.text().len_lines();
+    let total_line_numbers = context.doc.text().len_lines(helix_core::LINE_TYPE);
 
     write(context, format!(" {} ", total_line_numbers).into());
 }
@@ -390,7 +390,7 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let position = get_position(context);
-    let maxrows = context.doc.text().len_lines();
+    let maxrows = context.doc.text().len_lines(helix_core::LINE_TYPE);
     write(
         context,
         format!("{}%", (position.row + 1) * 100 / maxrows).into(),

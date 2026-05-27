@@ -26,11 +26,10 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary},
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
-    line_ending::{get_line_ending_of_str, line_end_char_index},
+    line_ending::{get_line_ending_of_str, line_end_byte_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
@@ -822,9 +821,10 @@ fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        let line_start = text.line_to_char(line);
+        let line_start = text.line_to_byte_idx(line, helix_core::LINE_TYPE);
 
-        let pos = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
+        let pos = text
+            .prev_grapheme_boundary(line_end_byte_index(&text, line))
             .max(line_start);
 
         range.put_cursor(text, pos, movement == Movement::Extend)
@@ -855,7 +855,7 @@ fn goto_line_end_newline_impl(view: &mut View, doc: &mut Document, movement: Mov
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        let pos = line_end_char_index(&text, line);
+        let pos = line_end_byte_index(&text, line);
 
         range.put_cursor(text, pos, movement == Movement::Extend)
     });
@@ -887,7 +887,7 @@ fn goto_line_start_impl(view: &mut View, doc: &mut Document, movement: Movement)
         let line = range.cursor_line(text);
 
         // adjust to start of the line
-        let pos = text.line_to_char(line);
+        let pos = text.line_to_byte_idx(line, helix_core::LINE_TYPE);
         range.put_cursor(text, pos, movement == Movement::Extend)
     });
     doc.set_selection(view.id, selection);
@@ -949,12 +949,15 @@ fn kill_to_line_start(cx: &mut Context) {
         cx,
         move |text, range| {
             let line = range.cursor_line(text);
-            let first_char = text.line_to_char(line);
+            let first_char = text.line_to_byte_idx(line, helix_core::LINE_TYPE);
             let anchor = range.cursor(text);
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
-                line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = text.line(line).first_non_whitespace_char() {
+                line_end_byte_index(&text, line - 1)
+            } else if let Some(pos) = text
+                .line(line, helix_core::LINE_TYPE)
+                .first_non_whitespace_byte()
+            {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -977,12 +980,12 @@ fn kill_to_line_end(cx: &mut Context) {
         cx,
         |text, range| {
             let line = range.cursor_line(text);
-            let line_end_pos = line_end_char_index(&text, line);
+            let line_end_pos = line_end_byte_index(&text, line);
             let pos = range.cursor(text);
 
             // if the cursor is on the newline char delete that
             if pos == line_end_pos {
-                (pos, text.line_to_char(line + 1))
+                (pos, text.line_to_byte_idx(line + 1, helix_core::LINE_TYPE))
             } else {
                 (pos, line_end_pos)
             }
@@ -1016,8 +1019,11 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = text.line(line).first_non_whitespace_char() {
-            let pos = pos + text.line_to_char(line);
+        if let Some(pos) = text
+            .line(line, helix_core::LINE_TYPE)
+            .first_non_whitespace_byte()
+        {
+            let pos = pos + text.line_to_byte_idx(line, helix_core::LINE_TYPE);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
             range
@@ -1320,7 +1326,7 @@ fn extend_to_file_end(cx: &mut Context) {
 fn goto_file_end_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let pos = doc.text().len_chars();
+    let pos = doc.text().len();
     let selection = doc
         .selection(view.id)
         .clone()
@@ -1468,21 +1474,27 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let selection = fallback_ranges[0];
         // Cap the search at roughly 1k bytes around the cursor.
         let lookaround = 1000;
-        let pos = text.char_to_byte(selection.cursor(text));
+        let pos = selection.cursor(text);
         let search_start = text
-            .line_to_byte(text.byte_to_line(pos))
+            .line_to_byte_idx(
+                text.byte_to_line_idx(pos, helix_core::LINE_TYPE),
+                helix_core::LINE_TYPE,
+            )
             .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
         let search_end = text
-            .line_to_byte(text.byte_to_line(pos) + 1)
+            .line_to_byte_idx(
+                text.byte_to_line_idx(pos, helix_core::LINE_TYPE) + 1,
+                helix_core::LINE_TYPE,
+            )
             .min(text.ceil_char_boundary(pos + lookaround));
-        let search_range = text.byte_slice(search_start..search_end);
+        let search_range = text.slice(search_start..search_end);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
             .take_while(|range| search_start + range.start <= pos + 1)
             .find(|range| pos <= search_start + range.end)
-            .map(|range| Cow::from(search_range.byte_slice(range)));
+            .map(|range| Cow::from(search_range.slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
         let path = path.unwrap_or_else(|| selection.fragment(text));
         vec![path.into_owned()]
@@ -1666,22 +1678,22 @@ fn find_char_line_ending_motion(
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let cursor_anchor = range.cursor(text);
-        let cursor_head = next_grapheme_boundary(text, cursor_anchor);
+        let cursor_head = text.next_grapheme_boundary(cursor_anchor);
         let cursor_line = range.cursor_line(text);
 
         let pos = match direction {
             Direction::Forward => {
-                let line_end = line_end_char_index(&text, cursor_line);
+                let line_end = line_end_byte_index(&text, cursor_line);
                 let on_edge = if inclusive {
                     line_end == cursor_anchor
                 } else {
                     line_end == cursor_head || line_end == cursor_anchor
                 };
                 let line = cursor_line + count - 1 + on_edge as usize;
-                if line >= text.len_lines() - 1 {
+                if line >= text.len_lines(helix_core::LINE_TYPE) - 1 {
                     return range;
                 }
-                line_end_char_index(&text, line) - !inclusive as usize
+                line_end_byte_index(&text, line) - !inclusive as usize
             }
             Direction::Backward => {
                 if inclusive {
@@ -1689,14 +1701,15 @@ fn find_char_line_ending_motion(
                     if line < 0 {
                         return range;
                     }
-                    line_end_char_index(&text, line as usize)
+                    line_end_byte_index(&text, line as usize)
                 } else {
-                    let on_edge = text.line_to_char(cursor_line) == cursor_anchor;
+                    let on_edge =
+                        text.line_to_byte_idx(cursor_line, helix_core::LINE_TYPE) == cursor_anchor;
                     let line = cursor_line as isize - count as isize + 1 - on_edge as isize;
                     if line <= 0 {
                         return range;
                     }
-                    text.line_to_char(line as usize)
+                    text.line_to_byte_idx(line as usize, helix_core::LINE_TYPE)
                 }
             }
         };
@@ -1734,7 +1747,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     let cursor_anchor = range.cursor(text);
-                    let cursor_head = next_grapheme_boundary(text, cursor_anchor);
+                    let cursor_head = text.next_grapheme_boundary(cursor_anchor);
 
                     // Exclusive search skips the next char after cursor to enable repeated application
                     let search_start_pos = match (inclusive, direction) {
@@ -2141,7 +2154,9 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
                 Direction::Backward => head_pos.row.saturating_sub(offset),
             };
 
-            if anchor_row >= text.len_lines() || head_row >= text.len_lines() {
+            if anchor_row >= text.len_lines(helix_core::LINE_TYPE)
+                || head_row >= text.len_lines(helix_core::LINE_TYPE)
+            {
                 break;
             }
 
@@ -2184,7 +2199,7 @@ fn copy_selection_on_next_line(cx: &mut Context) {
 fn select_all(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
-    let end = doc.text().len_chars();
+    let end = doc.text().len();
     doc.set_selection(view.id, Selection::single(0, end))
 }
 
@@ -2267,14 +2282,8 @@ fn search_impl(
     // Get the right side of the primary block cursor for forward search, or the
     // grapheme before the start of the selection for reverse search.
     let start = match direction {
-        Direction::Forward => text.char_to_byte(graphemes::ensure_grapheme_boundary_next(
-            text,
-            selection.primary().to(),
-        )),
-        Direction::Backward => text.char_to_byte(graphemes::ensure_grapheme_boundary_prev(
-            text,
-            selection.primary().from(),
-        )),
+        Direction::Forward => text.ceil_grapheme_boundary(selection.primary().to()),
+        Direction::Backward => text.floor_grapheme_boundary(selection.primary().from()),
     };
 
     // A regex::Match returns byte-positions in the str. In the case where we
@@ -2286,15 +2295,15 @@ fn search_impl(
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mut mat = match direction {
-        Direction::Forward => regex.find(doc.regex_input_at_bytes(start..)),
-        Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(..start)).last(),
+        Direction::Forward => regex.find(doc.regex_input_at(start..)),
+        Direction::Backward => regex.find_iter(doc.regex_input_at(..start)).last(),
     };
 
     if mat.is_none() {
         if wrap_around {
             mat = match direction {
                 Direction::Forward => regex.find(doc.regex_input()),
-                Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(start..)).last(),
+                Direction::Backward => regex.find_iter(doc.regex_input_at(start..)).last(),
             };
         }
         if show_warnings {
@@ -2307,12 +2316,11 @@ fn search_impl(
     }
 
     let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+        let start = mat.start();
+        let end = mat.end();
 
         if end == 0 {
             // skip empty matches that don't make sense
@@ -2465,7 +2473,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
         // This can happen when the cursor is at the last character in
         // the document +1 (ge + j), in this case text.char(index) will panic as
         // it will index out of bounds. See https://github.com/helix-editor/helix/issues/12609
-        if index == text.len_chars() {
+        if index == text.len() {
             return false;
         }
         let ch = text.char(index);
@@ -2478,7 +2486,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
     }
 
     fn is_at_word_end(text: RopeSlice, index: usize) -> bool {
-        if index == 0 || index == text.len_chars() {
+        if index == 0 || index == text.len() {
             return false;
         }
         let ch = text.char(index);
@@ -2759,14 +2767,17 @@ fn global_search(cx: &mut Context) {
             let line_end = *line_end;
             let view = view_mut!(cx.editor);
             let text = doc.text();
-            if line_start >= text.len_lines() {
+            if line_start >= text.len_lines(helix_core::LINE_TYPE) {
                 cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
                 return;
             }
-            let start = text.line_to_char(line_start);
-            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
+            let start = text.line_to_byte_idx(line_start, helix_core::LINE_TYPE);
+            let end = text.line_to_byte_idx(
+                (line_end + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                helix_core::LINE_TYPE,
+            );
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
@@ -2818,27 +2829,43 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
 
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char(
+        let start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
+        let end = text.line_to_byte_idx(
             (end_line + 1) // newline of end_line
-                .min(text.len_lines()),
+                .min(text.len_lines(helix_core::LINE_TYPE)),
+            helix_core::LINE_TYPE,
         );
 
         // extend to previous/next line if current line is selected
         let (anchor, head) = if range.from() == start && range.to() == end {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
+                Extend::Above => (
+                    end,
+                    text.line_to_byte_idx(start_line.saturating_sub(count), helix_core::LINE_TYPE),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                    text.line_to_byte_idx(
+                        (end_line + count + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                        helix_core::LINE_TYPE,
+                    ),
                 ),
             }
         } else {
             match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Above => (
+                    end,
+                    text.line_to_byte_idx(
+                        start_line.saturating_sub(count - 1),
+                        helix_core::LINE_TYPE,
+                    ),
+                ),
                 Extend::Below => (
                     start,
-                    text.line_to_char((end_line + count).min(text.len_lines())),
+                    text.line_to_byte_idx(
+                        (end_line + count).min(text.len_lines(helix_core::LINE_TYPE)),
+                        helix_core::LINE_TYPE,
+                    ),
                 ),
             }
         };
@@ -2858,11 +2885,11 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
     let mut count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
-    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
+    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines(helix_core::LINE_TYPE));
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char(saturating_add(end_line, 1));
+        let start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
+        let end = text.line_to_byte_idx(saturating_add(end_line, 1), helix_core::LINE_TYPE);
         let direction = range.direction();
 
         // Extending to line bounds is counted as one step
@@ -2877,23 +2904,23 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
         };
         let (anchor, head) = match anchor_line.cmp(&head_line) {
             Ordering::Less => (
-                text.line_to_char(anchor_line),
-                text.line_to_char(saturating_add(head_line, 1)),
+                text.line_to_byte_idx(anchor_line, helix_core::LINE_TYPE),
+                text.line_to_byte_idx(saturating_add(head_line, 1), helix_core::LINE_TYPE),
             ),
             Ordering::Equal => match extend {
                 Extend::Above => (
-                    text.line_to_char(saturating_add(anchor_line, 1)),
-                    text.line_to_char(head_line),
+                    text.line_to_byte_idx(saturating_add(anchor_line, 1), helix_core::LINE_TYPE),
+                    text.line_to_byte_idx(head_line, helix_core::LINE_TYPE),
                 ),
                 Extend::Below => (
-                    text.line_to_char(head_line),
-                    text.line_to_char(saturating_add(anchor_line, 1)),
+                    text.line_to_byte_idx(head_line, helix_core::LINE_TYPE),
+                    text.line_to_byte_idx(saturating_add(anchor_line, 1), helix_core::LINE_TYPE),
                 ),
             },
 
             Ordering::Greater => (
-                text.line_to_char(saturating_add(anchor_line, 1)),
-                text.line_to_char(head_line),
+                text.line_to_byte_idx(saturating_add(anchor_line, 1), helix_core::LINE_TYPE),
+                text.line_to_byte_idx(head_line, helix_core::LINE_TYPE),
             ),
         };
         Range::new(anchor, head)
@@ -2911,8 +2938,11 @@ fn extend_to_line_bounds(cx: &mut Context) {
             let text = doc.text();
 
             let (start_line, end_line) = range.line_range(text.slice(..));
-            let start = text.line_to_char(start_line);
-            let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+            let start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
+            let end = text.line_to_byte_idx(
+                (end_line + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                helix_core::LINE_TYPE,
+            );
 
             Range::new(start, end).with_direction(range.direction())
         }),
@@ -2935,20 +2965,26 @@ fn shrink_to_line_bounds(cx: &mut Context) {
                 return range;
             }
 
-            let mut start = text.line_to_char(start_line);
+            let mut start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
 
             // line_to_char gives us the start position of the line, so
             // we need to get the start position of the next line. In
             // the editor, this will correspond to the cursor being on
             // the EOL whitespace character, which is what we want.
-            let mut end = text.line_to_char((end_line + 1).min(text.len_lines()));
+            let mut end = text.line_to_byte_idx(
+                (end_line + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                helix_core::LINE_TYPE,
+            );
 
             if start != range.from() {
-                start = text.line_to_char((start_line + 1).min(text.len_lines()));
+                start = text.line_to_byte_idx(
+                    (start_line + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                    helix_core::LINE_TYPE,
+                );
             }
 
             if end != range.to() {
-                end = text.line_to_char(end_line);
+                end = text.line_to_byte_idx(end_line, helix_core::LINE_TYPE);
             }
 
             Range::new(start, end).with_direction(range.direction())
@@ -2964,13 +3000,16 @@ enum Operation {
 fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
     selection.ranges().iter().all(|range| {
         let text = text.slice(..);
-        if range.slice(text).len_lines() < 2 {
+        if range.slice(text).len_lines(helix_core::LINE_TYPE) < 2 {
             return false;
         }
         // If the start of the selection is at the start of a line and the end at the end of a line.
         let (start_line, end_line) = range.line_range(text);
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char((end_line + 1).min(text.len_lines()));
+        let start = text.line_to_byte_idx(start_line, helix_core::LINE_TYPE);
+        let end = text.line_to_byte_idx(
+            (end_line + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+            helix_core::LINE_TYPE,
+        );
         start == range.from() && end == range.to()
     })
 }
@@ -3029,7 +3068,7 @@ fn delete_by_selection_insert_mode(
     let text = doc.text().slice(..);
     let mut selection = SmallVec::new();
     let mut insert_newline = false;
-    let text_len = text.len_chars();
+    let text_len = text.len();
     let mut transaction =
         Transaction::delete_by_selection(doc.text(), doc.selection(view.id), |range| {
             let (start, end) = f(text, range);
@@ -3144,7 +3183,7 @@ fn append_mode(cx: &mut Context) {
 
     // Make sure there's room at the end of the document if the last
     // selection butts up against it.
-    let end = text.len_chars();
+    let end = text.len();
     let last_range = doc
         .selection(view.id)
         .iter()
@@ -3161,7 +3200,7 @@ fn append_mode(cx: &mut Context) {
     let selection = doc.selection(view.id).clone().transform(|range| {
         Range::new(
             range.from(),
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
+            doc.text().slice(..).next_grapheme_boundary(range.to()),
         )
     });
     doc.set_selection(view.id, selection);
@@ -3704,9 +3743,9 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         let cursor_line = range.cursor_line(text);
-        let cursor_line_start = text.line_to_char(cursor_line);
+        let cursor_line_start = text.line_to_byte_idx(cursor_line, helix_core::LINE_TYPE);
 
-        if line_end_char_index(&text, cursor_line) == cursor_line_start {
+        if line_end_byte_index(&text, cursor_line) == cursor_line_start {
             // line is empty => auto indent
             let line_end_index = cursor_line_start;
 
@@ -3733,11 +3772,11 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
                 IndentFallbackPos::LineStart => text
-                    .line(cursor_line)
-                    .first_non_whitespace_char()
+                    .line(cursor_line, helix_core::LINE_TYPE)
+                    .first_non_whitespace_byte()
                     .map(|ws_offset| ws_offset + cursor_line_start)
                     .unwrap_or(cursor_line_start),
-                IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
+                IndentFallbackPos::LineEnd => line_end_byte_index(&text, cursor_line),
             };
 
             ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
@@ -3840,10 +3879,13 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
-        let curr_line_num = text.char_to_line(match open {
-            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
-            Open::Above => range.from(),
-        });
+        let curr_line_num = text.byte_to_line_idx(
+            match open {
+                Open::Below => text.prev_grapheme_boundary(range.to()),
+                Open::Above => range.from(),
+            },
+            helix_core::LINE_TYPE,
+        );
 
         // the next line number, where the cursor will be, after finishing the transaction
         let next_new_line_num = match open {
@@ -3862,13 +3904,13 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             (0, 0)
         } else {
             (
-                line_end_char_index(&text, above_next_new_line_num),
-                doc.line_ending.len_chars(),
+                line_end_byte_index(&text, above_next_new_line_num),
+                doc.line_ending.len(),
             )
         };
 
-        let line = text.line(curr_line_num);
-        let indent = match line.first_non_whitespace_char() {
+        let line = text.line(curr_line_num, helix_core::LINE_TYPE);
+        let indent = match line.first_non_whitespace_byte() {
             Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
             _ => indent::indent_for_newline(
                 &loader,
@@ -3915,7 +3957,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             // + (i * (line_ending_len + indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
             // + indent_len + comment_len ->        -> indent for i'th line
             ranges.push(Range::point(
-                pos + (i * (doc.line_ending.len_chars() + indent_len + comment_len))
+                pos + (i * (doc.line_ending.len() + indent_len + comment_len))
                     + indent_len
                     + comment_len,
             ));
@@ -3978,14 +4020,21 @@ fn goto_line_without_jumplist(
     if let Some(count) = count {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
-        let max_line = if text.line(text.len_lines() - 1).len_chars() == 0 {
+        let max_line = if text
+            .line(
+                text.len_lines(helix_core::LINE_TYPE) - 1,
+                helix_core::LINE_TYPE,
+            )
+            .len()
+            == 0
+        {
             // If the last line is blank, don't jump to it.
-            text.len_lines().saturating_sub(2)
+            text.len_lines(helix_core::LINE_TYPE).saturating_sub(2)
         } else {
-            text.len_lines() - 1
+            text.len_lines(helix_core::LINE_TYPE) - 1
         };
         let line_idx = std::cmp::min(count.get() - 1, max_line);
-        let pos = text.line_to_char(line_idx);
+        let pos = text.line_to_byte_idx(line_idx, helix_core::LINE_TYPE);
         let selection = doc
             .selection(view.id)
             .clone()
@@ -4006,13 +4055,20 @@ fn extend_to_last_line(cx: &mut Context) {
 fn goto_last_line_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    let line_idx = if text.line(text.len_lines() - 1).len_chars() == 0 {
+    let line_idx = if text
+        .line(
+            text.len_lines(helix_core::LINE_TYPE) - 1,
+            helix_core::LINE_TYPE,
+        )
+        .len()
+        == 0
+    {
         // If the last line is blank, don't jump to it.
-        text.len_lines().saturating_sub(2)
+        text.len_lines(helix_core::LINE_TYPE).saturating_sub(2)
     } else {
-        text.len_lines() - 1
+        text.len_lines(helix_core::LINE_TYPE) - 1
     };
-    let pos = text.line_to_char(line_idx);
+    let pos = text.line_to_byte_idx(line_idx, helix_core::LINE_TYPE);
     let selection = doc
         .selection(view.id)
         .clone()
@@ -4036,9 +4092,11 @@ fn goto_column_impl(cx: &mut Context, movement: Movement) {
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
-        let line_start = text.line_to_char(line);
-        let line_end = line_end_char_index(&text, line);
-        let pos = graphemes::nth_next_grapheme_boundary(text, line_start, count - 1).min(line_end);
+        let line_start = text.line_to_byte_idx(line, helix_core::LINE_TYPE);
+        let line_end = line_end_byte_index(&text, line);
+        let pos = text
+            .nth_next_grapheme_boundary(line_start, count - 1)
+            .min(line_end);
         range.put_cursor(text, pos, movement == Movement::Extend)
     });
     push_jump(view, doc);
@@ -4089,11 +4147,8 @@ fn select_mode(cx: &mut Context) {
     // Make sure end-of-document selections are also 1-width.
     // (With the exception of being in an empty document, of course.)
     let selection = doc.selection(view.id).clone().transform(|range| {
-        if range.is_empty() && range.head == text.len_chars() {
-            Range::new(
-                graphemes::prev_grapheme_boundary(text, range.anchor),
-                range.head,
-            )
+        if range.is_empty() && range.head == text.len() {
+            Range::new(text.prev_grapheme_boundary(range.anchor), range.head)
         } else {
             range
         }
@@ -4278,11 +4333,11 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 /// Additions and modifications cover the added and modified ranges.
 /// Deletions are represented as the point at the start of the deletion hunk.
 fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
-    let anchor = text.line_to_char(hunk.after.start as usize);
+    let anchor = text.line_to_byte_idx(hunk.after.start as usize, helix_core::LINE_TYPE);
     let head = if hunk.after.is_empty() {
         anchor + 1
     } else {
-        text.line_to_char(hunk.after.end as usize)
+        text.line_to_byte_idx(hunk.after.end as usize, helix_core::LINE_TYPE)
     };
 
     Range::new(anchor, head)
@@ -4296,11 +4351,8 @@ pub mod insert {
 
     /// Exclude the cursor in range.
     fn exclude_cursor(text: RopeSlice, range: Range, cursor: Range) -> Range {
-        if range.to() == cursor.to() && text.len_chars() != cursor.to() {
-            Range::new(
-                range.from(),
-                graphemes::prev_grapheme_boundary(text, cursor.to()),
-            )
+        if range.to() == cursor.to() && text.len() != cursor.to() {
+            Range::new(range.from(), text.prev_grapheme_boundary(cursor.to()))
         } else {
             range
         }
@@ -4350,8 +4402,10 @@ pub mod insert {
         ) {
             let cursors_after_whitespace = doc.selection(view_id).ranges().iter().all(|range| {
                 let cursor = range.cursor(doc.text().slice(..));
-                let current_line_num = doc.text().char_to_line(cursor);
-                let current_line_start = doc.text().line_to_char(current_line_num);
+                let current_line_num = doc.text().byte_to_line_idx(cursor, helix_core::LINE_TYPE);
+                let current_line_start = doc
+                    .text()
+                    .line_to_byte_idx(current_line_num, helix_core::LINE_TYPE);
                 let left = doc.text().slice(current_line_start..cursor);
                 left.chars().all(|c| c.is_whitespace())
             });
@@ -4382,7 +4436,7 @@ pub mod insert {
                 let cursor = range.cursor(doc.text().slice(..));
                 let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
                     let line = range.cursor_line(doc.text().slice(..));
-                    let line_start = doc.text().line_to_char(line);
+                    let line_start = doc.text().line_to_byte_idx(line, helix_core::LINE_TYPE);
                     let offset = (cursor - line_start) % indent_width as usize;
 
                     Tendril::from(doc.indent_style.as_str().repeat(count)).split_off(offset)
@@ -4474,20 +4528,20 @@ pub mod insert {
             };
             let curr = contents.get_char(pos).unwrap_or(' ');
 
-            let current_line = text.char_to_line(pos);
-            let line_start = text.line_to_char(current_line);
+            let current_line = text.byte_to_line_idx(pos, helix_core::LINE_TYPE);
+            let line_start = text.line_to_byte_idx(current_line, helix_core::LINE_TYPE);
 
             let continue_comment_token = continue_comment_tokens
                 .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
 
             let (from, to, local_offs) = if let Some(idx) =
-                text.slice(line_start..pos).last_non_whitespace_char()
+                text.slice(line_start..pos).last_non_whitespace_byte()
             {
                 let first_trailing_whitespace_char = (line_start + idx + 1).clamp(last_pos, pos);
                 last_pos = pos;
-                let line = text.line(current_line);
+                let line = text.line(current_line, helix_core::LINE_TYPE);
 
-                let indent = match line.first_non_whitespace_char() {
+                let indent = match line.first_non_whitespace_byte() {
                     Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
                     _ => indent::indent_for_newline(
                         &loader,
@@ -4592,7 +4646,7 @@ pub mod insert {
     fn dedent(doc: &Document, range: &Range) -> Option<Deletion> {
         let text = doc.text().slice(..);
         let pos = range.cursor(text);
-        let line_start_pos = text.line_to_char(range.cursor_line(text));
+        let line_start_pos = text.line_to_byte_idx(range.cursor_line(text), helix_core::LINE_TYPE);
 
         // consider to delete by indent level if all characters before `pos` are indent units.
         let fragment = Cow::from(text.slice(line_start_pos..pos));
@@ -4601,9 +4655,9 @@ pub mod insert {
             return None;
         }
 
-        if text.get_char(pos.saturating_sub(1)) == Some('\t') {
+        if text.get_char(pos.saturating_sub(1)) == Ok('\t') {
             // fast path, delete one char
-            return Some((graphemes::nth_prev_grapheme_boundary(text, pos, 1), pos));
+            return Some((text.nth_prev_grapheme_boundary(pos, 1), pos));
         }
 
         let tab_width = doc.tab_width();
@@ -4658,7 +4712,7 @@ pub mod insert {
             |range| {
                 let pos = range.cursor(text);
 
-                log::debug!("cursor: {}, len: {}", pos, text.len_chars());
+                log::debug!("cursor: {}, len: {}", pos, text.len());
 
                 if pos == 0 {
                     return ((pos, pos), None);
@@ -4672,12 +4726,7 @@ pub mod insert {
                         auto_pairs::hook_delete(doc.text(), range, auto_pairs?)
                             .map(|(delete, new_range)| (delete, Some(new_range)))
                     })
-                    .unwrap_or_else(|| {
-                        (
-                            (graphemes::nth_prev_grapheme_boundary(text, pos, count), pos),
-                            None,
-                        )
-                    })
+                    .unwrap_or_else(|| ((text.nth_prev_grapheme_boundary(pos, count), pos), None))
             },
         );
 
@@ -4693,7 +4742,7 @@ pub mod insert {
             cx,
             |text, range| {
                 let pos = range.cursor(text);
-                (pos, graphemes::nth_next_grapheme_boundary(text, pos, count))
+                (pos, text.nth_next_grapheme_boundary(pos, count))
             },
             Direction::Forward,
         )
@@ -4945,11 +4994,17 @@ fn paste_impl(
     let mut transaction = Transaction::change_by_selection(text, selection, |range| {
         let pos = match (action, linewise) {
             // paste linewise before
-            (Paste::Before, true) => text.line_to_char(text.char_to_line(range.from())),
+            (Paste::Before, true) => text.line_to_byte_idx(
+                text.byte_to_line_idx(range.from(), helix_core::LINE_TYPE),
+                helix_core::LINE_TYPE,
+            ),
             // paste linewise after
             (Paste::After, true) => {
                 let line = range.line_range(text.slice(..)).1;
-                text.line_to_char((line + 1).min(text.len_lines()))
+                text.line_to_byte_idx(
+                    (line + 1).min(text.len_lines(helix_core::LINE_TYPE)),
+                    helix_core::LINE_TYPE,
+                )
             }
             // paste insert
             (Paste::Before, false) => range.from(),
@@ -5135,15 +5190,19 @@ fn indent(cx: &mut Context) {
     let transaction = Transaction::change(
         doc.text(),
         lines.into_iter().filter_map(|line| {
-            let is_blank = doc.text().line(line).chunks().all(|s| s.trim().is_empty());
+            let is_blank = doc
+                .text()
+                .line(line, helix_core::LINE_TYPE)
+                .chunks()
+                .all(|s| s.trim().is_empty());
             if is_blank {
                 return None;
             }
-            let pos = doc.text().line_to_char(line);
+            let pos = doc.text().line_to_byte_idx(line, helix_core::LINE_TYPE);
 
             let indent = if let IndentStyle::Spaces(indent_width) = doc.indent_style {
-                let line = doc.text().line(line);
-                let offset = line.first_non_whitespace_char().unwrap_or(0) % indent_width as usize;
+                let line = doc.text().line(line, helix_core::LINE_TYPE);
+                let offset = line.first_non_whitespace_byte().unwrap_or(0) % indent_width as usize;
                 indent.clone().split_off(offset)
             } else {
                 indent.clone()
@@ -5165,7 +5224,7 @@ fn unindent(cx: &mut Context) {
     let indent_width = count * doc.indent_width();
 
     for line_idx in lines {
-        let line = doc.text().line(line_idx);
+        let line = doc.text().line(line_idx, helix_core::LINE_TYPE);
         let mut width = 0;
         let mut pos = 0;
 
@@ -5185,7 +5244,7 @@ fn unindent(cx: &mut Context) {
 
         // now delete from start to first non-blank
         if pos > 0 {
-            let start = doc.text().line_to_char(line_idx);
+            let start = doc.text().line_to_byte_idx(line_idx, helix_core::LINE_TYPE);
             changes.push((start, start + pos, None))
         }
     }
@@ -5298,13 +5357,13 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     for selection in doc.selection(view.id) {
         let (start, mut end) = selection.line_range(slice);
         if start == end {
-            end = (end + 1).min(text.len_lines() - 1);
+            end = (end + 1).min(text.len_lines(helix_core::LINE_TYPE) - 1);
         }
         let lines = start..end;
 
         changes.reserve(lines.len());
 
-        let first_line_idx = slice.line_to_char(start);
+        let first_line_idx = slice.line_to_byte_idx(start, helix_core::LINE_TYPE);
         let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(first_line_idx);
         let first_line = slice.slice(first_line_idx..);
@@ -5313,8 +5372,8 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             .find(|token| first_line.starts_with(token));
 
         for line in lines {
-            let start = line_end_char_index(&slice, line);
-            let mut end = text.line_to_char(line + 1);
+            let start = line_end_byte_index(&slice, line);
+            let mut end = text.line_to_byte_idx(line + 1, helix_core::LINE_TYPE);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
             let slice_from_end = slice.slice(end..);
             if let Some(token) = comment_tokens
@@ -5330,7 +5389,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
                 }
             }
 
-            let separator = if end == line_end_char_index(&slice, line + 1) {
+            let separator = if end == line_end_byte_index(&slice, line + 1) {
                 // the joining line contains only space-characters => don't include a whitespace when joining
                 None
             } else {
@@ -5684,10 +5743,8 @@ fn expand_selection(cx: &mut Context) {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
-
             let current_selection = doc.selection(view.id);
-            let selection = object::expand_selection(syntax, text, current_selection.clone());
+            let selection = object::expand_selection(syntax, current_selection.clone());
 
             // check if selection is different from the last one
             if *current_selection != selection {
@@ -5717,8 +5774,7 @@ fn shrink_selection(cx: &mut Context) {
         }
         // if not previous selection, shrink to first child
         if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
-            let selection = object::shrink_selection(syntax, text, current_selection.clone());
+            let selection = object::shrink_selection(syntax, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5727,15 +5783,14 @@ fn shrink_selection(cx: &mut Context) {
 
 fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: F)
 where
-    F: Fn(&helix_core::Syntax, RopeSlice, Selection) -> Selection + 'static,
+    F: Fn(&helix_core::Syntax, Selection) -> Selection + 'static,
 {
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
-            let text = doc.text().slice(..);
             let current_selection = doc.selection(view.id);
-            let selection = sibling_fn(syntax, text, current_selection.clone());
+            let selection = sibling_fn(syntax, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -5791,14 +5846,13 @@ pub fn extend_parent_node_start(cx: &mut Context) {
 
 fn select_all_impl<F>(editor: &mut Editor, select_fn: F)
 where
-    F: Fn(&Syntax, RopeSlice, Selection) -> Selection,
+    F: Fn(&Syntax, Selection) -> Selection,
 {
     let (view, doc) = current!(editor);
 
     if let Some(syntax) = doc.syntax() {
-        let text = doc.text().slice(..);
         let current_selection = doc.selection(view.id);
-        let selection = select_fn(syntax, text, current_selection.clone());
+        let selection = select_fn(syntax, current_selection.clone());
         doc.set_selection(view.id, selection);
     }
 }
@@ -6223,8 +6277,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     };
                     let hunk = diff.nth_hunk(hunk_idx).after;
 
-                    let start = text.line_to_char(hunk.start as usize);
-                    let end = text.line_to_char(hunk.end as usize);
+                    let start = text.line_to_byte_idx(hunk.start as usize, helix_core::LINE_TYPE);
+                    let end = text.line_to_byte_idx(hunk.end as usize, helix_core::LINE_TYPE);
                     Range::new(start, end).with_direction(range.direction())
                 };
 
@@ -6316,7 +6370,7 @@ fn surround_add(cx: &mut Context) {
             None if event.code == KeyCode::Enter => (
                 doc.line_ending.as_str().into(),
                 doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
+                2 * doc.line_ending.len(),
             ),
             None => return,
         };
@@ -6727,7 +6781,7 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
             Open::Above => start,
             Open::Below => end + 1,
         };
-        let pos = text.line_to_char(line);
+        let pos = text.line_to_byte_idx(line, helix_core::LINE_TYPE);
         (
             pos,
             pos,
@@ -6955,7 +7009,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             [
                 Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
                 Overlay::new(
-                    graphemes::next_grapheme_boundary(text, range.from()),
+                    text.next_grapheme_boundary(range.from()),
                     alphabet_char(i % alphabet.len()),
                 ),
             ]
@@ -7041,21 +7095,24 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
 
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
-    let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
-    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+    let start = text.line_to_byte_idx(
+        text.byte_to_line_idx(doc.view_offset(view.id).anchor, helix_core::LINE_TYPE),
+        helix_core::LINE_TYPE,
+    );
+    let end = text.line_to_byte_idx(view.estimate_last_doc_line(doc) + 1, helix_core::LINE_TYPE);
 
     let primary_selection = doc.selection(view.id).primary();
     let cursor = primary_selection.cursor(text);
     let mut cursor_fwd = Range::point(cursor);
     let mut cursor_rev = Range::point(cursor);
-    if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
+    if text.get_char(cursor).is_ok_and(|c| !c.is_whitespace()) {
         let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
         //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
         let cursor_word_start = movement::move_prev_word_start(text, cursor_rev, 1);
-        if cursor_word_start.anchor == next_grapheme_boundary(text, cursor) {
+        if cursor_word_start.anchor == text.next_grapheme_boundary(cursor) {
             cursor_rev = cursor_word_start;
         }
     }

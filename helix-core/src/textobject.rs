@@ -1,10 +1,10 @@
 use std::fmt::Display;
 
+use helix_stdx::rope::RopeSliceExt;
 use ropey::RopeSlice;
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
-use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
-use crate::line_ending::rope_is_line_ending;
+use crate::line_ending::{line_newlines_backward, line_newlines_forward, line_is_newline};
 use crate::movement::Direction;
 use crate::syntax;
 use crate::Range;
@@ -15,17 +15,13 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
 
     let iter = match direction {
         Direction::Forward => slice.chars_at(pos),
-        Direction::Backward => {
-            let mut iter = slice.chars_at(pos);
-            iter.reverse();
-            iter
-        }
+        Direction::Backward => slice.chars_at(pos).reversed(),
     };
 
     let mut prev_category = match direction {
         Direction::Forward if pos == 0 => Whitespace,
         Direction::Forward => categorize_char(slice.char(pos - 1)),
-        Direction::Backward if pos == slice.len_chars() => Whitespace,
+        Direction::Backward if pos == slice.len() => Whitespace,
         Direction::Backward => categorize_char(slice.char(pos)),
     };
 
@@ -33,7 +29,7 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
+                if !long && category != prev_category && pos != 0 && pos != slice.len() {
                     return pos;
                 } else {
                     match direction {
@@ -79,7 +75,7 @@ pub fn textobject_word(
 
     let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
     let word_end = match slice.get_char(pos).map(categorize_char) {
-        None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
+        Err(_) | Ok(CharCategory::Whitespace | CharCategory::Eol) => pos,
         _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
     };
 
@@ -99,11 +95,11 @@ pub fn textobject_word(
             if whitespace_count_right > 0 {
                 Range::new(word_start, word_end + whitespace_count_right)
             } else {
-                let whitespace_count_left = {
-                    let mut iter = slice.chars_at(word_start);
-                    iter.reverse();
-                    iter.take_while(|c| char_is_whitespace(*c)).count()
-                };
+                let whitespace_count_left = slice
+                    .chars_at(word_start)
+                    .reversed()
+                    .take_while(|c| char_is_whitespace(*c))
+                    .count();
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
@@ -118,11 +114,11 @@ pub fn textobject_paragraph(
     count: usize,
 ) -> Range {
     let mut line = range.cursor_line(slice);
-    let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
-    let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let prev_line_empty = line_is_newline(slice, line.saturating_sub(1));
+    let curr_line_empty = line_is_newline(slice, line);
+    let next_line_empty = line_is_newline(slice, line.saturating_sub(1));
     let last_char =
-        prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
+        slice.prev_grapheme_boundary(slice.line_to_byte_idx(line + 1, crate::LINE_TYPE)) == range.cursor(slice);
     let prev_empty_to_line = prev_line_empty && !curr_line_empty;
     let curr_empty_to_line = curr_line_empty && !next_line_empty;
 
@@ -133,9 +129,7 @@ pub fn textobject_paragraph(
     }
     // do not include current paragraph on paragraph end (include next)
     if !(curr_empty_to_line && last_char) {
-        let mut lines = slice.lines_at(line_back);
-        lines.reverse();
-        let mut lines = lines.map(rope_is_line_ending).peekable();
+        let mut lines = line_newlines_backward(slice, line_back).peekable();
         while lines.next_if(|&e| e).is_some() {
             line_back -= 1;
         }
@@ -148,7 +142,7 @@ pub fn textobject_paragraph(
     if curr_empty_to_line && last_char {
         line += 1;
     }
-    let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut lines = line_newlines_forward(slice, line).peekable();
     let mut count_done = 0; // count how many non-whitespace paragraphs done
     for _ in 0..count {
         let mut done = false;
@@ -166,9 +160,7 @@ pub fn textobject_paragraph(
     // makes `map` at the end of the paragraph with trailing newlines useful
     let last_paragraph = count_done != count && lines.peek().is_none();
     if last_paragraph {
-        let mut lines = slice.lines_at(line_back);
-        lines.reverse();
-        let mut lines = lines.map(rope_is_line_ending).peekable();
+        let mut lines = line_newlines_backward(slice, line_back).peekable();
         while lines.next_if(|&e| e).is_some() {
             line_back -= 1;
         }
@@ -182,9 +174,7 @@ pub fn textobject_paragraph(
         TextObject::Around => {}
         TextObject::Inside => {
             // remove last whitespace paragraph
-            let mut lines = slice.lines_at(line);
-            lines.reverse();
-            let mut lines = lines.map(rope_is_line_ending).peekable();
+            let mut lines = line_newlines_backward(slice, line).peekable();
             while lines.next_if(|&e| e).is_some() {
                 line -= 1;
             }
@@ -192,8 +182,8 @@ pub fn textobject_paragraph(
         TextObject::Movement => unreachable!(),
     }
 
-    let anchor = slice.line_to_char(line_back);
-    let head = slice.line_to_char(line);
+    let anchor = slice.line_to_byte_idx(line_back, crate::LINE_TYPE);
+    let head = slice.line_to_byte_idx(line, crate::LINE_TYPE);
     Range::new(anchor, head)
 }
 
@@ -234,16 +224,16 @@ fn textobject_pair_surround_impl(
         .map(|(anchor, head)| match textobject {
             TextObject::Inside => {
                 if anchor < head {
-                    Range::new(next_grapheme_boundary(slice, anchor), head)
+                    Range::new(slice.next_grapheme_boundary(anchor), head)
                 } else {
-                    Range::new(anchor, next_grapheme_boundary(slice, head))
+                    Range::new(anchor, slice.next_grapheme_boundary(head))
                 }
             }
             TextObject::Around => {
                 if anchor < head {
-                    Range::new(anchor, next_grapheme_boundary(slice, head))
+                    Range::new(anchor, slice.next_grapheme_boundary(head))
                 } else {
-                    Range::new(next_grapheme_boundary(slice, anchor), head)
+                    Range::new(slice.next_grapheme_boundary(anchor), head)
                 }
             }
             TextObject::Movement => unreachable!(),
@@ -266,7 +256,7 @@ pub fn textobject_treesitter(
     let root = syntax.tree().root_node();
     let textobject_query = loader.textobject_query(syntax.root_language());
     let get_range = move || -> Option<Range> {
-        let byte_pos = slice.char_to_byte(range.cursor(slice));
+        let byte_pos = range.cursor(slice);
 
         let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
         let node = textobject_query?
@@ -274,15 +264,15 @@ pub fn textobject_treesitter(
             .filter(|node| node.byte_range().contains(&byte_pos))
             .min_by_key(|node| node.byte_range().len())?;
 
-        let len = slice.len_bytes();
+        let len = slice.len();
         let start_byte = node.start_byte();
         let end_byte = node.end_byte();
         if start_byte >= len || end_byte >= len {
             return None;
         }
 
-        let start_char = slice.byte_to_char(start_byte);
-        let end_char = slice.byte_to_char(end_byte);
+        let start_char = start_byte;
+        let end_char = end_byte;
 
         Some(Range::new(start_char, end_char))
     };

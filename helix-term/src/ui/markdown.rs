@@ -65,7 +65,7 @@ pub fn highlighted_code_block<'a>(
     let mut overlay_highlighter = syntax::OverlayHighlighter::new(additional_highlight_spans);
     let mut pos = 0;
 
-    while pos < ropeslice.len_bytes() as u32 {
+    while pos < ropeslice.len() as u32 {
         if pos == syntax_highlighter.next_event_offset() {
             let (event, new_highlights) = syntax_highlighter.advance();
             if event == HighlightEvent::Refresh {
@@ -85,7 +85,7 @@ pub fn highlighted_code_block<'a>(
             .next_event_offset()
             .min(overlay_highlighter.next_event_offset() as u32);
         if pos == u32::MAX {
-            pos = ropeslice.len_bytes() as u32;
+            pos = ropeslice.len() as u32;
         }
         if pos == start {
             continue;

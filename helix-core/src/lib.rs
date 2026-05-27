@@ -43,9 +43,19 @@ pub mod unicode {
 pub use helix_loader::find_workspace;
 
 mod rope_reader;
+pub mod str_utils;
 
 pub use rope_reader::RopeReader;
-pub use ropey::{self, str_utils, Rope, RopeBuilder, RopeSlice};
+pub use ropey::{self, LineType, Rope, RopeBuilder, RopeSlice};
+
+/// The line-break convention helix recognizes when calling ropey's line APIs.
+///
+/// When `unicode-lines` is enabled this covers all Unicode line break code points;
+/// otherwise only LF (and implicitly CRLF) are recognized as line breaks.
+#[cfg(feature = "unicode-lines")]
+pub const LINE_TYPE: LineType = LineType::Unicode;
+#[cfg(not(feature = "unicode-lines"))]
+pub const LINE_TYPE: LineType = LineType::LF;
 
 // pub use tendril::StrTendril as Tendril;
 pub use smartstring::SmartString;
