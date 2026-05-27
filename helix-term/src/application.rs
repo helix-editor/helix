@@ -723,14 +723,21 @@ impl Application {
             }) => false,
             #[cfg(not(windows))]
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
-                self.theme_mode = Some(mode.into());
-                Self::load_configured_theme(
-                    &mut self.editor,
-                    &self.config.load(),
-                    &mut self.terminal,
-                    self.theme_mode,
-                );
-                true
+                let config = self.config.load();
+                let mode = mode.into();
+                let mode_changed = self.theme_mode.as_ref().is_none_or(|m| m != &mode);
+                if mode_changed && config.theme.as_ref().is_some_and(|t| t.is_adaptive()) {
+                    self.theme_mode = Some(mode);
+                    Self::load_configured_theme(
+                        &mut self.editor,
+                        &config,
+                        &mut self.terminal,
+                        self.theme_mode,
+                    );
+                    true
+                } else {
+                    false
+                }
             }
             #[cfg(windows)]
             TerminalEvent::Resize(width, height) => {
