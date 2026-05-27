@@ -48,7 +48,7 @@ pub struct CallHierarchyPrepareParams {
 #[serde(rename_all = "camelCase")]
 pub struct CallHierarchyItem {
     /// The name of this item.
-    pub name: String,
+    pub name: Box<str>,
 
     /// The kind of this item.
     pub kind: SymbolKind,
@@ -59,7 +59,7 @@ pub struct CallHierarchyItem {
 
     /// More detail for this item, e.g. the signature of a function.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<String>,
+    pub detail: Option<Box<str>>,
 
     /// The resource identifier of this item.
     pub uri: Url,

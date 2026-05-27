@@ -63,13 +63,13 @@ pub struct SignatureHelpClientCapabilities {
 pub struct SignatureHelpOptions {
     /// The characters that trigger signature help automatically.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trigger_characters: Option<Vec<String>>,
+    pub trigger_characters: Option<Vec<Box<str>>>,
 
     /// List of characters that re-trigger signature help.
     /// These trigger characters are only active when signature help is already showing. All trigger characters
     /// are also counted as re-trigger characters.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub retrigger_characters: Option<Vec<String>>,
+    pub retrigger_characters: Option<Vec<Box<str>>>,
 
     #[serde(flatten)]
     pub work_done_progress_options: WorkDoneProgressOptions,
@@ -121,7 +121,7 @@ pub struct SignatureHelpContext {
     /// Character that caused signature help to be triggered.
     /// This is undefined when `triggerKind !== SignatureHelpTriggerKind.TriggerCharacter`
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trigger_character: Option<String>,
+    pub trigger_character: Option<Box<str>>,
 
     /// `true` if signature help was already showing when it was triggered.
     /// Retriggers occur when the signature help is already active and can be caused by actions such as
@@ -161,7 +161,7 @@ pub struct SignatureHelp {
 pub struct SignatureInformation {
     /// The label of this signature. Will be shown in
     /// the UI.
-    pub label: String,
+    pub label: Box<str>,
 
     /// The human-readable doc-comment of this signature. Will be shown
     /// in the UI but can be omitted.
@@ -202,6 +202,6 @@ pub struct ParameterInformation {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum ParameterLabel {
-    Simple(String),
+    Simple(Box<str>),
     LabelOffsets([u32; 2]),
 }

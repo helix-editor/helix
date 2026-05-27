@@ -57,7 +57,7 @@ pub struct DocumentLink {
     /// trigger the link, such as `{0} (ctrl + click)`. The specific instructions vary depending on OS,
     /// user settings, and localization.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tooltip: Option<String>,
+    pub tooltip: Option<Box<str>>,
 
     /// A data entry field that is preserved on a document link between a DocumentLinkRequest
     /// and a DocumentLinkResolveRequest.

@@ -1642,7 +1642,7 @@ fn lsp_workspace_command(
                     let columns = [ui::PickerColumn::new(
                         "title",
                         |(_ls_id, command): &(_, helix_lsp::lsp::Command), _| {
-                            command.title.as_str().into()
+                            command.title.as_ref().into()
                         },
                     )];
                     let picker = ui::Picker::new(
@@ -1663,7 +1663,7 @@ fn lsp_workspace_command(
     } else {
         let command = args[0].to_string();
         let matches: Vec<_> = ls_id_commands
-            .filter(|(_ls_id, c)| *c == &command)
+            .filter(|(_ls_id, c)| ***c == *command)
             .collect();
 
         match matches.as_slice() {
@@ -1681,9 +1681,9 @@ fn lsp_workspace_command(
 
                 cx.editor.execute_lsp_command(
                     helix_lsp::lsp::Command {
-                        title: command.clone(),
+                        title: command.clone().into(),
                         arguments,
-                        command,
+                        command: command.into(),
                     },
                     *ls_id,
                 );

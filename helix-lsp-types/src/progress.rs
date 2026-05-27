@@ -54,7 +54,7 @@ pub struct WorkDoneProgressBegin {
     /// Mandatory title of the progress operation. Used to briefly inform
     /// about the kind of operation being performed.
     /// Examples: "Indexing" or "Linking dependencies".
-    pub title: String,
+    pub title: Box<str>,
 
     /// Controls if a cancel button should show to allow the user to cancel the
     /// long running operation. Clients that don't support cancellation are allowed
@@ -68,7 +68,7 @@ pub struct WorkDoneProgressBegin {
     /// Examples: "3/25 files", "project/src/module2", "node_modules/some_dep".
     /// If unset, the previous progress message (if any) is still valid.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub message: Option<Box<str>>,
 
     /// Optional progress percentage to display (value 100 is considered 100%).
     /// If not provided infinite progress is assumed and clients are allowed
@@ -94,7 +94,7 @@ pub struct WorkDoneProgressReport {
     /// Examples: "3/25 files", "project/src/module2", "node_modules/some_dep".
     /// If unset, the previous progress message (if any) is still valid.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub message: Option<Box<str>>,
 
     /// Optional progress percentage to display (value 100 is considered 100%).
     /// If not provided infinite progress is assumed and clients are allowed
@@ -114,7 +114,7 @@ pub struct WorkDoneProgressEnd {
     /// Examples: "3/25 files", "project/src/module2", "node_modules/some_dep".
     /// If unset, the previous progress message (if any) is still valid.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    pub message: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]

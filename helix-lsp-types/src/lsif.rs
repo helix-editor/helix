@@ -34,12 +34,12 @@ pub enum Element {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ToolInfo {
-    pub name: String,
+    pub name: Box<str>,
     #[serde(default = "Default::default")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub args: Vec<String>,
+    pub args: Vec<Box<str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Copy)]
@@ -68,8 +68,8 @@ pub enum DocumentSymbolOrRangeBasedVec {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DefinitionTag {
-    /// The text covered by the range     
-    text: String,
+    /// The text covered by the range
+    text: Box<str>,
     /// The symbol kind.
     kind: crate::SymbolKind,
     /// Indicates if this symbol is deprecated.
@@ -81,14 +81,14 @@ pub struct DefinitionTag {
     full_range: Range,
     /// Optional detail information for the definition.
     #[serde(skip_serializing_if = "Option::is_none")]
-    detail: Option<String>,
+    detail: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeclarationTag {
-    /// The text covered by the range     
-    text: String,
+    /// The text covered by the range
+    text: Box<str>,
     /// The symbol kind.
     kind: crate::SymbolKind,
     /// Indicates if this symbol is deprecated.
@@ -99,19 +99,19 @@ pub struct DeclarationTag {
     full_range: Range,
     /// Optional detail information for the definition.
     #[serde(skip_serializing_if = "Option::is_none")]
-    detail: Option<String>,
+    detail: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReferenceTag {
-    text: String,
+    text: Box<str>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnknownTag {
-    text: String,
+    text: Box<str>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -269,7 +269,7 @@ pub struct Item {
 #[serde(rename_all = "camelCase")]
 pub struct Document {
     pub uri: Url,
-    pub language_id: String,
+    pub language_id: Box<str>,
 }
 
 /// <https://github.com/Microsoft/language-server-protocol/blob/master/indexFormat/specification.md#result-set>
@@ -277,7 +277,7 @@ pub struct Document {
 #[serde(rename_all = "camelCase")]
 pub struct ResultSet {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>,
+    pub key: Option<Box<str>>,
 }
 
 /// <https://github.com/Microsoft/language-server-protocol/blob/master/indexFormat/specification.md#the-project-vertex>
@@ -287,8 +287,8 @@ pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resource: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
-    pub kind: String,
+    pub content: Option<Box<str>>,
+    pub kind: Box<str>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -297,7 +297,7 @@ pub struct MetaData {
     /// The version of the LSIF format using semver notation. See <https://semver.org/>. Please note
     /// the version numbers starting with 0 don't adhere to semver and adopters have to assume
     /// that each new version is breaking.
-    pub version: String,
+    pub version: Box<str>,
 
     /// The project root (in form of an URI) used to compute this dump.
     pub project_root: Url,
@@ -314,23 +314,23 @@ pub struct MetaData {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Repository {
-    pub r#type: String,
-    pub url: String,
+    pub r#type: Box<str>,
+    pub url: Box<str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub commit_id: Option<String>,
+    pub commit_id: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PackageInformation {
-    pub name: String,
-    pub manager: String,
+    pub name: Box<str>,
+    pub manager: Box<str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uri: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<String>,
+    pub content: Option<Box<str>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<Repository>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 }

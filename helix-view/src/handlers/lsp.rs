@@ -308,11 +308,11 @@ impl Editor {
             for source in &lang_conf.persistent_diagnostic_sources {
                 let new_diagnostics = diagnostics
                     .iter()
-                    .filter(|d| d.source.as_ref() == Some(source));
+                    .filter(|d| d.source.as_deref() == Some(source.as_str()));
                 let old_diagnostics = old_diagnostics
                     .iter()
                     .filter(|(d, d_provider)| {
-                        d_provider == provider && d.source.as_ref() == Some(source)
+                        d_provider == provider && d.source.as_deref() == Some(source.as_str())
                     })
                     .map(|(d, _)| d);
                 if new_diagnostics.eq(old_diagnostics) {
@@ -346,21 +346,24 @@ impl Editor {
             let diagnostic_of_language_server_and_not_in_unchanged_sources =
                 |diagnostic: &lsp::Diagnostic, d_provider: &DiagnosticProvider| {
                     d_provider == provider
-                        && diagnostic
-                            .source
-                            .as_ref()
-                            .is_none_or(|source| !unchanged_diag_sources.contains(source))
+                        && diagnostic.source.as_ref().is_none_or(|source| {
+                            !unchanged_diag_sources.iter().any(|s| s == &**source)
+                        })
                 };
+
             let diagnostics = Self::doc_diagnostics_with_filter(
                 &self.language_servers,
                 &self.diagnostics,
                 doc,
                 diagnostic_of_language_server_and_not_in_unchanged_sources,
             );
+
             doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(provider));
 
-            let doc = doc.id();
-            helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
+            helix_event::dispatch(DiagnosticsDidChange {
+                doc: doc.id(),
+                editor: self,
+            });
         }
     }
 
@@ -398,7 +401,12 @@ pub fn register_hooks(_handlers: &Handlers) {
 
             let language_id = doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-            language_server.text_document_did_open(url, doc.version(), doc.text(), language_id);
+            language_server.text_document_did_open(
+                url,
+                doc.version(),
+                doc.text(),
+                language_id.into(),
+            );
         }
 
         Ok(())

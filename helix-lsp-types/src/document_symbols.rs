@@ -75,11 +75,11 @@ pub struct DocumentSymbolParams {
 #[serde(rename_all = "camelCase")]
 pub struct DocumentSymbol {
     /// The name of this symbol.
-    pub name: String,
+    pub name: Box<str>,
     /// More detail for this symbol, e.g the signature of a function. If not provided the
     /// name is used.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<String>,
+    pub detail: Option<Box<str>>,
     /// The kind of this symbol.
     pub kind: SymbolKind,
     /// Tags for this completion item.
@@ -109,7 +109,7 @@ pub struct DocumentSymbol {
 #[serde(rename_all = "camelCase")]
 pub struct SymbolInformation {
     /// The name of this symbol.
-    pub name: String,
+    pub name: Box<str>,
 
     /// The kind of this symbol.
     pub kind: SymbolKind,
@@ -130,5 +130,5 @@ pub struct SymbolInformation {
 
     /// The name of the symbol containing this symbol.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub container_name: Option<String>,
+    pub container_name: Option<Box<str>>,
 }

@@ -207,7 +207,7 @@ pub struct Document {
 
     pub readonly: bool,
 
-    pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
+    pub previous_diagnostic_ids: HashMap<LanguageServerId, Box<str>>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -2156,7 +2156,7 @@ impl Document {
         let code = match diagnostic.code.clone() {
             Some(x) => match x {
                 lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
-                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x.into())),
+                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
             },
             None => None,
         };
@@ -2186,11 +2186,11 @@ impl Document {
             starts_at_word,
             zero_width: start == end,
             line: diagnostic.range.start.line as usize,
-            message: diagnostic.message.clone().into(),
+            message: diagnostic.message.clone(),
             severity,
             code,
             tags,
-            source: diagnostic.source.clone().map(|source| source.into()),
+            source: diagnostic.source.clone(),
             data: diagnostic.data.clone(),
             provider,
         })

@@ -77,11 +77,11 @@ pub struct MonikerParams {
 #[serde(rename_all = "camelCase")]
 pub struct Moniker {
     /// The scheme of the moniker. For example tsc or .Net
-    pub scheme: String,
+    pub scheme: Box<str>,
 
     /// The identifier of the moniker. The value is opaque in LSIF however
     /// schema owners are allowed to define the structure if they want.
-    pub identifier: String,
+    pub identifier: Box<str>,
 
     /// The scope in which the moniker is unique
     pub unique: UniquenessLevel,

@@ -26,11 +26,11 @@ pub enum TraceValue {
 #[serde(rename_all = "camelCase")]
 pub struct LogTraceParams {
     /// The message to be logged.
-    pub message: String,
+    pub message: Box<str>,
     /// Additional information that can be computed if the `trace` configuration
     /// is set to `'verbose'`
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub verbose: Option<String>,
+    pub verbose: Option<Box<str>>,
 }
 
 #[cfg(test)]

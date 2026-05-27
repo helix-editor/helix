@@ -83,7 +83,7 @@ pub struct FileOperationRegistrationOptions {
 #[serde(rename_all = "camelCase")]
 pub struct FileOperationFilter {
     /// A Uri like `file` or `untitled`.
-    pub scheme: Option<String>,
+    pub scheme: Option<Box<str>>,
 
     /// The actual file operation pattern.
     pub pattern: FileOperationPattern,
@@ -133,7 +133,7 @@ pub struct FileOperationPattern {
     /// - `[!...]` to negate a range of characters to match in a path segment
     ///   (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but
     ///   not `example.0`)
-    pub glob: String,
+    pub glob: Box<str>,
 
     /// Whether to match files or folders with this pattern.
     ///
@@ -163,7 +163,7 @@ pub struct CreateFilesParams {
 #[serde(rename_all = "camelCase")]
 pub struct FileCreate {
     /// A file:// URI for the location of the file/folder being created.
-    pub uri: String,
+    pub uri: Box<str>,
 }
 
 /// The parameters sent in notifications/requests for user-initiated renames
@@ -185,10 +185,10 @@ pub struct RenameFilesParams {
 #[serde(rename_all = "camelCase")]
 pub struct FileRename {
     /// A file:// URI for the original location of the file/folder being renamed.
-    pub old_uri: String,
+    pub old_uri: Box<str>,
 
     /// A file:// URI for the new location of the file/folder being renamed.
-    pub new_uri: String,
+    pub new_uri: Box<str>,
 }
 
 /// The parameters sent in notifications/requests for user-initiated deletes
@@ -209,5 +209,5 @@ pub struct DeleteFilesParams {
 #[serde(rename_all = "camelCase")]
 pub struct FileDelete {
     /// A file:// URI for the location of the file/folder being deleted.
-    pub uri: String,
+    pub uri: Box<str>,
 }

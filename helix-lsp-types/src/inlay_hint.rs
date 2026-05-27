@@ -139,13 +139,13 @@ pub struct InlayHint {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum InlayHintLabel {
-    String(String),
+    String(Box<str>),
     LabelParts(Vec<InlayHintLabelPart>),
 }
 
-impl From<String> for InlayHintLabel {
+impl From<Box<str>> for InlayHintLabel {
     #[inline]
-    fn from(from: String) -> Self {
+    fn from(from: Box<str>) -> Self {
         Self::String(from)
     }
 }
@@ -160,13 +160,13 @@ impl From<Vec<InlayHintLabelPart>> for InlayHintLabel {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum InlayHintTooltip {
-    String(String),
+    String(Box<str>),
     MarkupContent(MarkupContent),
 }
 
-impl From<String> for InlayHintTooltip {
+impl From<Box<str>> for InlayHintTooltip {
     #[inline]
-    fn from(from: String) -> Self {
+    fn from(from: Box<str>) -> Self {
         Self::String(from)
     }
 }
@@ -184,7 +184,7 @@ impl From<MarkupContent> for InlayHintTooltip {
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintLabelPart {
     /// The value of this label part.
-    pub value: String,
+    pub value: Box<str>,
 
     /// The tooltip text when you hover over this label part. Depending on
     /// the client capability `inlayHint.resolveSupport` clients might resolve
@@ -217,13 +217,13 @@ pub struct InlayHintLabelPart {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum InlayHintLabelPartTooltip {
-    String(String),
+    String(Box<str>),
     MarkupContent(MarkupContent),
 }
 
-impl From<String> for InlayHintLabelPartTooltip {
+impl From<Box<str>> for InlayHintLabelPartTooltip {
     #[inline]
-    fn from(from: String) -> Self {
+    fn from(from: Box<str>) -> Self {
         Self::String(from)
     }
 }
@@ -258,7 +258,7 @@ impl InlayHintKind {
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintResolveClientCapabilities {
     /// The properties that a client can resolve lazily.
-    pub properties: Vec<String>,
+    pub properties: Vec<Box<str>>,
 }
 
 /// Client workspace capabilities specific to inlay hints.

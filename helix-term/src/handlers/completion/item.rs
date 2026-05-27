@@ -63,7 +63,7 @@ impl LspCompletionItem {
             .filter_text
             .as_ref()
             .unwrap_or(&self.item.label)
-            .as_str()
+            .as_ref()
     }
 }
 

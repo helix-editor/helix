@@ -570,7 +570,7 @@ pub mod completers {
 
         fuzzy_match(input, commands, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .map(|(name, _)| ((0..), name.clone().into_string().into()))
             .collect()
     }
 

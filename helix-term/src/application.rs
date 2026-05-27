@@ -849,7 +849,7 @@ impl Application {
                         );
                     }
                     Notification::ShowMessage(params) => {
-                        self.handle_show_message(params.typ, params.message);
+                        self.handle_show_message(params.typ, params.message.into_string());
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -896,8 +896,14 @@ impl Application {
                         };
 
                         if self.editor.config().lsp.display_progress_messages {
-                            let title =
-                                title.or_else(|| self.lsp_progress.title(server_id, &token));
+                            let title = match title {
+                                Some(title) => Some(title.as_ref()),
+                                None => self
+                                    .lsp_progress
+                                    .title(server_id, &token)
+                                    .map(|s| s.as_str()),
+                            };
+
                             if title.is_some() || percentage.is_some() || message.is_some() {
                                 use std::fmt::Write as _;
                                 let mut status = format!("{}: ", language_server!().name());
@@ -1018,7 +1024,10 @@ impl Application {
 
                             Ok(json!(lsp::ApplyWorkspaceEditResponse {
                                 applied: res.is_ok(),
-                                failure_reason: res.as_ref().err().map(|err| err.kind.to_string()),
+                                failure_reason: res
+                                    .as_ref()
+                                    .err()
+                                    .map(|err| err.kind.to_string().into()),
                                 failed_change: res
                                     .as_ref()
                                     .err()
@@ -1059,7 +1068,7 @@ impl Application {
                     Ok(MethodCall::RegisterCapability(params)) => {
                         if let Some(client) = self.editor.language_servers.get_by_id(server_id) {
                             for reg in params.registrations {
-                                match reg.method.as_str() {
+                                match reg.method.as_ref() {
                                     lsp::notification::DidChangeWatchedFiles::METHOD => {
                                         let Some(options) = reg.register_options else {
                                             continue;
@@ -1075,7 +1084,7 @@ impl Application {
                                         self.editor.language_servers.file_event_handler.register(
                                             client.id(),
                                             Arc::downgrade(client),
-                                            reg.id,
+                                            reg.id.into_string(),
                                             ops,
                                         )
                                     }
@@ -1096,12 +1105,12 @@ impl Application {
                     }
                     Ok(MethodCall::UnregisterCapability(params)) => {
                         for unreg in params.unregisterations {
-                            match unreg.method.as_str() {
+                            match unreg.method.as_ref() {
                                 lsp::notification::DidChangeWatchedFiles::METHOD => {
                                     self.editor
                                         .language_servers
                                         .file_event_handler
-                                        .unregister(server_id, unreg.id);
+                                        .unregister(server_id, unreg.id.into_string());
                                 }
                                 _ => {
                                     log::warn!("Received unregistration request for unsupported method: {}", unreg.method);
@@ -1141,7 +1150,7 @@ impl Application {
                         if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
                             let id = id.clone();
                             let select = ui::Select::new(
-                                params.message,
+                                params.message.into_string(),
                                 actions,
                                 (),
                                 move |editor, action, event| {
@@ -1169,7 +1178,7 @@ impl Application {
                             // Avoid sending a reply. The `Select` callback above sends the reply.
                             return;
                         } else {
-                            self.handle_show_message(params.typ, params.message);
+                            self.handle_show_message(params.typ, params.message.into_string());
                             Ok(serde_json::Value::Null)
                         }
                     }
@@ -1372,6 +1381,6 @@ impl Application {
 impl ui::menu::Item for lsp::MessageActionItem {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> tui::widgets::Row<'_> {
-        self.title.as_str().into()
+        self.title.as_ref().into()
     }
 }
