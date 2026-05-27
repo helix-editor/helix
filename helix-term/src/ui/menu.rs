@@ -311,7 +311,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             // if we run out of options the menu closes itself
             _ if self.auto_close => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
-                return EventResult::Consumed(close_fn);
+                return EventResult::Ignored(close_fn);
             }
             _ => (),
         }
