@@ -725,13 +725,8 @@ impl Application {
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
                 let config = self.config.load();
                 let mode = mode.into();
-                if let (true, Some(theme::Config::Adaptive { .. })) = (
-                    self.theme_mode
-                        .as_ref()
-                        .map(|m| m != &mode)
-                        .unwrap_or_else(|| true),
-                    config.theme.as_ref(),
-                ) {
+                let mode_changed = self.theme_mode.as_ref().is_none_or(|m| m != &mode);
+                if mode_changed && config.theme.as_ref().is_some_and(|t| t.is_adaptive()) {
                     self.theme_mode = Some(mode);
                     Self::load_configured_theme(
                         &mut self.editor,

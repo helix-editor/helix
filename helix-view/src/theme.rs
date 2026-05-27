@@ -79,6 +79,10 @@ impl Config {
             },
         }
     }
+
+    pub fn is_adaptive(&self) -> bool {
+        matches!(self, Self::Adaptive { .. })
+    }
 }
 
 #[derive(Clone, Debug)]
