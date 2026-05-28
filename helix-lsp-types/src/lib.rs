@@ -2085,7 +2085,7 @@ pub struct WorkspaceServerCapabilities {
     pub file_operations: Option<WorkspaceFileOperationsServerCapabilities>,
 }
 
-/// General parameters to to register for a capability.
+/// General parameters to register for a capability.
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Registration {
