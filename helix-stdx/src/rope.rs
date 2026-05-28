@@ -17,6 +17,16 @@ pub trait RopeSliceExt<'a>: Sized {
     fn regex_input_at<R: RangeBounds<usize>>(self, byte_range: R) -> RegexInput<RopeyCursor<'a>>;
     fn first_non_whitespace_byte(self) -> Option<usize>;
     fn last_non_whitespace_byte(self) -> Option<usize>;
+    /// Total byte length of the run of consecutive chars starting at `byte_idx`
+    /// (going forward) for which `pred` returns true.
+    ///
+    /// Use this instead of `chars_at(byte_idx).take_while(pred).count()` when
+    /// the result is fed into byte-indexed APIs — `count()` returns chars,
+    /// which under-reports multi-byte characters.
+    fn chars_byte_run_forward<F: FnMut(char) -> bool>(self, byte_idx: usize, pred: F) -> usize;
+    /// Total byte length of the run of consecutive chars ending at `byte_idx`
+    /// (going backward) for which `pred` returns true.
+    fn chars_byte_run_backward<F: FnMut(char) -> bool>(self, byte_idx: usize, pred: F) -> usize;
     /// Finds the closest byte index not exceeding `byte_idx` which lies on a character boundary.
     ///
     /// If `byte_idx` already lies on a character boundary then it is returned as-is. When
@@ -313,6 +323,27 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
         self.char_indices_at(self.len())
             .reversed()
             .find_map(|(byte_idx, ch)| (!ch.is_whitespace()).then_some(byte_idx))
+    }
+    fn chars_byte_run_forward<F: FnMut(char) -> bool>(
+        self,
+        byte_idx: usize,
+        mut pred: F,
+    ) -> usize {
+        self.chars_at(byte_idx)
+            .take_while(|c| pred(*c))
+            .map(|c| c.len_utf8())
+            .sum()
+    }
+    fn chars_byte_run_backward<F: FnMut(char) -> bool>(
+        self,
+        byte_idx: usize,
+        mut pred: F,
+    ) -> usize {
+        self.chars_at(byte_idx)
+            .reversed()
+            .take_while(|c| pred(*c))
+            .map(|c| c.len_utf8())
+            .sum()
     }
 
     // These three are adapted from std:

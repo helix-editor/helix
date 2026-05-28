@@ -1324,12 +1324,11 @@ impl EditorView {
                     Some(down_range) => doc.selection(view.id).primary() != down_range,
                     None => {
                         // This should not happen under normal cases. We fall back to the original
-                        // behavior of yanking on non-single-char selections.
-                        doc.selection(view.id)
+                        // behavior of yanking on non-single-grapheme selections (a single multi-
+                        // byte glyph would otherwise satisfy `len() > 1` and get yanked).
+                        !doc.selection(view.id)
                             .primary()
-                            .slice(doc.text().slice(..))
-                            .len()
-                            > 1
+                            .is_single_grapheme(doc.text().slice(..))
                     }
                 };
 

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ops::{Index, IndexMut};
 use std::sync::Arc;
 
+use helix_stdx::rope::RopeSliceExt;
 use helix_stdx::Range;
 use ropey::{Rope, RopeSlice};
 use smallvec::SmallVec;
@@ -151,7 +152,7 @@ impl Snippet {
                 let line_idx = doc.byte_to_line_idx(replacement_start, crate::LINE_TYPE);
                 let line_start = doc.line_to_byte_idx(line_idx, crate::LINE_TYPE);
                 let prefix = doc.slice(line_start..replacement_start);
-                let indent_len = prefix.chars().take_while(|c| c.is_whitespace()).count();
+                let indent_len = prefix.chars_byte_run_forward(0, |c| c.is_whitespace());
                 let indent = prefix.slice(..indent_len);
                 let at_newline = indent_len == replacement_start - line_start;
 
@@ -225,7 +226,7 @@ impl SnippetRender<'_> {
                             (&*val).into(),
                             Range {
                                 start: 0,
-                                end: val.chars().count(),
+                                end: val.len(),
                             },
                         ));
                     } else {
@@ -296,11 +297,36 @@ impl SnippetRender<'_> {
 #[cfg(test)]
 mod tests {
     use helix_stdx::Range;
+    use ropey::Rope;
 
     use crate::snippets::render::Tabstop;
     use crate::snippets::{Snippet, SnippetRenderCtx};
+    use crate::Selection;
 
     use super::TabstopKind;
+
+    /// Regression for byte/char confusion in `Snippet::render`'s indent
+    /// computation: `prefix.chars().take_while(is_whitespace).count()` was
+    /// a char count being fed to `prefix.slice(..indent_len)` (which takes
+    /// bytes), panicking mid-codepoint for any multi-byte whitespace such
+    /// as NBSP (U+00A0, 2 bytes) or IDEOGRAPHIC SPACE (U+3000, 3 bytes) in
+    /// the leading indent.
+    #[test]
+    fn render_with_multibyte_whitespace_indent() {
+        let snippet = Snippet::parse("foo($1)$0").unwrap();
+        // NBSP (U+00A0, 2 bytes) before the cursor position. With the bug
+        // the indent slice fell mid-codepoint and panicked.
+        let mut doc = Rope::from("\u{00A0}");
+        let cursor = doc.len();
+        let (transaction, _, _) = snippet.render(
+            &doc,
+            &Selection::point(cursor),
+            |_| (cursor, cursor),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "\u{00A0}foo()");
+    }
 
     fn assert_snippet(snippet: &str, expect: &str, tabstops: &[Tabstop]) {
         let snippet = Snippet::parse(snippet).unwrap();
@@ -318,7 +344,7 @@ mod tests {
         assert_eq!(&rendered_snippet.tabstops, tabstops);
         assert_eq!(
             rendered_snippet.ranges.last().unwrap().end,
-            rendered_text.chars().count()
+            rendered_text.len()
         );
         assert_eq!(rendered_snippet.ranges.last().unwrap().start, 0)
     }

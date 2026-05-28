@@ -8,6 +8,7 @@ use crate::{
 };
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
+use helix_stdx::rope::RopeSliceExt;
 use helix_lsp::{lsp, util, OffsetEncoding};
 use helix_view::{
     editor::CompleteAction,
@@ -297,11 +298,7 @@ impl Completion {
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
-        let offset = text
-            .chars_at(cursor)
-            .reversed()
-            .take_while(|ch| chars::char_is_word(*ch))
-            .count();
+        let offset = text.chars_byte_run_backward(cursor, chars::char_is_word);
         let start_offset = cursor.saturating_sub(offset);
 
         let fragment = doc.text().slice(start_offset..cursor);

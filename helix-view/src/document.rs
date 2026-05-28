@@ -2174,9 +2174,17 @@ impl Document {
             Vec::new()
         };
 
-        let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).is_ok_and(char_is_word);
-        let starts_at_word = start != end && text.get_char(start).is_ok_and(char_is_word);
+        let ends_at_word = start != end
+            && end != 0
+            && text
+                .chars_at(end)
+                .prev()
+                .is_some_and(char_is_word);
+        let starts_at_word = start != end
+            && text
+                .chars_at(start)
+                .next()
+                .is_some_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },

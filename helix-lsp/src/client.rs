@@ -1020,7 +1020,7 @@ impl Client {
                 Insert(s) => {
                     let start = pos_to_lsp_pos(new_text, new_pos, offset_encoding);
 
-                    new_pos += s.chars().count();
+                    new_pos += s.len();
 
                     // a subsequent delete means a replace, consume it
                     let end = if let Some(Delete(len)) = iter.peek() {

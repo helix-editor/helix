@@ -1094,7 +1094,13 @@ pub fn rename_symbol(cx: &mut Context) {
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
         let primary_selection = doc.selection(view.id).primary();
-        if primary_selection.len() > 1 {
+        // Use the selection directly only when it spans more than one grapheme;
+        // otherwise expand to the word under the cursor. (`Range::len()` is in
+        // bytes, so a single multi-byte grapheme would wrongly count as a
+        // multi-char selection.)
+        if primary_selection.from() != primary_selection.to()
+            && !primary_selection.is_single_grapheme(text)
+        {
             primary_selection
         } else {
             use helix_core::textobject::{textobject_word, TextObject};

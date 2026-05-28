@@ -1470,7 +1470,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         return;
     }
 
-    let paths: Vec<_> = if fallback_ranges.len() == 1 && fallback_ranges[0].len() == 1 {
+    let paths: Vec<_> = if fallback_ranges.len() == 1 && fallback_ranges[0].is_single_grapheme(text)
+    {
         let selection = fallback_ranges[0];
         // Cap the search at roughly 1k bytes around the cursor.
         let lookaround = 1000;
@@ -1492,7 +1493,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
-            .take_while(|range| search_start + range.start <= pos + 1)
+            .take_while(|range| search_start + range.start <= text.next_grapheme_boundary(pos))
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
@@ -1693,7 +1694,12 @@ fn find_char_line_ending_motion(
                 if line >= text.len_lines(helix_core::LINE_TYPE) - 1 {
                     return range;
                 }
-                line_end_byte_index(&text, line) - !inclusive as usize
+                let line_end = line_end_byte_index(&text, line);
+                if inclusive {
+                    line_end
+                } else {
+                    text.prev_grapheme_boundary(line_end)
+                }
             }
             Direction::Backward => {
                 if inclusive {
@@ -1753,8 +1759,8 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                     let search_start_pos = match (inclusive, direction) {
                         (true, Direction::Forward) => cursor_head,
                         (true, Direction::Backward) => cursor_anchor,
-                        (false, Direction::Forward) => cursor_head + 1,
-                        (false, Direction::Backward) => cursor_anchor - 1,
+                        (false, Direction::Forward) => text.next_grapheme_boundary(cursor_head),
+                        (false, Direction::Backward) => text.prev_grapheme_boundary(cursor_anchor),
                     };
 
                     search::find_nth_char(count, text, ch, search_start_pos, direction)
@@ -1762,8 +1768,8 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                         .map(|pos| match (inclusive, direction) {
                             (true, Direction::Forward) => pos,
                             (true, Direction::Backward) => pos,
-                            (false, Direction::Forward) => pos - 1,
-                            (false, Direction::Backward) => pos + 1,
+                            (false, Direction::Forward) => text.prev_grapheme_boundary(pos),
+                            (false, Direction::Backward) => text.next_grapheme_boundary(pos),
                         })
                         .map_or(range, |pos| {
                             if extend {
@@ -2118,11 +2124,12 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     for range in selection.iter() {
         let is_primary = *range == selection.primary();
 
-        // The range is always head exclusive
+        // The range is always head exclusive — step back one grapheme so we
+        // land on the last char of the selection (never mid-codepoint).
         let (head, anchor) = if range.anchor < range.head {
-            (range.head - 1, range.anchor)
+            (text.prev_grapheme_boundary(range.head), range.anchor)
         } else {
-            (range.head, range.anchor.saturating_sub(1))
+            (range.head, text.prev_grapheme_boundary(range.anchor))
         };
 
         let tab_width = doc.tab_width();
@@ -2480,7 +2487,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
         if index == 0 {
             return char_is_word(ch);
         }
-        let prev_ch = text.char(index - 1);
+        let prev_ch = text.chars_at(index).prev().unwrap();
 
         !char_is_word(prev_ch) && char_is_word(ch)
     }
@@ -2490,7 +2497,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
             return false;
         }
         let ch = text.char(index);
-        let prev_ch = text.char(index - 1);
+        let prev_ch = text.chars_at(index).prev().unwrap();
 
         char_is_word(prev_ch) && !char_is_word(ch)
     }
@@ -3763,7 +3770,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
 
             // calculate new selection ranges
             let pos = offs + cursor_line_start;
-            let indent_width = indent.chars().count();
+            let indent_width = indent.len();
             ranges.push(Range::point(pos + indent_width));
             offs += indent_width;
 
@@ -3963,8 +3970,8 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             ));
         }
 
-        // update the offset for the next range
-        offs += text.chars().count();
+        // update the offset for the next range (bytes inserted)
+        offs += text.len();
 
         (
             above_next_line_end_index,
@@ -4335,7 +4342,10 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
 fn hunk_range(hunk: Hunk, text: RopeSlice) -> Range {
     let anchor = text.line_to_byte_idx(hunk.after.start as usize, helix_core::LINE_TYPE);
     let head = if hunk.after.is_empty() {
-        anchor + 1
+        // Deletion hunks render as a point one grapheme past the anchor; using
+        // `anchor + 1` would land mid-codepoint if the line starts with a
+        // multi-byte char.
+        text.next_grapheme_boundary(anchor).min(text.len())
     } else {
         text.line_to_byte_idx(hunk.after.end as usize, helix_core::LINE_TYPE)
     };
@@ -4524,7 +4534,8 @@ pub mod insert {
             let prev = if pos == 0 {
                 ' '
             } else {
-                contents.char(pos - 1)
+                // `pos - 1` may land mid-codepoint; walk the char iterator.
+                contents.chars_at(pos).prev().unwrap_or(' ')
             };
             let curr = contents.get_char(pos).unwrap_or(' ');
 
@@ -4537,7 +4548,9 @@ pub mod insert {
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_byte()
             {
-                let first_trailing_whitespace_char = (line_start + idx + 1).clamp(last_pos, pos);
+                let first_trailing_whitespace_char = text
+                    .next_grapheme_boundary(line_start + idx)
+                    .clamp(last_pos, pos);
                 last_pos = pos;
                 let line = text.line(current_line, helix_core::LINE_TYPE);
 
@@ -4571,7 +4584,7 @@ pub mod insert {
                     new_text.push_str(&indent);
                     new_text.push_str(token);
                     new_text.push(' ');
-                    new_text.chars().count()
+                    new_text.len()
                 } else if on_auto_pair {
                     // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
@@ -4581,7 +4594,7 @@ pub mod insert {
                     new_text.push_str(&inner_indent);
 
                     // line where the matching pair will be
-                    let local_offs = new_text.chars().count();
+                    let local_offs = new_text.len();
                     new_text.push_str(line_ending);
                     new_text.push_str(&indent);
 
@@ -4591,7 +4604,7 @@ pub mod insert {
                     new_text.push_str(line_ending);
                     new_text.push_str(&indent);
 
-                    new_text.chars().count()
+                    new_text.len()
                 };
 
                 // Note that `first_trailing_whitespace_char` is at least `pos` so this unsigned
@@ -4609,7 +4622,7 @@ pub mod insert {
                 // indentation of the old line.
                 new_text.push_str(line_ending);
 
-                (line_start, line_start, new_text.chars().count() as isize)
+                (line_start, line_start, new_text.len() as isize)
             };
 
             let new_range = if range.cursor(text) > range.anchor {
@@ -4630,7 +4643,7 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            global_offs += new_text.chars().count() as isize - chars_deleted as isize;
+            global_offs += new_text.len() as isize - chars_deleted as isize;
             let tendril = Tendril::from(&new_text);
             new_text.clear();
 
@@ -5018,7 +5031,7 @@ fn paste_impl(
 
         let value_len = value
             .as_ref()
-            .map(|content| content.chars().count())
+            .map(|content| content.len())
             .unwrap_or_default();
         let anchor = offset + pos;
 
@@ -5381,7 +5394,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
                 .find(|token| slice_from_end.starts_with(token))
             {
                 if Some(token) == current_comment_token {
-                    end += token.chars().count();
+                    end += token.len();
                     end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
                 } else {
                     // update current token, but don't delete this one.
@@ -6357,7 +6370,7 @@ fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
         let (view, doc) = current!(cx.editor);
-        // surround_len is the number of new characters being added.
+        // surround_len is the total byte length of the open + close strings.
         let (open, close, surround_len) = match event.char() {
             Some(ch) => {
                 let (o, c) = match_brackets::get_pair(ch);
@@ -6365,7 +6378,8 @@ fn surround_add(cx: &mut Context) {
                 open.push(o);
                 let mut close = Tendril::new();
                 close.push(c);
-                (open, close, 2)
+                let len = o.len_utf8() + c.len_utf8();
+                (open, close, len)
             }
             None if event.code == KeyCode::Enter => (
                 doc.line_ending.as_str().into(),
@@ -6450,12 +6464,17 @@ fn surround_replace(cx: &mut Context) {
             }
             sorted_pos.sort_unstable();
 
+            let text = doc.text().slice(..);
             let transaction = Transaction::change(
                 doc.text(),
                 sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
                     t.push(pos.1);
-                    (pos.0, pos.0 + 1, Some(t))
+                    // The existing surround char may itself be multi-byte
+                    // (e.g. an earlier `surround_add` with `«` or `「`); use
+                    // the grapheme boundary instead of `pos.0 + 1`.
+                    let end = text.next_grapheme_boundary(pos.0);
+                    (pos.0, end, Some(t))
                 }),
             );
             doc.set_selection(view.id, selection);
@@ -6497,8 +6516,15 @@ fn surround_delete(cx: &mut Context) {
                 }
             };
         change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
-        let transaction =
-            Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
+        let transaction = Transaction::change(
+            doc.text(),
+            // The surround char may itself be multi-byte (e.g. an earlier
+            // `surround_add` with `«` or `「`); use the grapheme boundary
+            // instead of `p + 1`.
+            change_pos
+                .into_iter()
+                .map(|p| (p, text.next_grapheme_boundary(p), None)),
+        );
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
     });
@@ -6677,7 +6703,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             }
         };
 
-        let output_len = output.chars().count();
+        let output_len = output.len();
 
         let (from, to, deleted_len) = match behavior {
             ShellBehavior::Replace => (range.from(), range.to(), range.len()),
@@ -7136,10 +7162,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             }
             changed = true;
             // skip any leading whitespace
-            cursor_fwd.anchor += text
-                .chars_at(cursor_fwd.anchor)
-                .take_while(|&c| !char_is_word(c))
-                .count();
+            cursor_fwd.anchor += text.chars_byte_run_forward(cursor_fwd.anchor, |c| !char_is_word(c));
             words.push(cursor_fwd);
             if words.len() == jump_label_limit {
                 break 'outer;
@@ -7163,11 +7186,8 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
                 continue;
             }
             changed = true;
-            cursor_rev.anchor -= text
-                .chars_at(cursor_rev.anchor)
-                .reversed()
-                .take_while(|&c| !char_is_word(c))
-                .count();
+            cursor_rev.anchor -=
+                text.chars_byte_run_backward(cursor_rev.anchor, |c| !char_is_word(c));
             words.push(cursor_rev);
             if words.len() == jump_label_limit {
                 break 'outer;

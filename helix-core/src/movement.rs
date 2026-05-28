@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::Reverse, iter};
+use std::{borrow::Cow, cmp::Reverse};
 
 use helix_stdx::rope::RopeSliceExt;
 use ropey::iter::Chars;
@@ -353,35 +353,32 @@ pub fn move_next_paragraph(
 // ---- util ------------
 
 #[inline]
-/// Returns first index that doesn't satisfy a given predicate when
-/// advancing the character index.
+/// Returns the byte position of the first char (at or after `pos`) that
+/// doesn't satisfy the predicate.
 ///
-/// Returns none if all characters satisfy the predicate.
+/// Returns `None` if all characters satisfy the predicate.
 pub fn skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
 {
-    let mut chars = slice.chars_at(pos).enumerate();
-    chars.find_map(|(i, c)| if !fun(c) { Some(pos + i) } else { None })
+    slice
+        .char_indices_at(pos)
+        .find_map(|(byte_idx, c)| (!fun(c)).then_some(byte_idx))
 }
 
 #[inline]
-/// Returns first index that doesn't satisfy a given predicate when
-/// retreating the character index, saturating if all elements satisfy
-/// the condition.
+/// Returns the byte position one past the first char (going backward from
+/// `pos`) that doesn't satisfy the predicate.
+///
+/// Returns `None` if all preceding characters satisfy the predicate.
 pub fn backwards_skip_while<F>(slice: RopeSlice, pos: usize, fun: F) -> Option<usize>
 where
     F: Fn(char) -> bool,
 {
-    let mut chars_starting_from_next = slice.chars_at(pos);
-    let mut backwards = iter::from_fn(|| chars_starting_from_next.prev()).enumerate();
-    backwards.find_map(|(i, c)| {
-        if !fun(c) {
-            Some(pos.saturating_sub(i))
-        } else {
-            None
-        }
-    })
+    slice
+        .char_indices_at(pos)
+        .reversed()
+        .find_map(|(byte_idx, c)| (!fun(c)).then_some(byte_idx + c.len_utf8()))
 }
 
 /// Possible targets of a word motion
@@ -592,7 +589,9 @@ pub fn goto_treesitter_object(
         let len = slice.len();
         let start_byte = node.start_byte();
         let end_byte = node.end_byte();
-        if start_byte >= len || end_byte >= len {
+        // `end_byte == len` is a valid exclusive end at EOF, so only `>` is a
+        // bounds violation.
+        if start_byte >= len || end_byte > len {
             return None;
         }
 
@@ -668,18 +667,22 @@ pub fn move_parent_node_end(
             }
         };
 
+        // `end_head` lands on a tree-sitter node boundary, but the +1
+        // would land mid-codepoint when the node's first/last char is
+        // multi-byte (common for CJK identifiers / emoji).
+        let next_grapheme = text.next_grapheme_boundary(end_head);
         if movement == Movement::Move {
             // preserve direction of original range
             if range.direction() == Direction::Forward {
-                Range::new(end_head, end_head + 1)
+                Range::new(end_head, next_grapheme)
             } else {
-                Range::new(end_head + 1, end_head)
+                Range::new(next_grapheme, end_head)
             }
         } else {
             // if we end up with a forward range, then adjust it to be one past
             // where we want
             if end_head >= range.anchor {
-                end_head += 1;
+                end_head = next_grapheme;
             }
 
             Range::new(range.anchor, end_head)
@@ -708,6 +711,39 @@ mod test {
         パーティーへ行かないか\n\
         The text above is Japanese\n\
     ";
+
+    /// Regression: `skip_while` / `backwards_skip_while` returned a byte index
+    /// derived from a char-iteration count, which was wrong whenever the run of
+    /// matching chars (e.g. whitespace) contained multi-byte codepoints
+    /// (NBSP, ideographic space, etc).
+    #[test]
+    fn skip_while_handles_multibyte_runs() {
+        use crate::chars::char_is_whitespace;
+
+        // NBSP (U+00A0, 2 bytes) and IDEOGRAPHIC SPACE (U+3000, 3 bytes) are
+        // both whitespace. Layout: NBSP(0..2) IDEOGRAPHIC(2..5) é(5..7) x(7).
+        let doc = Rope::from("\u{00A0}\u{3000}éx");
+        let slice = doc.slice(..);
+
+        // Forward: first non-whitespace is 'é' at byte 5.
+        assert_eq!(skip_while(slice, 0, char_is_whitespace), Some(5));
+
+        // Backward from end-of-doc: first non-whitespace char (going back) is
+        // 'x' at byte 7; the byte position one past it is 8.
+        assert_eq!(
+            backwards_skip_while(slice, slice.len(), char_is_whitespace),
+            Some(8),
+        );
+
+        // Backward through trailing whitespace lands just past the last
+        // non-whitespace char. "abc\u{3000}" → returns 3 (byte after 'c').
+        let doc = Rope::from("abc\u{3000}");
+        let slice = doc.slice(..);
+        assert_eq!(
+            backwards_skip_while(slice, slice.len(), char_is_whitespace),
+            Some(3),
+        );
+    }
 
     #[test]
     fn test_vertical_move() {

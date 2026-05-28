@@ -9,6 +9,7 @@ use std::{
 use helix_core::{self as core, completion::CompletionProvider, Selection, Transaction};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::{document::SavePoint, handlers::completion::ResponseContext, Document};
 use url::Url;
 
@@ -27,7 +28,12 @@ pub(crate) fn path_completion(
     let text = doc.text().clone();
     let cursor = selection.primary().cursor(text.slice(..));
     let cur_line = text.byte_to_line_idx(cursor, helix_core::LINE_TYPE);
-    let start = text.line_to_byte_idx(cur_line, helix_core::LINE_TYPE).max(cursor.saturating_sub(1000));
+    // Snap the lookback start to a char boundary so a slice never lands inside
+    // a multi-byte codepoint.
+    let lookback_start = text.slice(..).floor_char_boundary(cursor.saturating_sub(1000));
+    let start = text
+        .line_to_byte_idx(cur_line, helix_core::LINE_TYPE)
+        .max(lookback_start);
     let line_until_cursor = text.slice(start..cursor);
 
     let (dir_path, typed_file_name) =
@@ -85,7 +91,7 @@ pub(crate) fn path_completion(
 
         let edit_diff = typed_file_name
             .as_ref()
-            .map(|s| s.chars().count())
+            .map(|s| s.len())
             .unwrap_or_default();
 
         let res: Vec<_> = read_dir

@@ -427,7 +427,9 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
     };
 
     test("foo", Selection::single(0, 1))?;
-    test("👨‍👩‍👧‍👦 foo", Selection::single(0, 7))?;
+    // The family emoji is a single grapheme cluster of 25 bytes:
+    // 4 emoji (4 bytes each) joined by 3 ZWJ (U+200D, 3 bytes each).
+    test("👨‍👩‍👧‍👦 foo", Selection::single(0, 25))?;
     test("", Selection::single(0, 0))?;
 
     Ok(())

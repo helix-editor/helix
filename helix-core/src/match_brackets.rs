@@ -183,31 +183,27 @@ pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Opt
 
     // Determine the direction of the matching.
     let is_fwd = is_open_bracket(bracket);
-    let chars_iter = if is_fwd {
-        doc.chars_at(cursor_pos + 1)
-    } else {
-        doc.chars_at(cursor_pos).reversed()
-    };
 
     let mut open_cnt = 1;
-
-    for (i, candidate) in chars_iter.take(MAX_PLAINTEXT_SCAN).enumerate() {
-        if candidate == bracket {
-            open_cnt += 1;
-        } else if candidate == matching_bracket {
-            // Return when all pending brackets have been closed.
-            if open_cnt == 1 {
-                return Some(if is_fwd {
-                    cursor_pos + i + 1
-                } else {
-                    cursor_pos - i - 1
-                });
+    let mut scan = |iter: &mut dyn Iterator<Item = (usize, char)>| -> Option<usize> {
+        for (byte_idx, candidate) in iter.take(MAX_PLAINTEXT_SCAN) {
+            if candidate == bracket {
+                open_cnt += 1;
+            } else if candidate == matching_bracket {
+                if open_cnt == 1 {
+                    return Some(byte_idx);
+                }
+                open_cnt -= 1;
             }
-            open_cnt -= 1;
         }
-    }
+        None
+    };
 
-    None
+    if is_fwd {
+        scan(&mut doc.char_indices_at(cursor_pos + bracket.len_utf8()))
+    } else {
+        scan(&mut doc.char_indices_at(cursor_pos).reversed())
+    }
 }
 
 /// Returns the open and closing chars pair. If not found in
@@ -349,5 +345,33 @@ mod tests {
         assert("(prev line\n ) (middle) ( \n next line)", 0, 12);
         assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
         assert("(prev line\n ) (middle) ( \n next line)", 23, 36);
+    }
+
+    /// Regression: `find_matching_bracket_plaintext` used `cursor_pos + 1` to
+    /// advance past the cursor bracket (mid-codepoint for multi-byte brackets
+    /// like «»/「」), and used a char-iteration index `i` as a byte offset.
+    #[test]
+    fn test_find_matching_bracket_multibyte() {
+        let assert = |input: &str, pos, expected| {
+            let input = RopeSlice::from(input);
+            let actual = find_matching_bracket_plaintext(input, pos);
+            assert_eq!(expected, actual.unwrap(), "input={input:?} pos={pos}");
+            let actual = find_matching_bracket_plaintext(input, expected);
+            assert_eq!(pos, actual.unwrap(), "expected symmetric");
+        };
+
+        // « and » are 2 bytes each (U+00AB / U+00BB).
+        // Bytes: «(0..2) h(2) i(3) »(4..6)
+        assert("«hi»", 0, 4);
+        // Nested with multi-byte content between brackets.
+        // Bytes: «(0..2) a(2) é(3..5) b(5) »(6..8)
+        assert("«aéb»", 0, 6);
+        // 「 and 」 are 3 bytes each (U+300C / U+300D).
+        // Bytes: 「(0..3) f(3) o(4) o(5) 」(6..9)
+        assert("「foo」", 0, 6);
+        // ASCII brackets straddling multi-byte content (`i` was a char count
+        // but the function returned a byte offset).
+        // Bytes: ((0) é(1..3) )(3)
+        assert("(é)", 0, 3);
     }
 }

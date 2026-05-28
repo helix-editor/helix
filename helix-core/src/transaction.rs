@@ -11,9 +11,9 @@ pub type Deletion = (usize, usize);
 // TODO: pub(crate)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operation {
-    /// Move cursor by n characters.
+    /// Move cursor by n bytes.
     Retain(usize),
-    /// Delete n characters.
+    /// Delete n bytes.
     Delete(usize),
     /// Insert text at position.
     Insert(Tendril),
@@ -273,10 +273,9 @@ impl ChangeSet {
                             head_b = changes_b.next();
                         }
                         Ordering::Greater => {
-                            // figure out the byte index of the truncated string end
-                            let (pos, _) = s.char_indices().nth(j).unwrap();
+                            // `j` is the byte length to retain from the front of `s`.
                             let mut before = s;
-                            let after = before.split_off(pos);
+                            let after = before.split_off(j);
 
                             changes.insert(before);
                             head_a = Some(Insert(after));
@@ -949,6 +948,35 @@ impl Iterator for ChangeIterator<'_> {
 mod test {
     use super::*;
     use crate::history::State;
+
+    /// Regression: `compose`'s `(Insert(s), Retain(j))` Greater branch used
+    /// `s.char_indices().nth(j)` (interpreting `j` as a char count) to split
+    /// the Insert. Under byte-indexed ChangeSets `j` is bytes, so the split
+    /// landed at the wrong position when `s` contained multi-byte chars.
+    #[test]
+    fn composition_multibyte_insert_retain_split() {
+        use Operation::*;
+
+        // 'é' is 2 bytes; "héllo" is 6 bytes. Retain the first 3 bytes ("hé"),
+        // delete the remaining 3 bytes.
+        let a = ChangeSet {
+            changes: vec![Insert("héllo".into())],
+            len: 0,
+            len_after: 6,
+        };
+        let b = ChangeSet {
+            changes: vec![Retain(3), Delete(3)],
+            len: 6,
+            len_after: 3,
+        };
+
+        let mut text = Rope::from("");
+        let composed = a.compose(b);
+        assert_eq!(composed.len, 0);
+        assert_eq!(composed.len_after, 3);
+        assert!(composed.apply(&mut text));
+        assert_eq!(text, "hé");
+    }
 
     #[test]
     fn composition() {

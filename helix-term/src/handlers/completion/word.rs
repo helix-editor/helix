@@ -56,10 +56,13 @@ pub(super) fn completion(
 
     let typed_word_range = cursor.head..pos;
     let typed_word = text.slice(typed_word_range.clone());
-    let edit_diff = if typed_word
-        .char(typed_word.len().saturating_sub(1))
-        .is_whitespace()
-    {
+    // `len() - 1` may land mid-codepoint on a multi-byte trailing char, so
+    // grab the last char via the char iterator instead.
+    let last_char_is_whitespace = typed_word
+        .chars_at(typed_word.len())
+        .prev()
+        .is_some_and(|c| c.is_whitespace());
+    let edit_diff = if last_char_is_whitespace {
         0
     } else {
         typed_word.len()
@@ -117,9 +120,13 @@ pub(super) fn retain_valid_completions(
 
     let text = doc.text().slice(..);
     let cursor = doc.selection(view_id).primary().cursor(text);
+    // `cursor - 1` may land mid-codepoint after a multi-byte char; walk the
+    // char iterator instead so the "prev char is whitespace" filter never
+    // silently misfires.
     if text
-        .get_char(cursor.saturating_sub(1))
-        .is_ok_and(|ch| ch.is_whitespace())
+        .chars_at(cursor)
+        .prev()
+        .is_some_and(|ch| ch.is_whitespace())
     {
         items.retain(|item| {
             !matches!(

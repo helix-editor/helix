@@ -20,7 +20,12 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
 
     let mut prev_category = match direction {
         Direction::Forward if pos == 0 => Whitespace,
-        Direction::Forward => categorize_char(slice.char(pos - 1)),
+        Direction::Forward => categorize_char(
+            slice
+                .chars_at(pos)
+                .prev()
+                .expect("pos > 0 so a preceding char exists"),
+        ),
         Direction::Backward if pos == slice.len() => Whitespace,
         Direction::Backward => categorize_char(slice.char(pos)),
     };
@@ -33,8 +38,8 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
                     return pos;
                 } else {
                     match direction {
-                        Direction::Forward => pos += 1,
-                        Direction::Backward => pos = pos.saturating_sub(1),
+                        Direction::Forward => pos += ch.len_utf8(),
+                        Direction::Backward => pos = pos.saturating_sub(ch.len_utf8()),
                     }
                     prev_category = category;
                 }
@@ -74,9 +79,12 @@ pub fn textobject_word(
     let pos = range.cursor(slice);
 
     let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
-    let word_end = match slice.get_char(pos).map(categorize_char) {
-        Err(_) | Ok(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
+    let word_end = match slice.get_char(pos) {
+        Err(_) => pos,
+        Ok(ch) => match categorize_char(ch) {
+            CharCategory::Whitespace | CharCategory::Eol => pos,
+            _ => find_word_boundary(slice, pos + ch.len_utf8(), Direction::Forward, long),
+        },
     };
 
     // Special case.
@@ -87,20 +95,13 @@ pub fn textobject_word(
     match textobject {
         TextObject::Inside => Range::new(word_start, word_end),
         TextObject::Around => {
-            let whitespace_count_right = slice
-                .chars_at(word_end)
-                .take_while(|c| char_is_whitespace(*c))
-                .count();
-
-            if whitespace_count_right > 0 {
-                Range::new(word_start, word_end + whitespace_count_right)
+            let whitespace_bytes_right = slice.chars_byte_run_forward(word_end, char_is_whitespace);
+            if whitespace_bytes_right > 0 {
+                Range::new(word_start, word_end + whitespace_bytes_right)
             } else {
-                let whitespace_count_left = slice
-                    .chars_at(word_start)
-                    .reversed()
-                    .take_while(|c| char_is_whitespace(*c))
-                    .count();
-                Range::new(word_start - whitespace_count_left, word_end)
+                let whitespace_bytes_left =
+                    slice.chars_byte_run_backward(word_start, char_is_whitespace);
+                Range::new(word_start - whitespace_bytes_left, word_end)
             }
         }
         TextObject::Movement => unreachable!(),
@@ -267,7 +268,9 @@ pub fn textobject_treesitter(
         let len = slice.len();
         let start_byte = node.start_byte();
         let end_byte = node.end_byte();
-        if start_byte >= len || end_byte >= len {
+        // `end_byte == len` is a valid exclusive end at EOF, so only `>` is a
+        // bounds violation.
+        if start_byte >= len || end_byte > len {
             return None;
         }
 
@@ -400,6 +403,48 @@ mod test {
                 );
             }
         }
+    }
+
+    /// Regression for byte/char confusion in `find_word_boundary` and
+    /// `textobject_word`: stepping must use `len_utf8()` and whitespace
+    /// expansion must sum bytes (not char count).
+    #[test]
+    fn test_textobject_word_multibyte() {
+        // "ëaëaë" — ë=U+00EB (2 bytes); all chars are Letter category, so this
+        // is one contiguous word.
+        // Bytes: ë(0..2) a(2) ë(3..5) a(5) ë(6..8)
+        let doc = Rope::from("ëaëaë");
+        let slice = doc.slice(..);
+
+        // Cursor at byte 2 ('a' between two ës): word spans the whole rope.
+        let range = Range::new(2, 3);
+        assert_eq!(
+            textobject_word(slice, range, Inside, 1, false),
+            (0, 8).into()
+        );
+        assert_eq!(
+            textobject_word(slice, range, Around, 1, false),
+            (0, 8).into()
+        );
+
+        // "ëa\u{00A0}b" — NBSP (U+00A0) is 2 bytes of whitespace.
+        // Bytes: ë(0..2) a(2) NBSP(3..5) b(5)
+        let doc = Rope::from("ëa\u{00A0}b");
+        let slice = doc.slice(..);
+        // Cursor on 'ë'. Word is "ëa" at 0..3. Around extends through the
+        // multi-byte whitespace to byte 5, not byte 4.
+        let range = Range::new(0, 2);
+        assert_eq!(
+            textobject_word(slice, range, Around, 1, false),
+            (0, 5).into()
+        );
+
+        // Whitespace expansion to the left across NBSP — cursor on 'b'.
+        let range = Range::new(5, 6);
+        assert_eq!(
+            textobject_word(slice, range, Around, 1, false),
+            (3, 6).into()
+        );
     }
 
     #[test]

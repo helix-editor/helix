@@ -232,11 +232,19 @@ fn prev_char(doc: &Rope, pos: usize) -> Option<char> {
         return None;
     }
 
-    doc.get_char(pos - 1).ok()
+    // `pos - 1` would land mid-codepoint when the preceding char is multi-byte,
+    // so walk the char iterator instead.
+    doc.slice(..).chars_at(pos).prev()
 }
 
 /// calculate what the resulting range should be for an auto pair insertion
-fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range {
+///
+/// `offset` is the byte length of the inserted opening character (where the
+/// cursor should land, between the open and close) and `len_inserted` is the
+/// total byte length inserted (open + close). For ASCII pairs these are 1 and
+/// 2, but both must be byte-aware so the resulting cursor never lands inside a
+/// multi-byte codepoint.
+fn get_next_range(doc: &Rope, start_range: &Range, offset: usize, len_inserted: usize) -> Range {
     // When the character under the cursor changes due to complete pair
     // insertion, we must look backward a grapheme and then add the length
     // of the insertion to put the resulting cursor in the right place, e.g.
@@ -255,7 +263,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
 
     // inserting at the very end of the document after the last newline
     if start_range.head == doc.len() && start_range.anchor == doc.len() {
-        return Range::new(start_range.anchor + 1, start_range.head + 1);
+        return Range::new(start_range.anchor + offset, start_range.head + offset);
     }
 
     let doc_slice = doc.slice(..);
@@ -295,7 +303,7 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
     // If the head = 0, then we must be in insert mode with a backward
     // cursor, which implies the head will just move
     let end_head = if start_range.head == 0 || start_range.direction() == Direction::Backward {
-        start_range.head + 1
+        start_range.head + offset
     } else {
         // We must have a forward cursor, which means we must move to the
         // other end of the grapheme to get to where the new characters
@@ -312,12 +320,12 @@ fn get_next_range(doc: &Rope, start_range: &Range, len_inserted: usize) -> Range
 
         // If we are inserting for a regular one-width cursor, the anchor
         // moves with the head. This is the fast path for ASCII.
-        (1, Direction::Forward) => end_head - 1,
-        (1, Direction::Backward) => end_head + 1,
+        (1, Direction::Forward) => end_head - offset,
+        (1, Direction::Backward) => end_head + (len_inserted - offset),
 
         (_, Direction::Forward) => {
             if single_grapheme {
-                doc.slice(..).prev_grapheme_boundary(start_range.head) + 1
+                doc.slice(..).prev_grapheme_boundary(start_range.head) + offset
 
             // if we are appending, the anchor stays where it is; only offset
             // for multiple range insertions
@@ -348,9 +356,6 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     let next_char = doc.get_char(cursor).ok();
     let len_inserted;
 
-    // Since auto pairs are currently limited to single chars, we're either
-    // inserting exactly one or two chars. When arbitrary length pairs are
-    // added, these will need to be changed.
     let change = match next_char {
         Some(_) if !pair.should_close(doc, range) => {
             return None;
@@ -358,12 +363,12 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
         _ => {
             // insert open & close
             let pair_str = Tendril::from_iter([pair.open, pair.close]);
-            len_inserted = 2;
+            len_inserted = pair.open.len_utf8() + pair.close.len_utf8();
             (cursor, cursor, Some(pair_str))
         }
     };
 
-    let next_range = get_next_range(doc, range, len_inserted);
+    let next_range = get_next_range(doc, range, pair.open.len_utf8(), len_inserted);
     let result = (change, next_range);
 
     log::debug!("auto pair change: {:#?}", &result);
@@ -382,7 +387,9 @@ fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change
         return None;
     };
 
-    let next_range = get_next_range(doc, range, 0);
+    // Nothing is inserted (the cursor just skips over the existing close), so
+    // the offset is irrelevant — the `len_inserted == 0` path steps by grapheme.
+    let next_range = get_next_range(doc, range, 0, 0);
     let result = (change, next_range);
 
     log::debug!("auto pair change: {:#?}", &result);
@@ -405,14 +412,52 @@ fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
         }
 
         let pair_str = Tendril::from_iter([pair.open, pair.close]);
-        len_inserted = 2;
+        len_inserted = pair.open.len_utf8() + pair.close.len_utf8();
         (cursor, cursor, Some(pair_str))
     };
 
-    let next_range = get_next_range(doc, range, len_inserted);
+    let next_range = get_next_range(doc, range, pair.open.len_utf8(), len_inserted);
     let result = (change, next_range);
 
     log::debug!("auto pair change: {:#?}", &result);
 
     Some(result)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// Regression: `prev_char` must walk by char (not byte) so that a multi-byte
+    /// char preceding `pos` is correctly returned instead of returning a mid-
+    /// codepoint error from `get_char(pos - 1)`.
+    #[test]
+    fn test_prev_char_multibyte() {
+        // Bytes: 「(0..3) a(3) 」(4..7)
+        let doc = Rope::from("「a」");
+        assert_eq!(prev_char(&doc, 0), None);
+        assert_eq!(prev_char(&doc, 3), Some('「'));
+        assert_eq!(prev_char(&doc, 4), Some('a'));
+        assert_eq!(prev_char(&doc, 7), Some('」'));
+    }
+
+    /// Regression: auto-pair insertion of a pair whose open and/or close char is
+    /// multi-byte must account for the actual byte length of the inserted text.
+    /// Previously hardcoded to `len_inserted = 2`, which placed the cursor in
+    /// the middle of a multi-byte open character.
+    #[test]
+    fn test_handle_insert_open_multibyte_pair() {
+        // Pair 「」 has 3-byte open and 3-byte close.
+        let pair = Pair {
+            open: '「',
+            close: '」',
+        };
+        let doc = Rope::from("");
+        let range = Range::point(0);
+        let (change, _next_range) = handle_insert_open(&doc, &range, &pair).unwrap();
+        assert_eq!(change.0, 0);
+        assert_eq!(change.1, 0);
+        let inserted = change.2.expect("expected an insertion");
+        assert_eq!(inserted.as_bytes().len(), 6);
+    }
 }

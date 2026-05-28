@@ -4,6 +4,7 @@ use anyhow::bail;
 use dap::requests::DisconnectArguments;
 use dap::requests::ThreadsArguments;
 use helix_core::Selection;
+use helix_stdx::rope::RopeSliceExt;
 use helix_dap::{
     self as dap, registry::DebugAdapterId, Client, ConnectionType, Payload, Request, ThreadId,
 };
@@ -31,8 +32,21 @@ pub fn dap_pos_to_pos(doc: &helix_core::Rope, line: usize, column: usize) -> Opt
         return None;
     }
     let line_start = doc.line_to_byte_idx(line, helix_core::LINE_TYPE);
-    // TODO: this is probably utf-16 offsets
-    Some(line_start + column.saturating_sub(1))
+    // DAP `column` is 1-indexed and (per spec) measured in codepoints by
+    // default. Walk the chars at the line start to translate to a byte
+    // offset; using `line_start + column - 1` directly would land mid-
+    // codepoint as soon as the line contains any non-ASCII char.
+    // TODO: respect the encoding negotiated with the debug adapter.
+    let codepoints_into_line = column.checked_sub(1)?;
+    let mut chars = doc.slice(..).chars_at(line_start);
+    let mut byte_offset = 0usize;
+    for _ in 0..codepoints_into_line {
+        match chars.next() {
+            Some(ch) => byte_offset += ch.len_utf8(),
+            None => break,
+        }
+    }
+    Some(line_start + byte_offset)
 }
 
 pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: bool) {
@@ -78,7 +92,11 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
 
     let (view, doc) = current!(editor);
 
-    let text_end = doc.text().len().saturating_sub(1);
+    // Clamp into the document, but snap to a grapheme boundary so that
+    // `len() - 1` doesn't park the cursor inside a multi-byte codepoint
+    // (which would make subsequent grapheme operations panic).
+    let text = doc.text().slice(..);
+    let text_end = text.prev_grapheme_boundary(text.len());
     let start = dap_pos_to_pos(doc.text(), frame.line, frame.column).unwrap_or(0);
     let end = frame
         .end_line

@@ -83,6 +83,7 @@ pub mod util {
     use helix_core::snippets::{RenderedSnippet, Snippet, SnippetRenderCtx};
     use helix_core::{chars, RopeSlice};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
+    use helix_stdx::rope::RopeSliceExt;
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
@@ -197,9 +198,11 @@ pub mod util {
                 doc.byte_to_utf16_idx(line_start)..doc.byte_to_utf16_idx(line_end)
             }
             OffsetEncoding::Utf32 => {
+                // `pos.character` is a codepoint count, so the line range must
+                // also be in codepoint space (mirroring the UTF-16 branch).
                 let line_start = doc.line_to_byte_idx(pos_line, helix_core::LINE_TYPE);
                 let line_end = line_end_byte_index(&doc.slice(..), pos_line);
-                line_start..line_end
+                doc.byte_to_char_idx(line_start)..doc.byte_to_char_idx(line_end)
             }
         };
 
@@ -215,7 +218,9 @@ pub mod util {
             OffsetEncoding::Utf16 => {
                 (pos <= doc.len_utf16()).then(|| doc.utf16_to_byte_idx(pos))
             }
-            OffsetEncoding::Utf32 => Some(doc.char_to_byte_idx(pos)),
+            OffsetEncoding::Utf32 => {
+                (pos <= doc.len_chars()).then(|| doc.char_to_byte_idx(pos))
+            }
         }
     }
 
@@ -289,19 +294,11 @@ pub mod util {
     /// If the LS did not provide a range for the completion or the range of the
     /// primary cursor can not be used for the secondary cursor, this function
     /// can be used to find the completion range for a cursor
-    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
-        let start = cursor
-            - text
-                .chars_at(cursor)
-                .reversed()
-                .take_while(|ch| chars::char_is_word(*ch))
-                .count();
+    pub(super) fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
+        let start = cursor - text.chars_byte_run_backward(cursor, chars::char_is_word);
         let mut end = cursor;
         if replace_mode {
-            end += text
-                .chars_at(cursor)
-                .take_while(|ch| chars::char_is_word(*ch))
-                .count();
+            end += text.chars_byte_run_forward(cursor, chars::char_is_word);
         }
         (start, end)
     }
@@ -1058,6 +1055,48 @@ mod tests {
         test_case!("test\n\n\n\ncase", (4, 4) => Some(12));
         test_case!("test\n\n\n\ncase", (4, 5) => Some(12));
         test_case!("", (u32::MAX, u32::MAX) => Some(0));
+    }
+
+    /// Regression: `find_completion_range` must use byte arithmetic, not char
+    /// counts, when expanding word boundaries around a multi-byte cursor.
+    #[test]
+    fn find_completion_range_multibyte() {
+        use helix_core::RopeSlice;
+        // Cyrillic "тест" — each char is 2 bytes; word length 8 bytes.
+        // Bytes: т(0..2) е(2..4) с(4..6) т(6..8)
+        let text = RopeSlice::from("тест");
+        assert_eq!(find_completion_range(text, false, 8), (0, 8));
+        // Cursor in the middle of the word.
+        assert_eq!(find_completion_range(text, false, 4), (0, 4));
+        // Replace mode extends to end of word.
+        assert_eq!(find_completion_range(text, true, 4), (0, 8));
+        // After non-word: no extension.
+        let text = RopeSlice::from(" тест ");
+        // Bytes: ' '(0) т(1..3) е(3..5) с(5..7) т(7..9) ' '(9)
+        assert_eq!(find_completion_range(text, false, 9), (1, 9));
+        assert_eq!(find_completion_range(text, true, 9), (1, 9)); // no word right of cursor
+        assert_eq!(find_completion_range(text, true, 1), (1, 9));
+    }
+
+    /// Regression: UTF-32 `lsp_pos_to_pos` previously built the line range in
+    /// BYTES and then treated `pos.character` as a codepoint count. Multi-byte
+    /// chars on the same line returned bogus positions.
+    #[test]
+    fn lsp_pos_to_pos_utf32_multibyte() {
+        // "héllo" — é is 2 bytes, 1 codepoint. Bytes: h(0) é(1..3) l(3) l(4) o(5)
+        let doc = Rope::from("héllo");
+        // codepoint 0 → byte 0
+        let pos = lsp::Position::new(0, 0);
+        assert_eq!(lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf32), Some(0));
+        // codepoint 1 → byte 1 (before é)
+        let pos = lsp::Position::new(0, 1);
+        assert_eq!(lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf32), Some(1));
+        // codepoint 2 → byte 3 (after é, before first l)
+        let pos = lsp::Position::new(0, 2);
+        assert_eq!(lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf32), Some(3));
+        // codepoint past end caps to end (5 codepoints = byte 6).
+        let pos = lsp::Position::new(0, 99);
+        assert_eq!(lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf32), Some(6));
     }
 
     #[test]

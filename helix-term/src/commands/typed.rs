@@ -432,10 +432,13 @@ fn trim_trailing_whitespace(doc: &mut Document, view_id: ViewId) {
             let line_end_len = line_ending::get_line_ending(&line)
                 .map(|le| le.len())
                 .unwrap_or_default();
-            // Byte after the last non-whitespace byte or the beginning of the line if the
-            // line is all whitespace:
-            let first_trailing_whitespace =
-                pos + line.last_non_whitespace_byte().map_or(0, |idx| idx + 1);
+            // Byte after the last non-whitespace grapheme, or the beginning of the line if the
+            // line is all whitespace. `idx + 1` would land mid-codepoint when the last
+            // non-whitespace char is multi-byte (e.g. a line ending in `é` before spaces).
+            let first_trailing_whitespace = pos
+                + line
+                    .last_non_whitespace_byte()
+                    .map_or(0, |idx| line.next_grapheme_boundary(idx));
             pos += line.len();
             // Byte before the line ending character(s), or the final byte in the text if there
             // is no line-ending on this line:

@@ -280,10 +280,7 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
                 .count()
                 == MIN_WORD_GRAPHEMES
             {
-                cursor.anchor += text
-                    .chars_at(cursor.anchor)
-                    .take_while(|&c| !char_is_word(c))
-                    .count();
+                cursor.anchor += text.chars_byte_run_forward(cursor.anchor, |c| !char_is_word(c));
                 let slice = cursor.slice(text);
                 if slice.len() <= MAX_WORD_LEN {
                     word = Some(slice);
@@ -349,10 +346,12 @@ fn changed_windows<'a>(
             }
         }
 
-        let old_window = old_start.saturating_sub(MAX_WORD_LEN)
-            ..(old_pos + MAX_WORD_LEN).min(old_text.len());
-        let new_window = new_start.saturating_sub(MAX_WORD_LEN)
-            ..(new_pos + MAX_WORD_LEN).min(new_text.len());
+        // Pad each side by MAX_WORD_LEN bytes, but snap to char boundaries so
+        // the slice never lands inside a multi-byte codepoint.
+        let old_window = old_text.floor_char_boundary(old_start.saturating_sub(MAX_WORD_LEN))
+            ..old_text.ceil_char_boundary((old_pos + MAX_WORD_LEN).min(old_text.len()));
+        let new_window = new_text.floor_char_boundary(new_start.saturating_sub(MAX_WORD_LEN))
+            ..new_text.ceil_char_boundary((new_pos + MAX_WORD_LEN).min(new_text.len()));
 
         return Some((old_text.slice(old_window), new_text.slice(new_window)));
     })
@@ -461,6 +460,20 @@ mod tests {
     fn parse() {
         assert_words("one two three", ["one", "two", "three"]);
         assert_words("a foo c", ["foo"]);
+    }
+
+    /// Regression: word_index must use byte arithmetic when advancing the cursor
+    /// past leading non-word chars. Previously a char count was added to a byte
+    /// anchor, which split codepoints when the non-word run included multi-byte
+    /// characters (NBSP, "…", "(", etc).
+    #[test]
+    fn parse_multibyte_leading_non_word() {
+        // U+2026 HORIZONTAL ELLIPSIS (3 bytes), then word "abcd" (4 bytes).
+        // With the bug, cursor.anchor was incremented by char count (1) instead
+        // of bytes (3), so the word slice spanned bytes inside "…" and "abcd".
+        assert_words("…abcd …efgh", ["abcd", "efgh"]);
+        // NBSP (U+00A0, 2 bytes).
+        assert_words("\u{00A0}foo bar", ["foo", "bar"]);
     }
 
     #[track_caller]

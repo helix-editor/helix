@@ -573,6 +573,32 @@ async fn test_write_trim_trailing_whitespace() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_trim_trailing_whitespace_multibyte() -> anyhow::Result<()> {
+    // A line whose last non-whitespace character is multi-byte must have its
+    // trailing whitespace trimmed without corrupting that character. Regression
+    // test for the ropey 2.0 byte-index port, where `idx + 1` landed in the
+    // middle of the character. `é` is two bytes, `「」` three each.
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                trim_trailing_whitespace: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text(LineFeedHandling::Native.apply("#[c|]#afé   \n「」\t\nbar  "))
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("café\n「」\nbar"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_trim_final_newlines() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()

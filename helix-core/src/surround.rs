@@ -96,10 +96,8 @@ fn find_nth_closest_pairs_plain(
 ) -> Result<(usize, usize)> {
     let mut stack = Vec::with_capacity(2);
     let pos = range.from();
-    let mut close_pos = pos.saturating_sub(1);
 
-    for ch in text.chars_at(pos) {
-        close_pos += 1;
+    for (close_pos, ch) in text.char_indices_at(pos) {
 
         if is_open_bracket(ch) {
             // Track open pairs encountered so that we can step over
@@ -130,8 +128,8 @@ fn find_nth_closest_pairs_plain(
             // Before we accept this pair, we want to ensure that the
             // pair encloses the range rather than just the cursor.
             Some(open_pos)
-                if open_pos <= pos.saturating_add(1)
-                    && close_pos >= range.to().saturating_sub(1) =>
+                if open_pos <= text.next_grapheme_boundary(pos)
+                    && close_pos >= text.prev_grapheme_boundary(range.to()) =>
             {
                 // Since we have special conditions for when to
                 // accept, we can't just pass the skip parameter on
@@ -218,82 +216,72 @@ fn find_nth_open_pair(
     text: RopeSlice,
     open: char,
     close: char,
-    mut pos: usize,
+    pos: usize,
     n: usize,
 ) -> Option<usize> {
     if pos >= text.len() {
         return None;
     }
 
-    let mut chars = text.chars_at(pos + 1);
-
-    // Adjusts pos for the first iteration, and handles the case of the
-    // cursor being *on* the close character which will get falsely stepped over
-    // if not skipped here
-    if chars.prev()? == open {
+    let cursor_ch = text.get_char(pos).ok()?;
+    if cursor_ch == open {
         return Some(pos);
     }
 
+    let mut iter = text.char_indices_at(pos).reversed();
+    let mut result = pos;
     for _ in 0..n {
         let mut step_over: usize = 0;
-
         loop {
-            let c = chars.prev()?;
-            pos = pos.saturating_sub(1);
-
-            // ignore other surround pairs that are enclosed *within* our search scope
+            let (byte_idx, c) = iter.next()?;
+            result = byte_idx;
             if c == close {
                 step_over += 1;
             } else if c == open {
                 if step_over == 0 {
                     break;
                 }
-
                 step_over = step_over.saturating_sub(1);
             }
         }
     }
-
-    Some(pos)
+    Some(result)
 }
 
 fn find_nth_close_pair(
     text: RopeSlice,
     open: char,
     close: char,
-    mut pos: usize,
+    pos: usize,
     n: usize,
 ) -> Option<usize> {
     if pos >= text.len() {
         return None;
     }
 
-    let mut chars = text.chars_at(pos);
-
-    if chars.next()? == close {
-        return Some(pos);
+    let mut iter = text.char_indices_at(pos);
+    let (cursor_byte, cursor_ch) = iter.next()?;
+    if cursor_ch == close {
+        return Some(cursor_byte);
     }
 
+    let mut result = cursor_byte;
     for _ in 0..n {
         let mut step_over: usize = 0;
-
         loop {
-            let c = chars.next()?;
-            pos += 1;
-
+            let (byte_idx, c) = iter.next()?;
+            result = byte_idx;
             if c == open {
                 step_over += 1;
             } else if c == close {
                 if step_over == 0 {
                     break;
                 }
-
                 step_over = step_over.saturating_sub(1);
             }
         }
     }
-
-    Some(pos)
+    Some(result)
 }
 
 /// Find position of surround characters around every cursor. Returns None
@@ -444,6 +432,51 @@ mod test {
             find_nth_pairs_pos(None, doc.slice(..), '\'', selection.primary(), 1),
             Err(Error::CursorOnAmbiguousPair)
         )
+    }
+
+    /// Regression for byte/char confusion in `find_nth_open_pair`,
+    /// `find_nth_close_pair` and `find_nth_closest_pairs_plain`: stepping
+    /// across surround chars must advance by `len_utf8`, not 1.
+    #[test]
+    fn test_find_nth_pairs_pos_multibyte() {
+        // "(ëa)" — ë is 2 bytes. Bytes: ((0) ë(1..3) a(3) )(4)
+        let doc = Rope::from("(ëa)");
+        // Cursor on 'a' (byte 3), within the (...) pair.
+        let selection: SmallVec<[Range; 1]> = SmallVec::from_slice(&[Range::point(3)]);
+        let selection = Selection::new(selection, 0);
+
+        assert_eq!(
+            find_nth_pairs_pos(None, doc.slice(..), '(', selection.primary(), 1)
+                .expect("find should succeed"),
+            (0, 4)
+        );
+
+        // Closest pair search must also enclose the cursor.
+        assert_eq!(
+            find_nth_closest_pairs_pos(None, doc.slice(..), selection.primary(), 1)
+                .expect("find should succeed"),
+            (0, 4)
+        );
+
+        // Cursor on the multi-byte 'ë' itself (byte 1).
+        let selection: SmallVec<[Range; 1]> = SmallVec::from_slice(&[Range::point(1)]);
+        let selection = Selection::new(selection, 0);
+        assert_eq!(
+            find_nth_pairs_pos(None, doc.slice(..), '(', selection.primary(), 1)
+                .expect("find should succeed"),
+            (0, 4)
+        );
+
+        // Quoted text spanning a multi-byte char.
+        // "'ëa'" — bytes: '(0) ë(1..3) a(3) '(4)
+        let doc = Rope::from("'ëa'");
+        let selection: SmallVec<[Range; 1]> = SmallVec::from_slice(&[Range::point(3)]);
+        let selection = Selection::new(selection, 0);
+        assert_eq!(
+            find_nth_pairs_pos(None, doc.slice(..), '\'', selection.primary(), 1)
+                .expect("find should succeed"),
+            (0, 4)
+        );
     }
 
     #[test]

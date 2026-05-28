@@ -347,7 +347,14 @@ fn render_primary_selection_length<'a, F>(context: &mut RenderContext<'a>, write
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let tot_sel = context.doc.selection(context.view.id).primary().len();
+    let text = context.doc.text().slice(..);
+    let tot_sel = context
+        .doc
+        .selection(context.view.id)
+        .primary()
+        .slice(text)
+        .chars()
+        .count();
     write(
         context,
         format!(" {} char{} ", tot_sel, if tot_sel == 1 { "" } else { "s" }).into(),

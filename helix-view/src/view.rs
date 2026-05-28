@@ -991,7 +991,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(5)
+            Some(7)
         );
 
         assert_eq!(
@@ -1003,7 +1003,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(5)
+            Some(7)
         );
 
         assert_eq!(
@@ -1015,7 +1015,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(6)
+            Some(10)
         );
     }
 
@@ -1065,7 +1065,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(3)
+            Some(4)
         );
 
         assert_eq!(
@@ -1077,7 +1077,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(5)
+            Some(7)
         );
 
         assert_eq!(
@@ -1089,7 +1089,7 @@ mod tests {
                 &TextAnnotations::default(),
                 true
             ),
-            Some(7)
+            Some(10)
         );
     }
 }

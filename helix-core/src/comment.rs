@@ -121,7 +121,8 @@ pub enum CommentChange {
     Commented {
         range: Range,
         start_pos: usize,
-        end_pos: usize,
+        /// Byte position one past the last non-whitespace char in the range.
+        end_byte: usize,
         start_margin: bool,
         end_margin: bool,
         start_token: String,
@@ -130,7 +131,8 @@ pub enum CommentChange {
     Uncommented {
         range: Range,
         start_pos: usize,
-        end_pos: usize,
+        /// Byte position one past the last non-whitespace char in the range.
+        end_byte: usize,
         start_token: String,
         end_token: String,
     },
@@ -166,28 +168,36 @@ pub fn find_block_comments(
             selection_slice.first_non_whitespace_byte(),
             selection_slice.last_non_whitespace_byte(),
         ) {
+            // The byte one past the end of the last non-whitespace char. Using
+            // `end_pos + 1` would land mid-codepoint when that char is multi-
+            // byte (or, for grapheme clusters, mid-cluster).
+            let end_byte = end_pos + selection_slice.char(end_pos).len_utf8();
             let mut line_commented = false;
             let mut after_start = 0;
-            let mut before_end = 0;
-            let len = (end_pos + 1) - start_pos;
+            let mut start_of_end_token = 0;
+            let len = end_byte - start_pos;
 
             for BlockCommentToken { start, end } in &tokens {
                 let start_len = start.len();
                 let end_len = end.len();
-                after_start = start_pos + start_len;
-                before_end = end_pos.saturating_sub(end_len);
 
-                if len >= start_len + end_len {
-                    let start_fragment = selection_slice.slice(start_pos..after_start);
-                    let end_fragment = selection_slice.slice(before_end + 1..end_pos + 1);
-
-                    // block commented with these tokens
-                    if start_fragment == start.as_str() && end_fragment == end.as_str() {
-                        start_token = start.to_string();
-                        end_token = end.to_string();
-                        line_commented = true;
-                        break;
-                    }
+                // Use starts_with/ends_with so the byte comparison is safe even
+                // when start_pos / end_byte don't sit on slice-safe boundaries
+                // for a *different* token's length.
+                if len >= start_len + end_len
+                    && selection_slice
+                        .slice(start_pos..)
+                        .starts_with(start.as_str())
+                    && selection_slice
+                        .slice(..end_byte)
+                        .ends_with(end.as_str())
+                {
+                    after_start = start_pos + start_len;
+                    start_of_end_token = end_byte - end_len;
+                    start_token = start.to_string();
+                    end_token = end.to_string();
+                    line_commented = true;
+                    break;
                 }
             }
 
@@ -195,19 +205,28 @@ pub fn find_block_comments(
                 comment_changes.push(CommentChange::Uncommented {
                     range: *range,
                     start_pos,
-                    end_pos,
+                    end_byte,
                     start_token: default_tokens.start.clone(),
                     end_token: default_tokens.end.clone(),
                 });
                 commented = false;
             } else {
+                // The end margin is the ASCII space (if any) sitting between
+                // the inner content and the end token. We must not double-count
+                // a single space that already serves as the *start* margin.
+                let end_margin = selection_slice
+                    .char_indices_at(start_of_end_token)
+                    .reversed()
+                    .next()
+                    .is_some_and(|(margin_byte, margin_ch)| {
+                        margin_ch == ' ' && after_start < margin_byte
+                    });
                 comment_changes.push(CommentChange::Commented {
                     range: *range,
                     start_pos,
-                    end_pos,
+                    end_byte,
                     start_margin: selection_slice.get_char(after_start) == Ok(' '),
-                    end_margin: after_start != before_end
-                        && (selection_slice.get_char(before_end) == Ok(' ')),
+                    end_margin,
                     start_token: start_token.to_string(),
                     end_token: end_token.to_string(),
                 });
@@ -238,7 +257,7 @@ pub fn create_block_comment_transaction(
             if let CommentChange::Commented {
                 range,
                 start_pos,
-                end_pos,
+                end_byte,
                 start_token,
                 end_token,
                 start_margin,
@@ -252,8 +271,8 @@ pub fn create_block_comment_transaction(
                     None,
                 ));
                 changes.push((
-                    from + end_pos - end_token.len() - end_margin as usize + 1,
-                    from + end_pos + 1,
+                    from + end_byte - end_token.len() - end_margin as usize,
+                    from + end_byte,
                     None,
                 ));
             }
@@ -263,7 +282,7 @@ pub fn create_block_comment_transaction(
                 CommentChange::Uncommented {
                     range,
                     start_pos,
-                    end_pos,
+                    end_byte,
                     start_token,
                     end_token,
                 } => {
@@ -274,14 +293,14 @@ pub fn create_block_comment_transaction(
                         Some(Tendril::from(format!("{} ", start_token))),
                     ));
                     changes.push((
-                        from + end_pos + 1,
-                        from + end_pos + 1,
+                        from + end_byte,
+                        from + end_byte,
                         Some(Tendril::from(format!(" {}", end_token))),
                     ));
 
                     let offset = start_token.len() + end_token.len() + 2;
                     ranges.push(
-                        Range::new(from + offs, from + offs + end_pos + 1 + offset)
+                        Range::new(from + offs, from + offs + end_byte + offset)
                             .with_direction(range.direction()),
                     );
                     offs += offset;
@@ -433,7 +452,7 @@ mod test {
                 vec![CommentChange::Uncommented {
                     range: Range::new(0, 5),
                     start_pos: 0,
-                    end_pos: 4,
+                    end_byte: 5,
                     start_token: "/*".to_string(),
                     end_token: "*/".to_string(),
                 }]
@@ -458,6 +477,26 @@ mod test {
         let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
         transaction.apply(&mut doc);
         assert_eq!(doc, "");
+    }
+
+    /// Regression: `find_block_comments`/`create_block_comment_transaction`
+    /// used `end_pos + 1` (where `end_pos` is the *start* byte of the last
+    /// non-whitespace char) as the byte just past it. Lines ending in a
+    /// multi-byte char produced a malformed transaction.
+    #[test]
+    fn test_block_comment_multibyte_trailing_char() {
+        // 'é' is 2 bytes; "héllö" is 6 bytes total.
+        let mut doc = Rope::from("héllö");
+        let selection = Selection::single(0, doc.len());
+        let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
+        transaction.apply(&mut doc);
+        assert_eq!(doc, "/* héllö */");
+
+        // Round-trip: uncommenting must restore the original.
+        let selection = Selection::single(0, doc.len());
+        let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
+        transaction.apply(&mut doc);
+        assert_eq!(doc, "héllö");
     }
 
     /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose

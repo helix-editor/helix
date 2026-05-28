@@ -89,10 +89,20 @@ impl ChangeSetBuilder<'_> {
                 &self.current_hunk.after,
                 self.current_hunk.interner.num_tokens(),
             );
+            // `before.start`/`end` are *char-token* positions in
+            // `self.current_hunk.before`; the `ChangeSet` operates in bytes.
+            // Translate every span by summing each char's `len_utf8`.
+            let token_bytes = |range: std::ops::Range<u32>| -> usize {
+                self.current_hunk.before[range.start as usize..range.end as usize]
+                    .iter()
+                    .map(|&token| self.current_hunk.interner[token].len_utf8())
+                    .sum()
+            };
+
             let mut pos = 0;
             for Hunk { before, after } in self.char_diff.hunks() {
-                self.res.retain((before.start - pos) as usize);
-                self.res.delete(before.len());
+                self.res.retain(token_bytes(pos..before.start));
+                self.res.delete(token_bytes(before.start..before.end));
                 pos = before.end;
 
                 let res = self.current_hunk.after[after.start as usize..after.end as usize]
@@ -103,7 +113,7 @@ impl ChangeSetBuilder<'_> {
                 self.res.insert(res);
             }
             self.res
-                .retain(self.current_hunk.before.len() - pos as usize);
+                .retain(token_bytes(pos..self.current_hunk.before.len() as u32));
             // reuse allocations
             self.current_hunk.clear();
         }
@@ -207,5 +217,24 @@ mod tests {
     #[test]
     fn deleted_file() {
         test_identity("foo", "");
+    }
+
+    /// Regression: `process_hunk`'s inner char-diff branch builds a `ChangeSet`
+    /// across CHAR-token positions but the ChangeSet operates in bytes. Tiny
+    /// edits inside lines containing multi-byte chars used to silently produce
+    /// a malformed transaction that fails to apply (or panics on apply).
+    #[test]
+    fn small_hunk_multibyte() {
+        // Replace one char inside a line with multi-byte content.
+        test_identity("héllo\nworld\n", "héxlo\nworld\n");
+        // Insert a multi-byte char.
+        test_identity("hello\n", "héllo\n");
+        // Delete a multi-byte char.
+        test_identity("héllo\n", "hllo\n");
+        // CJK content with a single-char edit.
+        test_identity("今日はいい\n", "今日はいい!\n");
+        test_identity("今日はいい\n", "今日いい\n");
+        // Edit straddling multi-byte chars.
+        test_identity("aëbëc\n", "axëbëc\n");
     }
 }

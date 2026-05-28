@@ -756,6 +756,51 @@ async fn surround_delete() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn search_selection_word_boundaries_multibyte() -> anyhow::Result<()> {
+    // `*` (search_selection_detect_word_boundaries) inspects the characters
+    // adjacent to the selection; it must not index into the middle of a
+    // multi-byte character. Regression test for the ropey 2.0 byte-index port,
+    // where `text.char(index - 1)` panicked mid-codepoint. `é` is two bytes.
+    // Case A: multi-byte char immediately before the selection start.
+    test(("é#[word|]#", "*", "é#[word|]#")).await?;
+    // Case B: selection ends with a multi-byte char (not at EOF).
+    test(("#[café|]# x", "*", "#[café|]# x")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_delete_multibyte() -> anyhow::Result<()> {
+    // `surround_delete` must remove the whole multi-byte surround char, not
+    // just its first byte (regression test for the ropey 2.0 byte-index port,
+    // where the deletion used `(p, p + 1)` instead of a grapheme boundary).
+    // `«»` are two bytes each, `「」` three.
+    test(("«#[|word]#»", "md«", "#[|word]#")).await?;
+    test(("「#[|word]#」", "mdm", "#[|word]#")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn jump_to_word_backward_multibyte() -> anyhow::Result<()> {
+    // The backward path of `jump_to_word` walks backward through non-word
+    // chars to trim the candidate range's anchor. The ropey 2.0 byte-index
+    // port initially used `chars_at(b).reversed().take_while().count()` — a
+    // CHAR count — but the anchor is a BYTE offset, so multibyte non-word
+    // chars in the run produced a wrong anchor. After grapheme alignment
+    // the bug lands the user on a different word than intended.
+    //
+    // The separator between the cursor and the previous word must be
+    // whitespace (so `move_prev_word_start` lands head inside the previous
+    // word, which is the only way the backward path produces a label).
+    // U+3000 IDEOGRAPHIC SPACE (`　`) is a 3-byte whitespace character, so
+    // the trim walks through a 3-byte non-word run. Labels are pushed
+    // [fwd, bwd, fwd, bwd, ...]; the bwd-aaa label is the second one (`ab`).
+    test(("aaa　#[b|]#bb", "gwaa", "#[aaa|]#　bbb")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_replace_ts() -> anyhow::Result<()> {
     const INPUT: &str = r#"\
 fn foo() {
