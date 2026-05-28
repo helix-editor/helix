@@ -2578,22 +2578,25 @@ fn global_search_regex(cx: &mut Context) {
 
 fn global_search_impl(cx: &mut Context, fuzzy: bool) {
     #[derive(Debug)]
-    struct FileResult {
-        path: PathBuf,
-        /// 0 indexed lines
-        line_num: usize,
+    struct FileResult<'a> {
+        path: Cow<'a, Path>,
+        /// 0 indexed line start
+        line_start: usize,
+        /// 0 indexed line end
+        line_end: usize,
         /// The content of the matching line (for fuzzy ranking)
         content: String,
         /// Byte ranges within `content` to highlight. Only populated in regex
-        /// mode — fuzzy mode relies on nucleo's per-column indices.
+        /// mode; fuzzy mode relies on nucleo's per-column indices.
         match_ranges: Vec<std::ops::Range<usize>>,
     }
 
-    impl FileResult {
-        fn new(path: &Path, line_num: usize, content: &str) -> Self {
+    impl FileResult<'_> {
+        fn new(path: &Path, line_start: usize, line_end: usize, content: &str) -> Self {
             Self {
-                path: path.to_path_buf(),
-                line_num,
+                path: helix_stdx::path::get_relative_path(path.to_path_buf()),
+                line_start,
+                line_end,
                 content: content.trim().to_string(),
                 match_ranges: Vec::new(),
             }
@@ -2604,9 +2607,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         smart_case: bool,
         fuzzy: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        directory_style: Style,
-        number_style: Style,
-        colon_style: Style,
+        style: PathStyleConfig,
         match_style: Style,
     }
 
@@ -2629,7 +2630,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
             let haystack = Utf32Str::new(trimmed, char_buf);
             if pattern.score(haystack, matcher).is_some() {
                 if injector
-                    .push(FileResult::new(path, line_idx, trimmed))
+                    .push(FileResult::new(path, line_idx, line_idx, trimmed))
                     .is_err()
                 {
                     return true;
@@ -2669,7 +2670,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
             let haystack = Utf32Str::new(trimmed, char_buf);
             if pattern.score(haystack, matcher).is_some() {
                 if injector
-                    .push(FileResult::new(path, line_idx, trimmed))
+                    .push(FileResult::new(path, line_idx, line_idx, trimmed))
                     .is_err()
                 {
                     return true;
@@ -2686,9 +2687,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         smart_case: config.search.smart_case,
         fuzzy,
         file_picker_config: config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
+        style: PathStyleConfig::new(&cx.editor.theme),
         match_style: cx.editor.theme.get("special").add_modifier(Modifier::BOLD),
     };
 
@@ -2724,7 +2723,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
     );
     // In regex mode the query is a regex, not a fuzzy pattern, so the picker
     // must not apply its own nucleo fuzzy filter to the column contents on top
-    // of the grep results — that would discard valid regex matches whose lines
+    // of the grep results - that would discard valid regex matches whose lines
     // don't happen to also be a fuzzy match for the regex source text.
     let contents_column = if fuzzy {
         contents_column
@@ -2733,26 +2732,9 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
     };
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            let path = helix_stdx::path::get_relative_path(&item.path);
-
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-
-            let filename = item
-                .path
-                .file_name()
-                .expect("global search paths are normalized (can't end in `..`)")
-                .to_string_lossy();
-
-            Cell::from(Spans::from(vec![
-                Span::styled(directories, config.directory_style),
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_num + 1).to_string(), config.number_style),
-            ]))
+            config
+                .style
+                .stylize(Some(&item.path), Some(item.line_start))
         }),
         contents_column,
     ];
@@ -2773,13 +2755,14 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
 
         let documents: Vec<_> = editor
             .documents()
-            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+            .map(|doc| (doc.path().map(ToOwned::to_owned), doc.text().to_owned()))
             .collect();
 
         // For non-fuzzy mode, build a regex matcher
         let regex_matcher = if !config.fuzzy {
             match RegexMatcherBuilder::new()
                 .case_smart(config.smart_case)
+                .multi_line(true)
                 .build(query)
             {
                 Ok(matcher) => {
@@ -2817,6 +2800,7 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         async move {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
+                .multi_line(true)
                 .build();
             WalkBuilder::new(search_root)
                 .hidden(config.file_picker_config.hidden)
@@ -2861,11 +2845,15 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                         if let Some(ref regex_matcher) = regex_matcher {
                             // Non-fuzzy: use grep searcher with regex
                             let mut stop = false;
-                            let sink = sinks::UTF8(|line_num, line_content| {
+                            let sink = sinks::UTF8(|line_start, line_content| {
                                 use grep_matcher::Matcher;
+                                let line_start = line_start as usize - 1;
+                                let line_end =
+                                    line_start + line_content.lines().count().saturating_sub(1);
                                 let mut result = FileResult::new(
                                     entry.path(),
-                                    line_num as usize - 1,
+                                    line_start,
+                                    line_end,
                                     line_content,
                                 );
                                 // Re-run the matcher against the trimmed
@@ -2953,7 +2941,14 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
         1, // contents
         [],
         config,
-        move |cx, FileResult { path, line_num, .. }, action| {
+        move |cx,
+              FileResult {
+                  path,
+                  line_start,
+                  line_end,
+                  ..
+              },
+              action| {
             let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
@@ -2963,17 +2958,18 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                 }
             };
 
-            let line_num = *line_num;
+            let line_start = *line_start;
+            let line_end = *line_end;
             let view = view_mut!(cx.editor);
             let text = doc.text();
-            if line_num >= text.len_lines() {
+            if line_start >= text.len_lines() {
                 cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
                 return;
             }
-            let start = text.line_to_char(line_num);
-            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+            let start = text.line_to_char(line_start);
+            let end = text.line_to_char((line_end + 1).min(text.len_lines()));
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
@@ -2981,9 +2977,15 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
             }
         },
     )
-    .with_preview(|_editor, FileResult { path, line_num, .. }| {
-        Some((path.as_path().into(), Some((*line_num, *line_num))))
-    })
+    .with_preview(
+        |_editor,
+         FileResult {
+             path,
+             line_start,
+             line_end,
+             ..
+         }| { Some((path.as_ref().into(), Some((*line_start, *line_end)))) },
+    )
     .with_preview_highlights(move |doc, (start, end), query| {
         if query.is_empty() {
             return Vec::new();
@@ -3020,30 +3022,30 @@ fn global_search_impl(cx: &mut Context, fuzzy: bool) {
                 }
             }
         } else {
-            for line_idx in start..=end {
-                if line_idx >= text.len_lines() {
-                    break;
+            let mut builder = grep_regex::RegexMatcherBuilder::new();
+            if search_smart_case {
+                builder.case_smart(true);
+            }
+            builder.multi_line(true);
+            if let Ok(matcher) = builder.build(query) {
+                use grep_matcher::Matcher;
+                let start_line = start.min(text.len_lines());
+                if start_line >= text.len_lines() {
+                    return ranges;
                 }
-                let line_start = text.line_to_char(line_idx);
-                let line_text: String = text.line(line_idx).chars().collect();
-                let mut builder = grep_regex::RegexMatcherBuilder::new();
-                if search_smart_case {
-                    builder.case_smart(true);
-                }
-                if let Ok(matcher) = builder.build(query) {
-                    use grep_matcher::Matcher;
-                    let mut start_pos = 0;
-                    while let Ok(Some(m)) = matcher.find_at(line_text.as_bytes(), start_pos) {
-                        let char_start = line_text[..m.start()].chars().count();
-                        let char_end = line_text[..m.end()].chars().count();
-                        if char_start < char_end {
-                            ranges.push((line_start + char_start)..(line_start + char_end));
-                        }
-                        if m.end() == start_pos {
-                            break;
-                        }
-                        start_pos = m.end();
+                let end_line = end.min(text.len_lines().saturating_sub(1));
+                let start_char = text.line_to_char(start_line);
+                let end_char = text.line_to_char((end_line + 1).min(text.len_lines()));
+                let preview_text: String = text.slice(start_char..end_char).chars().collect();
+                let mut start_pos = 0;
+                while let Ok(Some(m)) = matcher.find_at(preview_text.as_bytes(), start_pos) {
+                    if m.end() == m.start() {
+                        break;
                     }
+                    let char_start = preview_text[..m.start()].chars().count();
+                    let char_end = preview_text[..m.end()].chars().count();
+                    ranges.push((start_char + char_start)..(start_char + char_end));
+                    start_pos = m.end();
                 }
             }
         }
@@ -3532,12 +3534,54 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
+struct PathStyleConfig {
+    directory_style: Style,
+    number_style: Style,
+    colon_style: Style,
+}
+
+impl PathStyleConfig {
+    fn new(theme: &helix_view::Theme) -> Self {
+        Self {
+            directory_style: theme.get("ui.text.directory"),
+            number_style: theme.get("constant.numeric.integer"),
+            colon_style: theme.get("punctuation"),
+        }
+    }
+
+    fn stylize<'a>(&self, path: Option<&'a Path>, line: Option<usize>) -> Cell<'a> {
+        let mut spans = Vec::new();
+        if let Some(path) = path {
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+            spans.push(Span::styled(directories, self.directory_style));
+        }
+        let filename = path.as_ref().map_or(SCRATCH_BUFFER_NAME.into(), |path| {
+            path.file_name()
+                .expect("all document names are normalized (can't end in `..`)")
+                .to_string_lossy()
+        });
+        spans.push(Span::raw(filename));
+        if let Some(line) = line {
+            spans.extend([
+                Span::styled(":", self.colon_style),
+                Span::styled((line + 1).to_string(), self.number_style),
+            ]);
+        }
+
+        Cell::from(Spans::from(spans))
+    }
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    struct BufferMeta {
+    struct BufferMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3545,7 +3589,10 @@ fn buffer_picker(cx: &mut Context) {
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
-        path: doc.path().cloned(),
+        path: doc
+            .path()
+            .map(ToOwned::to_owned)
+            .map(helix_stdx::path::get_relative_path),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3573,16 +3620,8 @@ fn buffer_picker(cx: &mut Context) {
             }
             flags.into()
         }),
-        PickerColumn::new("path", |meta: &BufferMeta, _| {
-            let path = meta
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        PickerColumn::new("path", |meta: &BufferMeta, config: &PathStyleConfig| {
+            config.stylize(meta.path.as_deref(), None)
         }),
     ];
 
@@ -3599,9 +3638,15 @@ fn buffer_picker(cx: &mut Context) {
         0
     };
 
-    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
-        cx.editor.switch(meta.id, action);
-    })
+    let picker = Picker::new(
+        columns,
+        2,
+        items,
+        PathStyleConfig::new(&cx.editor.theme),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+        },
+    )
     .with_initial_cursor(initial_cursor)
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
@@ -3615,10 +3660,11 @@ fn buffer_picker(cx: &mut Context) {
 }
 
 fn jumplist_picker(cx: &mut Context) {
-    struct JumpMeta {
+    struct JumpMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         selection: Selection,
+        line_start: usize,
         text: String,
         is_current: bool,
     }
@@ -3631,36 +3677,32 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = &cx.editor.documents.get(&doc_id);
-        let text = doc.map_or("".into(), |d| {
-            selection
-                .fragments(d.text().slice(..))
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-                .join(" ")
-        });
+        let doc = doc!(cx.editor, &doc_id);
+        let text = doc.text().slice(..);
+        let contents = selection
+            .fragments(text)
+            .map(Cow::into_owned)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let line_start = selection.primary().cursor_line(text);
 
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|d| d.path().cloned()),
+            path: doc
+                .path()
+                .map(ToOwned::to_owned)
+                .map(helix_stdx::path::get_relative_path),
             selection,
-            text,
+            line_start,
+            text: contents,
             is_current: view.doc == doc_id,
         }
     };
 
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
-        ui::PickerColumn::new("path", |item: &JumpMeta, _| {
-            let path = item
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        ui::PickerColumn::new("path", |item: &JumpMeta, config: &PathStyleConfig| {
+            config.stylize(item.path.as_deref(), Some(item.line_start))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3686,7 +3728,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        (),
+        PathStyleConfig::new(&cx.editor.theme),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -6201,6 +6243,9 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
     cx.editor.autoinfo = Some(Info::from_registers(
         "Insert register",
         &cx.editor.registers,
@@ -6214,7 +6259,7 @@ fn insert_register(cx: &mut Context) {
                 cx.register
                     .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
-                cx.count(),
+                count,
             );
         }
     })
@@ -7240,7 +7285,8 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                let (view, doc) = current!(cx.editor);
+                let doc = doc_mut!(cx.editor, &doc);
+                let view = view_mut!(cx.editor, view_id);
                 push_jump(view, doc);
                 doc.set_selection(view_id, range.into());
             }

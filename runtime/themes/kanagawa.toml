@@ -34,6 +34,7 @@
 "ui.window" = { fg = "sumiInk0" }
 "ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.text" = "fujiWhite"
+"ui.text.inactive" = "fujiGray"
 "ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
 
 "ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2" }

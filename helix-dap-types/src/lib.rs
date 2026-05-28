@@ -923,6 +923,63 @@ pub mod events {
     }
 
     #[derive(Debug)]
+    pub enum ProgressStart {}
+
+    impl Event for ProgressStart {
+        type Body = ProgressStartBody;
+        const EVENT: &'static str = "progressStart";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ProgressStartBody {
+        pub progress_id: String,
+        pub title: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub request_id: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub cancellable: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub message: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub percentage: Option<u8>,
+    }
+
+    #[derive(Debug)]
+    pub enum ProgressUpdate {}
+
+    impl Event for ProgressUpdate {
+        type Body = ProgressUpdateBody;
+        const EVENT: &'static str = "progressUpdate";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ProgressUpdateBody {
+        pub progress_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub message: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub percentage: Option<u8>,
+    }
+
+    #[derive(Debug)]
+    pub enum ProgressEnd {}
+
+    impl Event for ProgressEnd {
+        type Body = ProgressEndBody;
+        const EVENT: &'static str = "progressEnd";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ProgressEndBody {
+        pub progress_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub message: Option<String>,
+    }
+
+    #[derive(Debug)]
     pub enum Breakpoint {}
 
     impl Event for Breakpoint {
