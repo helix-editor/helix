@@ -207,7 +207,7 @@ We use a similar set of scopes as
 - `variable` - Variables
   - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
-    - `mutable` - Mutable language varaibles (e.g. `mut self` in Rust)
+    - `mutable` - Mutable language variables (e.g. `mut self` in Rust)
   - `parameter` - Function parameters
     - `mutable` - Mutable function parameters (e.g. marked with `mut` in Rust)
   - `other`
@@ -361,9 +361,13 @@ These scopes are used for theming the editor interface:
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
 | `ui.cursorcolumn.secondary`       | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
 | `warning`                         | Diagnostics warning (gutter)                                                                   |
+| `warning.diagnostic.inline`       | The inline diagnostic for the warning severity                                                 |
 | `error`                           | Diagnostics error (gutter)                                                                     |
+| `error.diagnostic.inline`         | The inline diagnostic for the error severity                                                   |
 | `info`                            | Diagnostics info (gutter)                                                                      |
+| `info.diagnostic.inline`          | The inline diagnostic for the warning severity                                                 |
 | `hint`                            | Diagnostics hint (gutter)                                                                      |
+| `hint.diagnostic.inline`          | The inline diagnostic for the hint severity                                                    |
 | `diagnostic`                      | Diagnostics fallback style (editing area)                                                      |
 | `diagnostic.hint`                 | Diagnostics hint (editing area)                                                                |
 | `diagnostic.info`                 | Diagnostics info (editing area)                                                                |

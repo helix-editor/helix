@@ -372,6 +372,11 @@ impl Transport {
         let mut pending_messages: Vec<Payload> = Vec::new();
         let mut is_pending = true;
 
+        // Pin outside the loop to avoid cancellation-safety issue:
+        // recreating `notified()` inside `select!` can lose the permit.
+        let notified = initialize_notify.notified();
+        tokio::pin!(notified);
+
         // Determine if a message is allowed to be sent early
         fn is_initialize(payload: &Payload) -> bool {
             use lsp::{
@@ -402,7 +407,7 @@ impl Transport {
         loop {
             tokio::select! {
                 biased;
-                _ = initialize_notify.notified() => { // TODO: notified is technically not cancellation safe
+                _ = &mut notified, if is_pending => {
                     // server successfully initialized
                     is_pending = false;
 

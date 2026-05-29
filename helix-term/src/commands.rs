@@ -1068,9 +1068,13 @@ fn align_selections(cx: &mut Context) {
     let selection = doc.selection(view.id);
 
     let tab_width = doc.tab_width();
-    let mut column_widths: Vec<Vec<_>> = Vec::new();
-    let mut last_line = text.len_lines() + 1;
-    let mut col = 0;
+
+    let mut column_widths: Vec<usize> = Vec::new();
+    let mut coordinates = Vec::with_capacity(selection.len());
+
+    let mut previous_line = usize::MAX;
+    let mut col_idx = 0;
+    let mut running_offset = 0;
 
     for range in selection {
         let coords = visual_coords_at_pos(text, range.head, tab_width);
@@ -1081,48 +1085,58 @@ fn align_selections(cx: &mut Context) {
                 .set_error("align cannot work with multi line selections");
             return;
         }
-
-        col = if coords.row == last_line { col + 1 } else { 0 };
-
-        if col >= column_widths.len() {
-            column_widths.push(Vec::new());
+        if coords.row != previous_line {
+            col_idx = 0;
+            running_offset = 0;
+            previous_line = coords.row;
         }
-        column_widths[col].push((range.from(), coords.col));
 
-        last_line = coords.row;
+        let width = coords.col - running_offset;
+
+        match column_widths.get_mut(col_idx) {
+            Some(n) => *n = (*n).max(width),
+            None => column_widths.push(width),
+        }
+
+        coordinates.push(coords);
+
+        running_offset += width;
+        col_idx += 1;
     }
 
-    let mut changes = Vec::with_capacity(selection.len());
+    let column_positions: Vec<_> = column_widths
+        .into_iter()
+        .scan(0, |sum, n| {
+            *sum += n;
+            Some(*sum)
+        })
+        .collect();
 
-    // Account for changes on each row
-    let len = column_widths.first().map(|cols| cols.len()).unwrap_or(0);
-    let mut offs = vec![0; len];
+    previous_line = usize::MAX;
 
-    for col in column_widths {
-        let max_col = col
-            .iter()
-            .enumerate()
-            .map(|(row, (_, cursor))| *cursor + offs[row])
-            .max()
-            .unwrap_or(0);
-
-        for (row, (insert_pos, last_col)) in col.into_iter().enumerate() {
-            let ins_count = max_col - (last_col + offs[row]);
-
-            if ins_count == 0 {
-                continue;
+    let changes = coordinates
+        .into_iter()
+        .zip(selection)
+        .map(|(coords, range)| {
+            if coords.row != previous_line {
+                col_idx = 0;
+                running_offset = 0;
+                previous_line = coords.row;
             }
+            let current_inserts = column_positions[col_idx] - coords.col - running_offset;
+            let insert_pos = range.from();
 
-            offs[row] += ins_count;
+            col_idx += 1;
+            running_offset += current_inserts;
 
-            changes.push((insert_pos, insert_pos, Some(" ".repeat(ins_count).into())));
-        }
-    }
+            (
+                insert_pos,
+                insert_pos,
+                Some(" ".repeat(current_inserts).into()),
+            )
+        });
 
-    // The changeset has to be sorted
-    changes.sort_unstable_by_key(|(from, _, _)| *from);
-
-    let transaction = Transaction::change(doc.text(), changes.into_iter());
+    let transaction = Transaction::change(doc.text(), changes);
     doc.apply(&transaction, view.id);
     exit_select_mode(cx);
 }
@@ -1340,15 +1354,16 @@ fn selection_overlaps_document_link(
     }
 }
 
-/// Resolve a document link target, using the LSP resolve request when needed.
-fn resolve_document_link_target(
+/// Create a document link resolve request when the target isn't already present.
+///
+/// This only builds the LSP request. The request is awaited from a background
+/// job so `goto_file_impl` does not block the UI thread while the language
+/// server resolves the target.
+fn resolve_document_link_request(
     editor: &Editor,
     link: &helix_view::document::DocumentLink,
-) -> Option<Url> {
-    if let Some(target) = link.link.target.clone() {
-        return Some(target);
-    }
-
+) -> Option<impl Future<Output = helix_lsp::Result<helix_lsp::lsp::DocumentLink>> + Send + 'static>
+{
     let language_server = editor.language_server_by_id(link.language_server_id)?;
     let supports_resolve = language_server
         .capabilities()
@@ -1361,8 +1376,7 @@ fn resolve_document_link_target(
         return None;
     }
 
-    let future = language_server.resolve_document_link(link.link.clone())?;
-    helix_lsp::block_on(future).ok()?.target
+    language_server.resolve_document_link(link.link.clone())
 }
 
 /// Goto files/URLs in selection.
@@ -1381,6 +1395,8 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     let mut lsp_targets = Vec::new();
     let mut lsp_targets_seen = HashSet::new();
+    let mut unresolved_links = HashSet::new();
+    let mut resolve_requests = Vec::new();
     let mut fallback_ranges = Vec::new();
 
     if doc.document_links.is_empty() {
@@ -1393,9 +1409,13 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
                     continue;
                 }
                 matched = true;
-                if let Some(target) = resolve_document_link_target(cx.editor, link) {
+                if let Some(target) = link.link.target.clone() {
                     if lsp_targets_seen.insert(target.clone()) {
                         lsp_targets.push(target);
+                    }
+                } else if unresolved_links.insert((link.start, link.end, link.language_server_id)) {
+                    if let Some(request) = resolve_document_link_request(cx.editor, link) {
+                        resolve_requests.push(request);
                     }
                 }
             }
@@ -1407,6 +1427,37 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     for target in lsp_targets {
         open_url(cx, target, action);
+    }
+
+    if !resolve_requests.is_empty() {
+        let rel_path = rel_path.clone();
+        cx.jobs.callback(async move {
+            let mut targets = Vec::new();
+            let mut seen = HashSet::new();
+
+            // Resolve links off the main thread, then hand the resulting URLs
+            // back to the editor/compositor callback once all requests finish.
+            for request in resolve_requests {
+                match request.await {
+                    Ok(link) => {
+                        if let Some(target) = link.target {
+                            if seen.insert(target.clone()) {
+                                targets.push(target);
+                            }
+                        }
+                    }
+                    Err(err) => log::warn!("Failed to resolve document link: {err}"),
+                }
+            }
+
+            Ok(Callback::EditorCompositor(Box::new(
+                move |editor, compositor| {
+                    for target in targets {
+                        open_url_in_callback(editor, compositor, target, action, &rel_path);
+                    }
+                },
+            )))
+        });
     }
 
     if fallback_ranges.is_empty() {
@@ -1462,7 +1513,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 }
 
 /// Opens the given url. If the URL points to a valid textual file it is open in helix.
-//  Otherwise, the file is open using external program.
+/// Otherwise, the file is open using external program.
 fn open_url(cx: &mut Context, url: Url, action: Action) {
     let doc = doc!(cx.editor);
     let rel_path = doc
@@ -1470,8 +1521,58 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
 
-    if url.scheme() != "file" {
+    if should_open_url_externally(&url) {
         return cx.jobs.callback(crate::open_external_url_callback(url));
+    }
+
+    let path = &rel_path.join(url.path());
+    if path.is_dir() {
+        let picker = ui::file_picker(cx.editor, path.into());
+        cx.push_layer(Box::new(overlaid(picker)));
+    } else if let Err(e) = cx.editor.open(path, action) {
+        cx.editor.set_error(format!("Open file failed: {:?}", e));
+    }
+}
+
+/// Open a URL from an editor/compositor callback.
+///
+/// This mirrors `open_url` but does not require a full `Context`, which makes
+/// it usable from async job completions such as deferred document link
+/// resolves.
+fn open_url_in_callback(
+    editor: &mut Editor,
+    compositor: &mut Compositor,
+    url: Url,
+    action: Action,
+    rel_path: &Path,
+) {
+    if should_open_url_externally(&url) {
+        tokio::spawn(async move {
+            match crate::open_external_url_callback(url).await {
+                Ok(callback) => job::dispatch_callback(callback).await,
+                Err(err) => status::report(err).await,
+            }
+        });
+        return;
+    }
+
+    let path = &rel_path.join(url.path());
+    if path.is_dir() {
+        let picker = ui::file_picker(editor, path.into());
+        compositor.push(Box::new(overlaid(picker)));
+    } else if let Err(e) = editor.open(path, action) {
+        editor.set_error(format!("Open file failed: {:?}", e));
+    }
+}
+
+/// Returns whether a URL should opened externally.
+///
+/// Non-`file` URLs always open externally. `file` URLs are opened externally
+/// only when the target looks like a binary file (a non-textual file that can't
+/// be viewed in helix).
+fn should_open_url_externally(url: &Url) -> bool {
+    if url.scheme() != "file" {
+        return true;
     }
 
     let content_type = std::fs::File::open(url.path()).and_then(|file| {
@@ -1481,22 +1582,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(content_inspector::inspect(&read_buffer[..n]))
     });
 
-    // we attempt to open binary files - files that can't be open in helix - using external
-    // program as well, e.g. pdf files or images
-    match content_type {
-        Ok(content_inspector::ContentType::BINARY) => {
-            cx.jobs.callback(crate::open_external_url_callback(url))
-        }
-        Ok(_) | Err(_) => {
-            let path = &rel_path.join(url.path());
-            if path.is_dir() {
-                let picker = ui::file_picker(cx.editor, path.into());
-                cx.push_layer(Box::new(overlaid(picker)));
-            } else if let Err(e) = cx.editor.open(path, action) {
-                cx.editor.set_error(format!("Open file failed: {:?}", e));
-            }
-        }
-    }
+    matches!(content_type, Ok(content_inspector::ContentType::BINARY))
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
@@ -2323,11 +2409,13 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             false
         };
         let wrap_around = search_config.wrap_around;
+        let is_crlf = doc!(cx.editor).line_ending == LineEnding::Crlf;
         if let Ok(regex) = rope::RegexBuilder::new()
             .syntax(
                 rope::Config::new()
                     .case_insensitive(case_insensitive)
-                    .multi_line(true),
+                    .multi_line(true)
+                    .crlf(is_crlf),
             )
             .build(&query)
         {
@@ -2475,18 +2563,18 @@ fn make_search_word_bounded(cx: &mut Context) {
 
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
-    struct FileResult {
-        path: PathBuf,
+    struct FileResult<'a> {
+        path: Cow<'a, Path>,
         /// 0 indexed line start
         line_start: usize,
         /// 0 indexed line end
         line_end: usize,
     }
 
-    impl FileResult {
+    impl FileResult<'_> {
         fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
             Self {
-                path: path.to_path_buf(),
+                path: helix_stdx::path::get_relative_path(path.to_path_buf()),
                 line_start,
                 line_end,
             }
@@ -2496,42 +2584,21 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        directory_style: Style,
-        number_style: Style,
-        colon_style: Style,
+        style: PathStyleConfig,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
+        style: PathStyleConfig::new(&cx.editor.theme),
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            let path = helix_stdx::path::get_relative_path(&item.path);
-
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-
-            let filename = item
-                .path
-                .file_name()
-                .expect("global search paths are normalized (can't end in `..`)")
-                .to_string_lossy();
-
-            Cell::from(Spans::from(vec![
-                Span::styled(directories, config.directory_style),
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_start + 1).to_string(), config.number_style),
-            ]))
+            config
+                .style
+                .stylize(Some(&item.path), Some(item.line_start))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -2552,7 +2619,7 @@ fn global_search(cx: &mut Context) {
 
         let documents: Vec<_> = editor
             .documents()
-            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+            .map(|doc| (doc.path().map(ToOwned::to_owned), doc.text().to_owned()))
             .collect();
 
         let matcher = match RegexMatcherBuilder::new()
@@ -2714,7 +2781,7 @@ fn global_search(cx: &mut Context) {
              line_start,
              line_end,
              ..
-         }| { Some((path.as_path().into(), Some((*line_start, *line_end)))) },
+         }| { Some((path.as_ref().into(), Some((*line_start, *line_end)))) },
     )
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
@@ -3199,12 +3266,54 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
+struct PathStyleConfig {
+    directory_style: Style,
+    number_style: Style,
+    colon_style: Style,
+}
+
+impl PathStyleConfig {
+    fn new(theme: &helix_view::Theme) -> Self {
+        Self {
+            directory_style: theme.get("ui.text.directory"),
+            number_style: theme.get("constant.numeric.integer"),
+            colon_style: theme.get("punctuation"),
+        }
+    }
+
+    fn stylize<'a>(&self, path: Option<&'a Path>, line: Option<usize>) -> Cell<'a> {
+        let mut spans = Vec::new();
+        if let Some(path) = path {
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+            spans.push(Span::styled(directories, self.directory_style));
+        }
+        let filename = path.as_ref().map_or(SCRATCH_BUFFER_NAME.into(), |path| {
+            path.file_name()
+                .expect("all document names are normalized (can't end in `..`)")
+                .to_string_lossy()
+        });
+        spans.push(Span::raw(filename));
+        if let Some(line) = line {
+            spans.extend([
+                Span::styled(":", self.colon_style),
+                Span::styled((line + 1).to_string(), self.number_style),
+            ]);
+        }
+
+        Cell::from(Spans::from(spans))
+    }
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    struct BufferMeta {
+    struct BufferMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3212,7 +3321,10 @@ fn buffer_picker(cx: &mut Context) {
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
-        path: doc.path().cloned(),
+        path: doc
+            .path()
+            .map(ToOwned::to_owned)
+            .map(helix_stdx::path::get_relative_path),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3240,16 +3352,8 @@ fn buffer_picker(cx: &mut Context) {
             }
             flags.into()
         }),
-        PickerColumn::new("path", |meta: &BufferMeta, _| {
-            let path = meta
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        PickerColumn::new("path", |meta: &BufferMeta, config: &PathStyleConfig| {
+            config.stylize(meta.path.as_deref(), None)
         }),
     ];
 
@@ -3266,9 +3370,15 @@ fn buffer_picker(cx: &mut Context) {
         0
     };
 
-    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
-        cx.editor.switch(meta.id, action);
-    })
+    let picker = Picker::new(
+        columns,
+        2,
+        items,
+        PathStyleConfig::new(&cx.editor.theme),
+        |cx, meta, action| {
+            cx.editor.switch(meta.id, action);
+        },
+    )
     .with_initial_cursor(initial_cursor)
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
@@ -3282,10 +3392,11 @@ fn buffer_picker(cx: &mut Context) {
 }
 
 fn jumplist_picker(cx: &mut Context) {
-    struct JumpMeta {
+    struct JumpMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         selection: Selection,
+        line_start: usize,
         text: String,
         is_current: bool,
     }
@@ -3298,36 +3409,32 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = &cx.editor.documents.get(&doc_id);
-        let text = doc.map_or("".into(), |d| {
-            selection
-                .fragments(d.text().slice(..))
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-                .join(" ")
-        });
+        let doc = doc!(cx.editor, &doc_id);
+        let text = doc.text().slice(..);
+        let contents = selection
+            .fragments(text)
+            .map(Cow::into_owned)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let line_start = selection.primary().cursor_line(text);
 
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|d| d.path().cloned()),
+            path: doc
+                .path()
+                .map(ToOwned::to_owned)
+                .map(helix_stdx::path::get_relative_path),
             selection,
-            text,
+            line_start,
+            text: contents,
             is_current: view.doc == doc_id,
         }
     };
 
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
-        ui::PickerColumn::new("path", |item: &JumpMeta, _| {
-            let path = item
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            path.as_deref()
-                .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
-                .to_string()
-                .into()
+        ui::PickerColumn::new("path", |item: &JumpMeta, config: &PathStyleConfig| {
+            config.stylize(item.path.as_deref(), Some(item.line_start))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3353,7 +3460,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        (),
+        PathStyleConfig::new(&cx.editor.theme),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -5868,6 +5975,9 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
     cx.editor.autoinfo = Some(Info::from_registers(
         "Insert register",
         &cx.editor.registers,
@@ -5881,7 +5991,7 @@ fn insert_register(cx: &mut Context) {
                 cx.register
                     .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
-                cx.count(),
+                count,
             );
         }
     })
@@ -6858,7 +6968,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     // Accept two characters matching a visible label. Jump to the candidate
     // for that label if it exists.
     let primary_selection = doc.selection(view.id).primary();
-    let view = view.id;
+    let view_id = view.id;
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
         let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -6867,17 +6977,17 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             return;
         };
         let outer = i * alphabet.len();
         // Bail if the given character cannot be a jump label.
         if outer > labels.len() {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             return;
         }
         cx.on_next_key(move |cx, event| {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
@@ -6907,8 +7017,10 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                save_selection(cx);
-                doc_mut!(cx.editor, &doc).set_selection(view, range.into());
+                let doc = doc_mut!(cx.editor, &doc);
+                let view = view_mut!(cx.editor, view_id);
+                push_jump(view, doc);
+                doc.set_selection(view_id, range.into());
             }
         });
     });

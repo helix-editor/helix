@@ -154,7 +154,7 @@
 
 ; -- Literals
 
-(literalNumber)   @constant.builtin.numeric
+(literalNumber)   @constant.numeric
 (literalString)   @string
 
 ; -- Builtin constants

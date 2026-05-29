@@ -284,8 +284,9 @@ fn execution_pause_indicator<'doc>(
         frame
             .source
             .as_ref()
-            .and_then(|source| source.path.as_ref())
+            .and_then(|source| source.path.as_deref())
     });
+
     let should_display_for_current_doc =
         doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
 
