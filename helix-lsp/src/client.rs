@@ -55,7 +55,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 pub struct Client {
     id: LanguageServerId,
     name: String,
-    _process: Child,
+    process: parking_lot::Mutex<Option<Child>>,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
@@ -253,7 +253,7 @@ impl Client {
         let client = Self {
             id,
             name,
-            _process: process,
+            process: parking_lot::Mutex::new(Some(process)),
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
@@ -776,6 +776,11 @@ impl Client {
     /// notification, without waiting for the shutdown response. The server
     /// receives both messages in order and exits gracefully (code 0 per LSP
     /// spec). Any late shutdown response is silently discarded.
+    ///
+    /// The child process is transferred to a background OS thread that polls
+    /// for exit with a 30-second deadline. This lets the server finish
+    /// persisting state before being killed, while still guaranteeing cleanup
+    /// of hung servers via kill_on_drop(true) when the Child is finally dropped.
     pub fn force_shutdown(&self) {
         let id = self.next_request_id();
         let request = jsonrpc::MethodCall {
@@ -788,6 +793,29 @@ impl Client {
         let (chan, _) = tokio::sync::mpsc::channel(1);
         let _ = self.server_tx.send(Payload::Request { chan, value: request });
         self.exit();
+
+        // Transfer child ownership to an OS thread so kill_on_drop fires there,
+        // after the server has had real time to exit, rather than at Arc<Client>
+        // drop time (~50ms from now). The OS thread outlives the tokio runtime.
+        // try_wait() and kill_on_drop both delegate to std::process::Child and
+        // require no tokio runtime — safe on all platforms including Windows.
+        if let Some(mut child) = self.process.lock().take() {
+            let thread_name = format!("lsp-reap-{}", self.name);
+            let _ = std::thread::Builder::new().name(thread_name).spawn(move || {
+                let deadline =
+                    std::time::Instant::now() + std::time::Duration::from_secs(30);
+                loop {
+                    match child.try_wait() {
+                        Ok(Some(_)) => break, // exited cleanly
+                        Ok(None) if std::time::Instant::now() < deadline => {
+                            std::thread::sleep(std::time::Duration::from_millis(50));
+                        }
+                        _ => break, // deadline exceeded or error; kill_on_drop fires on drop
+                    }
+                }
+                // child drops here; kill_on_drop(true) kills any still-running process
+            });
+        }
     }
 
     // -------------------------------------------------------------------------------------------
