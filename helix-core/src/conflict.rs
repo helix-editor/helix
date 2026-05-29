@@ -175,7 +175,9 @@ impl ConflictRegion {
 /// Parse all conflict regions in `text`, in document order.
 ///
 /// Supports git 2-way, git diff3 3-way, and jj snapshot N-way formats.
-/// Incomplete conflict blocks are silently ignored.
+/// Also recognises "bare" conflicts — a `<<<<<<<` / `>>>>>>>` pair with no
+/// inner markers — which arise after manually editing out unwanted sections.
+/// Incomplete conflict blocks (no closing `>>>>>>>`) are silently ignored.
 pub fn find_conflicts(text: &Rope) -> Vec<ConflictRegion> {
     /// A section whose `content_end` is not yet known.
     #[derive(Debug, Clone)]
@@ -280,7 +282,7 @@ pub fn find_conflicts(text: &Rope) -> Vec<ConflictRegion> {
                 } else if is_marker('>') {
                     let end = next_line_start;
                     sections.push(current.finish(line_char_start));
-                    if sections.len() >= 2 {
+                    if !sections.is_empty() {
                         conflicts.push(ConflictRegion {
                             start,
                             sections,
@@ -637,6 +639,19 @@ mod tests {
     }
 
     #[test]
+    fn bare_conflict() {
+        // A manually-edited conflict with no inner markers — just <<<<<<< / content / >>>>>>>
+        let (r, c) = parse_one("<<<<<<< HEAD\nhand-picked\n>>>>>>> branch\n");
+        assert_eq!(c.sections.len(), 1);
+        assert_eq!(c.sections[0].kind, SectionKind::Side);
+        let (s, e) = current_content(&c);
+        assert_eq!(r.slice(s..e).to_string(), "hand-picked\n");
+        let (s, e) = incoming_content(&c);
+        assert_eq!(r.slice(s..e).to_string(), "hand-picked\n");
+        assert!(base_content(&c).is_none());
+    }
+
+    #[test]
     fn two_way_conflict_basic() {
         let (r, c) = parse_one("<<<<<<< HEAD\ncurrent\n=======\nincoming\n>>>>>>> branch\n");
         assert_eq!(c.sections.len(), 2);
@@ -708,11 +723,6 @@ mod tests {
     #[test]
     fn incomplete_no_close_ignored() {
         assert!(find_conflicts(&rope("<<<<<<< HEAD\ncurrent\n=======\nincoming\n")).is_empty());
-    }
-
-    #[test]
-    fn incomplete_no_separator_ignored() {
-        assert!(find_conflicts(&rope("<<<<<<< HEAD\ncurrent\n>>>>>>> branch\n")).is_empty());
     }
 
     #[test]
