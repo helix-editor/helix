@@ -98,9 +98,10 @@ pub fn raw_regex_prompt(
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
     let doc_id = view.doc;
-    let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = doc.view_offset(view.id);
+    let snapshot = doc.selection(view_id).clone();
+    let offset_snapshot = doc.view_offset(view_id);
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
@@ -108,11 +109,25 @@ pub fn raw_regex_prompt(
         history_register,
         completion_fn,
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+            // The prompt is tied to the (view, doc) pair captured when it opened.
+            // Mouse clicks can shift focus to a different view without aborting
+            // the prompt, so restoring the snapshot via `current!` could write
+            // it into the wrong document and panic inside
+            // `Selection::ensure_invariants` when the snapshot's char indices
+            // exceed the new document's length (#13325).
+            let on_original_view = cx
+                .editor
+                .tree
+                .try_get(view_id)
+                .is_some_and(|v| v.doc == doc_id);
+
             match event {
                 PromptEvent::Abort => {
-                    let (view, doc) = current!(cx.editor);
-                    doc.set_selection(view.id, snapshot.clone());
-                    doc.set_view_offset(view.id, offset_snapshot);
+                    if on_original_view {
+                        let doc = doc_mut!(cx.editor, &doc_id);
+                        doc.set_selection(view_id, snapshot.clone());
+                        doc.set_view_offset(view_id, offset_snapshot);
+                    }
                 }
                 PromptEvent::Update | PromptEvent::Validate => {
                     // skip empty input
@@ -137,14 +152,17 @@ pub fn raw_regex_prompt(
                         .build(input)
                     {
                         Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
+                            if on_original_view {
+                                let doc = doc_mut!(cx.editor, &doc_id);
+                                // revert state to what it was before the last update
+                                doc.set_selection(view_id, snapshot.clone());
 
-                            // revert state to what it was before the last update
-                            doc.set_selection(view.id, snapshot.clone());
-
-                            if event == PromptEvent::Validate {
-                                // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
+                                if event == PromptEvent::Validate {
+                                    // Equivalent to push_jump to store selection just before jump
+                                    view_mut!(cx.editor, view_id)
+                                        .jumps
+                                        .push((doc_id, snapshot.clone()));
+                                }
                             }
 
                             fun(cx, regex, input, event);
@@ -153,9 +171,11 @@ pub fn raw_regex_prompt(
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(err) => {
-                            let (view, doc) = current!(cx.editor);
-                            doc.set_selection(view.id, snapshot.clone());
-                            doc.set_view_offset(view.id, offset_snapshot);
+                            if on_original_view {
+                                let doc = doc_mut!(cx.editor, &doc_id);
+                                doc.set_selection(view_id, snapshot.clone());
+                                doc.set_view_offset(view_id, offset_snapshot);
+                            }
 
                             if event == PromptEvent::Validate {
                                 let callback = async move {

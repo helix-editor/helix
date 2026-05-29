@@ -197,6 +197,99 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_regex_prompt_abort_after_view_switch_does_not_panic() -> anyhow::Result<()> {
+    // See <https://github.com/helix-editor/helix/issues/13325>.
+    //
+    // Opening a regex prompt captures a selection snapshot for the focused
+    // (view, doc) pair. The prompt does not consume mouse events, so a click
+    // into a different view can shift focus without aborting the prompt.
+    // Aborting (or updating) the prompt afterwards must not restore the
+    // snapshot into the now-current document, since the snapshot's char
+    // indices may exceed the new document's length and panic inside
+    // `Selection::ensure_invariants`.
+    use helix_view::input::parse_macro;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
+
+    #[cfg(windows)]
+    use crossterm::event::KeyModifiers as TerminalKeyModifiers;
+    #[cfg(windows)]
+    use crossterm::event::{
+        Event as TerminalEvent, KeyEvent as TerminalKey, MouseButton, MouseEvent, MouseEventKind,
+    };
+    #[cfg(not(windows))]
+    use termina::event::Modifiers as TerminalKeyModifiers;
+    #[cfg(not(windows))]
+    use termina::event::{
+        Event as TerminalEvent, KeyEvent as TerminalKey, MouseButton, MouseEvent, MouseEventKind,
+    };
+
+    let file1 = tempfile::NamedTempFile::new()?;
+    let file2 = tempfile::NamedTempFile::new()?;
+
+    let mut app = AppBuilder::new().with_file(file1.path(), None).build()?;
+
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut rx_stream = UnboundedReceiverStream::new(rx);
+
+    let send_keys = |tx: &tokio::sync::mpsc::UnboundedSender<std::io::Result<TerminalEvent>>,
+                     macro_str: &str|
+     -> anyhow::Result<()> {
+        for key_event in parse_macro(macro_str)?.into_iter() {
+            let key = TerminalEvent::Key(TerminalKey::from(key_event));
+            tx.send(Ok(key))?;
+        }
+        Ok(())
+    };
+
+    // Populate file1 with three lines, vertical split, open file2 in the new
+    // view with one character, focus back to file1, then enter select mode
+    // with a non-empty selection. After this the prompt-target is file1.
+    let setup = format!(
+        "iline1<ret>line2<ret>line3<esc><C-w>v:o {}<ret>ia<esc><C-w>w%v",
+        file2.path().to_string_lossy()
+    );
+    send_keys(&tx, &setup)?;
+
+    // Open the regex prompt (`s` = select_regex). This captures a snapshot of
+    // the focused view+doc (file1, three lines).
+    send_keys(&tx, "s")?;
+
+    // Click into the right-hand view (file2). Mouse events pass through the
+    // prompt; the editor's mouse handler calls `editor.focus(view_id)` and
+    // shifts focus to file2 without aborting the prompt. Backend is 120
+    // columns wide so the vertical split places file2 around column 80.
+    let mouse = TerminalEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 90,
+        row: 0,
+        modifiers: TerminalKeyModifiers::empty(),
+    });
+    tx.send(Ok(mouse))?;
+
+    // Abort the prompt. Pre-fix this restores the file1 snapshot into the
+    // now-current file2 document and panics in `ensure_invariants`.
+    send_keys(&tx, "<esc>")?;
+
+    app.event_loop_until_idle(&mut rx_stream).await;
+
+    // We never reach this point pre-fix; the panic above terminates the test
+    // thread.
+    helpers::assert_status_not_error(&app.editor);
+
+    // file2 must still be a single-character document; the file1 snapshot
+    // must not have leaked into it.
+    let file2_normalized = helix_stdx::path::normalize(file2.path());
+    let file2_doc = app
+        .editor
+        .documents()
+        .find(|d| d.path().is_some_and(|p| p == file2_normalized))
+        .expect("file2 should be open");
+    assert_eq!(file2_doc.text().len_chars(), 1);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_changes_in_splits_jumplist_sync() -> anyhow::Result<()> {
     // See <https://github.com/helix-editor/helix/issues/9833>
     // When jumping backwards (<C-o>) switches between two documents, we need to
