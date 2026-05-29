@@ -805,6 +805,7 @@ mod tests {
             "------- base\n",
             "base\n",
             "+++++++ side #3\n",
+            "s3\n",
             ">>>>>>> Conflict 1 of 1 ends\n",
         );
         let r = rope(text);

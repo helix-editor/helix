@@ -6230,57 +6230,56 @@ fn goto_prev_conflict(cx: &mut Context) {
 
 fn goto_conflict_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count();
-    let motion = move |editor: &mut Editor| {
-        let (view, doc) = current!(editor);
-        let text = doc.text();
-        let conflicts = helix_core::conflict::find_conflicts(text);
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let conflicts = helix_core::conflict::find_conflicts(text);
 
-        if conflicts.is_empty() {
-            editor.set_status("No conflict markers in current buffer");
-            return;
+    if conflicts.is_empty() {
+        cx.editor
+            .set_status("No conflict markers in current buffer");
+        return;
+    }
+
+    let mode = cx.editor.mode;
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let cursor = range.cursor(text.slice(..));
+
+        // Walk `count` steps in `direction`.
+        let mut idx = match direction {
+            Direction::Forward => helix_core::conflict::next_conflict(&conflicts, cursor),
+            Direction::Backward => helix_core::conflict::prev_conflict(&conflicts, cursor),
+        };
+
+        for _ in 1..count {
+            let Some(current) = idx else { break };
+            let next_pos = conflicts[current].start;
+            idx = match direction {
+                Direction::Forward => helix_core::conflict::next_conflict(&conflicts, next_pos),
+                Direction::Backward => helix_core::conflict::prev_conflict(&conflicts, next_pos),
+            };
         }
 
-        let selection = doc.selection(view.id).clone().transform(|range| {
-            let cursor = range.cursor(text.slice(..));
+        let Some(idx) = idx else {
+            return range;
+        };
 
-            // Walk `count` steps in `direction`.
-            let mut idx = match direction {
-                Direction::Forward => helix_core::conflict::next_conflict(&conflicts, cursor),
-                Direction::Backward => helix_core::conflict::prev_conflict(&conflicts, cursor),
-            };
-
-            for _ in 1..count {
-                let Some(current) = idx else { break };
-                let next_pos = conflicts[current].start;
-                idx = match direction {
-                    Direction::Forward => helix_core::conflict::next_conflict(&conflicts, next_pos),
-                    Direction::Backward => {
-                        helix_core::conflict::prev_conflict(&conflicts, next_pos)
-                    }
-                };
-            }
-
-            let Some(idx) = idx else {
-                return range;
-            };
-
-            let new_range = Range::point(conflicts[idx].start);
-            if editor.mode == Mode::Select {
-                let head = if new_range.head < range.anchor {
-                    new_range.anchor
-                } else {
-                    new_range.head
-                };
-                Range::new(range.anchor, head)
+        let new_range = Range::point(conflicts[idx].start);
+        if mode == Mode::Select {
+            let head = if new_range.head < range.anchor {
+                new_range.anchor
             } else {
-                new_range
-            }
-        });
+                new_range.head
+            };
+            Range::new(range.anchor, head)
+        } else {
+            new_range
+        }
+    });
 
-        push_jump(view, doc);
-        doc.set_selection(view.id, selection);
-    };
-    cx.editor.apply_motion(motion);
+    let (view, doc) = current!(cx.editor);
+    push_jump(view, doc);
+    doc.set_selection(view.id, selection);
+    align_view(doc, view, Align::Top);
 }
 
 fn conflict_accept_current(cx: &mut Context) {
