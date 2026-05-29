@@ -791,7 +791,10 @@ impl Client {
         };
         // The response receiver is dropped immediately; we do not wait for a reply.
         let (chan, _) = tokio::sync::mpsc::channel(1);
-        let _ = self.server_tx.send(Payload::Request { chan, value: request });
+        let _ = self.server_tx.send(Payload::Request {
+            chan,
+            value: request,
+        });
         self.exit();
 
         // Transfer child ownership to an OS thread so kill_on_drop fires there,
