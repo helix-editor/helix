@@ -45,6 +45,28 @@ use crate::Rope;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/// Pair of removed/added word-diff ranges for a conflict refine pair.
+type RefineDiffs = (Vec<Range<usize>>, Vec<Range<usize>>);
+
+/// Per-conflict word-level diff cache entry, keyed by conflict start position.
+#[derive(Debug, Clone, Default)]
+pub struct ConflictRefineEntry {
+    /// Current refine pair index (see [`ConflictRegion::refine_pair_indices`]).
+    /// For a 3-section diff3 conflict: 0 = current↔base, 1 = base↔incoming, 2 = current↔incoming.
+    /// For N-way jj conflicts the ordering prioritises each side vs base,
+    /// then side–side comparisons; remaining base-involving pairs are excluded.
+    pub pair: usize,
+    /// Cached word-diff results for the current `pair`:
+    /// `(removed_ranges, added_ranges)`.
+    pub diffs: Option<RefineDiffs>,
+}
+
+/// Per-conflict word-diff refine state, keyed by [`ConflictRegion::start`].
+///
+/// Cleared on every edit; the active pair setting is preserved when the cursor
+/// was inside a conflict before the edit.
+pub type ConflictCache = HashMap<usize, ConflictRefineEntry>;
+
 /// Whether a section holds one side of a conflict or the common base.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SectionKind {

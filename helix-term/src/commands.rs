@@ -6334,10 +6334,10 @@ fn conflict_cycle_diffs(cx: &mut Context) {
         return;
     }
 
-    let key = region.start;
-    let current = doc.conflict_refine_state.get(&key).copied().unwrap_or(0);
-    let next = (current + 1) % region.num_refine_pairs();
-    doc.conflict_refine_state.insert(key, next);
+    let mut cache = doc.conflict_refine.borrow_mut();
+    let entry = cache.entry(region.start).or_default();
+    entry.pair = (entry.pair + 1) % region.num_refine_pairs();
+    entry.diffs = None;
 }
 
 #[derive(Clone, Copy)]

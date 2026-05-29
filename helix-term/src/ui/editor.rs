@@ -14,10 +14,7 @@ use crate::{
 };
 
 use helix_core::{
-    conflict::{
-        conflict_marker_lines, conflict_pair_sections, conflict_refine_pair, find_conflicts,
-        refine_diff,
-    },
+    conflict::{conflict_marker_lines, conflict_pair_sections, find_conflicts, refine_diff},
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -713,6 +710,8 @@ impl EditorView {
 
         let conflicts = find_conflicts(text);
 
+        let mut cache = doc.conflict_refine.borrow_mut();
+
         // Accumulate word-diff spans for every conflict visible in the viewport.
         let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = Vec::new();
         for region in &conflicts {
@@ -722,14 +721,17 @@ impl EditorView {
                 continue;
             }
 
-            let pair = conflict_refine_pair(&doc.conflict_refine_state, region);
+            let entry = cache.entry(region.start).or_default();
+            let pair = entry.pair.min(region.num_refine_pairs().saturating_sub(1));
             let Some((left, right)) = conflict_pair_sections(region, pair) else {
                 continue;
             };
 
-            let (removed, added) = refine_diff(text, left, right);
-            spans.extend(removed.into_iter().map(|r| (removed_hl, r)));
-            spans.extend(added.into_iter().map(|r| (added_hl, r)));
+            let (removed, added) = entry
+                .diffs
+                .get_or_insert_with(|| refine_diff(text, left, right));
+            spans.extend(removed.iter().map(|r| (removed_hl, r.clone())));
+            spans.extend(added.iter().map(|r| (added_hl, r.clone())));
         }
 
         if spans.is_empty() {

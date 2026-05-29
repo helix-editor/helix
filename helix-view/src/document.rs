@@ -23,7 +23,7 @@ use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
@@ -34,6 +34,7 @@ use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
+    conflict::{conflict_at, find_conflicts, ConflictRefineEntry},
     editor_config::EditorConfig,
     encoding,
     history::{History, State, UndoKind},
@@ -226,14 +227,12 @@ pub struct Document {
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
-    /// Per-conflict refine pair state.
+    /// Per-conflict refine cache: pair index + optional word-diff results.
     ///
-    /// Maps `ConflictRegion::start` (char position) to a pair index.
-    /// Defaults to 0 (first pair). N-way conflicts have C(n,2) pairs total.
-    ///
-    /// Entries become stale when the document is edited before the conflict,
-    /// causing a graceful reset to pair 0 (same behavior as smerge).
-    pub conflict_refine_state: HashMap<usize, usize>,
+    /// Key: `ConflictRegion::start` (char position).
+    /// Cleared on every edit; the pair setting is preserved when the cursor
+    /// was inside a conflict before the edit.
+    pub conflict_refine: RefCell<HashMap<usize, ConflictRefineEntry>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -773,7 +772,7 @@ impl Document {
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
-            conflict_refine_state: HashMap::new(),
+            conflict_refine: RefCell::new(HashMap::new()),
         }
     }
 
@@ -1459,6 +1458,18 @@ impl Document {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
+
+        // Save refine pair for the cursor's conflict before the edit.
+        let saved_pair = self
+            .selections
+            .get(&view_id)
+            .and_then(|sel| {
+                let cursor = sel.primary().cursor(old_doc.slice(..));
+                let conflicts = find_conflicts(&old_doc);
+                conflict_at(&conflicts, cursor).map(|idx| conflicts[idx].start)
+            })
+            .and_then(|key| self.conflict_refine.borrow().get(&key).map(|e| e.pair));
+
         let changes = transaction.changes();
         if !changes.apply(&mut self.text) {
             return false;
@@ -1488,6 +1499,22 @@ impl Document {
                 .map(transaction.changes())
                 // Ensure all selections across all views still adhere to invariants.
                 .ensure_invariants(self.text.slice(..));
+        }
+
+        // Clear conflict refine cache; preserve cursor's pair if still in a conflict.
+        self.conflict_refine.borrow_mut().clear();
+        if let Some(pair) = saved_pair {
+            let cursor = self
+                .selection(view_id)
+                .primary()
+                .cursor(self.text().slice(..));
+            let conflicts = find_conflicts(self.text());
+            if let Some(idx) = conflict_at(&conflicts, cursor) {
+                self.conflict_refine
+                    .borrow_mut()
+                    .entry(conflicts[idx].start)
+                    .or_insert_with(|| ConflictRefineEntry { pair, diffs: None });
+            }
         }
 
         for view_data in self.view_data.values_mut() {
