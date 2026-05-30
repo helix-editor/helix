@@ -1058,6 +1058,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             Event::Key(event) => *event,
             Event::Paste(..) => return self.prompt_handle_event(event, ctx),
             Event::Resize(..) => return EventResult::Consumed(None),
+            // Picker is a modal and should consume mouse events so clicks don't fall
+            // through to the editor underneath
+            Event::Mouse(_) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 
