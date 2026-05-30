@@ -344,6 +344,7 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
+| `ui.virtual.line-blame`           | Inline Git blame author and timestamp on the cursor line                                       |
 | `ui.virtual.inlay-hint`           | Default style for inlay hints of all kinds                                                     |
 | `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (language servers are not required to set a kind)    |
 | `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (language servers are not required to set a kind)         |

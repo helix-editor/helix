@@ -452,6 +452,16 @@ impl View {
             text_annotations.add_overlay(labels, style);
         }
 
+        if let Some(line_blame) = doc.line_blame_annotations.get(&self.id) {
+            let style = theme.and_then(|theme| {
+                theme
+                    .find_highlight_exact("ui.virtual.line-blame")
+                    .or_else(|| theme.find_highlight("comment"))
+                    .or_else(|| theme.find_highlight("ui.virtual"))
+            });
+            text_annotations.add_inline_annotations(line_blame, style);
+        }
+
         if let Some(DocumentInlayHints {
             id: _,
             type_inlay_hints,
