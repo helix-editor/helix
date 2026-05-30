@@ -18,6 +18,7 @@
   - [`[editor.gutters.diagnostics]` Section](#editorguttersdiagnostics-section)
   - [`[editor.gutters.diff]` Section](#editorguttersdiff-section)
   - [`[editor.gutters.spacer]` Section](#editorguttersspacer-section)
+  - [`[editor.gutters.code-action-hint]` Section](#editorgutterscode-action-hint-section)
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
@@ -39,7 +40,7 @@
 | `cursorline` | Highlight all lines with a cursor | `false` |
 | `cursorcolumn` | Highlight all columns with a cursor | `false` |
 | `continue-comments` | if helix should automatically add a line comment token if you create a new line inside a comment. | `true` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer` and `code-action-hint`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
 | `auto-format` | Enable automatic formatting on save[^3] | `true` |
@@ -158,6 +159,7 @@ The following statusline elements can be configured:
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
+| `code-action-hint` | Indicator for when code actions are available |
 
 ### `[editor.lsp]` Section
 
@@ -433,6 +435,12 @@ There are currently no options for this section.
 #### `[editor.gutters.spacer]` Section
 
 Currently unused
+
+#### `[editor.gutters.code-action-hint]` Section
+
+The `code-action-hint` gutter option displays an indicator for whether a code action is available at current selection.
+
+There are currently no options for this section.
 
 ### `[editor.soft-wrap]` Section
 

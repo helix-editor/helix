@@ -24,7 +24,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::future::Future;
 use std::io;
@@ -153,6 +153,8 @@ pub struct Document {
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// LSP document highlights for each view, stored as char ranges.
     pub(crate) document_highlights: HashMap<ViewId, DocumentHighlights>,
+    /// LSP code action hints for each view.
+    pub(crate) code_action_hints: HashSet<ViewId>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -223,6 +225,8 @@ pub struct Document {
     pub color_swatch_controller: TaskController,
     /// Per-view task controllers for canceling in-flight document highlight requests.
     pub document_highlight_controllers: HashMap<ViewId, TaskController>,
+    /// Per-view task controllers for canceling in-flight code action requests.
+    pub code_action_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
 
@@ -762,10 +766,12 @@ impl Document {
             readonly: false,
             jump_labels: HashMap::new(),
             document_highlights: HashMap::new(),
+            code_action_hints: HashSet::new(),
             color_swatches: None,
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
+            code_action_controllers: HashMap::new(),
             syn_loader,
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
@@ -1438,6 +1444,8 @@ impl Document {
         self.jump_labels.remove(&view_id);
         self.document_highlights.remove(&view_id);
         self.document_highlight_controllers.remove(&view_id);
+        self.code_action_hints.remove(&view_id);
+        self.code_action_controllers.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -2440,6 +2448,27 @@ impl Document {
         self.document_highlight_controllers
             .entry(view_id)
             .or_default()
+    }
+
+    pub fn set_code_action_hints(&mut self, view_id: ViewId) {
+        self.code_action_hints.insert(view_id);
+    }
+
+    pub fn clear_code_action_hints(&mut self, view_id: ViewId) {
+        self.code_action_hints.remove(&view_id);
+    }
+
+    pub fn clear_all_code_action_hints(&mut self) {
+        self.code_action_hints.clear();
+        self.code_action_controllers.clear();
+    }
+
+    pub fn code_action_hints(&self, view_id: ViewId) -> bool {
+        self.code_action_hints.contains(&view_id)
+    }
+
+    pub fn code_action_controller(&mut self, view_id: ViewId) -> &mut TaskController {
+        self.code_action_controllers.entry(view_id).or_default()
     }
 
     /// Get the inlay hints for this document and `view_id`.
