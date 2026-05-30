@@ -10,7 +10,7 @@ use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::{
-    syntax::{Loader, QueryMatchIterEvent},
+    syntax::{Loader, QueryLoader, QueryMatchIter, QueryMatchIterEvent},
     Rope, RopeSlice, Selection, Syntax, Uri,
 };
 use helix_stdx::{
@@ -36,6 +36,12 @@ use crate::{
 use super::Context;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TagRole {
+    Definition,
+    Reference,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TagKind {
     Class,
     Constant,
@@ -51,7 +57,7 @@ enum TagKind {
 }
 
 impl TagKind {
-    fn as_str(&self) -> &'static str {
+    fn as_str(self) -> &'static str {
         match self {
             Self::Class => "class",
             Self::Constant => "constant",
@@ -67,21 +73,28 @@ impl TagKind {
         }
     }
 
-    fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "class" => Some(TagKind::Class),
-            "constant" => Some(TagKind::Constant),
-            "enum" => Some(TagKind::Enum),
-            "field" => Some(TagKind::Field),
-            "function" => Some(TagKind::Function),
-            "interface" => Some(TagKind::Interface),
-            "macro" => Some(TagKind::Macro),
-            "module" => Some(TagKind::Module),
-            "section" => Some(TagKind::Section),
-            "struct" => Some(TagKind::Struct),
-            "type" => Some(TagKind::Type),
-            _ => None,
-        }
+    fn from_capture_name(name: &str) -> Option<(TagRole, Self)> {
+        let (role, kind) = name.split_once('.')?;
+        let role = match role {
+            "definition" => TagRole::Definition,
+            "reference" => TagRole::Reference,
+            _ => return None,
+        };
+        let kind = match kind {
+            "class" => Self::Class,
+            "constant" => Self::Constant,
+            "enum" => Self::Enum,
+            "field" => Self::Field,
+            "function" => Self::Function,
+            "interface" => Self::Interface,
+            "macro" => Self::Macro,
+            "module" => Self::Module,
+            "section" => Self::Section,
+            "struct" => Self::Struct,
+            "type" => Self::Type,
+            _ => return None,
+        };
+        Some((role, kind))
     }
 }
 
@@ -105,78 +118,180 @@ impl UriOrDocumentId {
 struct Tag {
     kind: TagKind,
     name: String,
+    /// Char offset of the `@name` capture start — used for cursor placement.
     start: usize,
+    /// Char offset of the `@name` capture end — used for cursor placement.
     end: usize,
+    /// Line of the tag node start — used for preview.
     start_line: usize,
+    /// Line of the tag node end — used for preview.
     end_line: usize,
     doc: UriOrDocumentId,
 }
 
-fn tags_iter<'a>(
-    syntax: &'a Syntax,
+fn tags_iter_from<'a, L>(
+    mut iter: QueryMatchIter<'a, 'a, L>,
     loader: &'a Loader,
     text: RopeSlice<'a>,
     doc: UriOrDocumentId,
-    pattern: Option<&'a rope::Regex>,
-) -> impl Iterator<Item = Tag> + 'a {
-    let mut tags_iter = syntax.tags(text, loader, ..);
-
+) -> impl Iterator<Item = Tag> + 'a
+where
+    L: QueryLoader<'a> + 'a,
+{
     iter::from_fn(move || loop {
-        let QueryMatchIterEvent::Match(mat) = tags_iter.next()? else {
+        let QueryMatchIterEvent::Match(mat) = iter.next()? else {
             continue;
         };
         let query = &loader
-            .tag_query(tags_iter.current_language())
+            .tag_query(iter.current_language())
             .expect("must have a tags query to emit matches")
-            .query;
+            .definitions;
 
-        // Find the @definition.* and optional @name captures in this match.
-        let mut def_capture = None::<(TagKind, std::ops::Range<u32>)>;
+        // Find the @definition.*/@reference.* and optional @name captures in this match.
+        let mut tag_capture = None::<(TagRole, TagKind, std::ops::Range<u32>)>;
         let mut name_range = None::<std::ops::Range<u32>>;
         let name_capture = query.get_capture("name");
 
         for node in mat.nodes.iter() {
             let capture_name = query.capture_name(node.capture);
-            if let Some(kind) = capture_name
-                .strip_prefix("definition.")
-                .and_then(TagKind::from_name)
-            {
-                def_capture = Some((kind, node.node.byte_range()));
+            if let Some((role, kind)) = TagKind::from_capture_name(capture_name) {
+                tag_capture = Some((role, kind, node.node.byte_range()));
             } else if name_capture == Some(node.capture) {
                 name_range = Some(node.node.byte_range());
             }
         }
 
-        let Some((kind, def_byte_range)) = def_capture else {
+        let Some((_role, kind, tag_byte_range)) = tag_capture else {
             continue;
         };
-        let name_byte_range = name_range.unwrap_or_else(|| def_byte_range.clone());
-
-        if pattern.is_some_and(|re| {
-            !re.is_match(
-                text.regex_input_at_bytes(
-                    name_byte_range.start as usize..name_byte_range.end as usize,
-                ),
-            )
-        }) {
-            continue;
-        }
+        let name_byte_range = name_range.unwrap_or_else(|| tag_byte_range.clone());
 
         let name_start = text.byte_to_char(name_byte_range.start as usize);
         let name_end = text.byte_to_char(name_byte_range.end as usize);
-        let def_start = text.byte_to_char(def_byte_range.start as usize);
-        let def_end = text.byte_to_char(def_byte_range.end as usize);
+        let tag_start = text.byte_to_char(tag_byte_range.start as usize);
+        let tag_end = text.byte_to_char(tag_byte_range.end as usize);
 
         return Some(Tag {
             kind,
             name: text.slice(name_start..name_end).to_string(),
-            start: def_start,
-            end: def_end,
-            start_line: text.char_to_line(def_start),
-            end_line: text.char_to_line(def_end),
+            start: name_start,
+            end: name_end,
+            start_line: text.char_to_line(tag_start),
+            end_line: text.char_to_line(tag_end),
             doc: doc.clone(),
         });
     })
+}
+
+fn definition_tags_iter<'a>(
+    syntax: &'a Syntax,
+    loader: &'a Loader,
+    text: RopeSlice<'a>,
+    doc: UriOrDocumentId,
+) -> impl Iterator<Item = Tag> + 'a {
+    tags_iter_from(syntax.definition_tags(text, loader, ..), loader, text, doc)
+}
+
+fn reference_tags_iter<'a>(
+    syntax: &'a Syntax,
+    loader: &'a Loader,
+    text: RopeSlice<'a>,
+    doc: UriOrDocumentId,
+) -> impl Iterator<Item = Tag> + 'a {
+    tags_iter_from(syntax.reference_tags(text, loader, ..), loader, text, doc)
+}
+
+/// Returns the `@name` text of the tag match at `cursor_byte`, or `None` if the
+/// cursor is not on a tagged construct.
+///
+/// Scopes the query to the direct named child of the layer root that contains
+/// the cursor, so that tag patterns whose anchor node (e.g. `function_item`)
+/// starts before the cursor are still found.
+fn find_name_at_cursor(
+    syntax: &Syntax,
+    loader: &Loader,
+    text: RopeSlice,
+    cursor_byte: u32,
+) -> Option<String> {
+    let tree = syntax.tree_for_byte_range(cursor_byte, cursor_byte);
+    let root = tree.root_node();
+    // Walk up from the deepest named node at cursor to find the direct child of root.
+    let query_range = {
+        let mut node = root
+            .named_descendant_for_byte_range(cursor_byte, cursor_byte)
+            .unwrap_or(root);
+        loop {
+            match node.parent() {
+                None => break,
+                Some(p) if p.parent().is_none() => break,
+                Some(p) => node = p,
+            }
+        }
+        node.start_byte()..node.end_byte()
+    };
+
+    find_name_in_iter(
+        syntax.definition_tags(text, loader, query_range.clone()),
+        loader,
+        text,
+        cursor_byte,
+    )
+    .or_else(|| {
+        find_name_in_iter(
+            syntax.reference_tags(text, loader, query_range),
+            loader,
+            text,
+            cursor_byte,
+        )
+    })
+}
+
+fn find_name_in_iter<'a, L>(
+    mut iter: QueryMatchIter<'a, 'a, L>,
+    loader: &Loader,
+    text: RopeSlice<'a>,
+    cursor_byte: u32,
+) -> Option<String>
+where
+    L: QueryLoader<'a>,
+{
+    while let Some(event) = iter.next() {
+        let QueryMatchIterEvent::Match(mat) = event else {
+            continue;
+        };
+        let Some(tag_query) = loader.tag_query(iter.current_language()) else {
+            continue;
+        };
+        let query = &tag_query.definitions;
+        let name_capture = query.get_capture("name");
+
+        let mut tag_range: Option<std::ops::Range<u32>> = None;
+        let mut name_node = None;
+        for n in mat.nodes.iter() {
+            if TagKind::from_capture_name(query.capture_name(n.capture)).is_some() {
+                tag_range = Some(n.node.byte_range());
+            } else if name_capture == Some(n.capture) {
+                name_node = Some(n);
+            }
+        }
+        let Some(tag_range) = tag_range else {
+            continue;
+        };
+
+        if let Some(nn) = name_node {
+            if nn.node.start_byte() <= cursor_byte && cursor_byte < nn.node.end_byte() {
+                let start = text.byte_to_char(nn.node.start_byte() as usize);
+                let end = text.byte_to_char(nn.node.end_byte() as usize);
+                return Some(text.slice(start..end).to_string());
+            }
+        } else if tag_range.start <= cursor_byte && cursor_byte < tag_range.end {
+            let start = text.byte_to_char(tag_range.start as usize);
+            let end = text.byte_to_char(tag_range.end as usize);
+            return Some(text.slice(start..end).to_string());
+        }
+    }
+
+    None
 }
 
 pub fn syntax_symbol_picker(cx: &mut Context) {
@@ -189,7 +304,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     let doc_id = doc.id();
     let text = doc.text().slice(..);
     let loader = cx.editor.syn_loader.load();
-    let tags = tags_iter(syntax, &loader, text, UriOrDocumentId::Id(doc.id()), None);
+    let tags = definition_tags_iter(syntax, &loader, text, UriOrDocumentId::Id(doc.id()));
 
     let columns = vec![
         PickerColumn::new("kind", |tag: &Tag, _| tag.kind.as_str().into()),
@@ -219,17 +334,19 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[derive(Debug)]
+struct WorkspaceSearchState {
+    searcher_builder: SearcherBuilder,
+    walk_builder: WalkBuilder,
+    regex_matcher_builder: RegexMatcherBuilder,
+    rope_regex_builder: rope::RegexBuilder,
+    search_root: PathBuf,
+    /// A cache of files that have been parsed in prior searches.
+    syntax_cache: DashMap<PathBuf, Option<(Rope, Syntax)>>,
+}
+
 pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
-    #[derive(Debug)]
-    struct SearchState {
-        searcher_builder: SearcherBuilder,
-        walk_builder: WalkBuilder,
-        regex_matcher_builder: RegexMatcherBuilder,
-        rope_regex_builder: rope::RegexBuilder,
-        search_root: PathBuf,
-        /// A cache of files that have been parsed in prior searches.
-        syntax_cache: DashMap<PathBuf, Option<(Rope, Syntax)>>,
-    }
+    type SearchState = WorkspaceSearchState;
 
     let mut searcher_builder = SearcherBuilder::new();
     searcher_builder.binary_detection(BinaryDetection::quit(b'\x00'));
@@ -320,7 +437,12 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                 .uri()
                 .map(UriOrDocumentId::Uri)
                 .unwrap_or_else(|| UriOrDocumentId::Id(doc.id()));
-            for tag in tags_iter(syntax, &loader, text.slice(..), uri_or_id, Some(&pattern)) {
+            let text = text.slice(..);
+            for tag in definition_tags_iter(syntax, &loader, text, uri_or_id).filter(|t| {
+                pattern.is_match(
+                    text.regex_input_at_bytes(text.char_to_byte(t.start)..text.char_to_byte(t.end)),
+                )
+            }) {
                 if injector.push(tag).is_err() {
                     return async { Ok(()) }.boxed();
                 }
@@ -391,13 +513,18 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                             return Ok(false);
                         };
                         let uri = Uri::from(path::normalize(path));
-                        for tag in tags_iter(
+                        let text_slice = text.slice(..);
+                        for tag in definition_tags_iter(
                             syntax,
                             &loader,
-                            text.slice(..),
+                            text_slice,
                             UriOrDocumentId::Uri(uri),
-                            Some(&pattern),
-                        ) {
+                        )
+                        .filter(|t| {
+                            pattern.is_match(text_slice.regex_input_at_bytes(
+                                text_slice.char_to_byte(t.start)..text_slice.char_to_byte(t.end),
+                            ))
+                        }) {
                             if injector.push(tag).is_err() {
                                 quit = true;
                                 break;
@@ -476,4 +603,256 @@ fn syntax_for_path(path: &Path, loader: &Loader) -> Option<(Rope, Syntax)> {
     Syntax::new(text, language, loader)
         .ok()
         .map(|syntax| (rope, syntax))
+}
+
+fn build_goto_walk_builder(cx: &mut Context, search_root: &std::path::Path) -> WalkBuilder {
+    let config = cx.editor.config();
+    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let absolute_root = search_root
+        .canonicalize()
+        .unwrap_or_else(|_| search_root.to_path_buf());
+    let mut walk_builder = WalkBuilder::new(search_root);
+    walk_builder
+        .hidden(config.file_picker.hidden)
+        .parents(config.file_picker.parents)
+        .ignore(config.file_picker.ignore)
+        .follow_links(config.file_picker.follow_symlinks)
+        .git_ignore(config.file_picker.git_ignore)
+        .git_global(config.file_picker.git_global)
+        .git_exclude(config.file_picker.git_exclude)
+        .max_depth(config.file_picker.max_depth)
+        .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks))
+        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+        .add_custom_ignore_filename(".helix/ignore");
+    walk_builder
+}
+
+/// Spawn a background thread that walks the workspace, grepping for `name`, parsing
+/// candidate files, running the tags query, and injecting matching `role` tags.
+fn spawn_workspace_tag_scan(
+    walk_builder: WalkBuilder,
+    name: String,
+    role: TagRole,
+    loader: Arc<helix_core::syntax::Loader>,
+    open_docs: Arc<HashSet<PathBuf>>,
+    injector: Injector<Tag, PathBuf>,
+) {
+    let mut searcher_builder = SearcherBuilder::new();
+    searcher_builder.binary_detection(BinaryDetection::quit(b'\x00'));
+    // Use the name as a literal grep pattern to pre-filter files.
+    let matcher = match RegexMatcherBuilder::new().build(&name) {
+        Ok(m) => m,
+        Err(e) => {
+            log::warn!("goto tag: failed to build grep matcher for {name:?}: {e}");
+            return;
+        }
+    };
+    std::thread::spawn(move || {
+        let searcher = searcher_builder.build();
+        walk_builder.build_parallel().run(|| {
+            let mut searcher = searcher.clone();
+            let matcher = matcher.clone();
+            let injector = injector.clone();
+            let loader = loader.clone();
+            let name = name.clone();
+            let open_docs = Arc::clone(&open_docs);
+            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                let entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => return WalkState::Continue,
+                };
+                if !entry.path().is_file() {
+                    return WalkState::Continue;
+                }
+                let path = entry.path();
+                if open_docs.contains(path) {
+                    return WalkState::Continue;
+                }
+                let mut quit = false;
+                let mut processed = false;
+                let sink = sinks::UTF8(|_, _| {
+                    if !processed {
+                        processed = true;
+                        if let Some((rope, syntax)) = syntax_for_path(path, &loader) {
+                            let uri = Uri::from(path::normalize(path));
+                            let uri_or_id = UriOrDocumentId::Uri(uri);
+                            let role_iter: Box<dyn Iterator<Item = Tag>> = match role {
+                                TagRole::Definition => Box::new(definition_tags_iter(
+                                    &syntax,
+                                    &loader,
+                                    rope.slice(..),
+                                    uri_or_id,
+                                )),
+                                TagRole::Reference => Box::new(reference_tags_iter(
+                                    &syntax,
+                                    &loader,
+                                    rope.slice(..),
+                                    uri_or_id,
+                                )),
+                            };
+                            for tag in role_iter.filter(|t| t.name == name) {
+                                if injector.push(tag).is_err() {
+                                    quit = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Ok(false)
+                });
+                if let Err(e) = searcher.search_path(&matcher, path, sink) {
+                    log::info!("goto tag search error: {}, {e}", path.display());
+                }
+                if quit {
+                    WalkState::Quit
+                } else {
+                    WalkState::Continue
+                }
+            })
+        });
+    });
+}
+
+pub fn syntax_goto_definition(cx: &mut Context) {
+    syntax_goto_tags(cx, TagRole::Definition);
+}
+
+pub fn syntax_goto_references(cx: &mut Context) {
+    syntax_goto_tags(cx, TagRole::Reference);
+}
+
+fn syntax_goto_tags(cx: &mut Context, role: TagRole) {
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let cursor_byte = text.char_to_byte(cursor) as u32;
+    let doc_id = doc.id();
+    let loader_guard = cx.editor.syn_loader.load();
+    let loader = Arc::clone(&*loader_guard);
+
+    let Some(syntax) = doc.syntax() else {
+        cx.editor
+            .set_error("Syntax tree is not available on this buffer");
+        return;
+    };
+
+    let Some(cursor_name) = find_name_at_cursor(syntax, &loader, text, cursor_byte) else {
+        cx.editor.set_error("No tag at cursor");
+        return;
+    };
+
+    let search_root = if let Some(path) = doc.path() {
+        helix_loader::find_workspace_in(path).0
+    } else {
+        helix_loader::find_workspace().0
+    };
+
+    let doc_uri_or_id = doc
+        .uri()
+        .map(UriOrDocumentId::Uri)
+        .unwrap_or(UriOrDocumentId::Id(doc_id));
+
+    // Collect in-file results now, while `syntax` and `text` are still borrowed.
+    let in_file_tags: Vec<Tag> = match role {
+        TagRole::Definition => Box::new(definition_tags_iter(syntax, &loader, text, doc_uri_or_id))
+            as Box<dyn Iterator<Item = Tag>>,
+        TagRole::Reference => Box::new(reference_tags_iter(syntax, &loader, text, doc_uri_or_id)),
+    }
+    .filter(|t| t.name == cursor_name)
+    .collect();
+    // Also capture open-doc paths before releasing the borrow.
+    let open_docs: Arc<HashSet<PathBuf>> = Arc::new(
+        cx.editor
+            .documents()
+            .filter_map(Document::path)
+            .map(ToOwned::to_owned)
+            .collect(),
+    );
+    // `syntax`, `text`, `view`, `doc` borrows end here; `cx` can be borrowed mutably again.
+
+    let walk_builder = build_goto_walk_builder(cx, &search_root);
+
+    let path_column =
+        PickerColumn::new("path", |tag: &Tag, search_root: &PathBuf| match &tag.doc {
+            UriOrDocumentId::Uri(uri) => {
+                if let Some(p) = uri.as_path() {
+                    let rel = p.strip_prefix(search_root).unwrap_or(p);
+                    format!("{}:{}", rel.display(), tag.start_line + 1).into()
+                } else {
+                    uri.to_string().into()
+                }
+            }
+            UriOrDocumentId::Id(_) => SCRATCH_BUFFER_NAME.into(),
+        });
+    let (columns, path_col_idx): (Vec<PickerColumn<Tag, PathBuf>>, usize) = match role {
+        TagRole::Reference => (vec![path_column], 0),
+        TagRole::Definition => (
+            vec![
+                PickerColumn::new("kind", |tag: &Tag, _| tag.kind.as_str().into()),
+                path_column,
+            ],
+            1,
+        ),
+    };
+
+    let picker = Picker::new(
+        columns,
+        path_col_idx,
+        [],
+        search_root.clone(),
+        |cx, tag: &Tag, action| {
+            let doc_id = match &tag.doc {
+                UriOrDocumentId::Id(id) => *id,
+                UriOrDocumentId::Uri(uri) => {
+                    match cx
+                        .editor
+                        .open(uri.as_path().expect("tag URI must be a path"), action)
+                    {
+                        Ok(id) => id,
+                        Err(e) => {
+                            cx.editor
+                                .set_error(format!("Failed to open file '{uri:?}': {e}"));
+                            return;
+                        }
+                    }
+                }
+            };
+            let doc = doc_mut!(cx.editor, &doc_id);
+            let view = view_mut!(cx.editor);
+            let len_chars = doc.text().len_chars();
+            if tag.start >= len_chars || tag.end > len_chars {
+                cx.editor.set_error(
+                    "The location you jumped to no longer exists because the file has changed.",
+                );
+                return;
+            }
+            doc.set_selection(view.id, Selection::single(tag.start, tag.end));
+            if action.align_view(view, doc.id()) {
+                align_view(doc, view, Align::Center)
+            }
+        },
+    )
+    .with_preview(|_, tag| Some((tag.doc.path_or_id()?, Some((tag.start_line, tag.end_line)))))
+    .truncate_start(false);
+
+    let injector = picker.injector();
+
+    // Inject the already-collected in-file results.
+    for tag in in_file_tags {
+        injector.push(tag).ok();
+    }
+
+    // Async: walk the workspace in a background thread.
+    if search_root.exists() {
+        spawn_workspace_tag_scan(
+            walk_builder,
+            cursor_name.clone(),
+            role,
+            loader,
+            open_docs,
+            injector,
+        );
+    }
+
+    cx.push_layer(Box::new(overlaid(picker)));
 }

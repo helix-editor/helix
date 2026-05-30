@@ -412,6 +412,10 @@ impl MappableCommand {
         symbol_picker, "Open symbol picker",
         syntax_symbol_picker, "Open symbol picker from syntax information",
         lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
+        syntax_goto_definition, "Goto definition using syntax information",
+        syntax_goto_references, "Goto references using syntax information",
+        lsp_or_syntax_goto_definition, "Goto definition using LSP or syntax information",
+        lsp_or_syntax_goto_references, "Goto references using LSP or syntax information",
         changed_file_picker, "Open changed file picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
@@ -7168,5 +7172,31 @@ fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
         lsp::workspace_symbol_picker(cx);
     } else {
         syntax_workspace_symbol_picker(cx);
+    }
+}
+
+fn lsp_or_syntax_goto_definition(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoDefinition)
+        .next()
+        .is_some()
+    {
+        lsp::goto_definition(cx);
+    } else {
+        syntax_goto_definition(cx);
+    }
+}
+
+fn lsp_or_syntax_goto_references(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::GotoReference)
+        .next()
+        .is_some()
+    {
+        lsp::goto_reference(cx);
+    } else {
+        syntax_goto_references(cx);
     }
 }

@@ -109,6 +109,10 @@
 | `symbol_picker` | Open symbol picker |  |
 | `syntax_symbol_picker` | Open symbol picker from syntax information |  |
 | `lsp_or_syntax_symbol_picker` | Open symbol picker from LSP or syntax information | normal: `` <space>s ``, select: `` <space>s `` |
+| `syntax_goto_definition` | Goto definition using syntax information |  |
+| `syntax_goto_references` | Goto references using syntax information |  |
+| `lsp_or_syntax_goto_definition` | Goto definition using LSP or syntax information | normal: `` gd ``, select: `` gd `` |
+| `lsp_or_syntax_goto_references` | Goto references using LSP or syntax information | normal: `` gr ``, select: `` gr `` |
 | `changed_file_picker` | Open changed file picker | normal: `` <space>g ``, select: `` <space>g `` |
 | `select_references_to_symbol_under_cursor` | Select symbol references | normal: `` <space>h ``, select: `` <space>h `` |
 | `workspace_symbol_picker` | Open workspace symbol picker |  |
@@ -124,7 +128,7 @@
 | `normal_mode` | Enter normal mode | normal: `` <esc> ``, select: `` v ``, insert: `` <esc> `` |
 | `select_mode` | Enter selection extend mode | normal: `` v `` |
 | `exit_select_mode` | Exit selection mode | select: `` <esc> `` |
-| `goto_definition` | Goto definition | normal: `` gd ``, select: `` gd `` |
+| `goto_definition` | Goto definition |  |
 | `goto_declaration` | Goto declaration | normal: `` gD ``, select: `` gD `` |
 | `add_newline_above` | Add newline above | normal: `` [<space> ``, select: `` [<space> `` |
 | `add_newline_below` | Add newline below | normal: `` ]<space> ``, select: `` ]<space> `` |
@@ -137,7 +141,7 @@
 | `goto_file` | Goto files/URLs in selections | normal: `` gf ``, select: `` gf `` |
 | `goto_file_hsplit` | Goto files in selections (hsplit) | normal: `` <C-w>f ``, `` <space>wf ``, select: `` <C-w>f ``, `` <space>wf `` |
 | `goto_file_vsplit` | Goto files in selections (vsplit) | normal: `` <C-w>F ``, `` <space>wF ``, select: `` <C-w>F ``, `` <space>wF `` |
-| `goto_reference` | Goto references | normal: `` gr ``, select: `` gr `` |
+| `goto_reference` | Goto references |  |
 | `goto_window_top` | Goto window top | normal: `` gt ``, select: `` gt `` |
 | `goto_window_center` | Goto window center | normal: `` gc ``, select: `` gc `` |
 | `goto_window_bottom` | Goto window bottom | normal: `` gb ``, select: `` gb `` |

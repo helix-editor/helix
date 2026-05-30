@@ -32,7 +32,7 @@ use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
-    query_iter::{CapturedMatch, QueryIterEvent, QueryMatchIter, QueryMatchIterEvent},
+    query_iter::{CapturedMatch, QueryIterEvent, QueryLoader, QueryMatchIter, QueryMatchIterEvent},
     Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
@@ -174,17 +174,42 @@ impl LanguageData {
         if text.is_empty() {
             return Ok(None);
         }
-        let query = Query::new(grammar, &text, |_pattern, predicate| match predicate {
-            // TODO: these predicates are allowed in tags.scm queries but not yet used.
-            UserPredicate::IsPropertySet { key: "local", .. } => Ok(()),
-            UserPredicate::Other(pred) => match pred.name() {
-                "strip!" | "select-adjacent!" => Ok(()),
+        let compile = || {
+            Query::new(grammar, &text, |_pattern, predicate| match predicate {
+                // TODO: these predicates are allowed in tags.scm queries but not yet used.
+                UserPredicate::IsPropertySet { key: "local", .. } => Ok(()),
+                UserPredicate::Other(pred) => match pred.name() {
+                    "strip!" | "select-adjacent!" => Ok(()),
+                    _ => Err(InvalidPredicateError::unknown(predicate)),
+                },
                 _ => Err(InvalidPredicateError::unknown(predicate)),
-            },
-            _ => Err(InvalidPredicateError::unknown(predicate)),
-        })
-        .with_context(|| format!("Failed to compile tags.scm query for '{name}'"))?;
-        Ok(Some(TagQuery { query }))
+            })
+            .with_context(|| format!("Failed to compile tags.scm query for '{name}'"))
+        };
+        // TODO: once https://github.com/tree-sitter/tree-sitter/pull/5649 lands, compile once
+        // and use ts_query_copy to produce the two variants instead of compiling twice.
+        let mut definitions = compile()?;
+        let mut references = compile()?;
+        let to_disable: Vec<String> = definitions
+            .captures()
+            .filter(|(_, cap)| cap.starts_with("reference."))
+            .map(|(_, cap)| cap.to_owned())
+            .collect();
+        for cap in &to_disable {
+            definitions.disable_capture(cap);
+        }
+        let to_disable: Vec<String> = references
+            .captures()
+            .filter(|(_, cap)| cap.starts_with("definition."))
+            .map(|(_, cap)| cap.to_owned())
+            .collect();
+        for cap in &to_disable {
+            references.disable_capture(cap);
+        }
+        Ok(Some(TagQuery {
+            definitions,
+            references,
+        }))
     }
 
     fn tag_query(&self, loader: &Loader) -> Option<&TagQuery> {
@@ -613,7 +638,7 @@ impl Syntax {
         QueryIter::new(&self.inner, source, loader, range)
     }
 
-    pub fn tags<'a>(
+    pub fn definition_tags<'a>(
         &'a self,
         source: RopeSlice<'a>,
         loader: &'a Loader,
@@ -622,7 +647,21 @@ impl Syntax {
         QueryMatchIter::new(
             &self.inner,
             source,
-            |lang| loader.tag_query(lang).map(|q| &q.query),
+            |lang| loader.tag_query(lang).map(|q| &q.definitions),
+            range,
+        )
+    }
+
+    pub fn reference_tags<'a>(
+        &'a self,
+        source: RopeSlice<'a>,
+        loader: &'a Loader,
+        range: impl RangeBounds<u32>,
+    ) -> QueryMatchIter<'a, 'a, impl FnMut(Language) -> Option<&'a Query> + 'a, ()> {
+        QueryMatchIter::new(
+            &self.inner,
+            source,
+            |lang| loader.tag_query(lang).map(|q| &q.references),
             range,
         )
     }
@@ -1071,7 +1110,8 @@ impl TextObjectQuery {
 
 #[derive(Debug)]
 pub struct TagQuery {
-    pub query: Query,
+    pub definitions: Query,
+    pub references: Query,
 }
 
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
