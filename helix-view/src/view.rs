@@ -96,7 +96,22 @@ impl JumpList {
     }
 
     pub fn remove(&mut self, doc_id: &DocumentId) {
+        // Count the entries before the navigation cursor so that, after the
+        // matching entries are dropped, `current` keeps pointing at the same
+        // logical jump. Without this adjustment the cursor drifts onto an
+        // unrelated entry, or is left past the end of the list (when it sat at
+        // the tip), which breaks subsequent `forward`/`backward` navigation.
+        let removed_before_current = self
+            .jumps
+            .iter()
+            .take(self.current)
+            .filter(|(other_id, _)| other_id == doc_id)
+            .count();
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
+        self.current = self
+            .current
+            .saturating_sub(removed_before_current)
+            .min(self.jumps.len());
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
@@ -1091,5 +1106,71 @@ mod tests {
             ),
             Some(7)
         );
+    }
+
+    /// `JumpList::remove` dropped every entry belonging to a document (e.g. when
+    /// a buffer is closed) but left `current` untouched. Because `current` is an
+    /// index into the entry list, removing entries that sit *before* it leaves
+    /// it pointing at a different entry, or past the end of a now-shorter list.
+    /// The next `forward`/`backward` then navigates from the wrong place (or
+    /// no-ops). `remove` must shift `current` left by the number of removed
+    /// entries that preceded it, and clamp it to the new length.
+    #[test]
+    fn jumplist_remove_adjusts_current() {
+        let doc_a = DocumentId::new(1);
+        let doc_b = DocumentId::new(2);
+
+        let entries =
+            |jumps: &JumpList| -> Vec<DocumentId> { jumps.iter().map(|(id, _)| *id).collect() };
+
+        // Build [A, B, A, B, A] directly. `push`/`push_impl` truncate to
+        // `current` and advance it, so we set the fields explicitly to control
+        // exactly where the navigation cursor sits.
+        let make = |current: usize| -> JumpList {
+            let mut jumps = JumpList::new((doc_a, Selection::point(0)));
+            jumps.jumps = [
+                (doc_a, Selection::point(0)),
+                (doc_b, Selection::point(1)),
+                (doc_a, Selection::point(2)),
+                (doc_b, Selection::point(3)),
+                (doc_a, Selection::point(4)),
+            ]
+            .into_iter()
+            .collect();
+            jumps.current = current;
+            jumps
+        };
+
+        // `current` in the middle: two A entries (indices 0, 2) precede index 3.
+        let mut jumps = make(3);
+        jumps.remove(&doc_a);
+        assert_eq!(entries(&jumps), vec![doc_b, doc_b]);
+        // The B entry that was at index 3 is now at index 1; `current` follows it.
+        assert_eq!(jumps.current, 1);
+        assert_eq!(
+            jumps.iter().nth(jumps.current),
+            Some(&(doc_b, Selection::point(3)))
+        );
+
+        // `current` at the tip (== len): must stay a valid tip (== new len),
+        // not dangle past the end.
+        let mut jumps = make(5);
+        jumps.remove(&doc_a);
+        assert_eq!(jumps.current, jumps.jumps.len());
+        assert_eq!(jumps.current, 2);
+
+        // Removing the *only* remaining document empties the list; `current`
+        // must clamp to 0 rather than point past the end.
+        let mut jumps = make(3);
+        jumps.remove(&doc_a);
+        jumps.remove(&doc_b);
+        assert_eq!(jumps.jumps.len(), 0);
+        assert_eq!(jumps.current, 0);
+
+        // `current` at the front with leading removed entries: clamps to 0.
+        let mut jumps = make(0);
+        jumps.remove(&doc_a);
+        assert_eq!(jumps.current, 0);
+        assert_eq!(entries(&jumps), vec![doc_b, doc_b]);
     }
 }
