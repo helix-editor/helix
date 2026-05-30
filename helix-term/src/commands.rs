@@ -3687,6 +3687,7 @@ fn insert_at_line_end(cx: &mut Context) {
 // Enter insert mode and auto-indent the current line if it is empty.
 // If the line is not empty, move the cursor to the specified fallback position.
 fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
+    let was_select_mode = cx.editor.mode == Mode::Select;
     enter_insert_mode(cx);
 
     let (view, doc) = current!(cx.editor);
@@ -3740,7 +3741,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
                 IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
             };
 
-            ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
+            ranges.push(range.put_cursor(text, pos + offs, was_select_mode));
 
             (cursor_line_start, cursor_line_start, None)
         }
