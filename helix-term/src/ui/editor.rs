@@ -14,7 +14,7 @@ use crate::{
 };
 
 use helix_core::{
-    conflict::{conflict_marker_lines, conflict_pair_sections, find_conflicts, refine_diff},
+    conflict::{conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion},
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -95,12 +95,15 @@ impl EditorView {
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
+        // Parse conflicts once — all consumers reuse these results.
+        let conflicts = doc.conflicts();
+
         // Conflict section/marker backgrounds — registered first so they have
         // the lowest priority and are overwritten by cursorline and DAP highlights.
-        if let Some(deco) = Self::conflict_section_line_deco(doc, view, theme) {
+        if let Some(deco) = Self::conflict_section_line_deco(doc, view, theme, conflicts) {
             decorations.add_decoration(deco);
         }
-        if let Some(deco) = Self::conflict_marker_line_deco(doc, view, theme) {
+        if let Some(deco) = Self::conflict_marker_line_deco(doc, view, theme, conflicts) {
             decorations.add_decoration(deco);
         }
 
@@ -153,9 +156,9 @@ impl EditorView {
             overlays.push(overlay);
         }
 
-        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays, conflicts);
 
-        if let Some(overlay) = Self::doc_conflict_refine_highlights(doc, view, theme) {
+        if let Some(overlay) = Self::doc_conflict_refine_highlights(doc, view, theme, conflicts) {
             overlays.push(overlay);
         }
 
@@ -366,6 +369,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
         overlay_highlights: &mut Vec<OverlayHighlights>,
+        conflicts: &[ConflictRegion],
     ) {
         // Skip redundant work if no diagnostics.
         if doc.diagnostics().is_empty() {
@@ -412,8 +416,6 @@ impl EditorView {
                 _ => vec.push(range.start..range.end),
             }
         };
-
-        let conflicts = helix_core::conflict::find_conflicts(doc.text());
 
         for diagnostic in doc.diagnostics() {
             // Skip diagnostics that overlap any conflict region. The LSP sees
@@ -694,6 +696,7 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        conflicts: &[ConflictRegion],
     ) -> Option<OverlayHighlights> {
         let removed_hl = theme
             .find_highlight("diff.conflict.removed")
@@ -708,13 +711,11 @@ impl EditorView {
         let first_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
         let last_line = first_line + inner.height as usize;
 
-        let conflicts = find_conflicts(text);
-
-        let mut cache = doc.conflict_refine.borrow_mut();
+        let mut cache = doc.conflict_cache.borrow_mut();
 
         // Accumulate word-diff spans for every conflict visible in the viewport.
         let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = Vec::new();
-        for region in &conflicts {
+        for region in conflicts {
             let region_first_line = text.char_to_line(region.start);
             let region_last_line = text.char_to_line(region.end);
             if region_last_line < first_line || region_first_line > last_line {
@@ -757,6 +758,7 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        conflicts: &[ConflictRegion],
     ) -> Option<impl Decoration + 'a> {
         let styles = [
             theme.try_get("diff.conflict.current"),
@@ -768,7 +770,7 @@ impl EditorView {
         }
         let text = doc.text();
         // Collect (line_start, line_end_excl, slot) for every section content range.
-        let ranges: Vec<(usize, usize, usize)> = find_conflicts(text)
+        let ranges: Vec<(usize, usize, usize)> = conflicts
             .iter()
             .flat_map(|region| {
                 region.sections.iter().enumerate().map(|(i, s)| {
@@ -810,9 +812,10 @@ impl EditorView {
         doc: &Document,
         view: &View,
         theme: &Theme,
+        conflicts: &[ConflictRegion],
     ) -> Option<impl Decoration + 'a> {
         let style = theme.try_get("diff.conflict.marker")?;
-        let lines = conflict_marker_lines(doc.text());
+        let lines = conflict_marker_lines(conflicts, doc.text());
         let inner = view.inner_area(doc);
         Some(move |renderer: &mut TextRenderer, pos: LinePos| {
             if lines.binary_search(&pos.doc_line).is_ok() {

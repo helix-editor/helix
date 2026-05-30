@@ -444,8 +444,8 @@ fn git_sep_line_end(region: &ConflictRegion, text: &Rope) -> Option<usize> {
 /// `-------`), and the closing `>>>>>>>`.
 ///
 /// The returned `Vec` is sorted and deduplicated.
-pub fn conflict_marker_lines(text: &Rope) -> Vec<usize> {
-    let mut lines: Vec<usize> = find_conflicts(text)
+pub fn conflict_marker_lines(conflicts: &[ConflictRegion], text: &Rope) -> Vec<usize> {
+    let mut lines: Vec<usize> = conflicts
         .iter()
         .flat_map(|region| {
             // Section marker lines (includes the opening <<<<<<< via sections[0].marker_start).
@@ -840,6 +840,7 @@ mod tests {
         assert_eq!(c.sections[2].kind, SectionKind::Side);
         assert_eq!(c.sections[3].kind, SectionKind::Base);
         assert_eq!(c.sections[4].kind, SectionKind::Side);
+        assert_eq!(c.num_refine_pairs(), 10); // C(5,2)
     }
 
     // ── conflict_at ───────────────────────────────────────────────────────────
@@ -1076,7 +1077,8 @@ mod tests {
             "after\n",
         );
         let r = rope(text);
-        let lines = conflict_marker_lines(&r);
+        let conflicts = find_conflicts(&r);
+        let lines = conflict_marker_lines(&conflicts, &r);
         assert!(!lines.is_empty());
         for i in 0..lines.len() - 1 {
             assert!(lines[i] < lines[i + 1]);

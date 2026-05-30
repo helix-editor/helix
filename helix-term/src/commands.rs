@@ -6232,7 +6232,7 @@ fn goto_conflict_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
-    let conflicts = helix_core::conflict::find_conflicts(text);
+    let conflicts = doc.conflicts();
 
     if conflicts.is_empty() {
         cx.editor
@@ -6246,16 +6246,16 @@ fn goto_conflict_impl(cx: &mut Context, direction: Direction) {
 
         // Walk `count` steps in `direction`.
         let mut idx = match direction {
-            Direction::Forward => helix_core::conflict::next_conflict(&conflicts, cursor),
-            Direction::Backward => helix_core::conflict::prev_conflict(&conflicts, cursor),
+            Direction::Forward => helix_core::conflict::next_conflict(conflicts, cursor),
+            Direction::Backward => helix_core::conflict::prev_conflict(conflicts, cursor),
         };
 
         for _ in 1..count {
             let Some(current) = idx else { break };
             let next_pos = conflicts[current].start;
             idx = match direction {
-                Direction::Forward => helix_core::conflict::next_conflict(&conflicts, next_pos),
-                Direction::Backward => helix_core::conflict::prev_conflict(&conflicts, next_pos),
+                Direction::Forward => helix_core::conflict::next_conflict(conflicts, next_pos),
+                Direction::Backward => helix_core::conflict::prev_conflict(conflicts, next_pos),
             };
         }
 
@@ -6299,13 +6299,13 @@ fn conflict_accept_all(cx: &mut Context) {
 }
 
 fn conflict_accept_at_cursor(cx: &mut Context) {
-    use helix_core::conflict::{conflict_at, conflict_section_at, find_conflicts};
+    use helix_core::conflict::{conflict_at, conflict_section_at};
     let resolution = {
         let (view, doc) = current!(cx.editor);
         let text = doc.text();
         let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-        let conflicts = find_conflicts(text);
-        let idx = match conflict_at(&conflicts, cursor) {
+        let conflicts = doc.conflicts();
+        let idx = match conflict_at(conflicts, cursor) {
             Some(i) => i,
             None => return,
         };
@@ -6322,8 +6322,8 @@ fn conflict_cycle_diffs(cx: &mut Context) {
     let text = doc.text();
     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
 
-    let conflicts = helix_core::conflict::find_conflicts(text);
-    let idx = match helix_core::conflict::conflict_at(&conflicts, cursor) {
+    let conflicts = doc.conflicts();
+    let idx = match helix_core::conflict::conflict_at(conflicts, cursor) {
         Some(i) => i,
         None => return,
     };
@@ -6334,7 +6334,7 @@ fn conflict_cycle_diffs(cx: &mut Context) {
         return;
     }
 
-    let mut cache = doc.conflict_refine.borrow_mut();
+    let mut cache = doc.conflict_cache.borrow_mut();
     let entry = cache.entry(region.start).or_default();
     entry.pair = (entry.pair + 1) % region.num_refine_pairs();
     entry.diffs = None;
@@ -6359,14 +6359,14 @@ fn resolve_conflict_impl(cx: &mut Context, resolution: ConflictResolution) {
     let outcome = {
         let (view, doc) = current!(cx.editor);
         let text = doc.text();
-        let conflicts = helix_core::conflict::find_conflicts(text);
+        let conflicts = doc.conflicts();
 
         if conflicts.is_empty() {
             Outcome::Status("No conflict markers in current buffer")
         } else {
             let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
 
-            if let Some(idx) = helix_core::conflict::conflict_at(&conflicts, cursor) {
+            if let Some(idx) = helix_core::conflict::conflict_at(conflicts, cursor) {
                 let region = &conflicts[idx];
 
                 let replacement: Option<String> = match resolution {

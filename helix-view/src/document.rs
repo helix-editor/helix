@@ -34,7 +34,7 @@ use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
-    conflict::{conflict_at, find_conflicts, ConflictRefineEntry},
+    conflict::{conflict_at, find_conflicts, ConflictCache, ConflictRefineEntry, ConflictRegion},
     editor_config::EditorConfig,
     encoding,
     history::{History, State, UndoKind},
@@ -227,12 +227,13 @@ pub struct Document {
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
-    /// Per-conflict refine cache: pair index + optional word-diff results.
-    ///
-    /// Key: `ConflictRegion::start` (char position).
+    /// Cached conflict regions, eagerly recomputed on every edit.
+    conflict_regions: Vec<ConflictRegion>,
+
+    /// Per-conflict refine state keyed by [`ConflictRegion::start`].
     /// Cleared on every edit; the pair setting is preserved when the cursor
     /// was inside a conflict before the edit.
-    pub conflict_refine: RefCell<HashMap<usize, ConflictRefineEntry>>,
+    pub conflict_cache: RefCell<ConflictCache>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -728,6 +729,7 @@ impl Document {
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+        let conflict_regions = find_conflicts(&text);
 
         Self {
             id: DocumentId::default(),
@@ -772,7 +774,8 @@ impl Document {
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
-            conflict_refine: RefCell::new(HashMap::new()),
+            conflict_regions,
+            conflict_cache: RefCell::new(ConflictCache::default()),
         }
     }
 
@@ -1468,7 +1471,7 @@ impl Document {
                 let conflicts = find_conflicts(&old_doc);
                 conflict_at(&conflicts, cursor).map(|idx| conflicts[idx].start)
             })
-            .and_then(|key| self.conflict_refine.borrow().get(&key).map(|e| e.pair));
+            .and_then(|key| self.conflict_cache.borrow().get(&key).map(|e| e.pair));
 
         let changes = transaction.changes();
         if !changes.apply(&mut self.text) {
@@ -1501,19 +1504,21 @@ impl Document {
                 .ensure_invariants(self.text.slice(..));
         }
 
-        // Clear conflict refine cache; preserve cursor's pair if still in a conflict.
-        self.conflict_refine.borrow_mut().clear();
-        if let Some(pair) = saved_pair {
-            let cursor = self
-                .selection(view_id)
-                .primary()
-                .cursor(self.text().slice(..));
-            let conflicts = find_conflicts(self.text());
-            if let Some(idx) = conflict_at(&conflicts, cursor) {
-                self.conflict_refine
-                    .borrow_mut()
-                    .entry(conflicts[idx].start)
-                    .or_insert_with(|| ConflictRefineEntry { pair, diffs: None });
+        // Eagerly recompute conflict regions; clear refine cache.
+        self.conflict_regions = find_conflicts(self.text());
+        {
+            let mut cache = self.conflict_cache.borrow_mut();
+            cache.clear();
+            if let Some(pair) = saved_pair {
+                let cursor = self
+                    .selection(view_id)
+                    .primary()
+                    .cursor(self.text().slice(..));
+                if let Some(idx) = conflict_at(&self.conflict_regions, cursor) {
+                    cache
+                        .entry(self.conflict_regions[idx].start)
+                        .or_insert_with(|| ConflictRefineEntry { pair, diffs: None });
+                }
             }
         }
 
@@ -2094,6 +2099,12 @@ impl Document {
     #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
+    }
+
+    /// Returns eagerly-computed conflict regions, re-computed on
+    /// every document edit.
+    pub fn conflicts(&self) -> &[ConflictRegion] {
+        &self.conflict_regions
     }
 
     #[inline]

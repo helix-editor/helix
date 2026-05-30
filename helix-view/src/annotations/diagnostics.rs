@@ -1,4 +1,4 @@
-use helix_core::conflict::{find_conflicts, ConflictRegion};
+use helix_core::conflict::ConflictRegion;
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
@@ -134,7 +134,7 @@ pub struct InlineDiagnosticAccumulator<'a> {
 
 impl<'a> InlineDiagnosticAccumulator<'a> {
     pub fn new(cursor: usize, doc: &'a Document, config: InlineDiagnosticsConfig) -> Self {
-        let conflicts = find_conflicts(doc.text());
+        let conflicts = doc.conflicts().to_vec();
         InlineDiagnosticAccumulator {
             idx: 0,
             doc,
