@@ -1567,6 +1567,13 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
             if view.doc.eq(&doc_id) {
+                // Reloading commits the diff against disk through the first view
+                // only (above). Any other view onto this document is left
+                // pointing at the pre-reload revision, so sync it now; otherwise
+                // its jumplist entries keep referencing the old (e.g. larger)
+                // text and a later commit panics when mapping them through a
+                // changeset whose pre-image no longer contains them.
+                view.sync_changes(doc);
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
