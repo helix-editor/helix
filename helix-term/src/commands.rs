@@ -3954,7 +3954,7 @@ fn normal_mode(cx: &mut Context) {
 fn push_jump(view: &mut View, doc: &mut Document) {
     doc.append_changes_to_history(view);
     let jump = (doc.id(), doc.selection(view.id).clone());
-    view.jumps.push(jump);
+    view.push_jump(doc, jump);
 }
 
 fn goto_line(cx: &mut Context) {
