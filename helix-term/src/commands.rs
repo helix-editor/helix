@@ -10,7 +10,7 @@ use helix_stdx::{
     path::{self, find_paths},
     rope::{self, RopeSliceExt},
 };
-use helix_vcs::{FileChange, Hunk};
+use helix_vcs::{Branch, BranchKind, FileChange, Hunk};
 pub use lsp::*;
 pub use syntax::*;
 use tui::{
@@ -48,6 +48,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     expansion,
+    graphics::Modifier,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -413,6 +414,7 @@ impl MappableCommand {
         syntax_symbol_picker, "Open symbol picker from syntax information",
         lsp_or_syntax_symbol_picker, "Open symbol picker from LSP or syntax information",
         changed_file_picker, "Open changed file picker",
+        git_branch_picker, "Open git branch picker",
         select_references_to_symbol_under_cursor, "Select symbol references",
         workspace_symbol_picker, "Open workspace symbol picker",
         syntax_workspace_symbol_picker, "Open workspace symbol picker from syntax information",
@@ -3571,6 +3573,233 @@ fn changed_file_picker(cx: &mut Context) {
             }
         });
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+struct GitBranchPickerData {
+    style_current: Style,
+    style_local: Style,
+    style_remote: Style,
+    style_tracking: Style,
+    style_head: Style,
+}
+
+impl GitBranchPickerData {
+    fn branch_style(&self, branch: &Branch) -> Style {
+        if branch.is_current() {
+            self.style_current
+        } else {
+            match branch.kind() {
+                BranchKind::Local => self.style_local,
+                BranchKind::Remote => self.style_remote,
+            }
+        }
+    }
+}
+
+fn git_branch_current_cell<'a>(branch: &'a Branch, data: &'a GitBranchPickerData) -> Cell<'a> {
+    if branch.is_current() {
+        Span::styled("*", data.style_current)
+    } else {
+        Span::raw("")
+    }
+    .into()
+}
+
+fn git_branch_kind_cell<'a>(branch: &'a Branch, data: &'a GitBranchPickerData) -> Cell<'a> {
+    let (label, style) = match branch.kind() {
+        BranchKind::Local => ("local", data.style_local),
+        BranchKind::Remote => ("remote", data.style_remote),
+    };
+    Span::styled(label, style).into()
+}
+
+fn git_branch_name_cell<'a>(branch: &'a Branch, data: &'a GitBranchPickerData) -> Cell<'a> {
+    Span::styled(branch.name(), data.branch_style(branch)).into()
+}
+
+fn git_branch_upstream_cell<'a>(branch: &'a Branch, data: &'a GitBranchPickerData) -> Cell<'a> {
+    Span::styled(branch_upstream_text(branch), data.style_tracking).into()
+}
+
+fn git_branch_head_cell<'a>(branch: &'a Branch, data: &'a GitBranchPickerData) -> Cell<'a> {
+    Span::styled(branch.head(), data.style_head).into()
+}
+
+fn branch_upstream_text(branch: &Branch) -> String {
+    match (branch.upstream(), branch.tracking()) {
+        (Some(upstream), Some(tracking)) => format!("{upstream} ({tracking})"),
+        (Some(upstream), None) => upstream.to_string(),
+        (None, Some(tracking)) => format!("({tracking})"),
+        (None, None) => String::new(),
+    }
+}
+
+fn branch_switch_status(branch: &Branch, reloaded: usize) -> String {
+    let reload_status = match reloaded {
+        0 => String::new(),
+        1 => "; reloaded 1 buffer".to_string(),
+        count => format!("; reloaded {count} buffers"),
+    };
+
+    format!("Switched to branch {}{reload_status}", branch.name())
+}
+
+fn git_branch_picker(cx: &mut Context) {
+    let cwd = helix_stdx::env::current_working_dir();
+    if !cwd.exists() {
+        cx.editor
+            .set_error("Current working directory does not exist");
+        return;
+    }
+
+    let repository = match cx.editor.diff_providers.repository(&cwd) {
+        Ok(repository) => repository,
+        Err(err) => {
+            cx.editor.set_error(format!("{err:#}"));
+            return;
+        }
+    };
+
+    let branches = match repository.branches() {
+        Ok(branches) => branches,
+        Err(err) => {
+            cx.editor.set_error(format!("{err:#}"));
+            return;
+        }
+    };
+
+    if branches.is_empty() {
+        cx.editor.set_error("No git branches found");
+        return;
+    }
+
+    let initial_cursor = branches
+        .iter()
+        .position(|branch| branch.is_current())
+        .unwrap_or_default() as u32;
+
+    let current_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
+    let columns = [
+        PickerColumn::new("current", git_branch_current_cell),
+        PickerColumn::new("type", git_branch_kind_cell),
+        PickerColumn::new("branch", git_branch_name_cell),
+        PickerColumn::new("upstream", git_branch_upstream_cell),
+        PickerColumn::new("head", git_branch_head_cell),
+    ];
+
+    let work_dir = repository.work_dir().to_path_buf();
+    let picker = Picker::new(
+        columns,
+        2, // branch
+        branches,
+        GitBranchPickerData {
+            style_current: current_style,
+            style_local: cx.editor.theme.get("ui.text"),
+            style_remote: cx.editor.theme.get("ui.text.directory"),
+            style_tracking: cx.editor.theme.get("ui.text"),
+            style_head: cx.editor.theme.get("ui.virtual"),
+        },
+        move |cx, branch: &Branch, _action| {
+            if branch.is_current() {
+                cx.editor
+                    .set_status(format!("Already on branch {}", branch.name()));
+                return;
+            }
+
+            if let Some(buffer) = first_modified_buffer_under(cx.editor, &work_dir) {
+                cx.editor.set_error(format!(
+                    "Cannot switch branches with unsaved buffer: {buffer}"
+                ));
+                return;
+            }
+
+            match repository.switch_branch(branch) {
+                Ok(()) => {
+                    let reloaded = reload_open_documents_under(cx.editor, &work_dir);
+                    cx.editor.set_status(branch_switch_status(branch, reloaded));
+                }
+                Err(err) => cx.editor.set_error(format!("{err:#}")),
+            }
+        },
+    )
+    .with_initial_cursor(initial_cursor);
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn first_modified_buffer_under(editor: &Editor, root: &Path) -> Option<String> {
+    let root = canonicalized_path(root);
+
+    editor
+        .documents()
+        .find(|doc| {
+            doc.is_modified() && doc.path().is_some_and(|path| path_starts_with(path, &root))
+        })
+        .map(|doc| doc.display_name().into_owned())
+}
+
+fn reload_open_documents_under(editor: &mut Editor, root: &Path) -> usize {
+    let root = canonicalized_path(root);
+    let scrolloff = editor.config().scrolloff;
+    let view_id = view!(editor).id;
+
+    let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = editor
+        .documents_mut()
+        .filter_map(|doc| {
+            let path = doc.path()?.to_path_buf();
+            if !path_starts_with(&path, &root) {
+                return None;
+            }
+
+            let mut view_ids: Vec<_> = doc.selections().keys().cloned().collect();
+            if view_ids.is_empty() {
+                doc.ensure_view_init(view_id);
+                view_ids.push(view_id);
+            }
+
+            Some((doc.id(), view_ids))
+        })
+        .collect();
+
+    let diff_providers = editor.diff_providers.clone();
+    let mut reloaded = 0;
+
+    for (doc_id, view_ids) in docs_view_ids {
+        let doc = doc_mut!(editor, &doc_id);
+        let view = view_mut!(editor, view_ids[0]);
+        view.sync_changes(doc);
+
+        if let Err(error) = doc.reload(view, &diff_providers) {
+            editor.set_error(format!("{}", error));
+            continue;
+        }
+
+        if let Some(path) = doc.path().map(ToOwned::to_owned) {
+            editor
+                .language_servers
+                .file_event_handler
+                .file_changed(path);
+        }
+
+        for view_id in view_ids {
+            let view = view_mut!(editor, view_id);
+            if view.doc.eq(&doc_id) {
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
+        }
+
+        reloaded += 1;
+    }
+
+    reloaded
+}
+
+fn canonicalized_path(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn path_starts_with(path: &Path, root: &Path) -> bool {
+    canonicalized_path(path).starts_with(root)
 }
 
 pub fn command_palette(cx: &mut Context) {
