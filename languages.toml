@@ -2873,7 +2873,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "jsdoc"
-source = { git = "https://github.com/tree-sitter/tree-sitter-jsdoc", rev = "189a6a4829beb9cdbe837260653b4a3dfb0cc3db" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-jsdoc", rev = "658d18dcdddb75c760363faa4963427a7c6b52db" }
 
 [[language]]
 name = "openscad"
