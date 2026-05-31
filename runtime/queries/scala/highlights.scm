@@ -167,6 +167,8 @@
   (infix_modifier)
   (transparent_modifier)
   (open_modifier)
+  (tracked_modifier)
+  (into_modifier)
   "abstract"
   "final"
   "implicit"
