@@ -2566,7 +2566,7 @@ grammar = "embedded-template"
 
 [[grammar]]
 name = "embedded-template"
-source = { git = "https://github.com/tree-sitter/tree-sitter-embedded-template", rev = "d21df11b0ecc6fd211dbe11278e92ef67bd17e97" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-embedded-template", rev = "5bce9d580d3b78f48e13e331f69dfa0abd4ff68b" }
 
 [[language]]
 name = "eex"
