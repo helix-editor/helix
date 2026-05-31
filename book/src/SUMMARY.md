@@ -27,6 +27,7 @@
   - [Languages](./languages.md)
 - [Guides](./guides/README.md)
   - [Adding languages](./guides/adding_languages.md)
+  - [Adding locals queries](./guides/locals.md)
   - [Adding textobject queries](./guides/textobject.md)
   - [Adding indent queries](./guides/indent.md)
   - [Adding injection queries](./guides/injection.md)
