@@ -7,23 +7,24 @@
   (assignment
     . (identifier) @local.definition.constant))
 
-; Parameters
-(parameter_list
+; Parameters (now in the signature's argument_list)
+(argument_list
   (identifier) @local.definition.variable.parameter)
 
-(optional_parameter
-  .
-  (identifier) @local.definition.variable.parameter)
+(argument_list
+  (assignment
+    . (identifier) @local.definition.variable.parameter))
 
-(slurp_parameter
-  (identifier) @local.definition.variable.parameter)
+(argument_list
+  (splat_expression
+    (identifier) @local.definition.variable.parameter))
 
-(typed_parameter
-  parameter: (identifier) @local.definition.variable.parameter
-  (_))
+(argument_list
+  (typed_expression
+    . (identifier) @local.definition.variable.parameter))
 
 ; Single parameter arrow function
-(function_expression
+(arrow_function_expression
   .
   (identifier) @local.definition.variable.parameter)
 
@@ -47,7 +48,6 @@
   (quote_statement)
   (do_clause)
   (function_definition)
-  (short_function_definition)
   (macro_definition)
-] @local.scope 
+] @local.scope
 

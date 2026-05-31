@@ -31,10 +31,6 @@
   . (_) @anchor
   (#set! "scope" "tail")) @align
 
-(parameter_list
-  . (_) @anchor
-  (#set! "scope" "tail")) @align
-
 (curly_expression
   . (_) @anchor
   (#set! "scope" "tail")) @align

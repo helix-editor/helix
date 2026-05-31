@@ -9,7 +9,6 @@
       (primitive_definition)
       (abstract_definition)
       (struct_definition)
-      (short_function_definition)
       (assignment)
       (const_statement)
     ])
