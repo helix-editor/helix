@@ -3085,7 +3085,7 @@ language-servers = [ "pasls" ]
 
 [[grammar]]
 name = "pascal"
-source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "2fd40f477d3e2794af152618ccfac8d92eb72a66" }
+source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "042119eca2e18a60e56317fb06ee3ba5c32cb447" }
 
 [[language]]
 name = "sml"
