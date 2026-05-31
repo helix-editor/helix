@@ -314,7 +314,7 @@
 
 ; PEP 695: `type Alias = ...`
 (type_alias_statement
-  left: (type (identifier) @type.definition))
+  . (type (identifier) @type.definition))
 
 ; `X = TypeVar("X")` / `X = NewType("X", int)`
 ((assignment
