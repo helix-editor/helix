@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use futures_util::stream::FuturesUnordered;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
@@ -378,6 +379,45 @@ fn buffer_previous(
     Ok(())
 }
 
+fn available_code_actions(
+    doc: &Document,
+) -> FuturesUnordered<
+    impl Future<
+        Output = (
+            LanguageServerId,
+            helix_lsp::Result<Option<Vec<helix_lsp::lsp::CodeActionOrCommand>>>,
+        ),
+    >,
+> {
+    let mut seen = HashSet::new();
+
+    doc.language_servers_with_feature(LanguageServerFeature::CodeAction)
+        .filter(|x| seen.insert(x.id()))
+        .filter_map(|client| {
+            let encoding = client.offset_encoding();
+            let res = client.code_actions(
+                doc.identifier(),
+                Range::new(
+                    Position::new(0, 0),
+                    Position::new(doc.text().len_lines() as u32 + 1, 0),
+                ),
+                CodeActionContext {
+                    diagnostics: doc
+                        .diagnostics()
+                        .iter()
+                        .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, encoding))
+                        .collect(),
+                    only: None,
+                    trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
+                },
+            )?;
+
+            Some((client.id(), res))
+        })
+        .map(|(id, f)| async move { (id, f.await) })
+        .collect()
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&str>,
@@ -402,52 +442,10 @@ fn write_impl(
 
     let (view, doc) = current_ref!(cx.editor);
 
-    // TODO: cleanup
-
-    let mut seen_language_servers = HashSet::new();
-
-    let mut ids = vec![];
-    let mut lsps = FuturesOrdered::new();
-
-    for c in doc
-        .language_servers_with_feature(LanguageServerFeature::CodeAction)
-        .filter(|c| seen_language_servers.insert(c.id()))
-    {
-        let Some(res) = c.code_actions(
-            doc.identifier(),
-            Range::new(
-                Position::new(0, 0),
-                doc.position(view.id, c.offset_encoding()),
-            ),
-            CodeActionContext {
-                diagnostics: doc
-                    .diagnostics()
-                    .iter()
-                    .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, c.offset_encoding()))
-                    .collect(),
-                only: None,
-                trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
-            },
-        ) else {
-            continue;
-        };
-
-        ids.push(c.id());
-        lsps.push_back(res);
-    }
-
-    if !lsps.is_empty() {
-        jobs.add(
-            Job::with_callback(make_caos_callback(
-                doc.id(),
-                doc.version(),
-                view.id,
-                lsps,
-                ids,
-            ))
-            .wait_before_exiting(),
-        );
-        log::info!("Job added");
+    let code_actions = available_code_actions(doc);
+    if !code_actions.is_empty() {
+        let callback = make_code_action_callback(doc.id(), doc.version(), view.id, code_actions);
+        jobs.add(Job::with_callback(callback).wait_before_exiting());
     }
 
     let fmt = if config.auto_format && options.auto_format {

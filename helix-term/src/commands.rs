@@ -4,9 +4,9 @@ pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
-use futures_util::{stream::FuturesOrdered, FutureExt, StreamExt};
+use futures_util::{stream::FuturesUnordered, FutureExt, StreamExt};
 use helix_event::status;
-use helix_lsp::{lsp::CodeActionKind, LanguageServerId};
+use helix_lsp::{lsp::CodeAction, LanguageServerId};
 use helix_stdx::{
     path::{self, find_paths},
     rope::{self, RopeSliceExt},
@@ -3806,35 +3806,43 @@ async fn make_format_callback(
     Ok(call)
 }
 
-async fn make_caos_callback(
+struct CodeActionItem {
+    code_action: CodeAction,
+    language_server_id: LanguageServerId,
+}
+
+async fn make_code_action_callback(
     doc_id: DocumentId,
     doc_version: i32,
     view_id: ViewId,
-    mut lsps: FuturesOrdered<
-        impl Future<Output = helix_lsp::Result<Option<Vec<helix_lsp::lsp::CodeActionOrCommand>>>>,
+    mut ls_responses: FuturesUnordered<
+        impl Future<
+            Output = (
+                LanguageServerId,
+                helix_lsp::Result<Option<Vec<helix_lsp::lsp::CodeActionOrCommand>>>,
+            ),
+        >,
     >,
-    ids: Vec<LanguageServerId>,
 ) -> anyhow::Result<job::Callback> {
-    let mut actions = vec![];
-    let mut ids = ids.into_iter();
-    while let Some(lsp) = lsps.next().await {
-        let id = ids.next().unwrap();
-        if let Ok(Some(code_actions)) = lsp {
+    let mut available_code_actions = vec![];
+    while let Some((language_server_id, code_actions)) = ls_responses.next().await {
+        if let Ok(Some(code_actions)) = code_actions {
             for a in code_actions {
-                actions.push((id, a));
+                match a {
+                    helix_lsp::lsp::CodeActionOrCommand::CodeAction(code_action)
+                        if code_action.disabled.is_none() =>
+                    {
+                        available_code_actions.push(CodeActionItem {
+                            code_action,
+                            language_server_id,
+                        });
+                    }
+                    helix_lsp::lsp::CodeActionOrCommand::CodeAction(_)
+                    | helix_lsp::lsp::CodeActionOrCommand::Command(_) => {}
+                }
             }
         }
     }
-
-    let actions = actions
-        .into_iter()
-        .filter_map(|(id, a)| match a {
-            helix_lsp::lsp::CodeActionOrCommand::CodeAction(a) => {
-                a.disabled.is_none().then(|| (id, a))
-            }
-            helix_lsp::lsp::CodeActionOrCommand::Command(_) => None,
-        })
-        .collect::<Vec<_>>();
 
     let cb: job::Callback = Callback::Editor(Box::new(move |editor| {
         if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
@@ -3843,7 +3851,7 @@ async fn make_caos_callback(
 
         let doc = doc_mut!(editor, &doc_id);
 
-        if actions.is_empty() {
+        if available_code_actions.is_empty() {
             return;
         }
 
@@ -3854,30 +3862,41 @@ async fn make_caos_callback(
 
         let enabled_code_actions = &editor.config.load().lsp.code_actions_on_save;
 
-        for (ls_id, action) in actions {
-            if action
+        for CodeActionItem {
+            code_action,
+            language_server_id,
+        } in available_code_actions
+        {
+            if code_action
                 .kind
                 .as_ref()
                 .is_none_or(|k| !enabled_code_actions.iter().any(|a| k.as_str() == a))
             {
-                log::debug!("Skipping disabled code action");
+                log::debug!(
+                    "Skipping disabled code action {}",
+                    code_action
+                        .kind
+                        .as_ref()
+                        .map(|ca| ca.as_str())
+                        .unwrap_or("[unknown]")
+                );
                 continue;
             }
 
-            let Some(language_server) = editor.language_server_by_id(ls_id) else {
+            let Some(language_server) = editor.language_server_by_id(language_server_id) else {
                 editor.set_error("Language Server disappeared");
                 continue;
             };
 
             let mut resolved_code_action = None;
-            if action.edit.is_none() || action.command.is_none() {
-                if let Some(future) = language_server.resolve_code_action(&action) {
+            if code_action.edit.is_none() || code_action.command.is_none() {
+                if let Some(future) = language_server.resolve_code_action(&code_action) {
                     if let Ok(action) = helix_lsp::block_on(future) {
                         resolved_code_action = Some(action);
                     }
                 }
             }
-            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&action);
+            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&code_action);
 
             if let Some(ref workspace_edit) = resolved_code_action.edit {
                 let _ =
@@ -3886,8 +3905,8 @@ async fn make_caos_callback(
 
             // if code action provides both edit and command first the edit
             // should be applied and then the command
-            if let Some(command) = &action.command {
-                editor.execute_lsp_command(command.clone(), ls_id);
+            if let Some(command) = &code_action.command {
+                editor.execute_lsp_command(command.clone(), language_server_id);
             }
         }
     }));
