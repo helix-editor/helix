@@ -18,6 +18,14 @@ pub struct Cell {
 }
 
 impl Cell {
+    #[must_use]
+    pub fn new(symbol: &str) -> Self {
+        Self {
+            symbol: symbol.to_owned(),
+            ..Default::default()
+        }
+    }
+
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
@@ -707,8 +715,8 @@ impl Buffer {
     /// Updates: `0: a, 1: コ` (double width symbol at index 1 - skip index 2)
     /// ```
     pub fn diff<'a>(&self, other: &'a Buffer) -> Vec<(u16, u16, &'a Cell)> {
-        let previous_buffer = self.content.as_slice();
-        let next_buffer = other.content.as_slice();
+        let prev = self.content.as_slice();
+        let next = other.content.as_slice();
         let width = self.area.width;
 
         let mut updates: Vec<(u16, u16, &Cell)> = vec![];
@@ -717,11 +725,49 @@ impl Buffer {
         // Cells from the current buffer to skip due to preceding multi-width characters taking their
         // place (the skipped cells should be blank anyway):
         let mut to_skip: usize = 0;
-        for (i, (current, previous)) in next_buffer.iter().zip(previous_buffer.iter()).enumerate() {
+
+        let mut x: u16 = 0;
+        let mut y: u16 = 0;
+
+        let mut i = 0;
+
+        let len = std::cmp::min(next.len(), prev.len());
+
+        while i < len {
+            // PERF: Fast-Path
+            // In typical text-editing scenarios (e.g., typing, cursor navigation, scrolling),
+            // the vast majority of terminal screen cells remain static frame-over-frame.
+            //
+            // This inner loop acts as a filter to prevent doing more expensive operations,
+            // such as potential allocations and calls to `width`, unless absolutely necessary.
+            //
+            // NOTE:
+            // This cuts partial diffing times by ~50% at the cost of a ~30% regression
+            // during total redraws (e.g., changing color themes).
+            while i < len && to_skip == 0 && invalidated == 0 && next[i] == prev[i] {
+                x += 1;
+                if x >= width {
+                    x = 0;
+                    y += 1;
+                }
+                i += 1;
+            }
+
+            if i >= len {
+                break;
+            }
+
+            let current = &next[i];
+            let previous = &prev[i];
+
             if to_skip == 0 && (invalidated > 0 || current != previous) {
-                let x = (i % width as usize) as u16;
-                let y = (i / width as usize) as u16;
-                updates.push((x, y, &next_buffer[i]));
+                updates.push((x, y, current));
+            }
+
+            x += 1;
+            if x >= width {
+                x = 0;
+                y += 1;
             }
 
             let current_width = current.symbol.width();
@@ -729,7 +775,10 @@ impl Buffer {
 
             let affected_width = std::cmp::max(current_width, previous.symbol.width());
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
+
+            i += 1;
         }
+
         updates
     }
 }
