@@ -106,6 +106,7 @@
   "%"
   "%="
   ":"
+  ".." ; range, and C# 12 collection-expression spread (`..rest`)
 ] @operator
 
 [
@@ -197,6 +198,8 @@
 ;; Attribute
 
 (attribute name: (identifier) @attribute)
+; Named attribute argument `[Attr(Name = value)]`.
+(attribute_argument name: (identifier) @variable.other.member)
 
 ;; Parameters
 

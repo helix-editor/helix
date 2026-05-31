@@ -796,7 +796,7 @@ args = { processId = "{0}" }
 
 [[grammar]]
 name = "c-sharp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "b5eb5742f6a7e9438bee22ce8026d6b927be2cd7" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-c-sharp", rev = "cac6d5fb595f5811a076336682d5d595ac1c9e85" }
 
 [[language]]
 name = "c3"
