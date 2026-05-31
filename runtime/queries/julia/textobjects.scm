@@ -26,7 +26,7 @@
 
 (block_comment)+ @comment.around
 
-(_expression (macro_identifier
+(macrocall_expression (macro_identifier
     (identifier) @_name
     (#match? @_name "^(test|test_throws|test_logs|inferred|test_deprecated|test_warn|test_nowarn|test_broken|test_skip)$")
   )
