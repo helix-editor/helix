@@ -5495,3 +5495,16 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "concerto"
 source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "920ba23ea93af56b19dfc38fcddf80b3ddc62685" }
+
+[[language]]
+name = "batch"
+scope = "source.batch"
+injection-regex = "(cmd|bat(ch)?)"
+file-types = ["bat", "cmd", "btm"]
+indent = { tab-width = 2, unit = "  " }
+comment-tokens = ["REM", "::"]
+
+[[grammar]]
+name = "batch"
+source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
