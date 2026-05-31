@@ -2103,7 +2103,7 @@ word-completion.trigger-length = 4
 
 [[grammar]]
 name = "markdown"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "2dfd57f547f06ca5631a80f601e129d73fc8e9f0", subpath = "tree-sitter-markdown" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "f969cd3ae3f9fbd4e43205431d0ae286014c05b5", subpath = "tree-sitter-markdown" }
 
 [[language]]
 name = "markdown-rustdoc"
@@ -2123,7 +2123,7 @@ grammar = "markdown_inline"
 
 [[grammar]]
 name = "markdown_inline"
-source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "2dfd57f547f06ca5631a80f601e129d73fc8e9f0", subpath = "tree-sitter-markdown-inline" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "f969cd3ae3f9fbd4e43205431d0ae286014c05b5", subpath = "tree-sitter-markdown-inline" }
 
 [[language]]
 name = "djot"
