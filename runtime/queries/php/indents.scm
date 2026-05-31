@@ -9,6 +9,7 @@
   (expression_statement)
   (switch_block)
   (anonymous_function_use_clause)
+  (property_hook_list)
 ] @indent
 
 [

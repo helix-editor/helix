@@ -1,5 +1,5 @@
 (php_tag) @tag
-"?>" @tag
+(php_end_tag) @tag
 
 ; Variables
 
@@ -45,14 +45,15 @@
 (namespace_definition
   name: (namespace_name (name) @namespace))
 
-(namespace_name_as_prefix 
-  (namespace_name (name) @namespace))
+(qualified_name
+  prefix: (namespace_name (name) @namespace))
 
 (namespace_use_clause
   [ (name) @namespace
     (qualified_name (name) @type) ])
 
-(namespace_aliasing_clause (name) @namespace)
+(namespace_use_clause
+  alias: (name) @namespace)
 
 (class_interface_clause
   [(name) @type
@@ -114,6 +115,10 @@
 
 (argument
     (name) @variable.parameter)
+
+; Property hooks (PHP 8.4): the `get`/`set` accessor name parses as a plain
+; `name`; anchor to the first child so names inside the hook body aren't caught.
+(property_hook . (name) @keyword)
 
 ; Member
 
@@ -251,7 +256,7 @@
 
 [
   (php_tag)
-  "?>"
+  (php_end_tag)
   "("
   ")"
   "["

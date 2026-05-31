@@ -1,5 +1,5 @@
 (php_tag) @tag
-"?>" @tag
+(php_end_tag) @tag
 
 ; Variables
 
@@ -45,6 +45,10 @@
 (function_definition
   name: (name) @function)
 
+; Property hooks (PHP 8.4): `get`/`set` parse as a plain `name`; anchor to the
+; first child so names in the hook body aren't caught.
+(property_hook . (name) @keyword)
+
 ; Member
 
 (property_element
@@ -58,7 +62,7 @@
 ; Basic tokens
 [
   (string)
-  (string_value)
+  (string_content)
   (encapsed_string)
   (heredoc)
   (heredoc_body)
