@@ -1,17 +1,13 @@
-; Indentation queries for helix
 [
-  (function_expression)
-  (array_literal)
-  (dictionary_literal)
-  (selection_statement)
-  (iteration_statement)
+  (if_condition)
+  (foreach_command)
+  (list)
+  (dictionaries)
 ] @indent
 
-; question - what about else, elif
 [
-  ")"
   "]"
   "}"
-  (endif)
-  (endforeach)
+  "endif"
+  "endforeach"
 ] @outdent

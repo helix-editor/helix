@@ -417,7 +417,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "toml"
-source = { git = "https://github.com/ikatyang/tree-sitter-toml", rev = "7cff70bbcbbc62001b465603ca1ea88edd668704" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-toml", rev = "64b56832c2cffe41758f28e05c756a3a98d16f41" }
 
 [[language]]
 name = "awk"
@@ -2778,7 +2778,7 @@ language-servers = ["mesonlsp"]
 
 [[grammar]]
 name = "meson"
-source = { git = "https://github.com/staysail/tree-sitter-meson", rev = "32a83e8f200c347232fa795636cfe60dde22957a" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-meson", rev = "c84f3540624b81fc44067030afce2ff78d6ede05" }
 
 [[language]]
 name = "sshclientconfig"
@@ -2977,7 +2977,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ungrammar"
-source = { git = "https://github.com/Philipp-M/tree-sitter-ungrammar", rev = "a7e104629cff5a8b7367187610631e8f5eb7c6ea" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-ungrammar", rev = "debd26fed283d80456ebafa33a06957b0c52e451" }
 
 [[language]]
 name = "dot"
