@@ -3116,7 +3116,7 @@ language-servers = [ "jsonnet-language-server" ]
 
 [[grammar]]
 name = "jsonnet"
-source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "0475a5017ad7dc84845d1d33187f2321abcb261d" }
+source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "ddd075f1939aed8147b7aa67f042eda3fce22790" }
 
 [[language]]
 name = "ada"
