@@ -3834,11 +3834,6 @@ async fn make_caos_callback(
             }
             helix_lsp::lsp::CodeActionOrCommand::Command(_) => None,
         })
-        .filter(|(_, a)| {
-            a.kind
-                .as_ref()
-                .is_some_and(|k| k == &CodeActionKind::SOURCE_ORGANIZE_IMPORTS)
-        })
         .collect::<Vec<_>>();
 
     let cb: job::Callback = Callback::Editor(Box::new(move |editor| {
@@ -3857,7 +3852,18 @@ async fn make_caos_callback(
             return;
         }
 
+        let enabled_code_actions = &editor.config.load().lsp.code_actions_on_save;
+
         for (ls_id, action) in actions {
+            if action
+                .kind
+                .as_ref()
+                .is_none_or(|k| !enabled_code_actions.iter().any(|a| k.as_str() == a))
+            {
+                log::debug!("Skipping disabled code action");
+                continue;
+            }
+
             let Some(language_server) = editor.language_server_by_id(ls_id) else {
                 editor.set_error("Language Server disappeared");
                 continue;

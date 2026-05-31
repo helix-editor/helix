@@ -20,7 +20,7 @@ use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::{Call, LanguageServerId};
+use helix_lsp::{lsp::CodeActionKind, Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -566,6 +566,8 @@ pub struct LspConfig {
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
+    /// Which code actions should be ran on save
+    pub code_actions_on_save: Vec<String>,
 }
 
 impl Default for LspConfig {
@@ -582,6 +584,9 @@ impl Default for LspConfig {
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
+            code_actions_on_save: vec![CodeActionKind::SOURCE_ORGANIZE_IMPORTS
+                .as_str()
+                .to_string()],
         }
     }
 }
