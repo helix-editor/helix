@@ -4,8 +4,9 @@ pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
-use futures_util::FutureExt;
+use futures_util::{stream::FuturesOrdered, FutureExt, StreamExt};
 use helix_event::status;
+use helix_lsp::{lsp::CodeActionKind, LanguageServerId};
 use helix_stdx::{
     path::{self, find_paths},
     rope::{self, RopeSliceExt},
@@ -3803,6 +3804,89 @@ async fn make_format_callback(
     }));
 
     Ok(call)
+}
+
+async fn make_caos_callback(
+    doc_id: DocumentId,
+    doc_version: i32,
+    view_id: ViewId,
+    mut lsps: FuturesOrdered<
+        impl Future<Output = helix_lsp::Result<Option<Vec<helix_lsp::lsp::CodeActionOrCommand>>>>,
+    >,
+    ids: Vec<LanguageServerId>,
+) -> anyhow::Result<job::Callback> {
+    let mut actions = vec![];
+    let mut ids = ids.into_iter();
+    while let Some(lsp) = lsps.next().await {
+        let id = ids.next().unwrap();
+        if let Ok(Some(code_actions)) = lsp {
+            for a in code_actions {
+                actions.push((id, a));
+            }
+        }
+    }
+
+    let actions = actions
+        .into_iter()
+        .filter_map(|(id, a)| match a {
+            helix_lsp::lsp::CodeActionOrCommand::CodeAction(a) => {
+                a.disabled.is_none().then(|| (id, a))
+            }
+            helix_lsp::lsp::CodeActionOrCommand::Command(_) => None,
+        })
+        .filter(|(_, a)| {
+            a.kind
+                .as_ref()
+                .is_some_and(|k| k == &CodeActionKind::SOURCE_ORGANIZE_IMPORTS)
+        })
+        .collect::<Vec<_>>();
+
+    let cb: job::Callback = Callback::Editor(Box::new(move |editor| {
+        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
+            return;
+        }
+
+        let doc = doc_mut!(editor, &doc_id);
+
+        if actions.is_empty() {
+            return;
+        }
+
+        if doc.version() != doc_version {
+            log::info!("Aborting applying code actions on save because the document changed");
+            return;
+        }
+
+        for (ls_id, action) in actions {
+            let Some(language_server) = editor.language_server_by_id(ls_id) else {
+                editor.set_error("Language Server disappeared");
+                continue;
+            };
+
+            let mut resolved_code_action = None;
+            if action.edit.is_none() || action.command.is_none() {
+                if let Some(future) = language_server.resolve_code_action(&action) {
+                    if let Ok(action) = helix_lsp::block_on(future) {
+                        resolved_code_action = Some(action);
+                    }
+                }
+            }
+            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&action);
+
+            if let Some(ref workspace_edit) = resolved_code_action.edit {
+                let _ =
+                    editor.apply_workspace_edit(language_server.offset_encoding(), workspace_edit);
+            }
+
+            // if code action provides both edit and command first the edit
+            // should be applied and then the command
+            if let Some(command) = &action.command {
+                editor.execute_lsp_command(command.clone(), ls_id);
+            }
+        }
+    }));
+
+    Ok(cb)
 }
 
 #[derive(PartialEq, Eq)]

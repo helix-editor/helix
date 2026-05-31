@@ -10,6 +10,9 @@ use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
+use helix_lsp::lsp::{CodeActionContext, CodeActionTriggerKind, Range};
+use helix_lsp::util::diagnostic_to_lsp_diagnostic;
+use helix_lsp::Position;
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -398,6 +401,55 @@ fn write_impl(
     doc.append_changes_to_history(view);
 
     let (view, doc) = current_ref!(cx.editor);
+
+    // TODO: cleanup
+
+    let mut seen_language_servers = HashSet::new();
+
+    let mut ids = vec![];
+    let mut lsps = FuturesOrdered::new();
+
+    for c in doc
+        .language_servers_with_feature(LanguageServerFeature::CodeAction)
+        .filter(|c| seen_language_servers.insert(c.id()))
+    {
+        let Some(res) = c.code_actions(
+            doc.identifier(),
+            Range::new(
+                Position::new(0, 0),
+                doc.position(view.id, c.offset_encoding()),
+            ),
+            CodeActionContext {
+                diagnostics: doc
+                    .diagnostics()
+                    .iter()
+                    .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, c.offset_encoding()))
+                    .collect(),
+                only: None,
+                trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
+            },
+        ) else {
+            continue;
+        };
+
+        ids.push(c.id());
+        lsps.push_back(res);
+    }
+
+    if !lsps.is_empty() {
+        jobs.add(
+            Job::with_callback(make_caos_callback(
+                doc.id(),
+                doc.version(),
+                view.id,
+                lsps,
+                ids,
+            ))
+            .wait_before_exiting(),
+        );
+        log::info!("Job added");
+    }
+
     let fmt = if config.auto_format && options.auto_format {
         doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
