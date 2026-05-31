@@ -212,7 +212,7 @@
   "break"
   "continue"
   "yield"
-  "from" ; the `from` of `yield from`
+  "yield from"
 ] @keyword.control.return
 
 [
