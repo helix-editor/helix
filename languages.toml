@@ -2699,7 +2699,7 @@ language-servers = [ "dts-lsp" ]
 
 [[grammar]]
 name = "devicetree"
-source = { git = "https://github.com/joelspadin/tree-sitter-devicetree", rev = "877adbfa0174d25894c40fa75ad52d4515a36368" }
+source = { git = "https://github.com/joelspadin/tree-sitter-devicetree", rev = "e78bf56f206cb47bee28a217423acb651e076848" }
 
 [[language]]
 name = "cairo"
