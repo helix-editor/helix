@@ -1865,7 +1865,7 @@ injection-regex = "cmake"
 
 [[grammar]]
 name = "cmake"
-source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "6e51463ef3052dd3b328322c22172eda093727ad" }
+source = { git = "https://github.com/uyha/tree-sitter-cmake", rev = "c7b2a71e7f8ecb167fad4c97227c838439280175" }
 
 [[language]]
 name = "make"
