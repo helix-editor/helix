@@ -2249,7 +2249,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "diff"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-diff", rev = "fd74c78fa88a20085dbc7bbeaba066f4d1692b63" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-diff", rev = "2520c3f934b3179bb540d23e0ef45f75304b5fed" }
 
 [[language]]
 name = "git-rebase"
