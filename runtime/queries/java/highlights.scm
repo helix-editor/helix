@@ -51,10 +51,23 @@
 (type_arguments
   (wildcard "?" @type.builtin))
 
+; Patterns (Java 21+): the record type name would otherwise be a @variable.
+(record_pattern . (identifier) @type)
+; `when` is contextual — only a guard inside a switch label, never a keyword
+; elsewhere — so scope it to the guard rather than the flat keyword list.
+(guard "when" @keyword.control.conditional)
+
 ; Variables
 
 ((identifier) @constant
  (#match? @constant "^_*[A-Z][A-Z\\d_]+$"))
+
+; Unnamed variable / pattern `_` (Java 22) — dim as unused, like the discard in
+; other languages. It is an (underscore_pattern) in `var _ = …` and a plain
+; identifier in record components / `case _`.
+(underscore_pattern) @comment.unused
+((identifier) @comment.unused
+ (#eq? @comment.unused "_"))
 
 (this) @variable.builtin
 
@@ -74,10 +87,12 @@
 
 (character_literal) @constant.character
 
-[
-  (string_literal)
-  (text_block)
-] @string
+; `string_literal` now also covers text blocks (`"""…"""`) and its fragments.
+(string_literal) @string
+(escape_sequence) @constant.character.escape
+; Interpolated expressions in string templates (a withdrawn preview) shouldn't
+; render as string; reset them rather than colour the whole literal.
+(string_interpolation) @none
 
 [
   (true)

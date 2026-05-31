@@ -1492,7 +1492,7 @@ block-comment-tokens = { start = "/*", end = "*/" }
 
 [[grammar]]
 name = "java"
-source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "09d650def6cdf7f479f4b78f595e9ef5b58ce31e" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-java", rev = "e10607b45ff745f5f876bfa3e94fbcc6b44bdc11" }
 
 [[language]]
 name = "smali"
