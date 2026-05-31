@@ -13,7 +13,12 @@ when contributing to Helix. You may place these under your local runtime
 directory (`~/.config/helix/runtime` in Linux for example) for the sake of
 testing.
 
-The following [captures][tree-sitter-captures] are recognized:
+## Captures
+
+### `@definition.*`
+
+Marks a node as a symbol definition. The following definition captures are
+recognized:
 
 | Capture name           |
 |---                     |
@@ -29,9 +34,28 @@ The following [captures][tree-sitter-captures] are recognized:
 | `definition.struct`    |
 | `definition.type`      |
 
+### `@name`
+
+Marks the name identifier node within a match. `@definition.*` should capture
+the entire definition node, and `@name` should capture the name identifier
+within that same match:
+
+```scm
+(function_definition
+  name: (identifier) @name) @definition.function
+
+(class_definition
+  name: (identifier) @name) @definition.class
+```
+
+### `@reference.*`
+
+Marks a node as a call site or type reference. These are used by workspace
+symbol search to locate usages. `@reference.call` and `@reference.class` are
+the common variants.
+
 [Example query files][example-queries] can be found in the Helix GitHub
 repository.
 
 [Code Navigation Systems]: https://tree-sitter.github.io/tree-sitter/4-code-navigation.html
-[tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/index.html
 [example-queries]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&type=Code
