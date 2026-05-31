@@ -22,4 +22,4 @@
 
 ; Field names in struct literals are identifier rather than field_identifier,
 ; these cannot be locals.
-(keyed_element . (literal_element (identifier) @variable.other.member))
+(keyed_element . (literal_element (identifier) @_))
