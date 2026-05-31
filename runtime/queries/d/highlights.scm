@@ -204,6 +204,9 @@
     (ulong)
     (real)
     (double)
+    (noreturn)
+    (size_t)
+    (ptrdiff_t)
 ] @type.builtin
 
 [
@@ -219,10 +222,18 @@
 
 (identifier) @variable
 
+; Named arguments `foo(name: value)` (D named-args proposal).
+(named_argument
+  (identifier) @variable.parameter)
+
 (label (identifier) @label)
 (goto_statement (goto) @keyword (identifier) @label)
 
 (string_literal) @string
+(escape_sequence) @constant.character.escape
+; Interpolated strings `i"…$(expr)…"`: reset the embedded expression so it isn't
+; coloured as part of the string.
+(interpolation_expression) @none
 (int_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
 (char_literal) @constant.character
