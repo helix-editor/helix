@@ -2150,7 +2150,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "dart"
-source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "e398400a0b785af3cf571f5a57eccab242f0cdf9" }
+source = { git = "https://github.com/UserNobody14/tree-sitter-dart", rev = "a9bdfa3db2fbc9b9f12c93450d04a671f33a5102" }
 
 [[language]]
 name = "scala"
