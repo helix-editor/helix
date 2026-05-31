@@ -12,9 +12,12 @@
   (type_case)
   (communication_case)
   (argument_list)
+  (parameter_list)
   (field_declaration_list)
   (block)
   (var_declaration)
+  (selector_expression)
+  (binary_expression)
 ] @indent
 
 [
@@ -44,3 +47,9 @@
 (ERROR "{") @indent @extend
 (ERROR "(") @indent
 (ERROR "[") @indent
+
+; Labels (`Loop:`, `done:`) are de-indented one level by gofmt.
+; Capturing the label_name (a child, not an ancestor of the labeled body)
+; outdents only the label line.
+(labeled_statement
+  (label_name) @outdent)
