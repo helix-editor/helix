@@ -13,3 +13,6 @@
 
 (enum_specifier
   name: (type_identifier) @definition.enum)
+
+(union_specifier
+  name: (type_identifier) @definition.struct)

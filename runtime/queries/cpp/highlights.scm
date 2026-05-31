@@ -13,6 +13,10 @@
 (namespace_definition name: (namespace_identifier) @namespace)
 (namespace_identifier) @namespace
 
+; Type-introducing declarations
+(concept_definition name: (identifier) @type.definition)
+(alias_declaration name: (type_identifier) @type.definition)
+
 (auto) @type.builtin
 
 (ref_qualifier ["&" "&&"] @type.builtin)
