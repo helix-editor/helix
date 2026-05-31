@@ -434,6 +434,8 @@ impl<'a> TextRenderer<'a> {
         if (y as usize) < self.offset.row {
             return;
         }
+        // The substraction and the cast are safe, because `self.offset.row` is less than y
+        let y = y - self.offset.row as u16;
         self.surface
             .set_stringn(x, y + self.viewport.y, string, width, style);
     }
