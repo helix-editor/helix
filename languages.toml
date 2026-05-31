@@ -3880,7 +3880,7 @@ language-servers = ["fsharp-ls"]
 
 [[grammar]]
 name = "fsharp"
-source = { git = "https://github.com/ionide/tree-sitter-fsharp", rev = "996ea9982bd4e490029f84682016b6793940113b" }
+source = { git = "https://github.com/ionide/tree-sitter-fsharp", rev = "cfc12456941da47b64b7a3994f8dccdc9fe7d2c9", subpath = "fsharp" }
 
 [[language]]
 name = "t32"
