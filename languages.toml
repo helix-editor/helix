@@ -1336,7 +1336,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "bash"
-source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "487734f87fd87118028a65a4599352fa99c9cde8" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-bash", rev = "a06c2e4415e9bc0346c6b86d401879ffb44058f7" }
 
 [[language]]
 name = "php"
