@@ -5060,11 +5060,11 @@ name = "robots.txt"
 scope = "source.robots.txt"
 file-types = [{ glob = "robots.txt" }]
 injection-regex = "robots[\\.-]txt"
-grammar = "robots"
+grammar = "robots-txt"
 comment-token = "#"
 
 [[grammar]]
-name = "robots"
+name = "robots-txt"
 source = { git = "https://github.com/opa-oz/tree-sitter-robots-txt", rev = "0c066107e3548de79316a6a4ec771e2f7cf7c468" }
 
 [[language]]
