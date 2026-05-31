@@ -185,6 +185,16 @@
   "init"
   "with"
   "let"
+  ;; LINQ query clauses
+  "group"
+  "by"
+  "into"
+  "join"
+  "on"
+  "equals"
+  "orderby"
+  "ascending"
+  "descending"
 ] @keyword
 
 [
@@ -194,6 +204,32 @@
   "switch"
   "when"
 ] @keyword.control.conditional
+
+;; Pattern matching combinators (`x is not null`, `> 0 and < 10`)
+
+[
+  "and"
+  "or"
+  "not"
+] @keyword.operator
+
+;; Preprocessor directives
+
+[
+  "#define"
+  "#undef"
+  "#if"
+  "#elif"
+  "#else"
+  "#endif"
+  "#region"
+  "#endregion"
+  "#error"
+  "#warning"
+  "#line"
+  "#nullable"
+  "#pragma"
+] @keyword.directive
 
 ;; Attribute
 

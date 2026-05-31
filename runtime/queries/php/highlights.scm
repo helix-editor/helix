@@ -165,10 +165,11 @@
   "global" 
   "implements" 
   "insteadof" 
-  "new" 
-  "private" 
-  "protected" 
-  "public" 
+  "new"
+  "print"
+  "private"
+  "protected"
+  "public"
   "clone"
   "unset"
 ] @keyword
@@ -207,10 +208,11 @@
 ] @keyword.control.import
 
 [
-  "return" 
-  "break" 
-  "continue" 
+  "return"
+  "break"
+  "continue"
   "yield"
+  "from" ; the `from` of `yield from`
 ] @keyword.control.return
 
 [
