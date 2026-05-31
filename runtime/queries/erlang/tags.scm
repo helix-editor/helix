@@ -1,18 +1,19 @@
 ; Modules
-(attribute
+((attribute
   name: (atom) @_attr
-  (arguments (atom) @definition.module)
+  (arguments (atom) @name)) @definition.module
  (#eq? @_attr "module"))
 
 ; Constants
 ((attribute
     name: (atom) @_attr
-    (arguments
-      .
-      [
-        (atom) @definition.constant
-        (call function: [(variable) (atom)] @definition.macro)
-      ]))
+    (arguments . (atom) @name)) @definition.constant
+ (#eq? @_attr "define"))
+
+; Macros (with arguments)
+((attribute
+    name: (atom) @_attr
+    (arguments . (call function: [(variable) (atom)] @name))) @definition.macro
  (#eq? @_attr "define"))
 
 ; Record definitions
@@ -20,37 +21,37 @@
    name: (atom) @_attr
    (arguments
      .
-     (atom) @definition.struct))
+     (atom) @name)) @definition.struct
  (#eq? @_attr "record"))
 
-(attribute
+((attribute
   name: (atom) @_attr
   (arguments
     .
     [(atom) (macro)] ; Record name
     [
       ; Just the field name:
-      (tuple (atom)? @definition.field)
+      (tuple (atom)? @name)
       ; Field name, type OR default:
       (tuple
         (binary_operator
-          left: (atom) @definition.field
+          left: (atom) @name
           operator: ["=" "::"]))
       ; Field name, type AND default:
       (tuple
         (binary_operator
           left:
             (binary_operator
-              left: (atom) @definition.field
+              left: (atom) @name
               operator: "=")
           operator: "::"))
-    ])
+    ])) @definition.field
  (#eq? @_attr "record"))
 
 ; Function specs
 ((attribute
     name: (atom) @_attr
-    (stab_clause name: (atom) @definition.interface))
+    (stab_clause name: (atom) @name)) @definition.interface
  (#any-of? @_attr "spec" "callback"))
 
 ; Types
@@ -59,11 +60,11 @@
     (arguments
       (binary_operator
         left: [
-          (atom) @definition.type
-          (call function: (atom) @definition.type)
+          (atom) @name
+          (call function: (atom) @name)
         ]
-        operator: "::")))
+        operator: "::"))) @definition.type
  (#any-of? @_attr "type" "opaque"))
 
 ; Functions
-(function_clause name: (atom) @definition.function)
+(function_clause name: (atom) @name) @definition.function
