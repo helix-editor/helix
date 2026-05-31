@@ -1551,7 +1551,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "ocaml" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "59e2b9f63526db8b95cf59dde6b2402ec2e48b52", subpath = "grammars/ocaml" }
 
 [[language]]
 name = "ocaml-interface"
@@ -1571,7 +1571,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml-interface"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "interface" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "59e2b9f63526db8b95cf59dde6b2402ec2e48b52", subpath = "grammars/interface" }
 
 [[language]]
 name = "dune"
