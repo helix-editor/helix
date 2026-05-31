@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-89a8abce.js";
+            window.path_to_searchindex_js = "../searchindex-663199a9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-887400e0.js"></script>
+        <script src="../toc-fb138b52.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -193,7 +193,10 @@ file which pattern matches interesting nodes from syntax trees.</p>
 when contributing to Helix. You may place these under your local runtime
 directory (<code>~/.config/helix/runtime</code> in Linux for example) for the sake of
 testing.</p>
-<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/index.html">captures</a> are recognized:</p>
+<h2 id="captures"><a class="header" href="#captures">Captures</a></h2>
+<h3 id="definition"><a class="header" href="#definition"><code>@definition.*</code></a></h3>
+<p>Marks a node as a symbol definition. The following definition captures are
+recognized:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -214,6 +217,20 @@ testing.</p>
 </tbody>
 </table>
 </div>
+<h3 id="name"><a class="header" href="#name"><code>@name</code></a></h3>
+<p>Marks the name identifier node within a match. <code>@definition.*</code> should capture
+the entire definition node, and <code>@name</code> should capture the name identifier
+within that same match:</p>
+<pre><code class="language-scm">(function_definition
+  name: (identifier) @name) @definition.function
+
+(class_definition
+  name: (identifier) @name) @definition.class
+</code></pre>
+<h3 id="reference"><a class="header" href="#reference"><code>@reference.*</code></a></h3>
+<p>Marks a node as a call site or type reference. These are used by workspace
+symbol search to locate usages. <code>@reference.call</code> and <code>@reference.class</code> are
+the common variants.</p>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&amp;type=Code">Example query files</a> can be found in the Helix GitHub
 repository.</p>
 

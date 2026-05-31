@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-89a8abce.js";
+            window.path_to_searchindex_js = "searchindex-663199a9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-887400e0.js"></script>
+        <script src="toc-fb138b52.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -3939,6 +3939,74 @@ remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</co
 <li>If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable <code>HELIX_RUNTIME</code> is set to the location of the <code>runtime</code> folder you’re developing in.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="adding-locals-queries-1"><a href="#adding-locals-queries-1" class="header">Adding locals queries</a></h1>
+<h2 id="adding-locals-queries"><a class="header" href="#adding-locals-queries">Adding Locals Queries</a></h2>
+<p><code>locals.scm</code> queries teach Helix about variable scopes and definitions so that
+local variables can be highlighted distinctly from global ones. When a
+<code>@local.reference</code> identifier is resolved to a <code>@local.definition</code>, it inherits
+the highlight class of that definition rather than the class assigned by
+<code>highlights.scm</code>.</p>
+<p>Query files should be placed in <code>runtime/queries/{language}/locals.scm</code> when
+contributing to Helix.</p>
+<h2 id="captures"><a class="header" href="#captures">Captures</a></h2>
+<h3 id="localscope"><a class="header" href="#localscope"><code>@local.scope</code></a></h3>
+<p>Marks a node as a scope boundary. Definitions are only visible to references
+that appear inside the same scope or a nested one. Typical scope nodes are
+function bodies and blocks.</p>
+<pre><code class="language-scm">[
+  (function_definition)
+  (block)
+] @local.scope
+</code></pre>
+<h3 id="localdefinition"><a class="header" href="#localdefinition"><code>@local.definition.*</code></a></h3>
+<p>Marks a name node as introducing a local symbol. The suffix after
+<code>@local.definition.</code> becomes the highlight class applied to any reference that
+resolves to this definition. For example, <code>@local.definition.variable.parameter</code>
+causes matching references to be highlighted as <code>variable.parameter</code>.</p>
+<pre><code class="language-scm">(function_item
+  (parameters
+    (parameter
+      pattern: (identifier) @local.definition.variable.parameter)))
+</code></pre>
+<p>Common suffixes mirror the highlight classes in <code>highlights.scm</code>:
+<code>variable</code>, <code>variable.parameter</code>, <code>variable.builtin</code>, <code>variable.mutable</code>,
+<code>function</code>, <code>namespace</code>, <code>type</code>, <code>constant</code>, etc.</p>
+<h3 id="localreference"><a class="header" href="#localreference"><code>@local.reference</code></a></h3>
+<p>Marks an identifier node as a potential reference to a local definition.
+Helix searches enclosing scopes for a matching definition and, if found,
+highlights the reference with that definition’s class instead.</p>
+<pre><code class="language-scm">(identifier) @local.reference
+</code></pre>
+<h2 id="discard-captures"><a class="header" href="#discard-captures">Discard captures</a></h2>
+<p>Any capture in <code>locals.scm</code> that is not <code>@local.scope</code>, <code>@local.reference</code>, or
+<code>@local.definition.*</code> acts as a discard. It prevents a <code>@local.reference</code> from
+being resolved at that node without affecting the <code>highlights.scm</code> result. This
+is useful for identifier nodes that look like references but should not be
+treated as variable references, for example keyword argument names or struct
+field names in struct literals.</p>
+<pre><code class="language-scm">; Keyword argument names in a call are not variable references.
+(keyword_argument
+  name: (identifier) @_)
+</code></pre>
+<p>Later patterns in a query file have higher precedence than earlier ones. A
+discard pattern must appear after the <code>@local.reference</code> pattern it is intended
+to override. Placing it later ensures it takes precedence and cancels the
+reference resolution for nodes it matches.</p>
+<p>The convention is to use a capture name beginning with an underscore (e.g. <code>@_</code>,
+<code>@_keyword</code>) to make the discard intent clear, but any non-<code>@local.*</code> name works.</p>
+<h2 id="how-definitions-and-references-are-matched"><a class="header" href="#how-definitions-and-references-are-matched">How definitions and references are matched</a></h2>
+<p>Helix matches references to definitions by comparing the text of the reference
+node against the text of definitions visible from the current scope. Definitions
+in inner scopes shadow those in outer scopes. If no definition is found the
+reference is left with its <code>highlights.scm</code> highlight.</p>
+<h2 id="relationship-with-highlightsscm"><a class="header" href="#relationship-with-highlightsscm">Relationship with <code>highlights.scm</code></a></h2>
+<p>The locals system runs alongside <code>highlights.scm</code>, not instead of it.
+<code>highlights.scm</code> always determines the baseline highlight for a node.
+<code>locals.scm</code> can override that highlight only when a <code>@local.reference</code>
+successfully resolves to a <code>@local.definition</code>, and only for that specific
+resolution. Non-<code>@local.*</code> captures in <code>locals.scm</code> (i.e. discards) have no
+effect on <code>highlights.scm</code> results.</p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="adding-textobject-queries-1"><a href="#adding-textobject-queries-1" class="header">Adding textobject queries</a></h1>
 <h2 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding textobject queries</a></h2>
 <p>Helix supports textobjects that are language specific, such as functions, classes, etc.
@@ -4410,7 +4478,10 @@ file which pattern matches interesting nodes from syntax trees.</p>
 when contributing to Helix. You may place these under your local runtime
 directory (<code>~/.config/helix/runtime</code> in Linux for example) for the sake of
 testing.</p>
-<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/index.html">captures</a> are recognized:</p>
+<h2 id="captures-1"><a class="header" href="#captures-1">Captures</a></h2>
+<h3 id="definition"><a class="header" href="#definition"><code>@definition.*</code></a></h3>
+<p>Marks a node as a symbol definition. The following definition captures are
+recognized:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -4431,6 +4502,20 @@ testing.</p>
 </tbody>
 </table>
 </div>
+<h3 id="name"><a class="header" href="#name"><code>@name</code></a></h3>
+<p>Marks the name identifier node within a match. <code>@definition.*</code> should capture
+the entire definition node, and <code>@name</code> should capture the name identifier
+within that same match:</p>
+<pre><code class="language-scm">(function_definition
+  name: (identifier) @name) @definition.function
+
+(class_definition
+  name: (identifier) @name) @definition.class
+</code></pre>
+<h3 id="reference"><a class="header" href="#reference"><code>@reference.*</code></a></h3>
+<p>Marks a node as a call site or type reference. These are used by workspace
+symbol search to locate usages. <code>@reference.call</code> and <code>@reference.class</code> are
+the common variants.</p>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&amp;type=Code">Example query files</a> can be found in the Helix GitHub
 repository.</p>
 <div style="break-before: page; page-break-before: always;"></div>
