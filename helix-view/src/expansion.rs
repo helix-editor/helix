@@ -71,6 +71,7 @@ impl Variable {
         Self::SelectionLineEnd,
         Self::Clipboard,
         Self::Filename,
+        Self::FilenameRelative,
     ];
 
     pub const fn as_str(&self) -> &'static str {
