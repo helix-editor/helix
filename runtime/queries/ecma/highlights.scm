@@ -206,14 +206,14 @@
 ;--------------------------
 
 (call_expression
-  function: (identifier) @function)
+  function: (identifier) @function.call)
 
 (call_expression
   function: (member_expression
-    property: (property_identifier) @function.method))
+    property: (property_identifier) @function.method.call))
 (call_expression
   function: (member_expression
-    property: (private_property_identifier) @function.method.private))
+    property: (private_property_identifier) @function.method.private.call))
 
 ; Literals
 ;---------
