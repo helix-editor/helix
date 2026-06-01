@@ -444,12 +444,21 @@ fn write_impl(
     let (view, doc) = current_ref!(cx.editor);
 
     let code_actions = available_code_actions(doc);
-    if !code_actions.is_empty() {
-        let callback = make_code_action_callback(doc.id(), doc.version(), view.id, code_actions);
-        jobs.add(Job::with_callback(callback).wait_before_exiting());
-    }
 
-    let fmt = if config.auto_format && options.auto_format {
+    let job_scheduled = if !code_actions.is_empty() {
+        let callback = make_code_action_callback(
+            doc.id(),
+            doc.version(),
+            view.id,
+            path.map(Into::into),
+            options,
+            code_actions,
+        );
+
+        jobs.add(Job::with_callback(callback).wait_before_exiting());
+
+        Some(())
+    } else if config.auto_format && options.auto_format {
         doc.auto_format(cx.editor).map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -465,7 +474,7 @@ fn write_impl(
         None
     };
 
-    if fmt.is_none() {
+    if job_scheduled.is_none() {
         let id = doc.id();
         cx.editor.save(id, path, options.force)?;
     }

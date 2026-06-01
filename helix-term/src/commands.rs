@@ -3752,6 +3752,13 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     doc.apply(&transaction, view.id);
 }
 
+fn apply_format(doc: &mut Document, view: &mut View, scrolloff: usize, format: &Transaction) {
+    doc.apply(format, view.id);
+    doc.append_changes_to_history(view);
+    doc.detect_indent_and_line_ending();
+    view.ensure_cursor_in_view(doc, scrolloff);
+}
+
 // Creates an LspCallback that waits for formatting changes to be computed. When they're done,
 // it applies them, but only if the doc hasn't changed.
 //
@@ -3778,10 +3785,7 @@ async fn make_format_callback(
         match format {
             Ok(format) => {
                 if doc.version() == doc_version {
-                    doc.apply(&format, view.id);
-                    doc.append_changes_to_history(view);
-                    doc.detect_indent_and_line_ending();
-                    view.ensure_cursor_in_view(doc, scrolloff);
+                    apply_format(doc, view, scrolloff, &format);
                 } else {
                     log::info!("discarded formatting changes because the document changed");
                 }
@@ -3811,10 +3815,44 @@ struct CodeActionItem {
     language_server_id: LanguageServerId,
 }
 
+fn apply_code_actions(editor: &mut Editor, code_actions: Vec<CodeActionItem>) {
+    for CodeActionItem {
+        code_action,
+        language_server_id,
+    } in code_actions
+    {
+        let Some(language_server) = editor.language_server_by_id(language_server_id) else {
+            editor.set_error("Language Server disappeared");
+            continue;
+        };
+
+        let mut resolved_code_action = None;
+        if code_action.edit.is_none() || code_action.command.is_none() {
+            if let Some(future) = language_server.resolve_code_action(&code_action) {
+                if let Ok(action) = helix_lsp::block_on(future) {
+                    resolved_code_action = Some(action);
+                }
+            }
+        }
+        let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&code_action);
+
+        if let Some(ref workspace_edit) = resolved_code_action.edit {
+            let _ = editor.apply_workspace_edit(language_server.offset_encoding(), workspace_edit);
+        }
+
+        // if code action provides both edit and command first the edit
+        // should be applied and then the command
+        if let Some(command) = &code_action.command {
+            editor.execute_lsp_command(command.clone(), language_server_id);
+        }
+    }
+}
 async fn make_code_action_callback(
     doc_id: DocumentId,
     doc_version: i32,
     view_id: ViewId,
+    path: Option<PathBuf>,
+    options: WriteOptions,
     mut ls_responses: FuturesUnordered<
         impl Future<
             Output = (
@@ -3844,56 +3882,47 @@ async fn make_code_action_callback(
         }
     }
 
-    let cb: job::Callback = Callback::Editor(Box::new(move |editor| {
+    let call: job::Callback = Callback::Editor(Box::new(move |editor| {
         if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
             return;
         }
 
-        let doc = doc_mut!(editor, &doc_id);
+        if doc!(editor, &doc_id).version() == doc_version {
+            apply_code_actions(editor, available_code_actions);
 
-        if available_code_actions.is_empty() {
-            return;
-        }
+            let auto_format = editor.config().auto_format;
+            let scrolloff = editor.config().scrolloff;
 
-        if doc.version() != doc_version {
-            log::info!("Aborting applying code actions on save because the document changed");
-            return;
-        }
-
-        for CodeActionItem {
-            code_action,
-            language_server_id,
-        } in available_code_actions
-        {
-            let Some(language_server) = editor.language_server_by_id(language_server_id) else {
-                editor.set_error("Language Server disappeared");
-                continue;
+            let fmt = if auto_format && options.auto_format {
+                let doc = doc!(editor, &doc_id);
+                doc.format(editor)
+                    .map(|fmt| match helix_lsp::block_on(fmt) {
+                        Ok(fmt) => Some(fmt),
+                        Err(err) => {
+                            log::info!("failed to format '{}': {err}", doc.display_name());
+                            None
+                        }
+                    })
+            } else {
+                None
             };
 
-            let mut resolved_code_action = None;
-            if code_action.edit.is_none() || code_action.command.is_none() {
-                if let Some(future) = language_server.resolve_code_action(&code_action) {
-                    if let Ok(action) = helix_lsp::block_on(future) {
-                        resolved_code_action = Some(action);
-                    }
-                }
-            }
-            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&code_action);
+            if let Some(fmt) = fmt.flatten() {
+                let doc = doc_mut!(editor, &doc_id);
+                let view = view_mut!(editor, view_id);
 
-            if let Some(ref workspace_edit) = resolved_code_action.edit {
-                let _ =
-                    editor.apply_workspace_edit(language_server.offset_encoding(), workspace_edit);
+                apply_format(doc, view, scrolloff, &fmt);
             }
+        } else {
+            log::info!("Aborting applying code actions and formatting on save because the document changed");
+        }
 
-            // if code action provides both edit and command first the edit
-            // should be applied and then the command
-            if let Some(command) = &code_action.command {
-                editor.execute_lsp_command(command.clone(), language_server_id);
-            }
+        if let Err(err) = editor.save(doc_id, path, options.force) {
+            editor.set_error(format!("Error saving: {}", err));
         }
     }));
 
-    Ok(cb)
+    Ok(call)
 }
 
 #[derive(PartialEq, Eq)]
