@@ -14,7 +14,10 @@ use crate::{
 };
 
 use helix_core::{
-    conflict::{conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion},
+    conflict::{
+        conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion,
+        NO_HIGHLIGHT_PAIR,
+    },
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -723,6 +726,9 @@ impl EditorView {
             }
 
             let entry = cache.entry(region.start).or_default();
+            if entry.pair == NO_HIGHLIGHT_PAIR {
+                continue;
+            }
             let pair = entry.pair.min(region.num_refine_pairs().saturating_sub(1));
             let Some((left, right)) = conflict_pair_sections(region, pair) else {
                 continue;

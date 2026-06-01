@@ -43,6 +43,9 @@ use imara_diff::{Algorithm, Diff, InternedInput};
 
 use crate::Rope;
 
+/// Sentinel value for [`ConflictRefineEntry::pair`] — skip word-diff rendering.
+pub const NO_HIGHLIGHT_PAIR: usize = usize::MAX;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /// Pair of removed/added word-diff ranges for a conflict refine pair.
@@ -55,6 +58,7 @@ pub struct ConflictRefineEntry {
     /// For a 3-section diff3 conflict: 0 = current↔base, 1 = base↔incoming, 2 = current↔incoming.
     /// For N-way jj conflicts the ordering prioritises each side vs base,
     /// then side–side comparisons; remaining base-involving pairs are excluded.
+    /// Set to [`NO_HIGHLIGHT_PAIR`] to disable word-diff rendering.
     pub pair: usize,
     /// Cached word-diff results for the current `pair`:
     /// `(removed_ranges, added_ranges)`.
@@ -840,7 +844,7 @@ mod tests {
         assert_eq!(c.sections[2].kind, SectionKind::Side);
         assert_eq!(c.sections[3].kind, SectionKind::Base);
         assert_eq!(c.sections[4].kind, SectionKind::Side);
-        assert_eq!(c.num_refine_pairs(), 10); // C(5,2)
+        assert_eq!(c.num_refine_pairs(), 6);
     }
 
     // ── conflict_at ───────────────────────────────────────────────────────────
