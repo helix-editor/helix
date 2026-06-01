@@ -394,7 +394,6 @@ fn available_code_actions(
     doc.language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|x| seen.insert(x.id()))
         .filter_map(|client| {
-            let encoding = client.offset_encoding();
             let res = client.code_actions(
                 doc.identifier(),
                 Range::new(
@@ -405,9 +404,11 @@ fn available_code_actions(
                     diagnostics: doc
                         .diagnostics()
                         .iter()
-                        .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, encoding))
+                        .map(|diag| {
+                            diagnostic_to_lsp_diagnostic(doc.text(), diag, client.offset_encoding())
+                        })
                         .collect(),
-                    only: None,
+                    only: Some(doc.config.load().lsp.code_actions_on_save.clone()),
                     trigger_kind: Some(CodeActionTriggerKind::AUTOMATIC),
                 },
             )?;

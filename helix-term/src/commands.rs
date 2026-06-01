@@ -3860,29 +3860,11 @@ async fn make_code_action_callback(
             return;
         }
 
-        let enabled_code_actions = &editor.config.load().lsp.code_actions_on_save;
-
         for CodeActionItem {
             code_action,
             language_server_id,
         } in available_code_actions
         {
-            if code_action
-                .kind
-                .as_ref()
-                .is_none_or(|k| !enabled_code_actions.iter().any(|a| k.as_str() == a))
-            {
-                log::debug!(
-                    "Skipping disabled code action {}",
-                    code_action
-                        .kind
-                        .as_ref()
-                        .map(|ca| ca.as_str())
-                        .unwrap_or("[unknown]")
-                );
-                continue;
-            }
-
             let Some(language_server) = editor.language_server_by_id(language_server_id) else {
                 editor.set_error("Language Server disappeared");
                 continue;

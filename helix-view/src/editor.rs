@@ -566,8 +566,8 @@ pub struct LspConfig {
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
-    /// Which code actions should be ran on save
-    pub code_actions_on_save: Vec<String>,
+    /// Which code actions should be executed before saving
+    pub code_actions_on_save: Vec<CodeActionKind>,
 }
 
 impl Default for LspConfig {
@@ -584,9 +584,7 @@ impl Default for LspConfig {
             snippets: true,
             goto_reference_include_declaration: true,
             display_color_swatches: true,
-            code_actions_on_save: vec![CodeActionKind::SOURCE_ORGANIZE_IMPORTS
-                .as_str()
-                .to_string()],
+            code_actions_on_save: vec![CodeActionKind::SOURCE_ORGANIZE_IMPORTS],
         }
     }
 }
