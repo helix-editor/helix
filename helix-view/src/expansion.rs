@@ -48,6 +48,12 @@ pub enum Variable {
     SelectionLineStart,
     // The one-indexed line number of the end of the primary selection in the currently focused document.
     SelectionLineEnd,
+    // Clipboard content
+    Clipboard,
+    // Current filename
+    Filename,
+    // Current filename, relative
+    FilenameRelative,
 }
 
 impl Variable {
@@ -63,6 +69,8 @@ impl Variable {
         Self::Selection,
         Self::SelectionLineStart,
         Self::SelectionLineEnd,
+        Self::Clipboard,
+        Self::Filename,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -78,6 +86,9 @@ impl Variable {
             Self::Selection => "selection",
             Self::SelectionLineStart => "selection_line_start",
             Self::SelectionLineEnd => "selection_line_end",
+            Self::Clipboard => "clipboard",
+            Self::Filename => "filename",
+            Self::FilenameRelative => "relfilename",
         }
     }
 
@@ -94,6 +105,9 @@ impl Variable {
             "selection" => Some(Self::Selection),
             "selection_line_start" => Some(Self::SelectionLineStart),
             "selection_line_end" => Some(Self::SelectionLineEnd),
+            "clipboard" => Some(Self::Clipboard),
+            "filename" => Some(Self::Filename),
+            "relfilename" => Some(Self::FilenameRelative),
             _ => None,
         }
     }
@@ -303,5 +317,29 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             let end_line = doc.selection(view.id).primary().line_range(text).1;
             Ok(Cow::Owned((end_line + 1).to_string()))
         }
+        Variable::Clipboard => {
+            let content = match editor.registers.read('+', editor) {
+                Some(mut values) if values.len() > 0 => values
+                    .next()
+                    .unwrap_or(Cow::Owned("".to_string()))
+                    .into_owned(),
+                _ => "".to_string(),
+            };
+            Ok(Cow::Owned(content))
+        }
+        Variable::Filename => Ok(Cow::Owned(match editor.documents().next() {
+            Some(doc) => match doc.path() {
+                Some(path) => path.to_string_lossy().into_owned(),
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        })),
+        Variable::FilenameRelative => Ok(Cow::Owned(match editor.documents().next() {
+            Some(doc) => match doc.relative_path() {
+                Some(path) => path.to_string_lossy().into_owned(),
+                None => "".to_string(),
+            },
+            None => "".to_string(),
+        })),
     }
 }
