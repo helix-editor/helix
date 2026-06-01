@@ -1240,6 +1240,7 @@ file-types = [
   { glob = "Snapfile" },
   { glob = "Gymfile" },
   { glob = ".irbrc" },
+  { glob = ".simplecov" }, # https://github.com/simplecov-ruby/simplecov
 ]
 shebangs = ["ruby"]
 comment-token = "#"
