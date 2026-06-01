@@ -313,11 +313,11 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             // check the workspace path is actually a valid prefix for the absolute path
             // otherwise we might get weird results for files not in our CWD tree
             if abs_path[..workspace_path.len()] == workspace_path {
-                return Ok(std::borrow::Cow::Owned(
+                Ok(std::borrow::Cow::Owned(
                     abs_path[workspace_path.len() + 1..].into(), // if we're in-tree, cut off workspace dir plus an extra slash
-                ));
+                ))
             } else {
-                return Ok(std::borrow::Cow::Owned(abs_path)); // otherwise return abs path
+                Ok(std::borrow::Cow::Owned(abs_path)) // otherwise return abs path
             }
         }
         Variable::Language => Ok(match doc.language_name() {
