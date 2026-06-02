@@ -1,6 +1,6 @@
 //! Contents of a terminal screen. A [Buffer] is made up of [Cell]s.
 use crate::text::{Span, Spans};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
 use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
@@ -12,6 +12,8 @@ pub type Symbol = arrayvec::ArrayString<SYMBOL_CAPACITY>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell {
     pub symbol: Symbol,
+    /// Cached display width of `symbol` to avoid multiple recomputes in the hot path.
+    width: u8,
     pub fg: Color,
     pub bg: Color,
     pub underline_color: Color,
@@ -34,13 +36,39 @@ impl Cell {
             );
             self.symbol.push(REPLACEMENT_CHARACTER);
         }
+        self.width = self.symbol.width() as u8;
         self
+    }
+
+    /// Like `set_symbol`, but the caller has already computed the display width.
+    /// Used on the render hot path where the width is known.
+    pub(crate) fn set_symbol_with_width(&mut self, symbol: &str, width: u8) -> &mut Cell {
+        self.symbol.clear();
+        if self.symbol.try_push_str(symbol).is_err() {
+            debug_assert!(
+                symbol.len() > 28,
+                "Symbols can't exceed 28 bytes.\nTried to push {} (size in bytes: {})",
+                symbol,
+                symbol.len()
+            );
+            self.symbol.push(REPLACEMENT_CHARACTER);
+            self.width = REPLACEMENT_CHARACTER.width().unwrap_or(1) as u8;
+        } else {
+            self.width = width;
+        }
+        self
+    }
+
+    /// Display width (in terminal columns) of the cell's grapheme.
+    pub fn width(&self) -> usize {
+        self.width as usize
     }
 
     /// Set the cell's grapheme to a [char]
     pub fn set_char(&mut self, ch: char) -> &mut Cell {
         self.symbol.clear();
         self.symbol.push(ch);
+        self.width = ch.width().unwrap_or(0) as u8;
         self
     }
 
@@ -96,6 +124,7 @@ impl Default for Cell {
     fn default() -> Cell {
         Cell {
             symbol: Symbol::from(" ").unwrap(),
+            width: 1,
             fg: Color::Reset,
             bg: Color::Reset,
             underline_color: Color::Reset,
@@ -122,14 +151,10 @@ impl Default for Cell {
 /// buf[(0, 2)].set_symbol("x");
 /// assert_eq!(&*buf[(0, 2)].symbol, "x");
 /// buf.set_string(3, 0, "string", Style::default().fg(Color::Red).bg(Color::White));
-/// assert_eq!(buf[(5, 0)], Cell{
-///     symbol: Symbol::from("r").unwrap(),
-///     fg: Color::Red,
-///     bg: Color::White,
-///     underline_color: Color::Reset,
-///     underline_style: UnderlineStyle::Reset,
-///     modifier: Modifier::empty(),
-/// });
+/// let mut expected = Cell::default();
+/// expected.set_symbol("r");
+/// expected.set_style(Style::default().fg(Color::Red).bg(Color::White));
+/// assert_eq!(buf[(5, 0)], expected);
 /// buf[(5, 0)].set_char('x');
 /// assert_eq!(&*buf[(5, 0)].symbol, "x");
 /// ```
@@ -331,7 +356,7 @@ impl Buffer {
     pub fn set_grapheme(&mut self, x: u16, y: u16, grapheme: &str, width: usize, style: Style) {
         let index = self.index_of(x, y);
         let cell = &mut self.content[index];
-        cell.set_symbol(grapheme);
+        cell.set_symbol_with_width(grapheme, width as u8);
         cell.set_style(style);
         // Reset following cells if the grapheme spans multiple columns; they
         // would be hidden by the grapheme but must not carry stale content.
@@ -737,10 +762,10 @@ impl Buffer {
                 updates.push((x, y, &next_buffer[i]));
             }
 
-            let current_width = current.symbol.width();
+            let current_width = current.width();
             to_skip = current_width.saturating_sub(1);
 
-            let affected_width = std::cmp::max(current_width, previous.symbol.width());
+            let affected_width = std::cmp::max(current_width, previous.width());
             invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
         }
         updates
