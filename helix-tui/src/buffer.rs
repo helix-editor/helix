@@ -314,6 +314,26 @@ impl Buffer {
         self.set_string_truncated_at_end(x, y, string.as_ref(), width, style)
     }
 
+    /// Fast path: print a single grapheme of pre-computed width with no unicode
+    /// segmentation / width recomputation. Caller must guarantee the grapheme +
+    /// width fit inside the buffer area and that `width >= 1`.
+    ///
+    /// This is the per-cell render path; it is hot enough that we skip everything
+    /// `set_string_truncated_at_end` does (segmenting, calling `.width()`,
+    /// bounds-checking each grapheme).
+    #[inline]
+    pub fn set_grapheme(&mut self, x: u16, y: u16, grapheme: &str, width: usize, style: Style) {
+        let index = self.index_of(x, y);
+        let cell = &mut self.content[index];
+        cell.set_symbol(grapheme);
+        cell.set_style(style);
+        // Reset following cells if the grapheme spans multiple columns; they
+        // would be hidden by the grapheme but must not carry stale content.
+        for i in index + 1..index + width {
+            self.content[i].reset();
+        }
+    }
+
     /// Print at most the first `width` characters of a string if enough space is available
     /// until the end of the line.
     /// If `ellipsis` is true appends a `…` at the end of truncated lines.

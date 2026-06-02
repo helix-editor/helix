@@ -359,10 +359,11 @@ impl<'a> TextRenderer<'a> {
         let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
-            self.surface.set_string(
+            self.surface.set_grapheme(
                 self.viewport.x + (position.col - self.offset.col) as u16,
                 self.viewport.y + position.row as u16,
                 grapheme,
+                width,
                 style,
             );
         } else if cut_off_start != 0 && cut_off_start < width {
