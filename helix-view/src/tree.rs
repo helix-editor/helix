@@ -1,9 +1,11 @@
+use std::sync::Arc;
+use arc_swap::access::DynAccess;
+use crate::editor::Config;
 use crate::{graphics::Rect, View, ViewId};
 use slotmap::{SlotMap, SecondaryMap};
 
 // the dimensions are recomputed on window resize/tree change.
 //
-#[derive(Debug)]
 pub struct Tree {
     root: ViewId,
     // (container, index inside the container)
@@ -15,6 +17,22 @@ pub struct Tree {
 
     // used for traversals
     stack: Vec<(ViewId, Rect)>,
+
+    // used for expand_focused_split
+    config: Arc<dyn DynAccess<Config>>,
+}
+
+impl std::fmt::Debug for Tree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tree")
+            .field("root", &self.root)
+            .field("focus", &self.focus)
+            .field("area", &self.area)
+            .field("nodes", &self.nodes)
+            .field("stack", &self.stack)
+            // .field("config", &self.config)
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -84,7 +102,10 @@ impl Default for Container {
 }
 
 impl Tree {
-    pub fn new(area: Rect) -> Self {
+    pub fn new(
+        area: Rect,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
         let root = Node::container(Layout::Vertical);
 
         let mut nodes = SlotMap::with_key();
@@ -100,6 +121,7 @@ impl Tree {
             area,
             nodes,
             stack: Vec::new(),
+            config,
         }
     }
 
@@ -136,7 +158,7 @@ impl Tree {
         self.focus = node;
 
         // recalculate all the sizes
-        self.recalculate();
+        self.recalculate(self.config().expand_focused_split);
 
         node
     }
@@ -209,7 +231,7 @@ impl Tree {
         self.focus = node;
 
         // recalculate all the sizes
-        self.recalculate();
+        self.recalculate(self.config().expand_focused_split);
 
         node
     }
@@ -266,7 +288,7 @@ impl Tree {
             self.remove_or_replace(parent, Some(sibling));
         }
 
-        self.recalculate()
+        self.recalculate(self.config().expand_focused_split)
     }
 
     pub fn views(&self) -> impl Iterator<Item = (&View, bool)> {
@@ -346,7 +368,7 @@ impl Tree {
     pub fn resize(&mut self, area: Rect) -> bool {
         if self.area != area {
             self.area = area;
-            self.recalculate();
+            self.recalculate(self.config().expand_focused_split);
             return true;
         }
         false
@@ -370,7 +392,7 @@ impl Tree {
         h
     }
 
-    pub fn recalculate(&mut self) {
+    pub fn recalculate(&mut self, expand_focused_split: bool) {
         if self.is_empty() {
             // There are no more views, so the tree should focus itself again.
             self.focus = self.root;
@@ -378,7 +400,9 @@ impl Tree {
             return;
         }
 
+        // TODO avoid this if expand_focused_split is disabled
         let nested_heights = self.get_nested_heights();
+
         self.stack.push((self.root, self.area));
 
         // get nodes containing the focus view
@@ -411,29 +435,51 @@ impl Tree {
 
                     match container.layout {
                         Layout::Horizontal => {
-                            // space for non focused nodes
-                            let len = container.children.iter()
-                                .filter(|c| !focus_nodes.contains_key(**c))
-                                .map(|c| nested_heights[*c])
-                                .sum();
-                            let focus_height = area.height.saturating_sub(len);
-
                             let mut child_y = area.y;
-                            for child in container.children.iter() {
-                                let height = if focus_nodes.contains_key(*child) {
-                                    focus_height
-                                } else {
-                                    nested_heights[*child]
-                                };
-                                let area = Rect::new(
-                                    container.area.x,
-                                    child_y,
-                                    container.area.width,
-                                    height,
-                                );
-                                child_y += height;
 
-                                self.stack.push((*child, area));
+                            if expand_focused_split {
+                                // space for non focused nodes
+                                let len = container.children.iter()
+                                    .filter(|c| !focus_nodes.contains_key(**c))
+                                    .map(|c| nested_heights[*c])
+                                    .sum();
+                                let focus_height = area.height.saturating_sub(len);
+
+                                for child in container.children.iter() {
+                                    let height = if focus_nodes.contains_key(*child) {
+                                        focus_height
+                                    } else {
+                                        nested_heights[*child]
+                                    };
+                                    let area = Rect::new(
+                                        container.area.x,
+                                        child_y,
+                                        container.area.width,
+                                        height,
+                                    );
+                                    child_y += height;
+
+                                    self.stack.push((*child, area));
+                                }
+                            } else {
+                                let len = container.children.len();
+                                let height = area.height / len as u16;
+                                for (i, child) in container.children.iter().enumerate() {
+                                    let mut area = Rect::new(
+                                        container.area.x,
+                                        child_y,
+                                        container.area.width,
+                                        height,
+                                    );
+                                    child_y += height;
+
+                                    // last child takes the remaining width because we can get uneven
+                                    // space from rounding
+                                    if i == len - 1 {
+                                        area.height = container.area.y + container.area.height - area.y;
+                                    }
+                                    self.stack.push((*child, area));
+                                }
                             }
                         }
                         Layout::Vertical => {
@@ -623,7 +669,7 @@ impl Tree {
                 Layout::Vertical => Layout::Horizontal,
                 Layout::Horizontal => Layout::Vertical,
             };
-            self.recalculate();
+            self.recalculate(self.config().expand_focused_split);
         }
     }
 
@@ -699,6 +745,10 @@ impl Tree {
 
     pub fn area(&self) -> Rect {
         self.area
+    }
+
+    fn config(&self) -> arc_swap::access::DynGuard<Config> {
+        self.config.load()
     }
 }
 

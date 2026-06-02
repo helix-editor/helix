@@ -432,6 +432,8 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    /// Expand the focused split and collapse siblings
+    pub expand_focused_split: bool,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
 }
@@ -1215,6 +1217,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            expand_focused_split: false,
             workspace_trust: WorkspaceTrustConfig::default(),
         }
     }
@@ -1403,7 +1406,7 @@ impl Editor {
 
         Self {
             mode: Mode::Normal,
-            tree: Tree::new(area),
+            tree: Tree::new(area, config.clone()),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             saves: HashMap::new(),
@@ -2277,7 +2280,7 @@ impl Editor {
             doc: focus_lost,
         });
         // expand the focused tab
-        self.tree.recalculate();
+        self.tree.recalculate(self.config().expand_focused_split);
     }
 
     pub fn focus_next(&mut self) {
