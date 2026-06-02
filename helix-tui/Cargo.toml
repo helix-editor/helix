@@ -20,6 +20,7 @@ helix-core = { path = "../helix-core" }
 
 bitflags.workspace = true
 cassowary = "0.3"
+arrayvec.workspace = true
 unicode-segmentation.workspace = true
 termina = { workspace = true, optional = true }
 termini = "1.0"
