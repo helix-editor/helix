@@ -416,12 +416,12 @@ impl Tree {
                                 .filter(|c| !focus_nodes.contains_key(**c))
                                 .map(|c| nested_heights[*c])
                                 .sum();
-                            let height = area.height.saturating_sub(len);
+                            let focus_height = area.height.saturating_sub(len);
 
                             let mut child_y = area.y;
                             for child in container.children.iter() {
                                 let height = if focus_nodes.contains_key(*child) {
-                                    height
+                                    focus_height
                                 } else {
                                     nested_heights[*child]
                                 };
