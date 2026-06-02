@@ -385,7 +385,7 @@ pub struct Config {
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
-    /// Persistently display breadcrumb along the top, below any bufferline.
+    /// Persistently display breadcrumb along the top of each view, below any bufferline.
     pub breadcrumb: BreadcrumbConfig,
     /// Vertical indent width guides.
     pub indent_guides: IndentGuidesConfig,

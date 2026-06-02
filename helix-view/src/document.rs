@@ -1518,6 +1518,10 @@ impl Document {
         }
 
         self.view_data_mut(view_id);
+
+        if self.config.load().breadcrumb.enable {
+            self.update_breadcrumbs_for_view(view_id);
+        }
     }
 
     /// Mark document as recent used for MRU sorting

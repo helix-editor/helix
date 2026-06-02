@@ -75,6 +75,7 @@ impl EditorView {
         &mut self.spinners
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn render_view(
         &self,
         editor: &Editor,
@@ -94,6 +95,10 @@ impl EditorView {
 
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
+
+        if config.breadcrumb.enable {
+            Self::render_breadcrumb(editor, doc, view, area.with_height(1), surface);
+        }
 
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
@@ -714,7 +719,13 @@ impl EditorView {
     }
 
     #[allow(clippy::too_many_lines)]
-    pub fn render_breadcrumb(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_breadcrumb(
+        editor: &Editor,
+        doc: &Document,
+        view: &View,
+        viewport: Rect,
+        surface: &mut Surface,
+    ) {
         use helix_view::editor::BreadcrumbPathOptions::{File, Full};
 
         #[inline]
@@ -732,11 +743,6 @@ impl EditorView {
                 .0
         }
 
-        let (view, _) = current_ref!(editor);
-        let Some(doc) = editor.document(view.doc) else {
-            return;
-        };
-
         let config = editor.config();
 
         let style = editor
@@ -746,7 +752,7 @@ impl EditorView {
 
         surface.clear_with(viewport, style);
 
-        let mut x = viewport.x;
+        let mut x = viewport.x.saturating_add(1);
 
         let separator = " > ";
         let separator_style = editor.theme.get("ui.breadcrumb.separator");
@@ -1756,15 +1762,9 @@ impl Component for EditorView {
             _ => false,
         };
 
-        let render_breadcrumb = config.breadcrumb.enable;
-
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
         if use_bufferline {
-            editor_area = editor_area.clip_top(1);
-        }
-
-        if render_breadcrumb {
             editor_area = editor_area.clip_top(1);
         }
 
@@ -1773,16 +1773,6 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
-        }
-
-        if render_breadcrumb {
-            let area = area
-                .with_height(1)
-                // Position it at y=1 if bufferline is used, otherwise y=0
-                .with_y(if use_bufferline { area.y + 1 } else { area.y })
-                // Adds padding to the start of the breadcrumb.
-                .clip_left(1);
-            Self::render_breadcrumb(cx.editor, area, surface);
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
