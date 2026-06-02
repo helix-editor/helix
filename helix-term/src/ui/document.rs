@@ -415,7 +415,7 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
-    pub fn set_string(&mut self, x: u16, y: u16, string: impl AsRef<str>, style: Style) {
+    pub fn set_string(&mut self, x: u16, y: u16, string: &str, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }
@@ -423,14 +423,7 @@ impl<'a> TextRenderer<'a> {
             .set_string(x, y + self.viewport.y, string, style)
     }
 
-    pub fn set_stringn(
-        &mut self,
-        x: u16,
-        y: u16,
-        string: impl AsRef<str>,
-        width: usize,
-        style: Style,
-    ) {
+    pub fn set_stringn(&mut self, x: u16, y: u16, string: &str, width: usize, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }

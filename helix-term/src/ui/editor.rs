@@ -698,7 +698,7 @@ impl EditorView {
             let rem_width = surface.area.width.saturating_sub(used_width);
 
             x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                .set_stringn(x, viewport.y, &text, rem_width as usize, style)
                 .0;
 
             if x >= surface.area.right() {

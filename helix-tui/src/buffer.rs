@@ -201,7 +201,7 @@ impl Buffer {
             height,
         });
         for (y, line) in lines.iter().enumerate() {
-            buffer.set_string(0, y as u16, line, Style::default());
+            buffer.set_string(0, y as u16, line.as_ref(), Style::default());
         }
         buffer
     }
@@ -322,27 +322,53 @@ impl Buffer {
     }
 
     /// Print a string, starting at the position (x, y)
-    pub fn set_string<S>(&mut self, x: u16, y: u16, string: S, style: Style)
-    where
-        S: AsRef<str>,
-    {
+    pub fn set_string(&mut self, x: u16, y: u16, string: &str, style: Style) {
         self.set_stringn(x, y, string, usize::MAX, style);
     }
 
-    /// Print at most the first n characters of a string if enough space is available
-    /// until the end of the line
-    pub fn set_stringn<S>(
+    /// Print at most the first `width` columns of `string`, starting at (x, y),
+    /// stopping at the end of the buffer line. Returns the position right after
+    /// the last cell written.
+    pub fn set_stringn(
         &mut self,
         x: u16,
         y: u16,
-        string: S,
+        string: &str,
         width: usize,
         style: Style,
-    ) -> (u16, u16)
-    where
-        S: AsRef<str>,
-    {
-        self.set_string_truncated_at_end(x, y, string.as_ref(), width, style)
+    ) -> (u16, u16) {
+        // prevent panic if out of range
+        if !self.in_bounds(x, y) {
+            return (x, y);
+        }
+
+        let mut index = self.index_of(x, y);
+        let mut x_offset = x as usize;
+        let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
+
+        for s in string.graphemes(true) {
+            let grapheme_width = s.width();
+            if grapheme_width == 0 {
+                continue;
+            }
+            // `x_offset + grapheme_width > max_x_offset` could be integer overflow on
+            // 32-bit machines if we change dimensions to usize or u32 and someone
+            // resizes the terminal to 1x2^32.
+            if grapheme_width > max_x_offset.saturating_sub(x_offset) {
+                break;
+            }
+
+            self.content[index].set_symbol(s);
+            self.content[index].set_style(style);
+            // Reset following cells if multi-width (they would be hidden by the grapheme),
+            for i in index + 1..index + grapheme_width {
+                self.content[i].reset();
+            }
+            index += grapheme_width;
+            x_offset += grapheme_width;
+        }
+
+        (x_offset as u16, y)
     }
 
     /// Fast path: print a single grapheme of pre-computed width with no unicode
@@ -350,8 +376,8 @@ impl Buffer {
     /// width fit inside the buffer area and that `width >= 1`.
     ///
     /// This is the per-cell render path; it is hot enough that we skip everything
-    /// `set_string_truncated_at_end` does (segmenting, calling `.width()`,
-    /// bounds-checking each grapheme).
+    /// `set_stringn` does (segmenting, calling `.width()`, bounds-checking each
+    /// grapheme).
     #[inline]
     pub fn set_grapheme(&mut self, x: u16, y: u16, grapheme: &str, width: usize, style: Style) {
         let index = self.index_of(x, y);
@@ -511,48 +537,6 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
-    /// Print at most the first `width` characters of a string if enough space is available
-    /// until the end of the line.
-    pub fn set_string_truncated_at_end(
-        &mut self,
-        x: u16,
-        y: u16,
-        string: &str,
-        width: usize,
-        style: Style,
-    ) -> (u16, u16) {
-        // prevent panic if out of range
-        if !self.in_bounds(x, y) {
-            return (x, y);
-        }
-
-        let mut index = self.index_of(x, y);
-        let mut x_offset = x as usize;
-        let max_x_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
-
-        for s in string.graphemes(true) {
-            let width = s.width();
-            if width == 0 {
-                continue;
-            }
-            // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
-            // change dimensions to usize or u32 and someone resizes the terminal to 1x2^32.
-            if width > max_x_offset.saturating_sub(x_offset) {
-                break;
-            }
-
-            self.content[index].set_symbol(s);
-            self.content[index].set_style(style);
-            // Reset following cells if multi-width (they would be hidden by the grapheme),
-            for i in index + 1..index + width {
-                self.content[i].reset();
-            }
-            index += width;
-            x_offset += width;
-        }
-
-        (x_offset as u16, y)
-    }
 
     /// Print at most the first `width` characters of a [Spans]  if enough space is available
     /// until the end of the line. Appends a `…` at the end of truncated lines.

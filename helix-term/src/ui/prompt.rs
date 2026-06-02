@@ -527,7 +527,7 @@ impl Prompt {
                 surface.set_string(
                     self.line_area.x,
                     self.line_area.y,
-                    suggestion,
+                    &suggestion,
                     suggestion_color,
                 );
             }
