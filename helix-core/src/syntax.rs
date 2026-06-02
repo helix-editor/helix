@@ -1205,6 +1205,21 @@ mod test {
 
     static LOADER: Lazy<Loader> = Lazy::new(crate::config::default_lang_loader);
 
+    fn assert_shebang_interpreter(source: &str, expected: Option<&str>) {
+        let source = Rope::from(source);
+        let interpreter = shebang_interpreter(source.slice(..)).map(Cow::<str>::from);
+        assert_eq!(interpreter.as_deref(), expected);
+    }
+
+    #[test]
+    fn test_shebang_interpreter() {
+        assert_shebang_interpreter("#!nu\n", Some("nu"));
+        assert_shebang_interpreter("#!/usr/bin/env nu\n", Some("nu"));
+        assert_shebang_interpreter("#!/usr/bin/env -S uv run python\n", Some("uv"));
+        assert_shebang_interpreter("#!/bin/bash\n", Some("bash"));
+        assert_shebang_interpreter("#! /usr/bin/python3\n", Some("python"));
+        assert_shebang_interpreter("def main [] {}\n", None);
+    }
     #[test]
     fn test_textobject_queries() {
         let query_str = r#"
