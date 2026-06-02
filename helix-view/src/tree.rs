@@ -1,6 +1,5 @@
 use crate::{graphics::Rect, View, ViewId};
-use slotmap::SlotMap;
-use std::collections::HashSet;
+use slotmap::{SlotMap, SecondaryMap};
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -353,6 +352,24 @@ impl Tree {
         false
     }
 
+    fn get_nested_heights(&self) -> SecondaryMap<ViewId, u16> {
+        let mut nested_heights = SecondaryMap::new();
+        self.get_nested_heights_impl(self.root, &mut nested_heights);
+        nested_heights
+    }
+
+    fn get_nested_heights_impl(&self, key: ViewId, nested_heights: &mut SecondaryMap<ViewId, u16>) -> u16 {
+        let h = match &self.nodes[key].content {
+            Content::View(_) => 2,
+            Content::Container(c) => match c.layout {
+                Layout::Horizontal => c.children.iter().map(|k| self.get_nested_heights_impl(*k, nested_heights)).sum(),
+                Layout::Vertical => c.children.iter().map(|k| self.get_nested_heights_impl(*k, nested_heights)).max().expect("Container should have children"),
+            },
+        };
+        nested_heights.insert(key, h);
+        h
+    }
+
     pub fn recalculate(&mut self) {
         if self.is_empty() {
             // There are no more views, so the tree should focus itself again.
@@ -361,13 +378,14 @@ impl Tree {
             return;
         }
 
+        let nested_heights = self.get_nested_heights();
         self.stack.push((self.root, self.area));
 
         // get nodes containing the focus view
-        let mut focus_nodes = HashSet::new();
+        let mut focus_nodes = SecondaryMap::new();
         let mut cur = self.focus;
         loop {
-            focus_nodes.insert(cur);
+            focus_nodes.insert(cur, ());
             if self.nodes[cur].parent == cur {
                 break;
             }
@@ -393,19 +411,19 @@ impl Tree {
 
                     match container.layout {
                         Layout::Horizontal => {
-                            let len = container.children.len();
+                            // space for non focused nodes
+                            let len = container.children.iter()
+                                .filter(|c| !focus_nodes.contains_key(**c))
+                                .map(|c| nested_heights[*c])
+                                .sum();
+                            let height = area.height.saturating_sub(len);
 
                             let mut child_y = area.y;
-
                             for child in container.children.iter() {
-                                let focus_node = focus_nodes.contains(child);
-                                // WARN
-                                // Needs to account for children within containers
-                                // Crashes when maximizing above a vert. split with horz. children
-                                let height = if focus_node {
-                                    area.height - ((len - 1) * 2) as u16
+                                let height = if focus_nodes.contains_key(*child) {
+                                    height
                                 } else {
-                                    2
+                                    nested_heights[*child]
                                 };
                                 let area = Rect::new(
                                     container.area.x,

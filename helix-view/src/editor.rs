@@ -2276,6 +2276,8 @@ impl Editor {
             editor: self,
             doc: focus_lost,
         });
+        // expand the focused tab
+        self.tree.recalculate();
     }
 
     pub fn focus_next(&mut self) {
@@ -2290,7 +2292,6 @@ impl Editor {
         let current_view = self.tree.focus;
         if let Some(id) = self.tree.find_split_in_direction(current_view, direction) {
             self.focus(id);
-            self.tree.recalculate();
         }
     }
 
