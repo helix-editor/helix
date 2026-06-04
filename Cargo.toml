@@ -59,6 +59,9 @@ etcetera = "0.11"
 arc-swap = "1.9"
 arrayvec = "0.7"
 
+# dev dependencies
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+
 [workspace.package]
 version = "25.7.1"
 edition = "2021"
