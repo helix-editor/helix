@@ -32,6 +32,7 @@ helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
 
 bitflags.workspace = true
+foldhash.workspace = true
 anyhow = "1"
 termina = { workspace = true, optional = true }
 

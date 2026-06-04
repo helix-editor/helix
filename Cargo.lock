@@ -1712,6 +1712,7 @@ dependencies = [
  "clipboard-win",
  "criterion",
  "crossterm",
+ "foldhash 0.2.0",
  "futures-util",
  "helix-core",
  "helix-dap",
