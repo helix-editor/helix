@@ -537,7 +537,6 @@ impl Buffer {
         (x_offset as u16, y)
     }
 
-
     /// Print at most the first `width` characters of a [Spans]  if enough space is available
     /// until the end of the line. Appends a `…` at the end of truncated lines.
     pub fn set_spans_truncated(&mut self, x: u16, y: u16, spans: &Spans, width: u16) -> (u16, u16) {
