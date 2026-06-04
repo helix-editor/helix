@@ -197,7 +197,7 @@
 | nginx | ✓ |  |  |  |  |  |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  |  | `nimlangserver` |
-| nix | ✓ | ✓ | ✓ |  | ✓ | `nil`, `nixd` |
+| nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
 | nu | ✓ | ✓ | ✓ |  |  | `nu`, `nu-lint` |
 | nunjucks | ✓ |  |  |  |  |  |
 | ocaml | ✓ |  | ✓ |  |  | `ocamllsp` |
