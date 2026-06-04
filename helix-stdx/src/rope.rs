@@ -174,6 +174,13 @@ pub trait RopeSliceExt<'a>: Sized {
     /// Returns an iterator over the grapheme clusters in a rope and the byte index where each
     /// grapheme cluster starts.
     ///
+    /// Same as `grapheme_indices_at(0)`.
+    fn grapheme_indices(self) -> RopeGraphemeIndices<'a> {
+        self.grapheme_indices_at(0)
+    }
+    /// Returns an iterator over the grapheme clusters in a rope and the byte index where each
+    /// grapheme cluster starts.
+    ///
     /// # Example
     ///
     /// ```
