@@ -1,0 +1,12 @@
+All language text files in this folder are copied from Wikipedia, under the CC-BY-SA 3.0 license
+(included in LICENSE). source_code.txt is from the Neovim source code, covered under the Apache 2.0
+license. The original source for each file is listed below
+
+ - english.txt: https://en.wikipedia.org/wiki/English_language
+ - korean.txt: https://ko.wikipedia.org/wiki/%ED%95%9C%EA%B5%AD%EC%96%B4
+ - japanese.txt: https://ja.wikipedia.org/wiki/%E6%97%A5%E6%9C%AC%E8%AA%9E
+ - hindi.txt: https://hi.wikipedia.org/wiki/%E0%A4%B9%E0%A4%BF%E0%A4%A8%E0%A5%8D%E0%A4%A6%E0%A5%80
+ - mandarin.txt: https://zh.wikipedia.org/wiki/%E5%AE%98%E8%AF%9D
+ - arabic.txt: https://ar.wikipedia.org/wiki/%D8%A7%D9%84%D9%84%D8%BA%D8%A9_%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9
+ - russian.txt: https://ru.wikipedia.org/wiki/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9_%D1%8F%D0%B7%D1%8B%D0%BA
+ - source_code.txt: https://github.com/neovim/neovim/blob/master/src/nvim/buffer.c

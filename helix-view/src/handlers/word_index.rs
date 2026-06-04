@@ -433,6 +433,22 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
     });
 }
 
+// See `benches/word_index.rs`.
+#[cfg(feature = "bench")]
+pub mod bench {
+    use helix_core::{Rope, RopeSlice};
+
+    pub use super::WordIndex;
+
+    pub fn add_document(index: &WordIndex, text: &Rope) {
+        index.add_document(text);
+    }
+
+    pub fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
+        super::words(text)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
