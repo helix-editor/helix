@@ -262,25 +262,25 @@
 
 (call
   function: [
-    (identifier) @function.call
+    (identifier) @function
     (dot_expression
-      right: (identifier) @function.call)
+      right: (identifier) @function)
     (bracket_expression
       left: [
-        (identifier) @function.call
+        (identifier) @function
         (dot_expression
-          right: (identifier) @function.call)])])
+          right: (identifier) @function)])])
 (generalized_string
   function: [
-    (identifier) @function.call
+    (identifier) @function
     (dot_expression
-      right: (identifier) @function.call)
+      right: (identifier) @function)
     (bracket_expression
       left: [
-        (identifier) @function.call
+        (identifier) @function
         (dot_expression
-          right: (identifier) @function.call)])])
-(dot_generic_call function: (_) @function.call)
+          right: (identifier) @function)])])
+(dot_generic_call function: (_) @function)
 
 ;; Variables
 

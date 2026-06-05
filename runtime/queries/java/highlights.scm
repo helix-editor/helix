@@ -6,7 +6,7 @@
   name: (identifier) @function.method)
 (method_invocation
   name: (identifier) @function.method)
-(super) @function.builtin
+(super) @variable.builtin
 
 ; Annotations
 

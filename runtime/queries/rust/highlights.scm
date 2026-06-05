@@ -289,7 +289,7 @@
 
 "let" @keyword.storage
 "fn" @keyword.function
-"unsafe" @keyword.special
+"unsafe" @keyword.storage.modifier
 "macro_rules!" @function.macro
 
 (mutable_specifier) @keyword.storage.modifier.mut

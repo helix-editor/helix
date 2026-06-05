@@ -50,7 +50,7 @@
   (ERROR
     (block
       (expression_statement
-        (identifier) @_except) @indent.branch))
+        (identifier) @_except) @indent))
   (#eq? @_except "except"))
 
 [

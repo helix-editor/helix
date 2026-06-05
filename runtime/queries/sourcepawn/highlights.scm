@@ -65,7 +65,7 @@
 (do_while_statement) @keyword.control.repeat
 (switch_statement) @keyword.control.conditional
 (switch_case) @keyword.control.conditional
-(ternary_expression) @conditional.ternary
+(ternary_expression ["?" ":"] @operator)
 
 ; Expressions
 (view_as) @function.builtin

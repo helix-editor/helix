@@ -23,11 +23,11 @@
   name: (property_name) @function.method)
 
 (call_expression
-  function: (identifier) @function.call)
+  function: (identifier) @function)
 
 (call_expression
   function: (member_expression
-    property: (identifier) @function.method.call))
+    property: (identifier) @function.method))
 
 ; Variables
 (identifier) @variable
@@ -217,7 +217,7 @@
 [
   "await"
   "async"
-] @keyword.control.flow
+] @keyword.control
 
 [
   "import"

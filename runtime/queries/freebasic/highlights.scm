@@ -53,7 +53,7 @@
 
 ; Function calls
 (call_expression
-  function: (identifier) @function.call)
+  function: (identifier) @function)
 
 ; Built-in functions
 ((identifier) @function.builtin

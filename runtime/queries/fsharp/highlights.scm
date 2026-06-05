@@ -115,7 +115,7 @@
       (long_identifier (identifier)* (identifier) @function)
       (identifier) @function
     ])
-    (typed_expression . (long_identifier_or_op (long_identifier (identifier)* . (identifier) @function.call)))
+    (typed_expression . (long_identifier_or_op (long_identifier (identifier)* . (identifier) @function)))
     (dot_expression base: (_) @variable.other.member field: (_) @function)
   ] @function)
 

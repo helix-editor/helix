@@ -174,14 +174,14 @@
 (guard_statement "guard" @keyword.control.conditional)
 (if_statement "if" @keyword.control.conditional)
 (switch_statement "switch" @keyword.control.conditional)
-(switch_entry "case" @keyword)
-(switch_entry "fallthrough" @keyword)
-(switch_entry (default_keyword) @keyword)
-"return" @keyword.return
+(switch_entry "case" @keyword.control.conditional)
+(switch_entry "fallthrough" @keyword.control.conditional)
+(switch_entry (default_keyword) @keyword.control.conditional)
+"return" @keyword.control.return
 (ternary_expression
   ["?" ":"] @keyword.control.conditional)
 
-["do" (throw_keyword) (catch_keyword)] @keyword
+["do" (throw_keyword) (catch_keyword)] @keyword.control.exception
 
 (statement_label) @label
 

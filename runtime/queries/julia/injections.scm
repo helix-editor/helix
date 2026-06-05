@@ -26,7 +26,7 @@
     (command_literal)
     (prefixed_command_literal)
   ] @injection.content
-  (#set! injection.language "sh"))
+  (#set! injection.language "bash"))
 
 (
   (prefixed_string_literal

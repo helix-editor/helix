@@ -115,7 +115,7 @@
     (loop_enumerator) @variable))
 
 ; Conditionals
-"if" @keyword.conditional
+"if" @keyword.control.conditional
 
 (ternary_expression
   "?" @keyword.control.conditional

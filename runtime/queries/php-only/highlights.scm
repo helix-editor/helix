@@ -82,7 +82,7 @@
 "as" @keyword
 "break" @keyword
 "case" @keyword
-"catch" @keyword
+"catch" @keyword.control.exception
 "class" @keyword
 "const" @keyword
 "continue" @keyword
@@ -99,10 +99,10 @@
 "endwhile" @keyword
 "extends" @keyword
 "final" @keyword
-"finally" @keyword
+"finally" @keyword.control.exception
 "for" @keyword
 "foreach" @keyword
-"function" @keyword
+"function" @keyword.function
 "global" @keyword
 "if" @keyword
 "implements" @keyword
@@ -117,11 +117,11 @@
 "public" @keyword
 "require_once" @keyword
 "require" @keyword
-"return" @keyword
+"return" @keyword.control.return
 "static" @keyword
 "switch" @keyword
-"throw" @keyword
+"throw" @keyword.control.exception
 "trait" @keyword
-"try" @keyword
+"try" @keyword.control.exception
 "use" @keyword
 "while" @keyword

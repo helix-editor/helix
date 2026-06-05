@@ -56,7 +56,7 @@
 (string) @string
 (bool) @constant.builtin.boolean
 (operator) @operator
-(escape_sequence) @punctuation
+(escape_sequence) @constant.character.escape
 (null) @constant.builtin
 (access_identifiers "null" @keyword)
 

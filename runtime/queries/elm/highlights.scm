@@ -30,7 +30,7 @@
 (field_access_expr(lower_case_identifier) @attribute)
 
 (operator_identifier) @keyword.operator
-(eq) @keyword.operator.assignment
+(eq) @operator
 
 [
   "("
