@@ -5,7 +5,7 @@
 (super) @function.builtin
 
 (function_expression_body (identifier) @function.method)
-((identifier)(selector (argument_part)) @function.method)
+((identifier) @function.method (selector (argument_part)))
 
 ; Annotations
 ; --------------------
