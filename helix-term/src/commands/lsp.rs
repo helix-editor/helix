@@ -20,7 +20,7 @@ use helix_core::{
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
-    editor::Action,
+    editor::{Action, QuicklistEntry, QuicklistPosition, QuicklistTarget},
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -107,6 +107,17 @@ fn location_to_file_location(location: &Location) -> Option<FileLocation<'_>> {
         location.range.end.line as usize,
     ));
     Some((path.into(), line))
+}
+
+fn location_to_quicklist_entry(location: &Location) -> Option<QuicklistEntry> {
+    let path = location.uri.as_path()?;
+    Some(QuicklistEntry {
+        target: QuicklistTarget::Path(path.to_path_buf()),
+        position: QuicklistPosition::LspRange {
+            range: location.range,
+            offset_encoding: location.offset_encoding,
+        },
+    })
 }
 
 fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
@@ -306,6 +317,7 @@ fn diag_picker(
         },
     )
     .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
+    .with_quicklist(move |_editor, diag| location_to_quicklist_entry(&diag.location))
     .truncate_start(false)
 }
 
@@ -434,6 +446,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 },
             )
             .with_preview(move |_editor, item| location_to_file_location(&item.location))
+            .with_quicklist(move |_editor, item| location_to_quicklist_entry(&item.location))
             .truncate_start(false);
 
             compositor.push(Box::new(overlaid(picker)))
@@ -560,6 +573,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         },
     )
     .with_preview(|_editor, item| location_to_file_location(&item.location))
+    .with_quicklist(|_editor, item| location_to_quicklist_entry(&item.location))
     .with_dynamic_query(get_symbols, None)
     .truncate_start(false);
 

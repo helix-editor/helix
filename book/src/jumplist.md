@@ -7,6 +7,8 @@ This way, the jumplist tracks both your previous location and your selections.
 You can manually save a jump by using `Ctrl-s`.
 To jump backward in the jumplist, use `Ctrl-o`; to go forward, use `Ctrl-i`. To view and select from the full jumplist, use `Space-j` to open the jumplist picker.
 
+If you want to keep a picker's current matched locations as a separate navigation list, use the [quicklist](./quicklist.md) instead.
+
 ### What makes a jump
 The following is a non-exhaustive list of which actions add a jump to the jumplist:
 - Switching buffers
