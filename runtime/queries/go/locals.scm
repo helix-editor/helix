@@ -3,6 +3,7 @@
 [
   (function_declaration)
   (method_declaration)
+  (func_literal)
   (type_declaration)
   (block)
 ] @local.scope
@@ -15,6 +16,19 @@
 (const_declaration
  (const_spec
   name: (identifier) @local.definition.constant))
+
+(var_spec
+ name: (identifier) @local.definition.variable)
+
+(short_var_declaration
+ left: (expression_list (identifier) @local.definition.variable))
+
+(range_clause
+ left: (expression_list (identifier) @local.definition.variable))
+
+; Bound identifier of `switch v := x.(type)`.
+(type_switch_statement
+ alias: (expression_list (identifier) @local.definition.variable))
 
 ; References
 

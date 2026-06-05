@@ -33,7 +33,20 @@
 ; ----------
 
 (identifier) @local.reference
- 
+
+; A call's function name, field member access, and keyword-argument names are
+; not variable references; cancel resolution so they keep their highlights.scm
+; class even when a same-named local is in scope.
+(call_expression
+  . (identifier) @_)
+(field_expression
+  (_)
+  (identifier) @_)
+(call_expression
+  (argument_list
+    (assignment
+      . (identifier) @_)))
+
 ; ------
 ; Scopes
 ; ------
