@@ -7,6 +7,9 @@
   (module_body)
   (block)
   (switch_block)
+  ; statements after a `case`/`default` label (the group also holds the label,
+  ; so the default tail scope indents only the body lines, not the label)
+  (switch_block_statement_group)
   (array_initializer)
   (argument_list)
   (formal_parameters)

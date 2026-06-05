@@ -58,11 +58,14 @@
   (if_statement) @outdent
 )
 
-(switch_entry
-  .
-  _ @indent
-  (#set! "scope" "tail")
-)
+; switch_entry wraps both the case/default label and the body statements. The
+; default tail scope indents the lines after the label (the body) without
+; indenting the label itself, and because switch_entry is an ancestor of the
+; cursor whether reindenting a body line or typing a newline after the label,
+; it resolves correctly in both indent directions (capturing the inner
+; (statements) node only works when reindenting; capturing the label only works
+; when typing — the wrapper handles both).
+(switch_entry) @indent
 
 (init_declaration
   (parameter) @indent

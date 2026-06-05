@@ -9,6 +9,10 @@
   (block)
   (assertion_arguments)
   (switch_block)
+  ; statements after a `case`/`default` label (the node also holds the label,
+  ; so the default tail scope indents only the body lines, not the label)
+  (switch_statement_case)
+  (switch_statement_default)
   (catch_parameters)
   (for_loop_parts)
   (configuration_uri_condition)
