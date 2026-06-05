@@ -83,7 +83,7 @@
 
 (apply_expression
   function: [
-    (variable_expression (identifier)) @function
+    (variable_expression (identifier) @function)
     (select_expression
       attrpath: (attrpath
         attr: (identifier) @function .))])
