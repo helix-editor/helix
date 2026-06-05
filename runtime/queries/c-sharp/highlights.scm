@@ -249,3 +249,5 @@
 ;; Method calls
 
 (invocation_expression (member_access_expression name: (identifier) @function))
+; Bare calls (`Method()` without a receiver)
+(invocation_expression function: (identifier) @function)
