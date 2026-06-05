@@ -51,6 +51,7 @@
   "@"
   ".."
   "..="
+  "..." ; variadic `...` in extern fn signatures
   "'"
 ] @operator
 
@@ -84,8 +85,9 @@
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
 (type_arguments (type_identifier) @type)
-; `_` in `(_, _)`
-(tuple_struct_pattern "_" @comment.unused)
+; `_` placeholder token in any pattern position:
+; `let _ =`, `match { _ => }`, `|_|`, `fn f(_: T)`, `(_, _)`, `[_, x]`
+("_" @comment.unused)
 ; `_` in `Vec<_>`
 ((type_arguments (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
@@ -340,8 +342,9 @@
     ((identifier) @function)
     (scoped_identifier
       name: (identifier) @function)
+    ; method call `obj.method()` — consistent with the generic_function case below
     (field_expression
-      field: (field_identifier) @function)
+      field: (field_identifier) @function.method)
   ])
 (generic_function
   function: [
