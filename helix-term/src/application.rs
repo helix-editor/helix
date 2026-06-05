@@ -357,7 +357,11 @@ impl Application {
 
                     #[cfg(feature = "integration")]
                     {
-                        if _idle_handled {
+                        // Don't report idle while a save is still in flight, or an assertion on the post-save document state (e.g. its path,
+                        // set in `handle_document_write`) can run before the `DocumentSavedEvent` is processed. Slow file I/O on Windows
+                        // (atomic_save's rename/fsync dance over the still-open temp file) makes this race observable.
+                        // Errors produce an event too, so it cannot hang.
+                        if _idle_handled && self.editor.write_count == 0 {
                             return true;
                         }
                     }
