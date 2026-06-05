@@ -322,3 +322,26 @@
 
 (xauth_location) @keyword
 (xauth_location_value) @string.special.path
+
+; Options added in newer OpenSSH releases.
+(channel_timeout) @keyword
+(channel_timeout_type) @constant.builtin
+(time_format) @constant.numeric
+
+(enable_escape_commandline) @keyword
+(enable_escape_commandline_value) @constant.builtin.boolean
+
+(obscure_keystroke_timing) @keyword
+(obscure_keystroke_timing_value) @constant.builtin
+
+(required_rsa_size) @keyword
+(required_rsa_size_value) @constant.numeric.integer
+
+(tag) @keyword
+(tag_value) @string
+
+(use_roaming) @keyword
+(use_roaming_value) @constant.builtin.boolean
+
+(version_addendum) @keyword
+(version_addendum_value) @string

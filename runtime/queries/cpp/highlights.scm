@@ -108,7 +108,11 @@
   "<=>"
   "[]"
   "()"
+  "^^" ; C++26 reflection operator (reflect_expression)
 ] @operator
+
+; C++26 splice brackets `[: reflection :]` (splice_specifier / splice_type_specifier).
+(splice_specifier ["[:" ":]"] @punctuation.bracket)
 
 
 ; These casts are parsed as function calls, but are not.

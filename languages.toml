@@ -748,7 +748,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "cpp"
-source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "56455f4245baf4ea4e0881c5169de69d7edd5ae7" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "8b5b49eb196bec7040441bee33b2c9a4838d6967" }
 
 [[language]]
 name = "crystal"
@@ -2449,7 +2449,7 @@ language-servers = [ "solc" ]
 
 [[grammar]]
 name = "solidity"
-source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "f7f5251a3f5b1d04f0799b3571b12918af177fc8" }
+source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "048fe686cb1fde267243739b8bdbec8fc3a55272" }
 
 [[language]]
 name = "gleam"
@@ -2464,7 +2464,7 @@ auto-format = true
 
 [[grammar]]
 name = "gleam"
-source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "dae1551a9911b24f41d876c23f2ab05ece0a9d4c" }
+source = { git = "https://github.com/gleam-lang/tree-sitter-gleam", rev = "4e4643c2215c2b2343d9ec179c798818c132c9cc" }
 
 [[language]]
 name = "quarto"
@@ -2607,7 +2607,7 @@ injection-regex = "sql"
 [[grammar]]
 name = "sql"
 # from gh-pages branch, as the main branch does not provide the `src` directory
-source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "86e3d03837d282544439620eb74d224586074b8b" }
+source = { git = "https://github.com/DerekStride/tree-sitter-sql", rev = "851e9cb257ba7c66cc8c14214a31c44d2f1e954e" }
 
 [[language]]
 name = "gdscript"
@@ -2781,14 +2781,14 @@ name = "meson"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-meson", rev = "c84f3540624b81fc44067030afce2ff78d6ede05" }
 
 [[language]]
-name = "sshclientconfig"
-scope = "source.sshclientconfig"
+name = "ssh_client_config"
+scope = "source.ssh_client_config"
 file-types = [{ glob = ".ssh/config" }, { glob = "/etc/ssh/ssh_config" }, { glob = "ssh_config.d/*.conf" } ]
 comment-token = "#"
 
 [[grammar]]
-name = "sshclientconfig"
-source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev = "e45c6d5c71657344d4ecaf87dafae7736f776c57" }
+name = "ssh_client_config"
+source = { git = "https://github.com/metio/tree-sitter-ssh-client-config", rev = "4abd07dc3884124d60e37e1f2dd98a1676859ae0" }
 
 [[language]]
 name = "scheme"
@@ -2916,7 +2916,7 @@ formatter = { command = "cljfmt", args = ["fix", "-"] }
 
 [[grammar]]
 name = "clojure"
-source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e57c569ae332ca365da623712ae1f50f84daeae2" }
+source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e43eff80d17cf34852dcd92ca5e6986d23a7040f" }
 
 [[language]]
 name = "starlark"
@@ -4398,7 +4398,7 @@ formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
 
 [[grammar]]
 name = "glimmer"
-source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "5dc6d1040e8ff8978ff3680e818d85447bbc10aa" }
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "88af85568bde3b91acb5d4c352ed094d0c1f9d84" }
 
 [[language]]
 name = "ohm"
