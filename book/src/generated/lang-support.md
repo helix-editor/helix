@@ -28,7 +28,7 @@
 | chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ |  |  |  |  | `clarinet` |
-| clojure | ✓ | ✓ | ✓ |  | ✓ | `clojure-lsp` |
+| clojure | ✓ | ✓ | ✓ | ✓ | ✓ | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ |  |  | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
 | comment | ✓ |  |  |  |  |  |
@@ -38,13 +38,13 @@
 | cpp | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | cross-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | crystal | ✓ | ✓ | ✓ | ✓ |  | `crystalline`, `ameba-ls` |
-| css | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
+| css | ✓ | ✓ | ✓ |  | ✓ | `vscode-css-language-server` |
 | csv | ✓ |  |  |  |  |  |
 | cue | ✓ |  |  |  |  | `cue` |
 | cylc | ✓ | ✓ | ✓ |  |  |  |
 | cython | ✓ |  | ✓ | ✓ |  |  |
 | d | ✓ | ✓ | ✓ |  |  | `serve-d` |
-| dart | ✓ | ✓ | ✓ |  | ✓ | `dart` |
+| dart | ✓ | ✓ | ✓ | ✓ | ✓ | `dart` |
 | dbml | ✓ |  |  |  |  |  |
 | debian | ✓ |  |  |  |  | `debian-lsp` |
 | devicetree | ✓ |  |  |  |  | `dts-lsp` |
@@ -115,8 +115,8 @@
 | gren | ✓ | ✓ |  |  |  |  |
 | groovy | ✓ |  |  |  |  |  |
 | gts | ✓ | ✓ | ✓ | ✓ |  | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
-| hare | ✓ |  |  |  |  | `hare-lsp` |
-| haskell | ✓ | ✓ |  |  |  | `haskell-language-server-wrapper` |
+| hare | ✓ | ✓ |  |  |  | `hare-lsp` |
+| haskell | ✓ | ✓ |  | ✓ |  | `haskell-language-server-wrapper` |
 | haskell-literate | ✓ |  |  |  |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |  |  |
 | haxe | ✓ |  |  | ✓ |  |  |
@@ -153,7 +153,7 @@
 | jsonc | ✓ | ✓ | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
-| julia | ✓ | ✓ | ✓ |  |  | `julia` |
+| julia | ✓ | ✓ | ✓ | ✓ |  | `julia` |
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
@@ -173,7 +173,7 @@
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
 | log | ✓ |  |  |  |  |  |
 | lpf | ✓ |  |  |  |  |  |
-| lua | ✓ | ✓ | ✓ |  | ✓ | `lua-language-server` |
+| lua | ✓ | ✓ | ✓ | ✓ | ✓ | `lua-language-server` |
 | lua-format-string | ✓ |  |  |  |  |  |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
@@ -200,7 +200,7 @@
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
 | nu | ✓ | ✓ | ✓ |  |  | `nu`, `nu-lint` |
 | nunjucks | ✓ |  |  |  |  |  |
-| ocaml | ✓ |  | ✓ |  |  | `ocamllsp` |
+| ocaml | ✓ | ✓ | ✓ |  |  | `ocamllsp` |
 | ocaml-interface | ✓ |  |  |  |  | `ocamllsp` |
 | odin | ✓ | ✓ | ✓ |  |  | `ols` |
 | ohm | ✓ | ✓ | ✓ |  |  |  |
@@ -211,7 +211,7 @@
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
 | penrose | ✓ | ✓ |  |  |  |  |
-| perl | ✓ | ✓ | ✓ |  |  | `perlnavigator` |
+| perl | ✓ | ✓ | ✓ | ✓ |  | `perlnavigator` |
 | pest | ✓ | ✓ | ✓ |  |  | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  | ✓ |  |  |
@@ -255,7 +255,7 @@
 | rust-format-args | ✓ |  |  |  |  |  |
 | rust-format-args-macro | ✓ | ✓ | ✓ |  | ✓ |  |
 | sage | ✓ | ✓ |  |  |  |  |
-| scala | ✓ | ✓ | ✓ |  |  | `metals` |
+| scala | ✓ | ✓ | ✓ | ✓ |  | `metals` |
 | scfg | ✓ |  |  |  |  |  |
 | scheme | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | scss | ✓ |  |  |  | ✓ | `vscode-css-language-server` |
@@ -272,7 +272,7 @@
 | spade | ✓ |  | ✓ |  | ✓ | `swim` |
 | spicedb | ✓ |  |  | ✓ |  |  |
 | sql | ✓ | ✓ |  |  |  |  |
-| sshclientconfig | ✓ |  |  |  |  |  |
+| ssh_client_config | ✓ |  |  |  |  |  |
 | starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls` |
 | strace | ✓ |  |  |  |  |  |
 | strictdoc | ✓ |  |  | ✓ |  |  |
@@ -280,7 +280,7 @@
 | supercollider | ✓ |  |  |  |  |  |
 | svelte | ✓ | ✓ | ✓ | ✓ | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
-| swift | ✓ | ✓ | ✓ |  | ✓ | `sourcekit-lsp` |
+| swift | ✓ | ✓ | ✓ | ✓ | ✓ | `sourcekit-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
 | systemverilog | ✓ |  |  |  |  | `svlangserver`, `verible-verilog-ls` |
 | t32 | ✓ |  |  |  |  |  |
@@ -333,4 +333,4 @@
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
 | yuck | ✓ |  | ✓ |  | ✓ |  |
-| zig | ✓ | ✓ | ✓ |  |  | `zls` |
+| zig | ✓ | ✓ | ✓ | ✓ |  | `zls` |
