@@ -46,7 +46,7 @@
 ((apply_expression
    function: (_) @_func
    argument: (indented_string_expression (string_fragment) @injection.content))
- (#match? @_func "(^|\\.)match|split$")
+ (#match? @_func "(^|\\.)(match|split)$")
  (#set! injection.language "regex")
  (#set! injection.combined))
 
