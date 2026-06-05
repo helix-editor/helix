@@ -181,8 +181,10 @@ pub fn auto_detect_indent_style(document_text: &Rope) -> Option<IndentStyle> {
         .unwrap();
 
     // Return the auto-detected result if we're confident enough in its
-    // accuracy, based on some heuristics.
-    if indent_freq >= 1 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
+    // accuracy, based on some heuristics. Require at least 2 observed
+    // indentation increases to avoid false positives on very short files
+    // where a single data point would dominate the histogram.
+    if indent_freq >= 2 && (indent_freq_2 as f64 / indent_freq as f64) < 0.66 {
         Some(match indent {
             0 => IndentStyle::Tabs,
             _ => IndentStyle::Spaces(indent as u8),
@@ -1152,6 +1154,32 @@ mod test {
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             2
         );
+    }
+
+    #[test]
+    fn test_auto_detect_indent_style() {
+        use crate::Rope;
+
+        // Enough samples → detected
+        let src = "fn foo() {\n  bar();\n  baz();\n}\nfn qux() {\n  quux();\n}\n";
+        assert_eq!(
+            auto_detect_indent_style(&Rope::from(src)),
+            Some(IndentStyle::Spaces(2))
+        );
+
+        // Tabs with enough samples → detected
+        let src = "fn foo() {\n\tbar();\n\tbaz();\n}\nfn qux() {\n\tquux();\n}\n";
+        assert_eq!(
+            auto_detect_indent_style(&Rope::from(src)),
+            Some(IndentStyle::Tabs)
+        );
+
+        // Only one indentation increase → not enough data, returns None
+        let src = "fn foo() {\n  bar();\n}\n";
+        assert_eq!(auto_detect_indent_style(&Rope::from(src)), None);
+
+        // Empty file → None
+        assert_eq!(auto_detect_indent_style(&Rope::from("")), None);
     }
 
     #[test]
