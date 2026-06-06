@@ -198,6 +198,7 @@
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  |  | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
+| nsis | ✓ | ✓ | ✓ |  |  | `nsis-lsp` |
 | nu | ✓ | ✓ | ✓ |  |  | `nu`, `nu-lint` |
 | nunjucks | ✓ |  |  |  |  |  |
 | ocaml | ✓ | ✓ | ✓ |  |  | `ocamllsp` |
