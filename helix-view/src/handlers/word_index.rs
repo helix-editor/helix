@@ -7,7 +7,7 @@ use std::{borrow::Cow, iter, mem, sync::Arc, time::Duration};
 
 use foldhash::HashMap;
 use helix_core::{chars::char_is_word, fuzzy::fuzzy_match, ChangeSet, Rope, RopeSlice};
-use helix_event::{register_hook, AsyncHook};
+use helix_event::{register_hook, AsyncHook, TaskController, TaskHandle};
 use helix_stdx::rope::RopeSliceExt as _;
 use parking_lot::RwLock;
 use tokio::{sync::mpsc, time::Instant};
@@ -47,13 +47,21 @@ pub struct Handler {
     /// index. This ensures that consecutive edits to a document trigger the correct order of
     /// insertions and deletions into the word set.
     coordinator: mpsc::UnboundedSender<Event>,
+    /// Cancels in-flight indexing when the handler is dropped.
+    ///
+    /// Indexing a large document runs on a blocking task which cannot be preempted. Without this,
+    /// dropping the tokio runtime on shutdown would block until that task finishes, keeping the
+    /// process alive and unresponsive. The indexing task holds a [TaskHandle] from this
+    /// controller and checks it periodically.
+    _cancel: TaskController,
 }
 
 impl Handler {
     pub fn spawn() -> Self {
         let index = WordIndex::default();
         let (tx, rx) = mpsc::unbounded_channel();
-        tokio::spawn(index.clone().run(rx));
+        let mut cancel = TaskController::new();
+        tokio::spawn(index.clone().run(rx, cancel.restart()));
         Self {
             hook: Hook {
                 changes: HashMap::default(),
@@ -62,6 +70,7 @@ impl Handler {
             .spawn(),
             index,
             coordinator: tx,
+            _cancel: cancel,
         }
     }
 }
@@ -125,6 +134,8 @@ impl AsyncHook for Hook {
 const MIN_WORD_GRAPHEMES: usize = 3;
 /// Maximum word length allowed (in chars)
 const MAX_WORD_LEN: usize = 50;
+/// Number of words to index between checks of the cancellation handle.
+const CANCEL_CHECK_INTERVAL: usize = 4096;
 
 type Word = kstring::KString;
 
@@ -188,29 +199,52 @@ impl WordIndex {
             .collect()
     }
 
-    fn add_document(&self, text: &Rope) {
+    fn add_document(&self, text: &Rope, cancel: &TaskHandle) {
         let mut inner = self.inner.write();
-        for word in words(text.slice(..)) {
+        for (i, word) in words(text.slice(..)).enumerate() {
+            if i % CANCEL_CHECK_INTERVAL == 0 && cancel.is_canceled() {
+                return;
+            }
             inner.insert(word);
         }
     }
 
-    fn update_document(&self, old_text: &Rope, text: &Rope, changes: &ChangeSet) {
+    fn update_document(
+        &self,
+        old_text: &Rope,
+        text: &Rope,
+        changes: &ChangeSet,
+        cancel: &TaskHandle,
+    ) {
         let mut inner = self.inner.write();
+        // A single changed window can span the whole document, so the check is driven by a count
+        // of the words processed rather than the number of windows.
+        let mut since_check = 0;
         for (old_window, new_window) in changed_windows(old_text.slice(..), text.slice(..), changes)
         {
             for word in words(new_window) {
                 inner.insert(word);
+                since_check += 1;
             }
             for word in words(old_window) {
                 inner.remove(word);
+                since_check += 1;
+            }
+            if since_check >= CANCEL_CHECK_INTERVAL {
+                if cancel.is_canceled() {
+                    return;
+                }
+                since_check = 0;
             }
         }
     }
 
-    fn remove_document(&self, text: &Rope) {
+    fn remove_document(&self, text: &Rope, cancel: &TaskHandle) {
         let mut inner = self.inner.write();
-        for word in words(text.slice(..)) {
+        for (i, word) in words(text.slice(..)).enumerate() {
+            if i % CANCEL_CHECK_INTERVAL == 0 && cancel.is_canceled() {
+                return;
+            }
             inner.remove(word);
         }
     }
@@ -225,12 +259,16 @@ impl WordIndex {
     /// This task wraps a MPSC queue and spawns blocking tasks which update the index. Updates
     /// are applied one-by-one to ensure that changes to the index are **serialized**:
     /// updates to each document must be applied in-order.
-    async fn run(self, mut events: mpsc::UnboundedReceiver<Event>) {
+    async fn run(self, mut events: mpsc::UnboundedReceiver<Event>, cancel: TaskHandle) {
         while let Some(event) = events.recv().await {
+            if cancel.is_canceled() {
+                return;
+            }
             let this = self.clone();
+            let cancel = cancel.clone();
             tokio::task::spawn_blocking(move || match event {
                 Event::Insert(text) => {
-                    this.add_document(&text);
+                    this.add_document(&text, &cancel);
                 }
                 Event::Update(
                     _doc,
@@ -241,10 +279,10 @@ impl WordIndex {
                         ..
                     },
                 ) => {
-                    this.update_document(&old_text, &text, &changes);
+                    this.update_document(&old_text, &text, &changes, &cancel);
                 }
                 Event::Delete(_doc, text) => {
-                    this.remove_document(&text);
+                    this.remove_document(&text, &cancel);
                 }
                 Event::Clear => {
                     this.clear();
@@ -446,7 +484,8 @@ pub mod bench {
     pub use super::WordIndex;
 
     pub fn add_document(index: &WordIndex, text: &Rope) {
-        index.add_document(text);
+        let mut cancel = helix_event::TaskController::new();
+        index.add_document(text, &cancel.restart());
     }
 
     pub fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
@@ -472,7 +511,8 @@ mod tests {
     fn assert_words<I: ToString, T: IntoIterator<Item = I>>(text: &str, expected: T) {
         let text = Rope::from_str(text);
         let index = WordIndex::default();
-        index.add_document(&text);
+        let mut cancel = TaskController::new();
+        index.add_document(&text, &cancel.restart());
         let actual = index.words();
         let expected: HashSet<_> = expected.into_iter().map(|i| i.to_string()).collect();
         assert_eq!(expected, actual);
@@ -500,9 +540,11 @@ mod tests {
             expect_inserted.into_iter().map(|i| i.to_string()).collect();
 
         let index = WordIndex::default();
-        index.add_document(&before);
+        let mut cancel = TaskController::new();
+        let handle = cancel.restart();
+        index.add_document(&before, &handle);
         let words_before = index.words();
-        index.update_document(&before, &after, diff.changes());
+        index.update_document(&before, &after, diff.changes(), &handle);
         let words_after = index.words();
 
         let actual_removed = words_before.difference(&words_after).cloned().collect();
