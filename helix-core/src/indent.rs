@@ -943,6 +943,7 @@ pub fn is_opaque_interior(
     false
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn treesitter_indent_for_pos<'a>(
     query: &IndentQuery,
     syntax: &'a Syntax,
@@ -1014,6 +1015,7 @@ pub fn treesitter_indent_for_pos<'a>(
 /// is the number of such scopes containing it (collapsing scopes that open on the
 /// same physical line to one level), minus any `@outdent` whose token begins the line.
 /// `@align`/`@extend`/`@opaque` are kept as overlays.
+#[allow(clippy::too_many_arguments)]
 fn containment_accounting<'a>(
     query: &IndentQuery,
     root: &Node<'a>,
