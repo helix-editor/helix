@@ -120,7 +120,7 @@ pub fn textobject_paragraph(
     let mut line = range.cursor_line(slice);
     let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
     let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let next_line_empty = rope_is_line_ending(slice.line(line + 1));
     let last_char =
         prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
     let prev_empty_to_line = prev_line_empty && !curr_line_empty;
