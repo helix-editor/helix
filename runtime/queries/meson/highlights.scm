@@ -40,9 +40,14 @@
 (normal_command
   command: (identifier) @function)
 
-; Method calls: `obj.method(...)` — the property is the method name.
+; Member access vs. method call. A plain `obj.prop` is a member; an
+; `obj.method(...)` additionally carries the call's `function:` field, so the
+; later, more specific rule reclaims it as @function.method.
 (expression_statement
-  property: (identifier) @function.method)
+  property: (identifier) @variable.other.member)
+(expression_statement
+  property: (identifier) @function.method
+  function: (_))
 
 ; Dictionary / keyword-argument keys.
 (pair

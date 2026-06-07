@@ -246,6 +246,10 @@
 
 (type_parameter_constraints_clause (identifier) @type.parameter)
 
+;; Member access. Before the method-call rules below so `obj.Method()` reclaims
+;; @function, while a plain `obj.field` stays a member.
+(member_access_expression name: (identifier) @variable.other.member)
+
 ;; Method calls
 
 (invocation_expression (member_access_expression name: (identifier) @function))

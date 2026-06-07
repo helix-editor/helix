@@ -1,3 +1,10 @@
+(identifier) @variable
+
+; Member access (the trailing name of `obj.field`). Before the @constant and
+; method-call rules below so a SCREAMING member stays @constant and a call stays
+; @function.
+(member_access_expression (identifier) @variable.other.member .)
+
 ; highlights.scm
 
 ; highlight constants
@@ -24,7 +31,6 @@
 (unqualified_type (symbol . (identifier) @type))
 (unqualified_type (symbol (symbol) @namespace (identifier) @type))
 
-(identifier) @variable
 (attribute) @variable.other.member
 (method_declaration (symbol (symbol) @type (identifier) @function))
 (method_declaration (symbol (identifier) @function))

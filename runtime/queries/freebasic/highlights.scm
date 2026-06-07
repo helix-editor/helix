@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ; Keywords
 [
   "DIM"
@@ -93,4 +95,3 @@
 ] @punctuation.delimiter
 
 ; Variables
-(identifier) @variable

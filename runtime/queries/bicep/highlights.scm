@@ -36,7 +36,13 @@
   ":" @punctuation.delimiter
   (_))
 
-(property_identifier) @function.method
+; Property access `obj.field` is member access; the call rule below restores
+; @function.method for an invoked property like `az.resourceId(...)`.
+(property_identifier) @variable.other.member
+
+(call_expression
+  function: (member_expression
+    property: (property_identifier) @function.method))
 
 ; Attributes
 (decorator

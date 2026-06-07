@@ -322,6 +322,7 @@
 
 (field_expression
   "." @punctuation.delimiter)
+(field_expression field: (identifier) @variable.other.member)
 
 [
   ","

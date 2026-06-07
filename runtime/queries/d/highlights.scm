@@ -8,6 +8,8 @@
 ; (See accompanying file LICENSE.txt or https://opensource.org/licenses/MIT)
 ; SPDX-License-Identifier: MIT
 
+(identifier) @variable
+
 ; these are listed first, because they override keyword queries
 (identity_expression (in) @operator)
 (identity_expression (is) @operator)
@@ -18,6 +20,11 @@
 
 (call_expression (identifier) @function)
 (call_expression (type (identifier) @function))
+
+; Member access `o.field`: the trailing identifier of a property expression
+; (anchored so the receiver isn't captured). Method calls parse as a
+; call_expression and keep @function above.
+(property_expression (identifier) @variable.other.member .)
 
 (module_fqn) @namespace
 
@@ -219,8 +226,6 @@
     (double)
     (cfloat)
 ] @warning ; these types are deprecated
-
-(identifier) @variable
 
 ; Named arguments `foo(name: value)` (D named-args proposal).
 (named_argument
