@@ -311,6 +311,7 @@ pub fn test_editor_config() -> helix_view::editor::Config {
             enable: false,
             ..Default::default()
         },
+        insecure: true,
         ..Default::default()
     }
 }
