@@ -25,6 +25,7 @@ html {
   overflow-y: auto;
   padding: 0 15px;
   padding-bottom: 50px;
+  line-height: 1.6;
 }
 
 /* 2 1.75 1.5 1.25 1 .875 */
@@ -40,20 +41,35 @@ html {
 .content h3,
 .content h4 {
   font-weight: 500;
-  margin-top: 1.275em;
-  margin-bottom: .875em;
 }
+
+.content h1 { margin-top: 1.75em; margin-bottom: .875em; }
+.content h2 { margin-top: 2em;    margin-bottom: .75em; }
+.content h3 { margin-top: 1.75em; margin-bottom: .65em; }
+.content h4 { margin-top: 1.5em;  margin-bottom: .5em; }
+.content h1:first-child,
+.content h2:first-child { margin-top: 0; }
 
 .content p,
 .content ol,
-.content ul,
-.content table {
+.content ul {
   margin-top: 0;
-  margin-bottom: .875em;
+  margin-bottom: 1em;
 }
 
-.content ul li {
-  margin-bottom: .25rem;
+.content table {
+  margin-top: 1.5em;
+  margin-bottom: 1.75em;
+}
+
+.content pre {
+  margin-top: 1em;
+  margin-bottom: 1.25em;
+}
+
+.content ul li,
+.content ol li {
+  margin-bottom: .35rem;
 }
 
 .content ul {
