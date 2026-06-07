@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="custom-980510fd.css">
+        <link rel="stylesheet" href="custom-dd2efbe9.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -650,7 +650,7 @@ wrap-indicator = ""  # set wrap-indicator to "" to hide it
 </table>
 </div>
 <p>Due to lack of support for S-tab in some terminals, the default keybindings don’t fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol">Enhanced Keyboard protocol</a>, consider setting extra keybindings:</p>
-<pre><code>[keys.normal]
+<pre><code class="language-toml">[keys.normal]
 tab = "move_parent_node_end"
 S-tab = "move_parent_node_start"
 
@@ -663,7 +663,7 @@ S-tab = "extend_parent_node_start"
 </code></pre>
 <h3 id="editorinline-diagnostics-section"><a class="header" href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></h3>
 <p>Options for rendering diagnostics inside the text like shown below</p>
-<pre><code>fn main() {
+<pre><code class="language-text">fn main() {
   let foo = bar;
             └─ no such value in this scope
 }
@@ -684,7 +684,7 @@ S-tab = "extend_parent_node_start"
 </div>
 <p>The allowed values for <code>cursor-line</code> and <code>other-lines</code> are: <code>error</code>, <code>warning</code>, <code>info</code>, <code>hint</code>.</p>
 <p>The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the <code>end-of-line-diagnostics</code> config option):</p>
-<pre><code>fn main() {
+<pre><code class="language-text">fn main() {
   let baz = 1;
   let foo = bar; a local variable with a similar name exists: baz
             └─ no such value in this scope
@@ -772,7 +772,7 @@ trigger-length = 4
         <script src="highlight-abc7f01d.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="scheme-f27daa31.min.js"></script>
+        <script src="ts-query-56018970.js"></script>
 
         <script src="book-a0b12cfe.js"></script>
 

@@ -173,53 +173,71 @@ code.hljs {
 
 /* highlight.js theme, :where() is used to avoid increasing specificity */
 
+/* Mapped to the helix theme.toml palette */
 :where(.colibri) .hljs {
-  background: hsl(303.5, 22.1%, 9.5%);
-  color: #a39e9b;
+  background: #1f1029;          /* slightly deeper than --bg revolver */
+  color: #a4a0e8;                /* lavender — ui.text */
 }
 
 :where(.colibri) .hljs-comment,
 :where(.colibri) .hljs-quote {
-  color: #8d8687;
-}
-
-:where(.colibri) .hljs-link,
-:where(.colibri) .hljs-meta,
-:where(.colibri) .hljs-name,
-:where(.colibri) .hljs-regexp,
-:where(.colibri) .hljs-selector-class,
-:where(.colibri) .hljs-selector-id,
-:where(.colibri) .hljs-tag,
-:where(.colibri) .hljs-template-variable,
-:where(.colibri) .hljs-variable {
-  color: #ef6155;
-}
-
-:where(.colibri) .hljs-built_in,
-:where(.colibri) .hljs-deletion,
-:where(.colibri) .hljs-literal,
-:where(.colibri) .hljs-number,
-:where(.colibri) .hljs-params,
-:where(.colibri) .hljs-type {
-  color: #f99b15;
-}
-
-:where(.colibri) .hljs-attribute,
-:where(.colibri) .hljs-section,
-:where(.colibri) .hljs-title {
-  color: #fec418;
-}
-
-:where(.colibri) .hljs-addition,
-:where(.colibri) .hljs-bullet,
-:where(.colibri) .hljs-string,
-:where(.colibri) .hljs-symbol {
-  color: #48b685;
+  color: #697C81;                /* sirocco — comment */
 }
 
 :where(.colibri) .hljs-keyword,
+:where(.colibri) .hljs-name,
 :where(.colibri) .hljs-selector-tag {
-  color: #815ba4;
+  color: #eccdba;                /* almond — keyword, tag */
+}
+
+:where(.colibri) .hljs-meta,
+:where(.colibri) .hljs-attribute,
+:where(.colibri) .hljs-attr,
+:where(.colibri) .hljs-operator,
+:where(.colibri) .hljs-tag {
+  color: #dbbfef;                /* lilac — directives, attributes, operators */
+}
+
+:where(.colibri) .hljs-built_in,
+:where(.colibri) .hljs-symbol,
+:where(.colibri) .hljs-addition {
+  color: #9ff28f;                /* mint — builtins, additions */
+}
+
+:where(.colibri) .hljs-string,
+:where(.colibri) .hljs-bullet,
+:where(.colibri) .hljs-link {
+  color: #cccccc;                /* silver — strings */
+}
+
+:where(.colibri) .hljs-regexp,
+:where(.colibri) .hljs-formula {
+  color: #efba5d;                /* honey — regex, special */
+}
+
+:where(.colibri) .hljs-number,
+:where(.colibri) .hljs-literal,
+:where(.colibri) .hljs-params {
+  color: #E8DCA0;                /* chamois — numbers, literals, parameters */
+}
+
+:where(.colibri) .hljs-title,
+:where(.colibri) .hljs-section,
+:where(.colibri) .hljs-type,
+:where(.colibri) .hljs-class,
+:where(.colibri) .hljs-property,
+:where(.colibri) .hljs-selector-id,
+:where(.colibri) .hljs-selector-class {
+  color: #ffffff;                /* white — types, functions, headings */
+}
+
+:where(.colibri) .hljs-variable,
+:where(.colibri) .hljs-template-variable {
+  color: #a4a0e8;                /* lavender — variables */
+}
+
+:where(.colibri) .hljs-deletion {
+  color: #f47868;                /* apricot — deletion / error */
 }
 
 :where(.colibri) .hljs-emphasis {
