@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "../searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fb138b52.js"></script>
+        <script src="../toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -186,6 +186,10 @@
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
+<p>Injection drives more than highlighting: within an injected region Helix also
+uses the injected language’s own indentation, textobjects, and comment tokens —
+so, for example, editing JavaScript inside an HTML <code>&lt;script&gt;</code> indents and
+comments as JavaScript.</p>
 <p>An example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
   (#set! injection.language "bash"))

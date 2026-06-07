@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "../searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fb138b52.js"></script>
+        <script src="../toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -217,6 +217,9 @@ recognized:</p>
 </tbody>
 </table>
 </div>
+<p>Captures outside this list are ignored by the symbol pickers, so map a
+language-specific construct onto the closest listed kind rather than inventing a
+new one.</p>
 <h3 id="name"><a class="header" href="#name"><code>@name</code></a></h3>
 <p>Marks the name identifier node within a match. <code>@definition.*</code> should capture
 the entire definition node, and <code>@name</code> should capture the name identifier
@@ -230,7 +233,10 @@ within that same match:</p>
 <h3 id="reference"><a class="header" href="#reference"><code>@reference.*</code></a></h3>
 <p>Marks a node as a call site or type reference. These are used by workspace
 symbol search to locate usages. <code>@reference.call</code> and <code>@reference.class</code> are
-the common variants.</p>
+the common variants. As with definitions, <code>@name</code> captures the identifier:</p>
+<pre><code class="language-scm">(call
+  function: (identifier) @name) @reference.call
+</code></pre>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&amp;type=Code">Example query files</a> can be found in the Helix GitHub
 repository.</p>
 

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Syntax aware motions</title>
+        <title>Language servers</title>
 
 
         <!-- Custom HTML head -->
@@ -148,7 +148,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/syntax-aware-motions.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/lsp.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -182,64 +182,61 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h2 id="moving-the-selection-with-syntax-aware-motions"><a class="header" href="#moving-the-selection-with-syntax-aware-motions">Moving the selection with syntax-aware motions</a></h2>
-<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) allow you to move the
-selection according to its location in the syntax tree. For example, many languages have the
-following syntax for function calls:</p>
-<pre><code class="language-js">func(arg1, arg2, arg3);
-</code></pre>
-<p>A function call might be parsed by tree-sitter into a tree like the following.</p>
-<pre><code class="language-tsq">(call
-  function: (identifier) ; func
-  arguments:
-    (arguments           ; (arg1, arg2, arg3)
-      (identifier)       ; arg1
-      (identifier)       ; arg2
-      (identifier)))     ; arg3
-</code></pre>
-<p>Use <code>:tree-sitter-subtree</code> to view the syntax tree of the primary selection. In
-a more intuitive tree format:</p>
-<pre><code>            ┌────┐
-            │call│
-      ┌─────┴────┴─────┐
-      │                │
-┌─────▼────┐      ┌────▼────┐
-│identifier│      │arguments│
-│  "func"  │ ┌────┴───┬─────┴───┐
-└──────────┘ │        │         │
-             │        │         │
-   ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
-   │identifier│  │identifier│  │identifier│
-   │  "arg1"  │  │  "arg2"  │  │  "arg3"  │
-   └──────────┘  └──────────┘  └──────────┘
-</code></pre>
-<p>If you have a selection that wraps <code>arg1</code> (see the tree above), and you use
-<code>Alt-n</code>, it will select the next sibling in the syntax tree: <code>arg2</code>.</p>
-<pre><code class="language-js">// before
-func([arg1], arg2, arg3)
-// after
-func(arg1, [arg2], arg3);
-</code></pre>
-<p>Similarly, <code>Alt-o</code> will expand the selection to the parent node, in this case, the
-arguments node.</p>
-<pre><code class="language-js">func[(arg1, arg2, arg3)];
-</code></pre>
-<p>There is also some nuanced behavior that prevents you from getting stuck on a
-node with no sibling. When using <code>Alt-p</code> with a selection on <code>arg1</code>, the previous
-child node will be selected. In the event that <code>arg1</code> does not have a previous
-sibling, the selection will move up the syntax tree and select the previous
-element. As a result, using <code>Alt-p</code> with a selection on <code>arg1</code> will move the
-selection to the “func” <code>identifier</code>.</p>
+                        <h1 id="language-servers"><a class="header" href="#language-servers">Language servers</a></h1>
+<p>Helix has built-in support for the <a href="https://microsoft.github.io/language-server-protocol/">Language Server Protocol</a>, providing
+IDE-like features — diagnostics, completion, goto-definition, rename and more,
+for any language that has a server configured. Language servers are separate
+programs you install yourself: the <a href="./lang-support.html">language support</a> page
+lists which languages ship with a server configured, and the
+<a href="https://github.com/helix-editor/helix/wiki/Language-Server-Configurations">language server configuration wiki</a> has per-server installation notes.</p>
+<p>Run <code>hx --health &lt;language&gt;</code> to check whether Helix found the configured server
+for a language. After changing a server’s configuration, <code>:lsp-restart</code> reloads
+it and <code>:lsp-stop</code> stops it; <code>:lsp-workspace-command</code> runs a command the server
+exposes for the workspace.</p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>Most features are bound by default (see the <a href="./keymap.html">keymap</a>); the relevant
+keys are listed below.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th>Default key / command</th></tr>
+</thead>
+<tbody>
+<tr><td>Diagnostics — shown inline and in the gutter</td><td>navigate with <code>[d</code> / <code>]d</code>; <code>Space-d</code> / <code>Space-D</code> open the document / workspace pickers</td></tr>
+<tr><td>Completion</td><td>automatic while typing; <code>Ctrl-x</code> triggers it manually</td></tr>
+<tr><td>Hover documentation</td><td><code>Space-k</code></td></tr>
+<tr><td>Signature help (parameter hints)</td><td>automatic while typing arguments</td></tr>
+<tr><td>Goto definition / declaration / type / references / implementation</td><td><code>gd</code> / <code>gD</code> / <code>gy</code> / <code>gr</code> / <code>gi</code></td></tr>
+<tr><td>Rename symbol</td><td><code>Space-r</code></td></tr>
+<tr><td>Code actions</td><td><code>Space-a</code></td></tr>
+<tr><td>Document / workspace symbols</td><td><code>Space-s</code> / <code>Space-S</code></td></tr>
+<tr><td>Format document</td><td><code>:format</code>, or set <code>auto-format</code> to format on save</td></tr>
+<tr><td>Inlay hints</td><td>enable with <code>display-inlay-hints</code> (see below)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p>The <a href="./editor.html#editorlsp-section"><code>[editor.lsp]</code></a> section of <code>config.toml</code>
+toggles LSP behaviour — <code>display-inlay-hints</code>, <code>auto-signature-help</code>,
+<code>auto-document-highlight</code>, <code>snippets</code>, and <code>enable</code> to disable LSP entirely. How
+much diagnostic detail is shown inline at the cursor is configured separately in
+<a href="./editor.html#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code></a>.</p>
+<p>Which server(s) a language uses, the server’s command and arguments, and any
+language-specific settings are configured in <code>languages.toml</code> (see
+<a href="./languages.html#language-server-configuration">Language Server configuration</a>). A
+language may use <a href="./languages.html#configuring-language-servers-for-a-language">several servers</a>:
+for each request the first server in the list that supports it is used, and a
+server’s features can be limited with <code>only-features</code> / <code>except-features</code>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="textobjects.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="commands.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="pickers.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="lang-support.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -249,11 +246,11 @@ selection to the “func” <code>identifier</code>.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="textobjects.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="commands.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="pickers.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="lang-support.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

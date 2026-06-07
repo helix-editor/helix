@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "../searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fb138b52.js"></script>
+        <script src="../toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -185,15 +185,15 @@
                         <h2 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h2>
 <p>Helix uses tree-sitter to correctly indent new lines. This requires a
 tree-sitter grammar and an <code>indent.scm</code> query file placed in
-<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line is
-calculated by traversing the syntax tree from the lowest node at the
-beginning of the new line (see <a href="#indent-queries">Indent queries</a>).
-Each of these nodes contributes to the total indent when it is
-captured by the query (in what way depends on the name of
-the capture).</p>
-<p>Note that it matters where these added indents begin. For example,
-multiple indent level increases that start on the same line only increase
-the total indent level by 1. See <a href="#capture-types">Capture types</a>.</p>
+<code>runtime/queries/{language}/indents.scm</code>.</p>
+<p>The indent level of a line is <strong>the number of <code>@indent</code> scopes that contain
+it</strong>. An <code>@indent</code> capture on a node opens a scope spanning the lines <em>after</em>
+the node’s first line through its last line; a line is indented once for every
+such scope wrapping it. (A few capture types adjust this — <code>@outdent</code> cancels a
+level, <code>@align</code> aligns to a column, etc. (see <a href="#capture-types">Capture types</a>.)</p>
+<p>Note that it matters where these scopes <em>begin</em>: multiple scopes that open on
+the same physical line only increase the indent by 1 (the same-line rule). See
+<a href="#capture-types">Capture types</a>.</p>
 <p>By default, Helix uses the <code>hybrid</code> indentation heuristic. This means that
 indent queries are not used to compute the expected absolute indentation of a
 line but rather the expected difference in indentation between the new and an
@@ -237,25 +237,29 @@ of the query is the end of the line above the cursor.</p>
     some_hero &gt; life //                             │
 } // ←──────────────────────────────────────────────╯
 <span class="boring">}</span></code></pre>
-<p>From this starting node, the syntax tree is traversed up until the root node.
-Each indent capture is collected along the way, and then combined according to
-their <a href="#capture-types">capture types</a> and <a href="#scopes">scopes</a> to a final indent
-level for the line.</p>
+<p>From this starting node, the syntax tree is walked up to the root, collecting
+every <code>@indent</code>/<code>@outdent</code>/<code>@align</code>/… capture on an ancestor. Each <code>@indent</code>
+ancestor whose scope <em>contains</em> the line counts for one indent level (scopes
+opening on the same line collapse to one); the <a href="#capture-types">capture types</a>
+describe the adjustments.</p>
 <h3 id="capture-types"><a class="header" href="#capture-types">Capture types</a></h3>
 <ul>
-<li><code>@indent</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences in the same line <em>do not</em>
-stack. If there is at least one <code>@indent</code> and one <code>@outdent</code> capture on the
-same line, the indent level isn’t changed at all.</li>
-<li><code>@outdent</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</li>
-<li><code>@indent.always</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences on the same line <em>do</em>
-stack. The final indent level is <code>@indent.always</code> – <code>@outdent.always</code>. If
-an <code>@indent</code> and an <code>@indent.always</code> are on the same line, the <code>@indent</code> is
-ignored.</li>
-<li><code>@outdent.always</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent.always</code> apply.</li>
+<li><code>@indent</code>:
+Open an indent scope on this node — every line it contains is indented one
+more level. Scopes that open on the same line collapse: multiple <code>@indent</code>
+beginning on one line only add 1. A node captured by <em>both</em> <code>@indent</code> and
+<code>@outdent</code> contributes nothing (its level is cancelled) — used e.g. for a
+nested <code>else if</code> that should not stack a second level.
+By default the scope opens at the node’s own first line; see the
+<a href="#scope-header"><code>header</code></a> scope to open it at the parent (header) line instead.</li>
+<li><code>@outdent</code>:
+Decrease by 1 the indent of the line on which this (usually a closing token
+like <code>}</code>/<code>)</code>/<code>]</code>, or a keyword like <code>else</code>) begins.</li>
+<li><code>@indent.always</code>:
+Like <code>@indent</code> but does <em>not</em> collapse — multiple on the same line each add a
+level. The net level contribution is <code>@indent.always</code> − <code>@outdent.always</code>.</li>
+<li><code>@outdent.always</code>:
+Like <code>@outdent</code> but stacks, the counterpart to <code>@indent.always</code>.</li>
 <li><code>@align</code> (default scope <code>all</code>):
 Align everything inside this node to some anchor. The anchor is given
 by the start of the node captured by <code>@anchor</code> in the same pattern.
@@ -274,6 +278,10 @@ stops the extension of the next <code>@extend</code> capture. If multiple ancest
 captured, only the extension of the innermost one is prevented. All other
 ancestors are unaffected (regardless of whether the innermost ancestor would
 actually have been extended).</li>
+<li><code>@opaque</code>:
+Mark a literal body such as a string, heredoc, or block comment. Lines that
+begin inside the captured node keep their existing indentation instead of being
+reindented, so the contents of multi-line literals are left untouched.</li>
 </ul>
 <h4 id="indent--outdent"><a class="header" href="#indent--outdent"><code>@indent</code> / <code>@outdent</code></a></h4>
 <p>Consider this example:</p>
@@ -298,11 +306,37 @@ actually have been extended).</li>
 <pre><code class="language-scm">((block) @indent)
 ["}" ")"] @outdent
 </code></pre>
-<p>Note how on the second line, we have two blocks begin on the same line. In this
-case, since both captures occur on the same line, they are combined and only
-result in a net increase of 1. Also note that the closing <code>}</code>s are part of the
-<code>@indent</code> captures, but the 3 <code>@outdent</code>s also combine into 1 and result in that
-line losing one indent level.</p>
+<p>Note how on the second line two blocks open on the same line: since both scopes
+<em>begin</em> on that line they collapse, for a net increase of 1. On the last line,
+the three block scopes all contain it, but it begins with three <code>@outdent</code> <code>}</code>
+tokens that cancel them, so the line lands back at the enclosing level.</p>
+<h4 id="same-line-collapse"><a class="header" href="#same-line-collapse">Same-line collapse</a></h4>
+<p>The collapse above is a deliberate, load-bearing invariant:</p>
+<blockquote>
+<p>A line is indented by <strong>one level per physical line on which a containing
+<code>@indent</code> scope opens</strong>, not one level per scope. Several <code>@indent</code> scopes
+that <em>open</em> on the same line together add a single level.</p>
+</blockquote>
+<p>This is what makes <strong>method/builder chains flatten instead of staircasing</strong>.
+Grammars typically nest a chain so each <code>.method()</code> link is a <code>call</code> inside a
+<code>member_expression</code> inside the previous link, and several of those nodes <em>begin</em>
+on the receiver’s line:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = thing       // ← chain opens here
+    .foo()          // each link aligned one level in,
+    .bar()          // not progressively deeper
+    .baz();
+<span class="boring">}</span></code></pre>
+<pre><code class="language-scm">(call_expression) @indent
+</code></pre>
+<p>Even though many <code>call_expression</code>/<code>member_expression</code> scopes contain the
+<code>.bar()</code> line, they all <em>open</em> on the <code>thing</code> line, so they collapse to a single
+level and the continuation lines line up. Without the collapse, every link would
+add a level and the chain would stair-step to the right.</p>
+<p>If you instead want each scope to count even when several open on one line (for
+example YAML’s “list item <em>and</em> map both start on the same line”) opt out with
+<code>@indent.always</code> (described below), which does not collapse.</p>
 <h4 id="extend--extendprevent-once"><a class="header" href="#extend--extendprevent-once"><code>@extend</code> / <code>@extend.prevent-once</code></a></h4>
 <p>For an example of where <code>@extend</code> can be useful, consider Python, which is
 whitespace-sensitive.</p>
@@ -402,6 +436,29 @@ as well.</p>
 
 (return_statement) @extend.prevent-once
 </code></pre>
+<h4 id="brace-less-bodies"><a class="header" href="#brace-less-bodies">Brace-less bodies</a></h4>
+<p>A brace-less single-statement body — <code>if (cond)</code> with its statement on the next
+line and no <code>{}</code> — is a body the indent must wrap, but the body node’s <em>own</em>
+first line is the line that needs the indent (there is no separate opening line).
+Capture the body and give it the <a href="#scope-header"><code>header</code></a> scope, which opens the
+scope at the <strong>header</strong> (the captured node’s parent) line instead of the body’s
+own line, so the body line is contained:</p>
+<pre><code class="language-scm">(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
+(while_statement
+  body: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
+</code></pre>
+<p>The query already names exactly the brace-less body (the <code>consequence:</code> /
+<code>body:</code> field, with <code>#not-kind-eq?</code> skipping the braced form the surrounding
+block indents), so the engine just opens that capture’s scope at its parent — it
+does not itself inspect node kinds or field names. This works for a multi-line
+brace-less body too (e.g. one returning a lambda). Give <code>else</code> and <code>do / while</code>
+their own pattern (on the <code>alternative</code> / <code>body</code> field) so the trailing <code>else</code> /
+<code>while</code> keyword line is not indented along with the body.</p>
 <h4 id="indentalways--outdentalways"><a class="header" href="#indentalways--outdentalways"><code>@indent.always</code> / <code>@outdent.always</code></a></h4>
 <p>As mentioned before, normally if there is more than one <code>@indent</code> or <code>@outdent</code>
 capture on the same line, they are combined.</p>
@@ -479,41 +536,29 @@ The captures given by the 2 arguments must/must not start on the same line.</p>
 The captures given by the fist argument must/must span a total of one line.</p>
 </li>
 </ul>
-<h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
-<p>Added indents don’t always apply to the whole node. For example, in most
-cases when a node should be indented, we actually only want everything
-except for its first line to be indented. For this, there are several
-scopes (more scopes may be added in the future if required):</p>
-<ul>
-<li><code>tail</code>:
-This scope applies to everything except for the first line of the
-captured node.</li>
-<li><code>all</code>:
-This scope applies to the whole captured node. This is only different from
-<code>tail</code> when the captured node is the first node on its line.</li>
-</ul>
-<p>For example, imagine we have the following function</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn aha() { // ←─────────────────────────────────────╮
-  let take = "on me";  // ←──────────────╮  scope:  │
-  let take = "me on";             //     ├─ "tail"  ├─ (block) @indent
-  let ill = be_gone_days(1 || 2); //     │          │
-} // ←───────────────────────────────────┴──────────┴─ "}" @outdent
-                                         //                scope: "all"
-<span class="boring">}</span></code></pre>
-<p>We can write the following query with the <code>#set!</code> declaration:</p>
-<pre><code class="language-scm">((block) @indent
- (#set! "scope" "tail"))
-("}" @outdent
- (#set! "scope" "all"))
+<h3 id="the-header-scope"><a class="header" href="#the-header-scope"><a name="scope-header"></a>The <code>header</code> scope</a></h3>
+<p>By default an <code>@indent</code> scope opens at the captured node’s own first line, so the
+lines <em>inside</em> it are indented and its first line is not. Sometimes the node you
+must capture <em>is</em> the line that needs indenting — a brace-less body such as the
+statement after <code>if (cond)</code> (see <a href="#brace-less-bodies">Brace-less bodies</a>). For
+this, set <code>scope</code> to <code>header</code>:</p>
+<pre><code class="language-scm">(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
 </code></pre>
-<p>As we can see, the “tail” scope covers the node, except for the first line.
-Everything up to and including the closing brace gets an indent level of 1.
-Then, on the closing brace, we encounter an outdent with a scope of “all”, which
-means the first line is included, and the indent level is cancelled out on this
-line. (Note these scopes are the defaults for <code>@indent</code> and <code>@outdent</code>—they are
-written explicitly for demonstration.)</p>
+<p><code>header</code> opens the scope at the captured node’s <strong>parent</strong> (the <code>if_statement</code>
+header) line instead of the node’s own line, so the body’s first line is
+contained and indented. The query selects exactly the body, so the engine just
+honours the annotation — it does not match on node kinds or field names itself.</p>
+<p>(Older queries used <code>tail</code> / <code>all</code> scopes to control whether a node’s first line
+was included; under the containment model those are no longer needed and have
+been removed. <code>header</code> is the one scope the engine reads.)</p>
+<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
+<p><code>cargo xtask indent-check [language]</code> checks the queries against the fixtures in
+<code>tests/indent/&lt;language-id&gt;.&lt;ext&gt;</code> in both modes: re-indenting each line
+and simulating a newline typed after it, so a rule that is correct one way but
+wrong the other is caught.</p>
 
                     </main>
 

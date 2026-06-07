@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fb138b52.js"></script>
+        <script src="toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -326,6 +326,7 @@ The key is a list of styles.</p>
 <h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
 <p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter scopes</a>.</p>
 <p>When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is <code>function.builtin.static</code>, the key <code>function.builtin</code> will be used instead of <code>function</code>.</p>
+<p>This list is also the reference for the capture names used in <code>highlights.scm</code> queries (<code>@function</code>, <code>@type</code>, …) — see <a href="./guides/adding_languages.html">Adding languages</a>. When several captures cover the same text the <strong>last</strong> matching pattern in the file wins; when they sit on nested nodes the <strong>innermost</strong> node wins regardless of order, so capture the leaf you mean (put <code>@function</code> on the called identifier, not a node wrapping it). A method call is <code>@function.method</code>; a field access with no call is <code>@variable.other.member</code>.</p>
 <p>We use a similar set of scopes as
 <a href="https://www.sublimetext.com/docs/scope_naming.html">Sublime Text</a>. See also
 <a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
@@ -340,13 +341,13 @@ The key is a list of styles.</p>
 <li><code>parameter</code> - Generic type parameters (<code>T</code>)</li>
 <li><code>enum</code>
 <ul>
-<li><code>variant</code></li>
+<li><code>variant</code> - Enum variants</li>
 </ul>
 </li>
 </ul>
 </li>
 <li>
-<p><code>constructor</code></p>
+<p><code>constructor</code> - Constructors, struct/record literals, type names in value position</p>
 </li>
 <li>
 <p><code>constant</code> (TODO: constant.other.placeholder for <code>%v</code>)</p>
@@ -461,15 +462,15 @@ The key is a list of styles.</p>
 <p><code>operator</code> - <code>||</code>, <code>+=</code>, <code>&gt;</code></p>
 </li>
 <li>
-<p><code>function</code></p>
+<p><code>function</code> - Function definitions and calls</p>
 <ul>
-<li><code>builtin</code></li>
-<li><code>method</code>
+<li><code>builtin</code> - Language built-in functions</li>
+<li><code>method</code> - Method definitions and calls (<code>obj.method()</code>)
 <ul>
 <li><code>private</code> - Private methods that use a unique syntax (currently just ECMAScript-based languages)</li>
 </ul>
 </li>
-<li><code>macro</code></li>
+<li><code>macro</code> - Macro invocations (e.g. <code>println!</code> in Rust)</li>
 <li><code>special</code> (preprocessor in C)</li>
 </ul>
 </li>
@@ -480,7 +481,7 @@ The key is a list of styles.</p>
 </ul>
 </li>
 <li>
-<p><code>namespace</code></p>
+<p><code>namespace</code> - Modules and namespaces (e.g. <code>std::collections</code>, package names)</p>
 </li>
 <li>
 <p><code>special</code> - <code>derive</code> in Rust, bolded query-match in pickers (includes file explorer), etc.
@@ -543,6 +544,9 @@ See also <a href="https://github.com/helix-editor/helix/issues/2380">#2380</a></
 </ul>
 </li>
 </ul>
+</li>
+<li>
+<p><code>embedded</code> - Interpolated expressions embedded in a string template (<code>${…}</code>)</p>
 </li>
 </ul>
 <h4 id="interface"><a class="header" href="#interface">Interface</a></h4>

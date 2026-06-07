@@ -37,10 +37,10 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-fb138b52.js"></script>
+        <script src="toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,7 @@
 <p>Docs for bleeding edge master can be found at
 <a href="https://docs.helix-editor.com/master">https://docs.helix-editor.com/master</a>.</p>
 <p>See the <a href="#using-helix">usage</a> section for a quick overview of the editor, <a href="#keymap-1">keymap</a>
-section for all available keybindings and the <a href="#configuration-1">configuration</a> section
+section for all available keybindings and the <a href="#configuration-2">configuration</a> section
 for defining custom keybindings, setting themes, etc.
 For everything else (e.g., how to install supported language servers), see the <a href="https://github.com/helix-editor/helix/wiki">Helix Wiki</a>.</p>
 <p>Refer the <a href="https://github.com/helix-editor/helix/wiki/FAQ">FAQ</a> for common questions.</p>
@@ -745,6 +745,8 @@ selection to the “func” <code>identifier</code>.</p>
 <p>Most pickers perform fuzzy matching using <a href="https://github.com/junegunn/fzf?tab=readme-ov-file#search-syntax">fzf syntax</a>. Two exceptions are the global search picker, which uses regex, and the workspace symbol picker, which passes search terms to the language server. Note that OR operations (<code>|</code>) are not currently supported.</p>
 <p>If a picker shows multiple columns, you may apply the filter to a specific column by prefixing the column name with <code>%</code>. Column names can be shortened to any prefix, so <code>%p</code>, <code>%pa</code> or <code>%pat</code> all mean the same as <code>%path</code>. For example, a query of <code>helix %p .toml !lang</code> in the global search picker searches for the term “helix” within files with paths ending in “.toml” but not including “lang”.</p>
 <p>You can insert the contents of a <a href="#registers-1">register</a> using <code>Ctrl-r</code> followed by a register name. For example, one could insert the currently selected text using <code>Ctrl-r</code>-<code>.</code>, or the directory of the current file using <code>Ctrl-r</code>-<code>%</code> followed by <code>Ctrl-w</code> to remove the last path section. The global search picker will use the contents of the <a href="#default-registers">search register</a> if you press <code>Enter</code> without typing a filter. For example, pressing <code>*</code>-<code>Space-/</code>-<code>Enter</code> will start a global search for the currently selected text.</p>
+<h3 id="file-explorer"><a class="header" href="#file-explorer">File explorer</a></h3>
+<p><code>Space-e</code> opens an interactive file explorer for browsing and opening files, rooted at the workspace; <code>Space-.</code> opens one rooted at the current buffer’s directory. Unlike the file picker, the explorer does not ignore most files by default; its ignore behaviour is configured separately in the <a href="#editorfile-explorer-section"><code>[editor.file-explorer]</code></a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="jumplist"><a href="#jumplist" class="header">Jumplist</a></h1>
 <h2 id="using-the-jumplist"><a class="header" href="#using-the-jumplist">Using the jumplist</a></h2>
@@ -922,6 +924,7 @@ To jump backward in the jumplist, use <code>Ctrl-o</code>; to go forward, use <c
 <tr><td><code>Ctrl-x</code></td><td>Decrement object (number) under cursor</td><td><code>decrement</code></td></tr>
 <tr><td><code>Q</code></td><td>Start/stop macro recording to the selected register (experimental)</td><td><code>record_macro</code></td></tr>
 <tr><td><code>q</code></td><td>Play back a recorded macro from the selected register (experimental)</td><td><code>replay_macro</code></td></tr>
+<tr><td><code>Ctrl-z</code></td><td>Suspend Helix and return to the shell (resume with <code>fg</code>)</td><td><code>suspend</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -1070,6 +1073,7 @@ useful when you’re simply looking over text and not actively editing it.</p>
 <tr><td><code>c</code></td><td>Go to the middle of the screen</td><td><code>goto_window_center</code></td></tr>
 <tr><td><code>b</code></td><td>Go to the bottom of the screen</td><td><code>goto_window_bottom</code></td></tr>
 <tr><td><code>d</code></td><td>Go to definition (<strong>LSP</strong>)</td><td><code>goto_definition</code></td></tr>
+<tr><td><code>D</code></td><td>Go to declaration (<strong>LSP</strong>)</td><td><code>goto_declaration</code></td></tr>
 <tr><td><code>y</code></td><td>Go to type definition (<strong>LSP</strong>)</td><td><code>goto_type_definition</code></td></tr>
 <tr><td><code>r</code></td><td>Go to references (<strong>LSP</strong>)</td><td><code>goto_reference</code></td></tr>
 <tr><td><code>i</code></td><td>Go to implementation (<strong>LSP</strong>)</td><td><code>goto_implementation</code></td></tr>
@@ -1115,8 +1119,9 @@ useful when you’re simply looking over text and not actively editing it.</p>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
 <tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
 <tr><td><code>s</code>, <code>Ctrl-s</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
-<tr><td><code>f</code></td><td>Go to files/URLs in selections in horizontal splits</td><td><code>goto_file</code></td></tr>
-<tr><td><code>F</code></td><td>Go to files/URLs in selections in vertical splits</td><td><code>goto_file</code></td></tr>
+<tr><td><code>t</code>, <code>Ctrl-t</code></td><td>Transpose the two adjacent splits</td><td><code>transpose_view</code></td></tr>
+<tr><td><code>f</code></td><td>Go to files/URLs in selections in horizontal splits</td><td><code>goto_file_hsplit</code></td></tr>
+<tr><td><code>F</code></td><td>Go to files/URLs in selections in vertical splits</td><td><code>goto_file_vsplit</code></td></tr>
 <tr><td><code>h</code>, <code>Ctrl-h</code>, <code>Left</code></td><td>Move to left split</td><td><code>jump_view_left</code></td></tr>
 <tr><td><code>j</code>, <code>Ctrl-j</code>, <code>Down</code></td><td>Move to split below</td><td><code>jump_view_down</code></td></tr>
 <tr><td><code>k</code>, <code>Ctrl-k</code>, <code>Up</code></td><td>Move to split above</td><td><code>jump_view_up</code></td></tr>
@@ -1127,6 +1132,8 @@ useful when you’re simply looking over text and not actively editing it.</p>
 <tr><td><code>J</code></td><td>Swap window downwards</td><td><code>swap_view_down</code></td></tr>
 <tr><td><code>K</code></td><td>Swap window upwards</td><td><code>swap_view_up</code></td></tr>
 <tr><td><code>L</code></td><td>Swap window to the right</td><td><code>swap_view_right</code></td></tr>
+<tr><td><code>ns</code>, <code>nCtrl-s</code></td><td>New horizontal split with a scratch buffer</td><td><code>hsplit_new</code></td></tr>
+<tr><td><code>nv</code>, <code>nCtrl-v</code></td><td>New vertical split with a scratch buffer</td><td><code>vsplit_new</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -1141,6 +1148,8 @@ useful when you’re simply looking over text and not actively editing it.</p>
 <tbody>
 <tr><td><code>f</code></td><td>Open file picker at LSP workspace root</td><td><code>file_picker</code></td></tr>
 <tr><td><code>F</code></td><td>Open file picker at current working directory</td><td><code>file_picker_in_current_directory</code></td></tr>
+<tr><td><code>e</code></td><td>Open file explorer at workspace root</td><td><code>file_explorer</code></td></tr>
+<tr><td><code>.</code></td><td>Open file explorer at current buffer’s directory</td><td><code>file_explorer_in_current_buffer_directory</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
 <tr><td><code>j</code></td><td>Open jumplist picker</td><td><code>jumplist_picker</code></td></tr>
 <tr><td><code>g</code></td><td>Open changed file picker</td><td><code>changed_file_picker</code></td></tr>
@@ -1233,6 +1242,8 @@ useful when you’re simply looking over text and not actively editing it.</p>
 <tr><td><code>[a</code></td><td>Go to previous argument/parameter (<strong>TS</strong>)</td><td><code>goto_prev_parameter</code></td></tr>
 <tr><td><code>]c</code></td><td>Go to next comment (<strong>TS</strong>)</td><td><code>goto_next_comment</code></td></tr>
 <tr><td><code>[c</code></td><td>Go to previous comment (<strong>TS</strong>)</td><td><code>goto_prev_comment</code></td></tr>
+<tr><td><code>]e</code></td><td>Go to next entry (<strong>TS</strong>)</td><td><code>goto_next_entry</code></td></tr>
+<tr><td><code>[e</code></td><td>Go to previous entry (<strong>TS</strong>)</td><td><code>goto_prev_entry</code></td></tr>
 <tr><td><code>]T</code></td><td>Go to next test (<strong>TS</strong>)</td><td><code>goto_next_test</code></td></tr>
 <tr><td><code>[T</code></td><td>Go to previous test (<strong>TS</strong>)</td><td><code>goto_prev_test</code></td></tr>
 <tr><td><code>]p</code></td><td>Go to next paragraph</td><td><code>goto_next_paragraph</code></td></tr>
@@ -1893,6 +1904,52 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 </table>
 </div>
 <div style="break-before: page; page-break-before: always;"></div>
+<h1 id="language-servers"><a class="header" href="#language-servers">Language servers</a></h1>
+<p>Helix has built-in support for the <a href="https://microsoft.github.io/language-server-protocol/">Language Server Protocol</a>, providing
+IDE-like features — diagnostics, completion, goto-definition, rename and more,
+for any language that has a server configured. Language servers are separate
+programs you install yourself: the <a href="#language-support-1">language support</a> page
+lists which languages ship with a server configured, and the
+<a href="https://github.com/helix-editor/helix/wiki/Language-Server-Configurations">language server configuration wiki</a> has per-server installation notes.</p>
+<p>Run <code>hx --health &lt;language&gt;</code> to check whether Helix found the configured server
+for a language. After changing a server’s configuration, <code>:lsp-restart</code> reloads
+it and <code>:lsp-stop</code> stops it; <code>:lsp-workspace-command</code> runs a command the server
+exposes for the workspace.</p>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<p>Most features are bound by default (see the <a href="#keymap-1">keymap</a>); the relevant
+keys are listed below.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th>Default key / command</th></tr>
+</thead>
+<tbody>
+<tr><td>Diagnostics — shown inline and in the gutter</td><td>navigate with <code>[d</code> / <code>]d</code>; <code>Space-d</code> / <code>Space-D</code> open the document / workspace pickers</td></tr>
+<tr><td>Completion</td><td>automatic while typing; <code>Ctrl-x</code> triggers it manually</td></tr>
+<tr><td>Hover documentation</td><td><code>Space-k</code></td></tr>
+<tr><td>Signature help (parameter hints)</td><td>automatic while typing arguments</td></tr>
+<tr><td>Goto definition / declaration / type / references / implementation</td><td><code>gd</code> / <code>gD</code> / <code>gy</code> / <code>gr</code> / <code>gi</code></td></tr>
+<tr><td>Rename symbol</td><td><code>Space-r</code></td></tr>
+<tr><td>Code actions</td><td><code>Space-a</code></td></tr>
+<tr><td>Document / workspace symbols</td><td><code>Space-s</code> / <code>Space-S</code></td></tr>
+<tr><td>Format document</td><td><code>:format</code>, or set <code>auto-format</code> to format on save</td></tr>
+<tr><td>Inlay hints</td><td>enable with <code>display-inlay-hints</code> (see below)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p>The <a href="#editorlsp-section"><code>[editor.lsp]</code></a> section of <code>config.toml</code>
+toggles LSP behaviour — <code>display-inlay-hints</code>, <code>auto-signature-help</code>,
+<code>auto-document-highlight</code>, <code>snippets</code>, and <code>enable</code> to disable LSP entirely. How
+much diagnostic detail is shown inline at the cursor is configured separately in
+<a href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code></a>.</p>
+<p>Which server(s) a language uses, the server’s command and arguments, and any
+language-specific settings are configured in <code>languages.toml</code> (see
+<a href="#language-server-configuration">Language Server configuration</a>). A
+language may use <a href="#configuring-language-servers-for-a-language">several servers</a>:
+for each request the first server in the list that supports it is used, and a
+server’s features can be limited with <code>only-features</code> / <code>except-features</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
 <h1 id="language-support-1"><a href="#language-support-1" class="header">Language support</a></h1>
 <h2 id="language-support"><a class="header" href="#language-support">Language Support</a></h2>
 <p>The following languages and Language Servers are supported. To use
@@ -1925,7 +1982,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>blueprint</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>blueprint-compiler</code></td></tr>
 <tr><td>bovex</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>c</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
-<tr><td>c-sharp</td><td>✓</td><td>✓</td><td></td><td>✓</td><td></td><td><code>roslyn-language-server</code>, <code>OmniSharp</code>, <code>csharp-ls</code></td></tr>
+<tr><td>c-sharp</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>roslyn-language-server</code>, <code>OmniSharp</code>, <code>csharp-ls</code></td></tr>
 <tr><td>c3</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>c3-lsp</code></td></tr>
 <tr><td>cabal</td><td></td><td></td><td></td><td></td><td></td><td><code>haskell-language-server-wrapper</code></td></tr>
 <tr><td>caddyfile</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -1936,7 +1993,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>circom</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>circom-lsp</code></td></tr>
 <tr><td>clarity</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>clarinet</code></td></tr>
 <tr><td>clojure</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>clojure-lsp</code></td></tr>
-<tr><td>cmake</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>neocmakelsp</code>, <code>cmake-language-server</code></td></tr>
+<tr><td>cmake</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>neocmakelsp</code>, <code>cmake-language-server</code></td></tr>
 <tr><td>codeql</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>codeql</code></td></tr>
 <tr><td>comment</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>common-lisp</td><td>✓</td><td>✓</td><td></td><td>✓</td><td>✓</td><td><code>cl-lsp</code></td></tr>
@@ -1944,7 +2001,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>cpon</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>cpp</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>clangd</code></td></tr>
 <tr><td>cross-config</td><td>✓</td><td>✓</td><td></td><td></td><td>✓</td><td><code>taplo</code>, <code>tombi</code></td></tr>
-<tr><td>crystal</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>crystalline</code>, <code>ameba-ls</code></td></tr>
+<tr><td>crystal</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>crystalline</code>, <code>ameba-ls</code></td></tr>
 <tr><td>css</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>vscode-css-language-server</code></td></tr>
 <tr><td>csv</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>cue</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>cue</code></td></tr>
@@ -1975,12 +2032,12 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>ejs</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>elisp</td><td>✓</td><td></td><td></td><td>✓</td><td></td><td></td></tr>
 <tr><td>elixir</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>elixir-ls</code>, <code>expert</code></td></tr>
-<tr><td>elm</td><td>✓</td><td>✓</td><td></td><td>✓</td><td></td><td><code>elm-language-server</code></td></tr>
+<tr><td>elm</td><td>✓</td><td>✓</td><td></td><td>✓</td><td>✓</td><td><code>elm-language-server</code></td></tr>
 <tr><td>elvish</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>elvish</code></td></tr>
 <tr><td>embedded-perl</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>env</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
 <tr><td>erb</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>erlang</td><td>✓</td><td>✓</td><td></td><td>✓</td><td>✓</td><td><code>erlang_ls</code>, <code>elp</code></td></tr>
+<tr><td>erlang</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>erlang_ls</code>, <code>elp</code></td></tr>
 <tr><td>esdl</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>fennel</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td><code>fennel-ls</code></td></tr>
 <tr><td>fga</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -1990,7 +2047,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>forth</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>forth-lsp</code></td></tr>
 <tr><td>fortran</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td><code>fortls</code></td></tr>
 <tr><td>freebasic</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td></tr>
-<tr><td>fsharp</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>fsautocomplete</code></td></tr>
+<tr><td>fsharp</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td><code>fsautocomplete</code></td></tr>
 <tr><td>gas</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>asm-lsp</code></td></tr>
 <tr><td>gdscript</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>gemini</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -2018,23 +2075,23 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>gotmpl</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>gopls</code></td></tr>
 <tr><td>gowork</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>gopls</code></td></tr>
 <tr><td>gpr</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>ada_language_server</code></td></tr>
-<tr><td>graphql</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>graphql-lsp</code></td></tr>
+<tr><td>graphql</td><td>✓</td><td>✓</td><td></td><td></td><td>✓</td><td><code>graphql-lsp</code></td></tr>
 <tr><td>gren</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>groovy</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>groovy</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td></td></tr>
 <tr><td>gts</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>typescript-language-server</code>, <code>vscode-eslint-language-server</code>, <code>ember-language-server</code></td></tr>
 <tr><td>hare</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>hare-lsp</code></td></tr>
-<tr><td>haskell</td><td>✓</td><td>✓</td><td></td><td>✓</td><td></td><td><code>haskell-language-server-wrapper</code></td></tr>
+<tr><td>haskell</td><td>✓</td><td>✓</td><td></td><td>✓</td><td>✓</td><td><code>haskell-language-server-wrapper</code></td></tr>
 <tr><td>haskell-literate</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>haskell-language-server-wrapper</code></td></tr>
 <tr><td>haskell-persistent</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>haxe</td><td>✓</td><td></td><td></td><td>✓</td><td></td><td></td></tr>
-<tr><td>hcl</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>terraform-ls</code></td></tr>
+<tr><td>hcl</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>terraform-ls</code></td></tr>
 <tr><td>hdl</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>hdls</code></td></tr>
 <tr><td>heex</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>elixir-ls</code>, <code>expert</code></td></tr>
 <tr><td>helm</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>helm_ls</code></td></tr>
 <tr><td>hocon</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>hoon</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>hosts</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>html</td><td>✓</td><td>✓</td><td></td><td></td><td>✓</td><td><code>vscode-html-language-server</code>, <code>superhtml</code></td></tr>
+<tr><td>html</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>vscode-html-language-server</code>, <code>superhtml</code></td></tr>
 <tr><td>htmldjango</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>djlsp</code>, <code>vscode-html-language-server</code>, <code>superhtml</code></td></tr>
 <tr><td>hurl</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>hy</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>hyuga</code></td></tr>
@@ -2060,14 +2117,14 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>jsonc</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>vscode-json-language-server</code></td></tr>
 <tr><td>jsonnet</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>jsonnet-language-server</code></td></tr>
 <tr><td>jsx</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>typescript-language-server</code></td></tr>
-<tr><td>julia</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>julia</code></td></tr>
+<tr><td>julia</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>julia</code></td></tr>
 <tr><td>just</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>just-lsp</code></td></tr>
 <tr><td>kcl</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>kcl-language-server</code></td></tr>
 <tr><td>kconfig</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>kdl</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
 <tr><td>klog</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>koka</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td><code>koka</code></td></tr>
-<tr><td>kotlin</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>kotlin-language-server</code></td></tr>
+<tr><td>kotlin</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>kotlin-language-server</code></td></tr>
 <tr><td>koto</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>koto-ls</code></td></tr>
 <tr><td>latex</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>texlab</code></td></tr>
 <tr><td>ld</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
@@ -2096,18 +2153,18 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>mint</td><td></td><td></td><td></td><td></td><td></td><td><code>mint</code></td></tr>
 <tr><td>miseconfig</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>taplo</code>, <code>tombi</code></td></tr>
 <tr><td>mojo</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>pixi</code></td></tr>
-<tr><td>move</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>move</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>msbuild</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>nasm</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>asm-lsp</code></td></tr>
 <tr><td>nearley</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td></td></tr>
 <tr><td>nestedtext</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>nginx</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>nickel</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td><code>nls</code></td></tr>
-<tr><td>nim</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>nimlangserver</code></td></tr>
+<tr><td>nim</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>nimlangserver</code></td></tr>
 <tr><td>nix</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>nil</code>, <code>nixd</code></td></tr>
 <tr><td>nu</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>nu</code>, <code>nu-lint</code></td></tr>
 <tr><td>nunjucks</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>ocaml</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>ocamllsp</code></td></tr>
+<tr><td>ocaml</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>ocamllsp</code></td></tr>
 <tr><td>ocaml-interface</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>ocamllsp</code></td></tr>
 <tr><td>odin</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>ols</code></td></tr>
 <tr><td>ohm</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td></td></tr>
@@ -2118,7 +2175,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>passwd</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>pem</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>penrose</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>perl</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>perlnavigator</code></td></tr>
+<tr><td>perl</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>perlnavigator</code></td></tr>
 <tr><td>pest</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>pest-language-server</code></td></tr>
 <tr><td>php</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>intelephense</code></td></tr>
 <tr><td>php-only</td><td>✓</td><td></td><td></td><td>✓</td><td></td><td></td></tr>
@@ -2129,7 +2186,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>po</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
 <tr><td>pod</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>ponylang</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>pony-lsp</code></td></tr>
-<tr><td>powershell</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>powershell</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td></td></tr>
 <tr><td>prisma</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>prisma-language-server</code></td></tr>
 <tr><td>prolog</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td><code>swipl</code></td></tr>
 <tr><td>properties</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
@@ -2144,7 +2201,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>qmv</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>quarto</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td></td></tr>
 <tr><td>quint</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>quint-language-server</code></td></tr>
-<tr><td>r</td><td>✓</td><td>✓</td><td></td><td>✓</td><td>✓</td><td><code>R</code></td></tr>
+<tr><td>r</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>R</code></td></tr>
 <tr><td>racket</td><td>✓</td><td></td><td>✓</td><td></td><td>✓</td><td><code>racket</code></td></tr>
 <tr><td>regex</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td></td></tr>
 <tr><td>rego</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>regols</code></td></tr>
@@ -2162,10 +2219,10 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>rust-format-args</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>rust-format-args-macro</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td></td></tr>
 <tr><td>sage</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>scala</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>metals</code></td></tr>
+<tr><td>scala</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>metals</code></td></tr>
 <tr><td>scfg</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>scheme</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td></tr>
-<tr><td>scss</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td><code>vscode-css-language-server</code></td></tr>
+<tr><td>scss</td><td>✓</td><td></td><td>✓</td><td></td><td>✓</td><td><code>vscode-css-language-server</code></td></tr>
 <tr><td>shellcheckrc</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
 <tr><td>slang</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>slangd</code></td></tr>
 <tr><td>slint</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>slint-lsp</code></td></tr>
@@ -2174,11 +2231,11 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>smithy</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>cs</code></td></tr>
 <tr><td>sml</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>snakemake</td><td>✓</td><td></td><td>✓</td><td></td><td></td><td><code>pylsp</code></td></tr>
-<tr><td>solidity</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>solc</code></td></tr>
+<tr><td>solidity</td><td>✓</td><td>✓</td><td></td><td></td><td>✓</td><td><code>solc</code></td></tr>
 <tr><td>sourcepawn</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>sourcepawn-studio</code></td></tr>
 <tr><td>spade</td><td>✓</td><td></td><td>✓</td><td></td><td>✓</td><td><code>swim</code></td></tr>
 <tr><td>spicedb</td><td>✓</td><td></td><td></td><td>✓</td><td></td><td></td></tr>
-<tr><td>sql</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>sql</td><td>✓</td><td>✓</td><td></td><td></td><td>✓</td><td></td></tr>
 <tr><td>ssh_client_config</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>starlark</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>starpls</code></td></tr>
 <tr><td>strace</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -2222,8 +2279,8 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>verilog</td><td>✓</td><td>✓</td><td></td><td></td><td></td><td><code>verible-verilog-ls</code></td></tr>
 <tr><td>vhdl</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>vhdl_ls</code></td></tr>
 <tr><td>vhs</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>vim</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>vue</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>vue-language-server</code></td></tr>
+<tr><td>vim</td><td>✓</td><td></td><td></td><td></td><td>✓</td><td></td></tr>
+<tr><td>vue</td><td>✓</td><td>✓</td><td>✓</td><td></td><td></td><td><code>vue-language-server</code></td></tr>
 <tr><td>wast</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>wat</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>wat_server</code></td></tr>
 <tr><td>webc</td><td>✓</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -2240,7 +2297,7 @@ Languages</a> guide for more language configuration information.</p>
 <tr><td>yaml</td><td>✓</td><td>✓</td><td>✓</td><td></td><td>✓</td><td><code>yaml-language-server</code>, <code>ansible-language-server</code></td></tr>
 <tr><td>yara</td><td>✓</td><td></td><td></td><td></td><td></td><td><code>yls</code></td></tr>
 <tr><td>yuck</td><td>✓</td><td></td><td>✓</td><td></td><td>✓</td><td></td></tr>
-<tr><td>zig</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td></td><td><code>zls</code></td></tr>
+<tr><td>zig</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td><code>zls</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -2253,7 +2310,7 @@ Languages</a> guide for more language configuration information.</p>
 <p>You can always make current workspace trusted by running <code>:workspace-trust</code> command, and untrust it with <code>:workspace-untrust</code>.</p>
 <p>Lists of trusted and excluded workspaces, delimited by newline characters, are stored in <code>~/.local/share/helix/trusted_workspaces</code> and <code>~/.local/share/helix/excluded_workspaces</code> correspondingly.</p>
 <!-- TODO: Windows paths -->
-<h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
 <p>You can return to the old behaviour of loading every local <code>.helix/config.toml</code> and <code>.helix/languages.toml</code> and starting LSP’s without an explicit permission by setting following option:</p>
 <pre><code class="language-toml">[editor]
 insecure = true
@@ -2264,11 +2321,11 @@ insecure = true
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
 <ul>
-<li><a href="#Delete/Change%20Commands">Delete/Change Commands</a></li>
-<li><a href="#Navigation">Navigation</a></li>
-<li><a href="#Line%20Deletes">Line Deletes</a></li>
-<li><a href="#Comment%20lines,%20Completion,%20Search">Comment lines, Completion, Search</a></li>
-<li><a href="#File%20actions">File actions</a></li>
+<li><a href="#deletechange-commands">Delete/Change Commands</a></li>
+<li><a href="#navigation">Navigation</a></li>
+<li><a href="#line-deletes">Line Deletes</a></li>
+<li><a href="#comment-lines-completion-search">Comment lines, Completion, Search</a></li>
+<li><a href="#file-actions">File actions</a></li>
 </ul>
 <p>Helix’s editing model is strongly inspired from Vim and Kakoune, and a notable
 difference from Vim (and the most striking similarity to Kakoune) is that Helix
@@ -2410,7 +2467,7 @@ insert = "bar"
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="helix-mode-in-other-software"><a class="header" href="#helix-mode-in-other-software">Helix mode in other software</a></h1>
-<p>Helix’ keymap and interaction model (<a href="#usage.md">Using Helix</a>) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of “Helix mode” in various other software products, allowing Helix-style editing for a greater variety of use cases.</p>
+<p>Helix’ keymap and interaction model (<a href="#using-helix">Using Helix</a>) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of “Helix mode” in various other software products, allowing Helix-style editing for a greater variety of use cases.</p>
 <p>“Helix mode” is frequently still in early stages or missing entirely. For such cases, we also link to relevant bugs or discussions.</p>
 <h2 id="other-editors"><a class="header" href="#other-editors">Other editors</a></h2>
 <div class="table-wrapper">
@@ -2457,7 +2514,7 @@ insert = "bar"
 </table>
 </div>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
+<h1 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h1>
 <p>To override global configuration parameters, create a <code>config.toml</code> file located in your config directory:</p>
 <ul>
 <li>Linux and Mac: <code>~/.config/helix/config.toml</code></li>
@@ -3031,7 +3088,7 @@ trigger-length = 4
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="themes-1"><a href="#themes-1" class="header">Themes</a></h1>
 <h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
-<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="#configuration-1"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="#configuration-2"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <p>Separate themes can be configured for light and dark modes. On terminals supporting <a href="https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md">mode 2031 dark/light detection</a>, the theme mode is detected from the terminal.</p>
 <pre><code class="language-toml">[theme]
 dark = "catppuccin_frappe"
@@ -3174,6 +3231,7 @@ The key is a list of styles.</p>
 <h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
 <p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter scopes</a>.</p>
 <p>When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is <code>function.builtin.static</code>, the key <code>function.builtin</code> will be used instead of <code>function</code>.</p>
+<p>This list is also the reference for the capture names used in <code>highlights.scm</code> queries (<code>@function</code>, <code>@type</code>, …) — see <a href="#adding-languages">Adding languages</a>. When several captures cover the same text the <strong>last</strong> matching pattern in the file wins; when they sit on nested nodes the <strong>innermost</strong> node wins regardless of order, so capture the leaf you mean (put <code>@function</code> on the called identifier, not a node wrapping it). A method call is <code>@function.method</code>; a field access with no call is <code>@variable.other.member</code>.</p>
 <p>We use a similar set of scopes as
 <a href="https://www.sublimetext.com/docs/scope_naming.html">Sublime Text</a>. See also
 <a href="https://macromates.com/manual/en/language_grammars">TextMate</a> scopes.</p>
@@ -3188,13 +3246,13 @@ The key is a list of styles.</p>
 <li><code>parameter</code> - Generic type parameters (<code>T</code>)</li>
 <li><code>enum</code>
 <ul>
-<li><code>variant</code></li>
+<li><code>variant</code> - Enum variants</li>
 </ul>
 </li>
 </ul>
 </li>
 <li>
-<p><code>constructor</code></p>
+<p><code>constructor</code> - Constructors, struct/record literals, type names in value position</p>
 </li>
 <li>
 <p><code>constant</code> (TODO: constant.other.placeholder for <code>%v</code>)</p>
@@ -3309,15 +3367,15 @@ The key is a list of styles.</p>
 <p><code>operator</code> - <code>||</code>, <code>+=</code>, <code>&gt;</code></p>
 </li>
 <li>
-<p><code>function</code></p>
+<p><code>function</code> - Function definitions and calls</p>
 <ul>
-<li><code>builtin</code></li>
-<li><code>method</code>
+<li><code>builtin</code> - Language built-in functions</li>
+<li><code>method</code> - Method definitions and calls (<code>obj.method()</code>)
 <ul>
 <li><code>private</code> - Private methods that use a unique syntax (currently just ECMAScript-based languages)</li>
 </ul>
 </li>
-<li><code>macro</code></li>
+<li><code>macro</code> - Macro invocations (e.g. <code>println!</code> in Rust)</li>
 <li><code>special</code> (preprocessor in C)</li>
 </ul>
 </li>
@@ -3328,7 +3386,7 @@ The key is a list of styles.</p>
 </ul>
 </li>
 <li>
-<p><code>namespace</code></p>
+<p><code>namespace</code> - Modules and namespaces (e.g. <code>std::collections</code>, package names)</p>
 </li>
 <li>
 <p><code>special</code> - <code>derive</code> in Rust, bolded query-match in pickers (includes file explorer), etc.
@@ -3391,6 +3449,9 @@ See also <a href="https://github.com/helix-editor/helix/issues/2380">#2380</a></
 </ul>
 </li>
 </ul>
+</li>
+<li>
+<p><code>embedded</code> - Interpolated expressions embedded in a string template (<code>${…}</code>)</p>
 </li>
 </ul>
 <h4 id="interface"><a class="header" href="#interface">Interface</a></h4>
@@ -3634,7 +3695,7 @@ in <code>languages.toml</code> files.</p>
 It provides the default configurations for languages and language servers.</p>
 </li>
 <li>
-<p>In your <a href="#configuration-1">configuration directory</a>. This overrides values
+<p>In your <a href="#configuration-2">configuration directory</a>. This overrides values
 from the built-in language configuration. For example, to disable
 auto-formatting for Rust:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
@@ -3885,8 +3946,9 @@ use-grammars = { except = [ "yaml", "json" ] }
 <p>When omitted, all grammars are fetched and built.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="guides"><a class="header" href="#guides">Guides</a></h1>
-<p>This section contains guides for adding new language server configurations,
-tree-sitter grammars, textobject and rainbow bracket queries, and other similar items.</p>
+<p>This section contains guides for adding new languages to Helix: language and
+grammar configuration, and the tree-sitter query files that drive highlighting,
+power indentation, textobjects, symbol tags, and other features.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="adding-languages"><a href="#adding-languages" class="header">Adding languages</a></h1>
 <h2 id="adding-new-languages-to-helix"><a class="header" href="#adding-new-languages-to-helix">Adding new languages to Helix</a></h2>
@@ -3919,14 +3981,48 @@ request, make sure to switch to using <code>source.git</code>.</li>
 </ol>
 <h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
 <ol>
-<li>In order to provide syntax highlighting and indentation for the new language,
-you will need to add queries.</li>
-<li>Create a new directory for the language with the path
-<code>runtime/queries/&lt;name&gt;/</code>.</li>
-<li>Refer to the
+<li>
+<p>In order to provide syntax highlighting and indentation for the new language,
+you will need to add queries.</p>
+</li>
+<li>
+<p>Create a new directory for the language with the path
+<code>runtime/queries/&lt;name&gt;/</code>.</p>
+</li>
+<li>
+<p>Refer to the
 <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter website</a>
-for more information on writing queries.</li>
-<li>A list of highlight captures can be found <a href="https://docs.helix-editor.com/themes.html#scopes">on the themes page</a>.</li>
+for more information on writing queries.</p>
+</li>
+<li>
+<p>The highlight captures (<code>@function</code>, <code>@type</code>, …) and how they resolve are
+documented <a href="guides/themes.html">on the themes page</a>:
+match the most specific scope that fits, capture the leaf node you mean, and
+remember that the last matching pattern (and the innermost node) wins.</p>
+</li>
+<li>
+<p>Helix loads several query files from that directory; only <code>highlights.scm</code> is
+required:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Purpose</th><th>Guide</th></tr>
+</thead>
+<tbody>
+<tr><td><code>highlights.scm</code></td><td>syntax highlighting</td><td><a href="#adding-highlight-queries-1">highlights.md</a></td></tr>
+<tr><td><code>injections.scm</code></td><td>embed other languages in regions (strings, code fences)</td><td><a href="#adding-injection-queries-1">injection.md</a></td></tr>
+<tr><td><code>indents.scm</code></td><td>indentation</td><td><a href="#adding-indent-queries-1">indent.md</a></td></tr>
+<tr><td><code>textobjects.scm</code></td><td>textobjects and navigation (<code>mif</code>, <code>]f</code>, …)</td><td><a href="#adding-textobject-queries-1">textobject.md</a></td></tr>
+<tr><td><code>locals.scm</code></td><td>scope tracking so locals highlight distinctly</td><td><a href="#adding-locals-queries-1">locals.md</a></td></tr>
+<tr><td><code>tags.scm</code></td><td>document/workspace symbol pickers</td><td><a href="#adding-tags-queries-1">tags.md</a></td></tr>
+<tr><td><code>rainbows.scm</code></td><td>rainbow brackets</td><td><a href="#adding-rainbow-bracket-queries">rainbow_bracket_queries.md</a></td></tr>
+</tbody>
+</table>
+</div>
+<p>A query file may reuse another language’s with <code>; inherits: &lt;lang&gt;</code> on the
+first line. Run <code>cargo xtask query-check [language]</code> to check that the queries
+are valid against the grammar.</p>
+</li>
 </ol>
 <h2 id="common-issues"><a class="header" href="#common-issues">Common issues</a></h2>
 <ul>
@@ -3937,7 +4033,51 @@ grammars.</li>
 <li>If a parser is causing a segfault, or you want to remove it, make sure to
 remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</code>.</li>
 <li>If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable <code>HELIX_RUNTIME</code> is set to the location of the <code>runtime</code> folder you’re developing in.</li>
+<li>Validate queries with <code>cargo xtask query-check [language]</code> (every query file
+must compile against the grammar). <code>highlight-check</code> and <code>indent-check</code>
+additionally run the real highlighter and indenter over the test fixtures catch mistakes.</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="adding-highlight-queries-1"><a href="#adding-highlight-queries-1" class="header">Adding highlight queries</a></h1>
+<h2 id="adding-highlight-queries"><a class="header" href="#adding-highlight-queries">Adding highlight queries</a></h2>
+<p><code>highlights.scm</code> queries assign a highlight scope (<code>@function</code>, <code>@type</code>,
+<code>@keyword</code>, …) to nodes in the syntax tree; the theme then maps each scope to a
+colour. Highlighting is the one query file that every language needs.</p>
+<p>Query files should be placed in <code>runtime/queries/{language}/highlights.scm</code> when
+contributing to Helix.</p>
+<h2 id="scopes-1"><a class="header" href="#scopes-1">Scopes</a></h2>
+<p>The full list of highlight scopes, and what each is for, is documented on the
+<a href="https://docs.helix-editor.com/themes.html#scopes">themes page</a>. Match the most specific scope that fits the node — for example a
+method call is <code>@function.method</code> while a plain field access is
+<code>@variable.other.member</code>.</p>
+<p>A query file may reuse another language’s with <code>; inherits: &lt;lang&gt;</code> on the first
+line (for example <code>tsx</code> inherits <code>typescript</code>, which inherits <code>ecma</code>). An
+inherited file is compiled against <em>each</em> inheriting grammar, so every capture
+must be valid there too.</p>
+<h2 id="precedence"><a class="header" href="#precedence">Precedence</a></h2>
+<p>Two rules decide which capture wins when more than one matches the same text:</p>
+<ol>
+<li><strong>Same span: last match wins.</strong> Among captures covering the same bytes, the
+pattern that appears later in the file wins. Put a generic rule <em>before</em> the
+specific one that should override it.</li>
+<li><strong>Nested nodes: innermost wins.</strong> When a parent and a child node both cover
+the text, the child’s capture wins, regardless of file order.</li>
+</ol>
+<p>A common consequence of rule 2: capture the <em>leaf</em> you mean. A call captured on
+a wrapping node loses to a base <code>(identifier) @variable</code> on the inner identifier,
+so put <code>@function</code> on the identifier itself.</p>
+<p>Where the grammar can’t distinguish a scope, casing is often used as a heuristic:</p>
+<pre><code class="language-scm">((identifier) @constant
+ (#match? @constant "^[A-Z][A-Z_]*$"))
+</code></pre>
+<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
+<p><code>cargo xtask query-check [language]</code> confirms the queries are valid against the
+grammar. <code>cargo xtask highlight-check [language]</code> runs the real highlighter over
+the fixtures in <code>tests/query/highlights/&lt;language-id&gt;/&lt;name&gt;.&lt;ext&gt;</code>, where a
+caret comment line (<code>// ^ @capture</code>) asserts the winning scope at the column
+above it; this catches the precedence mistakes that <code>query-check</code> cannot see.
+<code>cargo xtask highlight-check --dump &lt;language&gt; &lt;file&gt;</code> prints the winning capture
+per span for an arbitrary file.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="adding-locals-queries-1"><a href="#adding-locals-queries-1" class="header">Adding locals queries</a></h1>
 <h2 id="adding-locals-queries"><a class="header" href="#adding-locals-queries">Adding Locals Queries</a></h2>
@@ -3947,7 +4087,9 @@ local variables can be highlighted distinctly from global ones. When a
 the highlight class of that definition rather than the class assigned by
 <code>highlights.scm</code>.</p>
 <p>Query files should be placed in <code>runtime/queries/{language}/locals.scm</code> when
-contributing to Helix.</p>
+contributing to Helix. Like other query files, <code>locals.scm</code> may reuse another
+language’s with <code>; inherits: &lt;lang&gt;</code> on the first line. Locals are resolved in
+their own pass with their own precedence, independently of <code>highlights.scm</code>.</p>
 <h2 id="captures"><a class="header" href="#captures">Captures</a></h2>
 <h3 id="localscope"><a class="header" href="#localscope"><code>@local.scope</code></a></h3>
 <p>Marks a node as a scope boundary. Definitions are only visible to references
@@ -4061,15 +4203,15 @@ doesn’t make sense in a navigation context.</p>
 <h2 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h2>
 <p>Helix uses tree-sitter to correctly indent new lines. This requires a
 tree-sitter grammar and an <code>indent.scm</code> query file placed in
-<code>runtime/queries/{language}/indents.scm</code>. The indentation for a line is
-calculated by traversing the syntax tree from the lowest node at the
-beginning of the new line (see <a href="#indent-queries">Indent queries</a>).
-Each of these nodes contributes to the total indent when it is
-captured by the query (in what way depends on the name of
-the capture).</p>
-<p>Note that it matters where these added indents begin. For example,
-multiple indent level increases that start on the same line only increase
-the total indent level by 1. See <a href="#capture-types">Capture types</a>.</p>
+<code>runtime/queries/{language}/indents.scm</code>.</p>
+<p>The indent level of a line is <strong>the number of <code>@indent</code> scopes that contain
+it</strong>. An <code>@indent</code> capture on a node opens a scope spanning the lines <em>after</em>
+the node’s first line through its last line; a line is indented once for every
+such scope wrapping it. (A few capture types adjust this — <code>@outdent</code> cancels a
+level, <code>@align</code> aligns to a column, etc. (see <a href="#capture-types">Capture types</a>.)</p>
+<p>Note that it matters where these scopes <em>begin</em>: multiple scopes that open on
+the same physical line only increase the indent by 1 (the same-line rule). See
+<a href="#capture-types">Capture types</a>.</p>
 <p>By default, Helix uses the <code>hybrid</code> indentation heuristic. This means that
 indent queries are not used to compute the expected absolute indentation of a
 line but rather the expected difference in indentation between the new and an
@@ -4113,25 +4255,29 @@ of the query is the end of the line above the cursor.</p>
     some_hero &gt; life //                             │
 } // ←──────────────────────────────────────────────╯
 <span class="boring">}</span></code></pre>
-<p>From this starting node, the syntax tree is traversed up until the root node.
-Each indent capture is collected along the way, and then combined according to
-their <a href="#capture-types">capture types</a> and <a href="#scopes-1">scopes</a> to a final indent
-level for the line.</p>
+<p>From this starting node, the syntax tree is walked up to the root, collecting
+every <code>@indent</code>/<code>@outdent</code>/<code>@align</code>/… capture on an ancestor. Each <code>@indent</code>
+ancestor whose scope <em>contains</em> the line counts for one indent level (scopes
+opening on the same line collapse to one); the <a href="#capture-types">capture types</a>
+describe the adjustments.</p>
 <h3 id="capture-types"><a class="header" href="#capture-types">Capture types</a></h3>
 <ul>
-<li><code>@indent</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences in the same line <em>do not</em>
-stack. If there is at least one <code>@indent</code> and one <code>@outdent</code> capture on the
-same line, the indent level isn’t changed at all.</li>
-<li><code>@outdent</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent</code> apply.</li>
-<li><code>@indent.always</code> (default scope <code>tail</code>):
-Increase the indent level by 1. Multiple occurrences on the same line <em>do</em>
-stack. The final indent level is <code>@indent.always</code> – <code>@outdent.always</code>. If
-an <code>@indent</code> and an <code>@indent.always</code> are on the same line, the <code>@indent</code> is
-ignored.</li>
-<li><code>@outdent.always</code> (default scope <code>all</code>):
-Decrease the indent level by 1. The same rules as for <code>@indent.always</code> apply.</li>
+<li><code>@indent</code>:
+Open an indent scope on this node — every line it contains is indented one
+more level. Scopes that open on the same line collapse: multiple <code>@indent</code>
+beginning on one line only add 1. A node captured by <em>both</em> <code>@indent</code> and
+<code>@outdent</code> contributes nothing (its level is cancelled) — used e.g. for a
+nested <code>else if</code> that should not stack a second level.
+By default the scope opens at the node’s own first line; see the
+<a href="#scope-header"><code>header</code></a> scope to open it at the parent (header) line instead.</li>
+<li><code>@outdent</code>:
+Decrease by 1 the indent of the line on which this (usually a closing token
+like <code>}</code>/<code>)</code>/<code>]</code>, or a keyword like <code>else</code>) begins.</li>
+<li><code>@indent.always</code>:
+Like <code>@indent</code> but does <em>not</em> collapse — multiple on the same line each add a
+level. The net level contribution is <code>@indent.always</code> − <code>@outdent.always</code>.</li>
+<li><code>@outdent.always</code>:
+Like <code>@outdent</code> but stacks, the counterpart to <code>@indent.always</code>.</li>
 <li><code>@align</code> (default scope <code>all</code>):
 Align everything inside this node to some anchor. The anchor is given
 by the start of the node captured by <code>@anchor</code> in the same pattern.
@@ -4150,6 +4296,10 @@ stops the extension of the next <code>@extend</code> capture. If multiple ancest
 captured, only the extension of the innermost one is prevented. All other
 ancestors are unaffected (regardless of whether the innermost ancestor would
 actually have been extended).</li>
+<li><code>@opaque</code>:
+Mark a literal body such as a string, heredoc, or block comment. Lines that
+begin inside the captured node keep their existing indentation instead of being
+reindented, so the contents of multi-line literals are left untouched.</li>
 </ul>
 <h4 id="indent--outdent"><a class="header" href="#indent--outdent"><code>@indent</code> / <code>@outdent</code></a></h4>
 <p>Consider this example:</p>
@@ -4174,11 +4324,37 @@ actually have been extended).</li>
 <pre><code class="language-scm">((block) @indent)
 ["}" ")"] @outdent
 </code></pre>
-<p>Note how on the second line, we have two blocks begin on the same line. In this
-case, since both captures occur on the same line, they are combined and only
-result in a net increase of 1. Also note that the closing <code>}</code>s are part of the
-<code>@indent</code> captures, but the 3 <code>@outdent</code>s also combine into 1 and result in that
-line losing one indent level.</p>
+<p>Note how on the second line two blocks open on the same line: since both scopes
+<em>begin</em> on that line they collapse, for a net increase of 1. On the last line,
+the three block scopes all contain it, but it begins with three <code>@outdent</code> <code>}</code>
+tokens that cancel them, so the line lands back at the enclosing level.</p>
+<h4 id="same-line-collapse"><a class="header" href="#same-line-collapse">Same-line collapse</a></h4>
+<p>The collapse above is a deliberate, load-bearing invariant:</p>
+<blockquote>
+<p>A line is indented by <strong>one level per physical line on which a containing
+<code>@indent</code> scope opens</strong>, not one level per scope. Several <code>@indent</code> scopes
+that <em>open</em> on the same line together add a single level.</p>
+</blockquote>
+<p>This is what makes <strong>method/builder chains flatten instead of staircasing</strong>.
+Grammars typically nest a chain so each <code>.method()</code> link is a <code>call</code> inside a
+<code>member_expression</code> inside the previous link, and several of those nodes <em>begin</em>
+on the receiver’s line:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = thing       // ← chain opens here
+    .foo()          // each link aligned one level in,
+    .bar()          // not progressively deeper
+    .baz();
+<span class="boring">}</span></code></pre>
+<pre><code class="language-scm">(call_expression) @indent
+</code></pre>
+<p>Even though many <code>call_expression</code>/<code>member_expression</code> scopes contain the
+<code>.bar()</code> line, they all <em>open</em> on the <code>thing</code> line, so they collapse to a single
+level and the continuation lines line up. Without the collapse, every link would
+add a level and the chain would stair-step to the right.</p>
+<p>If you instead want each scope to count even when several open on one line (for
+example YAML’s “list item <em>and</em> map both start on the same line”) opt out with
+<code>@indent.always</code> (described below), which does not collapse.</p>
 <h4 id="extend--extendprevent-once"><a class="header" href="#extend--extendprevent-once"><code>@extend</code> / <code>@extend.prevent-once</code></a></h4>
 <p>For an example of where <code>@extend</code> can be useful, consider Python, which is
 whitespace-sensitive.</p>
@@ -4278,6 +4454,29 @@ as well.</p>
 
 (return_statement) @extend.prevent-once
 </code></pre>
+<h4 id="brace-less-bodies"><a class="header" href="#brace-less-bodies">Brace-less bodies</a></h4>
+<p>A brace-less single-statement body — <code>if (cond)</code> with its statement on the next
+line and no <code>{}</code> — is a body the indent must wrap, but the body node’s <em>own</em>
+first line is the line that needs the indent (there is no separate opening line).
+Capture the body and give it the <a href="#scope-header"><code>header</code></a> scope, which opens the
+scope at the <strong>header</strong> (the captured node’s parent) line instead of the body’s
+own line, so the body line is contained:</p>
+<pre><code class="language-scm">(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
+(while_statement
+  body: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
+</code></pre>
+<p>The query already names exactly the brace-less body (the <code>consequence:</code> /
+<code>body:</code> field, with <code>#not-kind-eq?</code> skipping the braced form the surrounding
+block indents), so the engine just opens that capture’s scope at its parent — it
+does not itself inspect node kinds or field names. This works for a multi-line
+brace-less body too (e.g. one returning a lambda). Give <code>else</code> and <code>do / while</code>
+their own pattern (on the <code>alternative</code> / <code>body</code> field) so the trailing <code>else</code> /
+<code>while</code> keyword line is not indented along with the body.</p>
 <h4 id="indentalways--outdentalways"><a class="header" href="#indentalways--outdentalways"><code>@indent.always</code> / <code>@outdent.always</code></a></h4>
 <p>As mentioned before, normally if there is more than one <code>@indent</code> or <code>@outdent</code>
 capture on the same line, they are combined.</p>
@@ -4355,47 +4554,39 @@ The captures given by the 2 arguments must/must not start on the same line.</p>
 The captures given by the fist argument must/must span a total of one line.</p>
 </li>
 </ul>
-<h3 id="scopes-1"><a class="header" href="#scopes-1">Scopes</a></h3>
-<p>Added indents don’t always apply to the whole node. For example, in most
-cases when a node should be indented, we actually only want everything
-except for its first line to be indented. For this, there are several
-scopes (more scopes may be added in the future if required):</p>
-<ul>
-<li><code>tail</code>:
-This scope applies to everything except for the first line of the
-captured node.</li>
-<li><code>all</code>:
-This scope applies to the whole captured node. This is only different from
-<code>tail</code> when the captured node is the first node on its line.</li>
-</ul>
-<p>For example, imagine we have the following function</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>fn aha() { // ←─────────────────────────────────────╮
-  let take = "on me";  // ←──────────────╮  scope:  │
-  let take = "me on";             //     ├─ "tail"  ├─ (block) @indent
-  let ill = be_gone_days(1 || 2); //     │          │
-} // ←───────────────────────────────────┴──────────┴─ "}" @outdent
-                                         //                scope: "all"
-<span class="boring">}</span></code></pre>
-<p>We can write the following query with the <code>#set!</code> declaration:</p>
-<pre><code class="language-scm">((block) @indent
- (#set! "scope" "tail"))
-("}" @outdent
- (#set! "scope" "all"))
+<h3 id="the-header-scope"><a class="header" href="#the-header-scope"><a name="scope-header"></a>The <code>header</code> scope</a></h3>
+<p>By default an <code>@indent</code> scope opens at the captured node’s own first line, so the
+lines <em>inside</em> it are indented and its first line is not. Sometimes the node you
+must capture <em>is</em> the line that needs indenting — a brace-less body such as the
+statement after <code>if (cond)</code> (see <a href="#brace-less-bodies">Brace-less bodies</a>). For
+this, set <code>scope</code> to <code>header</code>:</p>
+<pre><code class="language-scm">(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
 </code></pre>
-<p>As we can see, the “tail” scope covers the node, except for the first line.
-Everything up to and including the closing brace gets an indent level of 1.
-Then, on the closing brace, we encounter an outdent with a scope of “all”, which
-means the first line is included, and the indent level is cancelled out on this
-line. (Note these scopes are the defaults for <code>@indent</code> and <code>@outdent</code>—they are
-written explicitly for demonstration.)</p>
+<p><code>header</code> opens the scope at the captured node’s <strong>parent</strong> (the <code>if_statement</code>
+header) line instead of the node’s own line, so the body’s first line is
+contained and indented. The query selects exactly the body, so the engine just
+honours the annotation — it does not match on node kinds or field names itself.</p>
+<p>(Older queries used <code>tail</code> / <code>all</code> scopes to control whether a node’s first line
+was included; under the containment model those are no longer needed and have
+been removed. <code>header</code> is the one scope the engine reads.)</p>
+<h2 id="testing-1"><a class="header" href="#testing-1">Testing</a></h2>
+<p><code>cargo xtask indent-check [language]</code> checks the queries against the fixtures in
+<code>tests/indent/&lt;language-id&gt;.&lt;ext&gt;</code> in both modes: re-indenting each line
+and simulating a newline typed after it, so a rule that is correct one way but
+wrong the other is caught.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="adding-injection-queries-1"><a href="#adding-injection-queries-1" class="header">Adding injection queries</a></h1>
 <h2 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h2>
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
+<p>Injection drives more than highlighting: within an injected region Helix also
+uses the injected language’s own indentation, textobjects, and comment tokens —
+so, for example, editing JavaScript inside an HTML <code>&lt;script&gt;</code> indents and
+comments as JavaScript.</p>
 <p>An example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
   (#set! injection.language "bash"))
@@ -4502,6 +4693,9 @@ recognized:</p>
 </tbody>
 </table>
 </div>
+<p>Captures outside this list are ignored by the symbol pickers, so map a
+language-specific construct onto the closest listed kind rather than inventing a
+new one.</p>
 <h3 id="name"><a class="header" href="#name"><code>@name</code></a></h3>
 <p>Marks the name identifier node within a match. <code>@definition.*</code> should capture
 the entire definition node, and <code>@name</code> should capture the name identifier
@@ -4515,7 +4709,10 @@ within that same match:</p>
 <h3 id="reference"><a class="header" href="#reference"><code>@reference.*</code></a></h3>
 <p>Marks a node as a call site or type reference. These are used by workspace
 symbol search to locate usages. <code>@reference.call</code> and <code>@reference.class</code> are
-the common variants.</p>
+the common variants. As with definitions, <code>@name</code> captures the identifier:</p>
+<pre><code class="language-scm">(call
+  function: (identifier) @name) @reference.call
+</code></pre>
 <p><a href="https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/tags.scm&amp;type=Code">Example query files</a> can be found in the Helix GitHub
 repository.</p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -4540,6 +4737,11 @@ square brackets:</p>
 </code></pre>
 <p>The ordering of the nodes within the alternation (square brackets) is not
 taken into consideration.</p>
+<p>Angle brackets need care: <code>&lt;</code> and <code>&gt;</code> are usually comparison operators too, so
+capturing them globally would rainbow-colour every comparison. Capture them only
+within the generic node instead, which also marks that node as a scope:</p>
+<pre><code class="language-tsq">(type_arguments ["&lt;" "&gt;"] @rainbow.bracket) @rainbow.scope
+</code></pre>
 <blockquote>
 <p>Note: Why are these nodes quoted? Most syntax highlights capture text
 surrounded by parentheses. These are <em>named nodes</em> and correspond to the

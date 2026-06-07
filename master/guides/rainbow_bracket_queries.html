@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "../searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fb138b52.js"></script>
+        <script src="../toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -203,6 +203,11 @@ square brackets:</p>
 </code></pre>
 <p>The ordering of the nodes within the alternation (square brackets) is not
 taken into consideration.</p>
+<p>Angle brackets need care: <code>&lt;</code> and <code>&gt;</code> are usually comparison operators too, so
+capturing them globally would rainbow-colour every comparison. Capture them only
+within the generic node instead, which also marks that node as a scope:</p>
+<pre><code class="language-tsq">(type_arguments ["&lt;" "&gt;"] @rainbow.bracket) @rainbow.scope
+</code></pre>
 <blockquote>
 <p>Note: Why are these nodes quoted? Most syntax highlights capture text
 surrounded by parentheses. These are <em>named nodes</em> and correspond to the

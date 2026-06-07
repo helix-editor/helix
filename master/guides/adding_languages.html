@@ -36,10 +36,10 @@
             const path_to_root = "../";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "../searchindex-c7e2c23b.js";
+            window.path_to_searchindex_js = "../searchindex-6b851df4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-fb138b52.js"></script>
+        <script src="../toc-2e416141.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -212,14 +212,48 @@ request, make sure to switch to using <code>source.git</code>.</li>
 </ol>
 <h2 id="queries"><a class="header" href="#queries">Queries</a></h2>
 <ol>
-<li>In order to provide syntax highlighting and indentation for the new language,
-you will need to add queries.</li>
-<li>Create a new directory for the language with the path
-<code>runtime/queries/&lt;name&gt;/</code>.</li>
-<li>Refer to the
+<li>
+<p>In order to provide syntax highlighting and indentation for the new language,
+you will need to add queries.</p>
+</li>
+<li>
+<p>Create a new directory for the language with the path
+<code>runtime/queries/&lt;name&gt;/</code>.</p>
+</li>
+<li>
+<p>Refer to the
 <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter website</a>
-for more information on writing queries.</li>
-<li>A list of highlight captures can be found <a href="https://docs.helix-editor.com/themes.html#scopes">on the themes page</a>.</li>
+for more information on writing queries.</p>
+</li>
+<li>
+<p>The highlight captures (<code>@function</code>, <code>@type</code>, …) and how they resolve are
+documented <a href="./themes.html">on the themes page</a>:
+match the most specific scope that fits, capture the leaf node you mean, and
+remember that the last matching pattern (and the innermost node) wins.</p>
+</li>
+<li>
+<p>Helix loads several query files from that directory; only <code>highlights.scm</code> is
+required:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Purpose</th><th>Guide</th></tr>
+</thead>
+<tbody>
+<tr><td><code>highlights.scm</code></td><td>syntax highlighting</td><td><a href="./highlights.html">highlights.md</a></td></tr>
+<tr><td><code>injections.scm</code></td><td>embed other languages in regions (strings, code fences)</td><td><a href="./injection.html">injection.md</a></td></tr>
+<tr><td><code>indents.scm</code></td><td>indentation</td><td><a href="./indent.html">indent.md</a></td></tr>
+<tr><td><code>textobjects.scm</code></td><td>textobjects and navigation (<code>mif</code>, <code>]f</code>, …)</td><td><a href="./textobject.html">textobject.md</a></td></tr>
+<tr><td><code>locals.scm</code></td><td>scope tracking so locals highlight distinctly</td><td><a href="./locals.html">locals.md</a></td></tr>
+<tr><td><code>tags.scm</code></td><td>document/workspace symbol pickers</td><td><a href="./tags.html">tags.md</a></td></tr>
+<tr><td><code>rainbows.scm</code></td><td>rainbow brackets</td><td><a href="./rainbow_bracket_queries.html">rainbow_bracket_queries.md</a></td></tr>
+</tbody>
+</table>
+</div>
+<p>A query file may reuse another language’s with <code>; inherits: &lt;lang&gt;</code> on the
+first line. Run <code>cargo xtask query-check [language]</code> to check that the queries
+are valid against the grammar.</p>
+</li>
 </ol>
 <h2 id="common-issues"><a class="header" href="#common-issues">Common issues</a></h2>
 <ul>
@@ -230,6 +264,9 @@ grammars.</li>
 <li>If a parser is causing a segfault, or you want to remove it, make sure to
 remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</code>.</li>
 <li>If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable <code>HELIX_RUNTIME</code> is set to the location of the <code>runtime</code> folder you’re developing in.</li>
+<li>Validate queries with <code>cargo xtask query-check [language]</code> (every query file
+must compile against the grammar). <code>highlight-check</code> and <code>indent-check</code>
+additionally run the real highlighter and indenter over the test fixtures catch mistakes.</li>
 </ul>
 
                     </main>
@@ -240,7 +277,7 @@ remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</co
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../guides/locals.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../guides/highlights.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -254,7 +291,7 @@ remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</co
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../guides/locals.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../guides/highlights.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
