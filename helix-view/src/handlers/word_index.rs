@@ -3,10 +3,12 @@
 //! This provides an eventually consistent set of words used in any open buffers. This set is
 //! later used for lexical completion.
 
-use std::{borrow::Cow, iter, mem, sync::Arc, time::Duration};
+use std::{borrow::Cow, iter, sync::Arc, time::Duration};
 
 use foldhash::HashMap;
-use helix_core::{chars::char_is_word, fuzzy::fuzzy_match, ChangeSet, Rope, RopeSlice};
+use helix_core::{
+    chars::char_is_word, diff::compare_ropes, fuzzy::fuzzy_match, ChangeSet, Rope, RopeSlice,
+};
 use helix_event::{register_hook, AsyncHook, TaskController, TaskHandle};
 use helix_stdx::rope::RopeSliceExt as _;
 use parking_lot::RwLock;
@@ -24,6 +26,12 @@ struct Change {
     old_text: Rope,
     text: Rope,
     changes: ChangeSet,
+    /// Whether `changes` is stale and must be recomputed from `old_text`/`text` before use.
+    ///
+    /// Set when this change is the result of coalescing several observed changes (see
+    /// [`Hook::handle_event`]). The observed changesets cannot be reliably chained, so the
+    /// coalesced changeset is recomputed once, lazily, at [`Hook::finish_debounce`].
+    dirty: bool,
 }
 
 #[derive(Debug)]
@@ -91,18 +99,26 @@ impl AsyncHook for Hook {
             Event::Insert(_) => unreachable!("inserts are sent to the worker directly"),
             Event::Update(doc, change) => {
                 if let Some(pending_change) = self.changes.get_mut(&doc) {
-                    // If there is already a change waiting for this document, merge the two
-                    // changes together by composing the changesets and saving the new `text`.
-                    pending_change.changes =
-                        mem::take(&mut pending_change.changes).compose(change.changes);
+                    // There is already a change waiting for this document. Coalesce: keep the
+                    // original `old_text` and advance to the latest `text`.
+                    //
+                    // We deliberately do NOT chain the observed changesets here. The index skips
+                    // ghost transactions (see `register_hooks`), so a ghost edit may have altered
+                    // the document between these two observed changes, which may leave them
+                    // non-contiguous in ways a cheap check can't catch. Instead, mark the change
+                    // dirty and recompute the changeset from the real ropes at `finish_debounce`,
+                    // i.e.  once per debounce window rather than once per keystroke.
                     pending_change.text = change.text;
+                    pending_change.dirty = true;
                     Some(Instant::now() + DEBOUNCE)
                 } else if !is_changeset_significant(&change.changes) {
-                    // If the changeset is fairly large, debounce before updating the index.
+                    // The change is small: debounce so a burst of edits coalesces before the
+                    // index updates.
                     self.changes.insert(doc, change);
                     Some(Instant::now() + DEBOUNCE)
                 } else {
-                    // Otherwise if the change is small, queue the update to the index immediately.
+                    // The change is large: update the index immediately rather than waiting out
+                    // the debounce.
                     self.coordinator.send(Event::Update(doc, change)).unwrap();
                     timeout
                 }
@@ -124,7 +140,15 @@ impl AsyncHook for Hook {
     }
 
     fn finish_debounce(&mut self) {
-        for (doc, change) in self.changes.drain() {
+        for (doc, mut change) in self.changes.drain() {
+            // A coalesced change carries a stale changeset; recompute it from the real endpoints.
+            // This diff is valid regardless of any ghost edits skipped between observed changes.
+            if change.dirty {
+                change.changes = compare_ropes(&change.old_text, &change.text)
+                    .changes()
+                    .clone();
+                change.dirty = false;
+            }
             self.coordinator.send(Event::Update(doc, change)).unwrap();
         }
     }
@@ -438,6 +462,7 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
                         old_text: event.old_text.clone(),
                         text: event.doc.text().clone(),
                         changes: event.changes.clone(),
+                        dirty: false,
                     },
                 ),
             );
@@ -498,12 +523,24 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
-    use helix_core::diff::compare_ropes;
+    use quickcheck::{Arbitrary, Gen};
 
     impl WordIndex {
         fn words(&self) -> HashSet<String> {
             let inner = self.inner.read();
             inner.words().map(|w| w.to_string()).collect()
+        }
+
+        /// The full reference-counted word multiset. Unlike [`WordIndex::words`] this keeps the
+        /// counts, which the incremental update path must hold exactly in step with a fresh index:
+        /// a word is only freed once its count falls to zero, so any drift leaks stale words.
+        fn counts(&self) -> std::collections::HashMap<String, u32> {
+            let inner = self.inner.read();
+            inner
+                .words
+                .iter()
+                .map(|(w, c)| (w.to_string(), *c))
+                .collect()
         }
     }
 
@@ -568,6 +605,104 @@ mod tests {
         assert_diff("one two three", "one three", ["two"], []);
         assert_diff("one two three", "one t{o three", ["two"], []);
         assert_diff("one foo three", "one fooo three", ["foo"], ["fooo"]);
+    }
+
+    fn build_change(old: &str, new: &str) -> Change {
+        let old_text = Rope::from_str(old);
+        let text = Rope::from_str(new);
+        let changes = compare_ropes(&old_text, &text).changes().clone();
+        Change {
+            old_text,
+            text,
+            changes,
+            dirty: false,
+        }
+    }
+
+    /// Drives a [`Hook`] through a sequence of observed `(old_text, new_text)` changes to a single
+    /// document, flushes the debounce, and returns the change the hook hands to the indexer (with
+    /// its changeset recomputed if the observed changes were coalesced). Returns `None` if no
+    /// change was emitted.
+    fn coalesce<'a>(observations: impl IntoIterator<Item = (&'a str, &'a str)>) -> Option<Change> {
+        let (coordinator, mut rx) = mpsc::unbounded_channel();
+        let mut hook = Hook {
+            changes: HashMap::default(),
+            coordinator,
+        };
+        let doc = DocumentId::default();
+        for (old, new) in observations {
+            hook.handle_event(Event::Update(doc, build_change(old, new)), None);
+        }
+        hook.finish_debounce();
+        match rx.try_recv() {
+            Ok(Event::Update(_, change)) => Some(change),
+            _ => None,
+        }
+    }
+
+    #[track_caller]
+    fn assert_coalesces(observations: &[(&str, &str)]) {
+        let change = coalesce(observations.iter().copied())
+            .expect("a coalesced change should have been emitted");
+        let first = observations.first().unwrap();
+        let last = observations.last().unwrap();
+
+        // The coalesced change spans from the first text observed to the last.
+        assert_eq!(change.old_text, Rope::from_str(first.0));
+        assert_eq!(change.text, Rope::from_str(last.1));
+
+        // Its changeset must faithfully map `old_text` -> `text`; `update_document` relies on this
+        // to locate the windows it reindexes.
+        let mut applied = change.old_text.clone();
+        assert!(change.changes.apply(&mut applied));
+        assert_eq!(applied, change.text);
+
+        // Reindexing must converge onto exactly the word multiset of the final text (words and
+        // refcounts) matching a fresh index built from scratch.
+        let mut cancel = TaskController::new();
+        let handle = cancel.restart();
+        let index = WordIndex::default();
+        index.add_document(&change.old_text, &handle);
+        index.update_document(&change.old_text, &change.text, &change.changes, &handle);
+
+        let fresh = WordIndex::default();
+        fresh.add_document(&change.text, &handle);
+
+        assert_eq!(index.counts(), fresh.counts());
+    }
+
+    #[test]
+    fn hook_coalesces_contiguous_changes() {
+        // Two real edits that chain cleanly: the text after the first edit is the text before the
+        // second, so the changesets compose directly.
+        assert_coalesces(&[
+            ("the quick brown fox", "the slowish brown fox"),
+            ("the slowish brown fox", "the slowish green fox"),
+        ]);
+    }
+
+    #[test]
+    fn hook_coalesces_across_skipped_ghost_edit() {
+        // A ghost transaction edited the document between the two real edits and was not reported
+        // to the index, so the text before the second edit no longer matches the text after the
+        // first. Here it is longer, which would make a chained `ChangeSet::compose` panic on its
+        // `len_after == len` precondition.
+        assert_coalesces(&[
+            ("the quick brown fox", "the quick brown foxes"),
+            ("the quick brown foxes jumped over", "the lazy brown foxes"),
+        ]);
+    }
+
+    #[test]
+    fn hook_coalesces_across_length_preserving_ghost_edit() {
+        // The subtle case: a ghost edit changes content without changing length, in a region the
+        // next real edit leaves untouched. The two observed changes then have matching lengths
+        // but different contents, so a length check alone cannot tell they are non-contiguous.
+        let p = ".".repeat(60);
+        assert_coalesces(&[
+            (&format!("aaa{p}ggg"), &format!("bbb{p}ggg")),
+            (&format!("bbb{p}hhh"), &format!("ccc{p}hhh")),
+        ]);
     }
 
     const CORPORA: &[(&str, &str)] = &[
@@ -641,6 +776,193 @@ mod tests {
                 );
             }
             assert!(count > 0, "{name}: expected to extract some words");
+        }
+    }
+
+    /// Grapheme-cluster edge cases which the prose corpora underrepresent: combining marks at
+    /// word starts and seams, a skin-tone emoji, a ZWJ family sequence, a Devanagari conjunct,
+    /// and a lone Hangul syllable.
+    const SPICE: &[&str] = &[
+        "a\u{0301}",              // base + combining acute
+        "\u{0301}lead",           // leading combining mark
+        "mid\u{0308}dle",         // combining diaeresis mid-word
+        "👍🏽",                     // emoji + skin-tone modifier
+        "👨\u{200D}👩\u{200D}👧", // ZWJ family sequence
+        "क्ष",                     // Devanagari conjunct (virama)
+        "한",                     // Hangul syllable
+    ];
+
+    /// Picks a chunk of text: usually a random char span sliced out of one of the multilingual
+    /// corpora (real grapheme complexity for free, and slicing on char boundaries deliberately
+    /// frays some clusters), occasionally an adversarial cluster from [`SPICE`].
+    fn sample_text(g: &mut Gen) -> String {
+        if usize::arbitrary(g) % 4 == 0 {
+            return g.choose(SPICE).unwrap().to_string();
+        }
+        let (_, corpus) = g.choose(CORPORA).unwrap();
+        let chars: Vec<char> = corpus.chars().collect();
+        if chars.is_empty() {
+            return String::new();
+        }
+        let span = usize::arbitrary(g) % 200;
+        let start = usize::arbitrary(g) % chars.len();
+        let end = (start + span).min(chars.len());
+        chars[start..end].iter().collect()
+    }
+
+    /// Applies one random splice to `text`: delete a random char range and insert a fresh chunk.
+    fn random_edit(g: &mut Gen, text: &str) -> String {
+        let chars: Vec<char> = text.chars().collect();
+        let len = chars.len();
+        let del_start = usize::arbitrary(g) % (len + 1);
+        let del_len = usize::arbitrary(g) % (len - del_start + 1);
+        let mut out: String = chars[..del_start].iter().collect();
+        out.push_str(&sample_text(g));
+        out.extend(&chars[del_start + del_len..]);
+        out
+    }
+
+    /// An obvious, independent reimplementation of [`words`]: walk grapheme clusters, accumulate
+    /// a run of consecutive word-character clusters, and emit it when it ends if it satisfies the
+    /// length bounds. Used as an oracle for the optimized single-pass extractor.
+    fn reference_words(text: &str) -> Vec<String> {
+        let rope = Rope::from_str(text);
+        let mut out = Vec::new();
+        let mut run = String::new();
+        let mut clusters = 0usize;
+        let flush = |run: &mut String, clusters: &mut usize, out: &mut Vec<String>| {
+            if *clusters >= MIN_WORD_GRAPHEMES && run.chars().count() <= MAX_WORD_LEN {
+                out.push(run.clone());
+            }
+            run.clear();
+            *clusters = 0;
+        };
+        for cluster in rope.slice(..).graphemes() {
+            if cluster.chars().next().is_some_and(char_is_word) {
+                run.extend(cluster.chars());
+                clusters += 1;
+            } else {
+                flush(&mut run, &mut clusters, &mut out);
+            }
+        }
+        flush(&mut run, &mut clusters, &mut out);
+        out
+    }
+
+    #[derive(Clone, Debug)]
+    struct SampledText(String);
+
+    impl Arbitrary for SampledText {
+        fn arbitrary(g: &mut Gen) -> Self {
+            SampledText(sample_text(g))
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(self.0.shrink().map(SampledText))
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct EditPair {
+        old: String,
+        new: String,
+    }
+
+    impl Arbitrary for EditPair {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let old = sample_text(g);
+            let new = random_edit(g, &old);
+            EditPair { old, new }
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(
+                (self.old.clone(), self.new.clone())
+                    .shrink()
+                    .map(|(old, new)| EditPair { old, new }),
+            )
+        }
+    }
+
+    /// A sequence of `(old_text, new_text)` changes as the hook observes them. Some steps leave
+    /// a gap (the next change's `old_text` differs from the previous `new_text`) modelling an
+    /// unobserved ghost edit applied to the document between two real ones.
+    #[derive(Clone, Debug)]
+    struct Observations(Vec<(String, String)>);
+
+    impl Arbitrary for Observations {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let steps = usize::arbitrary(g) % 5 + 1;
+            let mut current = sample_text(g);
+            let mut observations = Vec::with_capacity(steps);
+            for _ in 0..steps {
+                let observed_old = if bool::arbitrary(g) {
+                    // A ghost edit perturbed the document before this real edit, so the observed
+                    // `old_text` no longer matches the previous `new_text`.
+                    random_edit(g, &current)
+                } else {
+                    current.clone()
+                };
+                let new = random_edit(g, &observed_old);
+                observations.push((observed_old, new.clone()));
+                current = new;
+            }
+            Observations(observations)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(self.0.shrink().map(Observations))
+        }
+    }
+
+    quickcheck::quickcheck! {
+        /// The optimized single-pass extractor agrees with the obvious reference on arbitrary
+        /// (multilingual, cluster-frayed) text.
+        fn prop_words_match_reference(text: SampledText) -> bool {
+            let rope = Rope::from_str(&text.0);
+            let got: Vec<String> = words(rope.slice(..)).map(|w| w.to_string()).collect();
+            got == reference_words(&text.0)
+        }
+
+        /// Incrementally updating across one edit lands on exactly the same word multiset (words
+        /// and refcounts) as reindexing the new text from scratch.
+        fn prop_update_document_matches_fresh(pair: EditPair) -> bool {
+            let old = Rope::from_str(&pair.old);
+            let new = Rope::from_str(&pair.new);
+            let changes = compare_ropes(&old, &new).changes().clone();
+
+            let mut cancel = TaskController::new();
+            let handle = cancel.restart();
+            let incremental = WordIndex::default();
+            incremental.add_document(&old, &handle);
+            incremental.update_document(&old, &new, &changes, &handle);
+
+            let fresh = WordIndex::default();
+            fresh.add_document(&new, &handle);
+
+            incremental.counts() == fresh.counts()
+        }
+
+        /// Coalescing a sequence of observed changes (gaps and all) and flushing yields a change
+        /// that maps its `old_text` to its `text` and drives the index to the same multiset as a
+        /// fresh index of the final text.
+        fn prop_hook_coalescing_matches_fresh(obs: Observations) -> bool {
+            let Some(change) = coalesce(obs.0.iter().map(|(o, n)| (o.as_str(), n.as_str()))) else {
+                return true;
+            };
+
+            let mut applied = change.old_text.clone();
+            if !change.changes.apply(&mut applied) || applied != change.text {
+                return false;
+            }
+
+            let mut cancel = TaskController::new();
+            let handle = cancel.restart();
+            let incremental = WordIndex::default();
+            incremental.add_document(&change.old_text, &handle);
+            incremental.update_document(&change.old_text, &change.text, &change.changes, &handle);
+
+            let fresh = WordIndex::default();
+            fresh.add_document(&change.text, &handle);
+
+            incremental.counts() == fresh.counts()
         }
     }
 }

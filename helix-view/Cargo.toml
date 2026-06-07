@@ -72,6 +72,7 @@ rustix = { version = "1.1", features = ["fs"] }
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
 criterion.workspace = true
+quickcheck.workspace = true
 
 [[bench]]
 name = "word_index"

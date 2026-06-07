@@ -1727,6 +1727,7 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot",
+ "quickcheck",
  "rustix 1.1.4",
  "serde",
  "serde_json",
