@@ -80,7 +80,7 @@ pub struct InlineValueText {
     pub range: Range,
 
     /// The text of the inline value.
-    pub text: String,
+    pub text: Box<str>,
 }
 
 /// Provide inline value through a variable lookup.
@@ -101,7 +101,7 @@ pub struct InlineValueVariableLookup {
 
     /// If specified the name of the variable to look up.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub variable_name: Option<String>,
+    pub variable_name: Option<Box<str>>,
 
     /// How to perform the lookup.
     pub case_sensitive_lookup: bool,
@@ -125,7 +125,7 @@ pub struct InlineValueEvaluatableExpression {
 
     /// If specified the expression overrides the extracted expression.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub expression: Option<String>,
+    pub expression: Option<Box<str>>,
 }
 
 /// Inline value information can be provided by different means:
@@ -193,7 +193,7 @@ mod tests {
         test_serialization(
             &InlineValueText {
                 range: Range::new(Position::new(0, 0), Position::new(0, 4)),
-                text: "one".to_owned(),
+                text: "one".into(),
             },
             r#"{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},"text":"one"}"#,
         );

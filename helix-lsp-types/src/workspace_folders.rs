@@ -17,7 +17,7 @@ pub struct WorkspaceFoldersServerCapabilities {
     /// side. The ID can be used to unregister for these events
     /// using the `client/unregisterCapability` request.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub change_notifications: Option<OneOf<bool, String>>,
+    pub change_notifications: Option<OneOf<bool, Box<str>>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Deserialize, Serialize)]
@@ -26,7 +26,7 @@ pub struct WorkspaceFolder {
     /// The associated URI for this workspace folder.
     pub uri: Url,
     /// The name of the workspace folder. Defaults to the uri's basename.
-    pub name: String,
+    pub name: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]

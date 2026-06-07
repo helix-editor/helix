@@ -45,7 +45,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
         name: uri
             .path_segments()
             .and_then(|mut segments| segments.next_back())
-            .map(|basename| basename.to_string())
+            .map(|basename| basename.into())
             .unwrap_or_default(),
         uri,
     }
@@ -157,7 +157,7 @@ impl Client {
     fn add_workspace_folder(
         &self,
         root_uri: Option<lsp::Url>,
-        change_notifications: Option<&OneOf<bool, String>>,
+        change_notifications: Option<&OneOf<bool, Box<str>>>,
     ) {
         // root_uri is None just means that there isn't really any LSP workspace
         // associated with this file. For servers that support multiple workspaces
@@ -190,7 +190,7 @@ impl Client {
             .config
             .as_ref()
             .and_then(|cfg| cfg.get("format"))
-            .and_then(|fmt| HashMap::<String, lsp::FormattingProperty>::deserialize(fmt).ok());
+            .and_then(|fmt| HashMap::<Box<str>, lsp::FormattingProperty>::deserialize(fmt).ok());
 
         if let Some(mut properties) = config_format {
             // passed in options take precedence over 'config.format'
@@ -576,7 +576,7 @@ impl Client {
             workspace_folders: Some(self.workspace_folders.lock().clone()),
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
-            root_path: self.root_path.to_str().map(|path| path.to_owned()),
+            root_path: self.root_path.to_str().map(|path| path.into()),
             root_uri: self.root_uri.clone(),
             initialization_options: self.config.clone(),
             capabilities: lsp::ClientCapabilities {
@@ -635,9 +635,9 @@ impl Client {
                             snippet_support: Some(enable_snippets),
                             resolve_support: Some(lsp::CompletionItemCapabilityResolveSupport {
                                 properties: vec![
-                                    String::from("documentation"),
-                                    String::from("detail"),
-                                    String::from("additionalTextEdits"),
+                                    "documentation".into(),
+                                    "detail".into(),
+                                    "additionalTextEdits".into(),
                                 ],
                             }),
                             insert_replace_support: Some(true),
@@ -693,7 +693,7 @@ impl Client {
                                     lsp::CodeActionKind::SOURCE_FIX_ALL,
                                 ]
                                 .iter()
-                                .map(|kind| kind.as_str().to_string())
+                                .map(|kind| kind.as_str().into())
                                 .collect(),
                             },
                         }),
@@ -701,7 +701,7 @@ impl Client {
                         disabled_support: Some(true),
                         data_support: Some(true),
                         resolve_support: Some(CodeActionCapabilityResolveSupport {
-                            properties: vec!["edit".to_owned(), "command".to_owned()],
+                            properties: vec!["edit".into(), "command".into()],
                         }),
                         ..Default::default()
                     }),
@@ -761,8 +761,8 @@ impl Client {
             },
             trace: None,
             client_info: Some(lsp::ClientInfo {
-                name: String::from("helix"),
-                version: Some(String::from(VERSION_AND_GIT_HASH)),
+                name: "helix".into(),
+                version: Some(VERSION_AND_GIT_HASH.into()),
             }),
             locale: None, // TODO
             work_done_progress_params: lsp::WorkDoneProgressParams::default(),
@@ -812,13 +812,13 @@ impl Client {
         })
     }
 
-    fn file_operation_uri(path: &Path, is_dir: bool) -> Option<String> {
+    fn file_operation_uri(path: &Path, is_dir: bool) -> Option<Box<str>> {
         let url = if is_dir {
             Url::from_directory_path(path)
         } else {
             Url::from_file_path(path)
         };
-        Some(url.ok()?.to_string())
+        Some(url.ok()?.to_string().into())
     }
 
     pub fn will_create(
@@ -928,14 +928,14 @@ impl Client {
         uri: lsp::Url,
         version: i32,
         doc: &Rope,
-        language_id: String,
+        language_id: Box<str>,
     ) {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
                 language_id,
                 version,
-                text: String::from(doc),
+                text: String::from(doc).into(),
             },
         })
     }
@@ -1013,7 +1013,7 @@ impl Client {
                     // deletion
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: "".to_string(),
+                        text: "".into(),
                         range_length: None,
                     });
                 }
@@ -1039,7 +1039,7 @@ impl Client {
 
                     changes.push(lsp::TextDocumentContentChangeEvent {
                         range: Some(lsp::Range::new(start, end)),
-                        text: s.to_string(),
+                        text: s.as_str().into(),
                         range_length: None,
                     });
                 }
@@ -1078,7 +1078,7 @@ impl Client {
                     // range = None -> whole document
                     range: None,        //Some(Range)
                     range_length: None, // u64 apparently deprecated
-                    text: new_text.to_string(),
+                    text: new_text.to_string().into(),
                 }]
             }
             lsp::TextDocumentSyncKind::INCREMENTAL => {
@@ -1127,7 +1127,7 @@ impl Client {
 
         self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
             text_document,
-            text: include_text.then_some(text.into()),
+            text: include_text.then_some(String::from(text).into()),
         });
         Some(())
     }
@@ -1368,7 +1368,7 @@ impl Client {
     pub fn text_document_diagnostic(
         &self,
         text_document: lsp::TextDocumentIdentifier,
-        previous_result_id: Option<String>,
+        previous_result_id: Option<Box<str>>,
     ) -> Option<impl Future<Output = Result<lsp::DocumentDiagnosticReportResult>>> {
         let capabilities = self.capabilities();
 
@@ -1689,7 +1689,7 @@ impl Client {
     // empty string to get all symbols
     pub fn workspace_symbols(
         &self,
-        query: String,
+        query: Box<str>,
     ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceSymbolResponse>>>> {
         let capabilities = self.capabilities.get().unwrap();
 
@@ -1740,7 +1740,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         position: lsp::Position,
-        new_name: String,
+        new_name: Box<str>,
     ) -> Option<impl Future<Output = Result<Option<lsp::WorkspaceEdit>>>> {
         if !self.supports_feature(LanguageServerFeature::RenameSymbol) {
             return None;

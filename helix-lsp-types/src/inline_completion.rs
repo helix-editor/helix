@@ -81,7 +81,7 @@ pub struct SelectedCompletionInfo {
     pub range: Range,
     /// The text the range will be replaced with if this completion is
     /// accepted.
-    pub text: String,
+    pub text: Box<str>,
 }
 
 /// Provides information about the context in which an inline completion was
@@ -135,7 +135,7 @@ pub struct InlineCompletionList {
 pub struct InlineCompletionItem {
     /// The text to replace the range with. Must be set.
     /// Is used both for the preview and the accept operation.
-    pub insert_text: String,
+    pub insert_text: Box<str>,
     /// A text that is used to decide if this inline completion should be
     /// shown. When `falsy` the [`InlineCompletionItem::insertText`] is
     /// used.
@@ -143,7 +143,7 @@ pub struct InlineCompletionItem {
     /// An inline completion is shown if the text to replace is a prefix of the
     /// filter text.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub filter_text: Option<String>,
+    pub filter_text: Option<Box<str>>,
     /// The range to replace.
     /// Must begin and end on the same line.
     ///

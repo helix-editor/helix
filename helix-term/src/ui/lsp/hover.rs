@@ -161,16 +161,17 @@ impl Component for Hover {
 fn hover_contents_to_string(contents: lsp::HoverContents) -> String {
     fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
         match contents {
-            lsp::MarkedString::String(contents) => contents,
+            lsp::MarkedString::String(contents) => contents.into_string(),
             lsp::MarkedString::LanguageString(string) => {
-                if string.language == "markdown" {
-                    string.value
+                if string.language.as_ref() == "markdown" {
+                    string.value.into_string()
                 } else {
                     format!("```{}\n{}\n```", string.language, string.value)
                 }
             }
         }
     }
+
     match contents {
         lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
         lsp::HoverContents::Array(contents) => contents
@@ -178,6 +179,6 @@ fn hover_contents_to_string(contents: lsp::HoverContents) -> String {
             .map(marked_string_to_markdown)
             .collect::<Vec<_>>()
             .join("\n\n"),
-        lsp::HoverContents::Markup(contents) => contents.value,
+        lsp::HoverContents::Markup(contents) => contents.value.into_string(),
     }
 }

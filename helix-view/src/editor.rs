@@ -1807,7 +1807,7 @@ impl Editor {
                 doc_url.clone(),
                 doc.version(),
                 doc.text(),
-                language_id.clone(),
+                language_id.clone().into(),
             );
         }
 

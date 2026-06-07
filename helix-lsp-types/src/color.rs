@@ -18,7 +18,7 @@ pub struct StaticTextDocumentColorProviderOptions {
     pub document_selector: Option<DocumentSelector>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: Option<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -107,7 +107,7 @@ pub struct ColorPresentation {
     /// The label of this color presentation. It will be shown on the color
     /// picker header. By default this is also the text that is inserted when selecting
     /// this color presentation.
-    pub label: String,
+    pub label: Box<str>,
 
     /// An [edit](#TextEdit) which is applied to a document when selecting
     /// this presentation for the color.  When `falsy` the [label](#ColorPresentation.label)

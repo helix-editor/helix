@@ -207,7 +207,7 @@ pub struct Document {
 
     pub readonly: bool,
 
-    pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
+    pub previous_diagnostic_ids: HashMap<LanguageServerId, Box<str>>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -2237,11 +2237,9 @@ impl Document {
                     return true;
                 }
 
-                if let Some(source) = &d.source {
-                    unchanged_sources.contains(source)
-                } else {
-                    false
-                }
+                d.source
+                    .as_ref()
+                    .is_some_and(|source| unchanged_sources.iter().any(|s| **s == **source))
             });
         }
         self.diagnostics.extend(diagnostics);

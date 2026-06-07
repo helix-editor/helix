@@ -11,7 +11,7 @@ pub struct RenameParams {
     /// The new name of the symbol. If the given name is not valid the
     /// request must return a [ResponseError](#ResponseError) with an
     /// appropriate message set.
-    pub new_name: String,
+    pub new_name: Box<str>,
 
     #[serde(flatten)]
     pub work_done_progress_params: WorkDoneProgressParams,
@@ -79,7 +79,7 @@ pub enum PrepareRenameResponse {
     Range(Range),
     RangeWithPlaceholder {
         range: Range,
-        placeholder: String,
+        placeholder: Box<str>,
     },
     #[serde(rename_all = "camelCase")]
     DefaultBehavior {

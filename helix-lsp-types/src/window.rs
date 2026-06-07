@@ -70,19 +70,19 @@ pub struct MessageActionItemCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct MessageActionItem {
     /// A short title like 'Retry', 'Open Log' etc.
-    pub title: String,
+    pub title: Box<str>,
 
     /// Additional attributes that the client preserves and
     /// sends back to the server. This depends on the client
     /// capability window.messageActionItem.additionalPropertiesSupport
     #[serde(flatten)]
-    pub properties: HashMap<String, MessageActionItemProperty>,
+    pub properties: HashMap<Box<str>, MessageActionItemProperty>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum MessageActionItemProperty {
-    String(String),
+    String(Box<str>),
     Boolean(bool),
     Integer(i32),
     Object(Value),
@@ -95,7 +95,7 @@ pub struct LogMessageParams {
     pub typ: MessageType,
 
     /// The actual message
-    pub message: String,
+    pub message: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -105,7 +105,7 @@ pub struct ShowMessageParams {
     pub typ: MessageType,
 
     /// The actual message.
-    pub message: String,
+    pub message: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -115,7 +115,7 @@ pub struct ShowMessageRequestParams {
     pub typ: MessageType,
 
     /// The actual message
-    pub message: String,
+    pub message: Box<str>,
 
     /// The message action items to present.
     #[serde(skip_serializing_if = "Option::is_none")]

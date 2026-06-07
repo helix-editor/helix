@@ -86,7 +86,7 @@ pub struct CodeActionClientCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct CodeActionCapabilityResolveSupport {
     /// The properties that a client can resolve lazily.
-    pub properties: Vec<String>,
+    pub properties: Vec<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -103,7 +103,7 @@ pub struct CodeActionKindLiteralSupport {
     /// property exists the client also guarantees that it will
     /// handle values outside its set gracefully and falls back
     /// to a default value when unknown.
-    pub value_set: Vec<String>,
+    pub value_set: Vec<Box<str>>,
 }
 
 /// Params for the CodeActionRequest
@@ -238,7 +238,7 @@ impl From<&'static str> for CodeActionKind {
 #[serde(rename_all = "camelCase")]
 pub struct CodeAction {
     /// A short, human-readable, title for this code action.
-    pub title: String,
+    pub title: Box<str>,
 
     /// The kind of the code action.
     /// Used to filter code actions.
@@ -301,7 +301,7 @@ pub struct CodeActionDisabled {
     /// Human readable description of why the code action is currently disabled.
     ///
     /// This is displayed in the code actions UI.
-    pub reason: String,
+    pub reason: Box<str>,
 }
 
 /// The reason why code actions were requested.
@@ -376,12 +376,12 @@ mod tests {
         test_serialization(
             &vec![
                 CodeActionOrCommand::Command(Command {
-                    title: "title".to_string(),
-                    command: "command".to_string(),
+                    title: "title".into(),
+                    command: "command".into(),
                     arguments: None,
                 }),
                 CodeActionOrCommand::CodeAction(CodeAction {
-                    title: "title".to_string(),
+                    title: "title".into(),
                     kind: Some(CodeActionKind::QUICKFIX),
                     command: None,
                     diagnostics: None,

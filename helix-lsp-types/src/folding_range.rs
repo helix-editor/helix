@@ -2,6 +2,7 @@ use crate::{
     PartialResultParams, StaticTextDocumentColorProviderOptions, TextDocumentIdentifier,
     WorkDoneProgressParams,
 };
+
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -141,5 +142,5 @@ pub struct FoldingRange {
     ///
     /// @since 3.17.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub collapsed_text: Option<String>,
+    pub collapsed_text: Option<Box<str>>,
 }

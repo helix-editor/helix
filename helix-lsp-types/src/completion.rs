@@ -130,7 +130,7 @@ pub struct CompletionItemCapability {
 #[serde(rename_all = "camelCase")]
 pub struct CompletionItemCapabilityResolveSupport {
     /// The properties that a client can resolve lazily.
-    pub properties: Vec<String>,
+    pub properties: Vec<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -202,7 +202,7 @@ pub struct CompletionListCapability {
     ///
     /// @since 3.17.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub item_defaults: Option<Vec<String>>,
+    pub item_defaults: Option<Vec<Box<str>>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -247,7 +247,7 @@ pub struct CompletionClientCapabilities {
 #[serde(rename_all = "camelCase")]
 pub struct InsertReplaceEdit {
     /// The string to be inserted.
-    pub new_text: String,
+    pub new_text: Box<str>,
 
     /// The range if the insert is requested
     pub insert: Range,
@@ -294,7 +294,7 @@ pub struct CompletionOptions {
     /// valid inside an identifier (for example `.` in JavaScript) list them in
     /// `triggerCharacters`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trigger_characters: Option<Vec<String>>,
+    pub trigger_characters: Option<Vec<Box<str>>>,
 
     /// The list of all possible characters that commit a completion. This field
     /// can be used if clients don't support individual commit characters per
@@ -306,7 +306,7 @@ pub struct CompletionOptions {
     ///
     /// @since 3.2.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub all_commit_characters: Option<Vec<String>>,
+    pub all_commit_characters: Option<Vec<Box<str>>>,
 
     #[serde(flatten)]
     pub work_done_progress_options: WorkDoneProgressOptions,
@@ -386,7 +386,7 @@ pub struct CompletionContext {
     /// The trigger character (a single character) that has trigger code complete.
     /// Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trigger_character: Option<String>,
+    pub trigger_character: Option<Box<str>>,
 }
 
 /// How a completion was triggered.
@@ -420,7 +420,7 @@ pub struct CompletionItem {
     /// The label of this completion item. By default
     /// also the text that is inserted when selecting
     /// this completion.
-    pub label: String,
+    pub label: Box<str>,
 
     /// Additional details for the label
     ///
@@ -436,7 +436,7 @@ pub struct CompletionItem {
     /// A human-readable string with additional information
     /// about this item, like type or symbol information.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<String>,
+    pub detail: Option<Box<str>>,
 
     /// A human-readable string that represents a doc-comment.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -454,13 +454,13 @@ pub struct CompletionItem {
     /// with other items. When `falsy` the label is used
     /// as the sort text for this item.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort_text: Option<String>,
+    pub sort_text: Option<Box<str>>,
 
     /// A string that should be used when filtering a set of
     /// completion items. When `falsy` the label is used as the
     /// filter text for this item.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub filter_text: Option<String>,
+    pub filter_text: Option<Box<str>>,
 
     /// A string that should be inserted into a document when selecting
     /// this completion. When `falsy` the label is used as the insert text
@@ -474,7 +474,7 @@ pub struct CompletionItem {
     /// recommended to use `textEdit` instead since it avoids additional client
     /// side interpretation.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub insert_text: Option<String>,
+    pub insert_text: Option<Box<str>>,
 
     /// The format of the insert text. The format applies to both the `insertText` property
     /// and the `newText` property of a provided `textEdit`. If omitted defaults to `InsertTextFormat.PlainText`.
@@ -528,7 +528,7 @@ pub struct CompletionItem {
     /// commit characters should have `length=1` and that superfluous characters
     /// will be ignored.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub commit_characters: Option<Vec<String>>,
+    pub commit_characters: Option<Vec<Box<str>>>,
 
     /// An data entry field that is preserved on a completion item between
     /// a completion and a completion resolve request.
@@ -542,7 +542,7 @@ pub struct CompletionItem {
 
 impl CompletionItem {
     /// Create a CompletionItem with the minimum possible info (label and detail).
-    pub fn new_simple(label: String, detail: String) -> CompletionItem {
+    pub fn new_simple(label: Box<str>, detail: Box<str>) -> CompletionItem {
         CompletionItem {
             label,
             detail: Some(detail),
@@ -561,13 +561,13 @@ pub struct CompletionItemLabelDetails {
     /// {@link CompletionItemLabel.label label}, without any spacing. Should be
     /// used for function signatures or type annotations.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub detail: Option<String>,
+    pub detail: Option<Box<str>>,
 
     /// An optional string which is rendered less prominently after
     /// {@link CompletionItemLabel.detail}. Should be used for fully qualified
     /// names or file path.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    pub description: Option<Box<str>>,
 }
 
 #[cfg(test)]

@@ -148,7 +148,7 @@ fn active_param_range(
     let param = signature.parameters.as_ref()?.get(param_idx)?;
     match &param.label {
         lsp::ParameterLabel::Simple(string) => {
-            let start = signature.label.find(string.as_str())?;
+            let start = signature.label.find(string.as_ref())?;
             Some((start, start + string.len()))
         }
         lsp::ParameterLabel::LabelOffsets([start, end]) => {
@@ -228,8 +228,8 @@ pub fn show_signature_help(
             };
 
             Signature {
-                signature: s.label,
-                signature_doc,
+                signature: s.label.into_string(),
+                signature_doc: signature_doc.map(|doc| doc.into_string()),
                 active_param_range,
             }
         })

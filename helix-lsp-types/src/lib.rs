@@ -208,7 +208,7 @@ pub use trace::*;
 #[serde(untagged)]
 pub enum NumberOrString {
     Number(i32),
-    String(String),
+    String(Box<str>),
 }
 
 /* ----------------- Cancel support ----------------- */
@@ -379,10 +379,10 @@ pub struct Diagnostic {
     /// A human-readable string describing the source of this
     /// diagnostic, e.g. 'typescript' or 'super lint'.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub source: Option<String>,
+    pub source: Option<Box<str>>,
 
     /// The diagnostic's message.
-    pub message: String,
+    pub message: Box<str>,
 
     /// An array of related diagnostic information, e.g. when symbol-names within
     /// a scope collide all definitions can be marked via this property.
@@ -412,8 +412,8 @@ impl Diagnostic {
         range: Range,
         severity: Option<DiagnosticSeverity>,
         code: Option<NumberOrString>,
-        source: Option<String>,
-        message: String,
+        source: Option<Box<str>>,
+        message: Box<str>,
         related_information: Option<Vec<DiagnosticRelatedInformation>>,
         tags: Option<Vec<DiagnosticTag>>,
     ) -> Diagnostic {
@@ -429,7 +429,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn new_simple(range: Range, message: String) -> Diagnostic {
+    pub fn new_simple(range: Range, message: Box<str>) -> Diagnostic {
         Self::new(range, None, None, None, message, None, None)
     }
 
@@ -437,8 +437,8 @@ impl Diagnostic {
         range: Range,
         severity: DiagnosticSeverity,
         code_number: i32,
-        source: Option<String>,
-        message: String,
+        source: Option<Box<str>>,
+        message: Box<str>,
     ) -> Diagnostic {
         let code = Some(NumberOrString::Number(code_number));
         Self::new(range, Some(severity), code, source, message, None, None)
@@ -471,7 +471,7 @@ pub struct DiagnosticRelatedInformation {
     pub location: Location,
 
     /// The message of this related diagnostic information.
-    pub message: String,
+    pub message: Box<str>,
 }
 
 /// The diagnostic tags.
@@ -499,9 +499,9 @@ impl DiagnosticTag {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct Command {
     /// Title of the command, like `save`.
-    pub title: String,
+    pub title: Box<str>,
     /// The identifier of the actual command handler.
-    pub command: String,
+    pub command: Box<str>,
     /// Arguments that the command handler should be
     /// invoked with.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -509,7 +509,7 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn new(title: String, command: String, arguments: Option<Vec<Value>>) -> Command {
+    pub fn new(title: Box<str>, command: Box<str>, arguments: Option<Vec<Value>>) -> Command {
         Command {
             title,
             command,
@@ -531,11 +531,11 @@ pub struct TextEdit {
     pub range: Range,
     /// The string to be inserted. For delete operations use an
     /// empty string.
-    pub new_text: String,
+    pub new_text: Box<str>,
 }
 
 impl TextEdit {
-    pub fn new(range: Range, new_text: String) -> TextEdit {
+    pub fn new(range: Range, new_text: Box<str>) -> TextEdit {
         TextEdit { range, new_text }
     }
 }
@@ -544,7 +544,7 @@ impl TextEdit {
 /// edit.
 ///
 /// @since 3.16.0
-pub type ChangeAnnotationIdentifier = String;
+pub type ChangeAnnotationIdentifier = Box<str>;
 
 /// A special text edit with an additional change annotation.
 ///
@@ -585,7 +585,7 @@ pub struct TextDocumentEdit {
 pub struct ChangeAnnotation {
     /// A human-readable string describing the actual change. The string
     /// is rendered prominent in the user interface.
-    pub label: String,
+    pub label: Box<str>,
 
     /// A flag which indicates that user confirmation is needed
     /// before applying the change.
@@ -595,7 +595,7 @@ pub struct ChangeAnnotation {
     /// A human-readable string which is rendered less prominent in
     /// the user interface.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    pub description: Option<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -789,7 +789,7 @@ pub struct ConfigurationItem {
 
     ///The configuration section asked for.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub section: Option<String>,
+    pub section: Option<Box<str>>,
 }
 
 mod url_map {
@@ -944,18 +944,18 @@ pub struct TextDocumentItem {
     pub uri: Url,
 
     /// The text document's language identifier.
-    pub language_id: String,
+    pub language_id: Box<str>,
 
     /// The version number of this document (it will strictly increase after each
     /// change, including undo/redo).
     pub version: i32,
 
     /// The content of the opened text document.
-    pub text: String,
+    pub text: Box<str>,
 }
 
 impl TextDocumentItem {
-    pub fn new(uri: Url, language_id: String, version: i32, text: String) -> TextDocumentItem {
+    pub fn new(uri: Url, language_id: Box<str>, version: i32, text: Box<str>) -> TextDocumentItem {
         TextDocumentItem {
             uri,
             language_id,
@@ -1050,15 +1050,15 @@ impl TextDocumentPositionParams {
 pub struct DocumentFilter {
     /// A language id, like `typescript`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub language: Option<String>,
+    pub language: Option<Box<str>>,
 
     /// A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub scheme: Option<String>,
+    pub scheme: Option<Box<str>>,
 
     /// A glob pattern, like `*.{ts,js}`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pattern: Option<String>,
+    pub pattern: Option<Box<str>>,
 }
 
 /// A document selector is the combination of one or many document filters.
@@ -1078,7 +1078,7 @@ pub struct InitializeParams {
     /// if no folder is open.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[deprecated(note = "Use `root_uri` instead when possible")]
-    pub root_path: Option<String>,
+    pub root_path: Option<Box<str>>,
 
     /// The rootUri of the workspace. Is null if no
     /// folder is open. If both `rootPath` and `rootUri` are set
@@ -1119,7 +1119,7 @@ pub struct InitializeParams {
     ///
     /// @since 3.16.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub locale: Option<String>,
+    pub locale: Option<Box<str>>,
 
     /// The LSP server may report about initialization progress to the client
     /// by using the following work done token if it was passed by the client.
@@ -1130,10 +1130,10 @@ pub struct InitializeParams {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct ClientInfo {
     /// The name of the client as defined by the client.
-    pub name: String,
+    pub name: Box<str>,
     /// The client's version as defined by the client.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy, Deserialize, Serialize)]
@@ -1631,7 +1631,7 @@ pub struct ClientCapabilities {
     /// See https://clangd.llvm.org/extensions.html#utf-8-offsets.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg(feature = "proposed")]
-    pub offset_encoding: Option<Vec<String>>,
+    pub offset_encoding: Option<Vec<Box<str>>>,
 
     /// Experimental client capabilities.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1697,36 +1697,36 @@ pub struct StaleRequestSupportClientCapabilities {
     /// The list of requests for which the client
     /// will retry the request if it receives a
     /// response with error code `ContentModified``
-    pub retry_on_content_modified: Vec<String>,
+    pub retry_on_content_modified: Vec<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegularExpressionsClientCapabilities {
     /// The engine's name.
-    pub engine: String,
+    pub engine: Box<str>,
 
     /// The engine's version
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarkdownClientCapabilities {
     /// The name of the parser.
-    pub parser: String,
+    pub parser: Box<str>,
 
     /// The version of the parser.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 
     /// A list of HTML tags that the client allows / supports in
     /// Markdown.
     ///
     /// @since 3.17.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub allowed_tags: Option<Vec<String>>,
+    pub allowed_tags: Option<Vec<Box<str>>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -1744,16 +1744,16 @@ pub struct InitializeResult {
     /// See https://clangd.llvm.org/extensions.html#utf-8-offsets.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg(feature = "proposed")]
-    pub offset_encoding: Option<String>,
+    pub offset_encoding: Option<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct ServerInfo {
     /// The name of the server as defined by the server.
-    pub name: String,
+    pub name: Box<str>,
     /// The servers's version as defined by the server.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
+    pub version: Option<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
@@ -1792,7 +1792,7 @@ pub type ExecuteCommandClientCapabilities = DynamicRegistrationClientCapabilitie
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct ExecuteCommandOptions {
     /// The commands to be executed on the server
-    pub commands: Vec<String>,
+    pub commands: Vec<Box<str>>,
 
     #[serde(flatten)]
     pub work_done_progress_options: WorkDoneProgressOptions,
@@ -2091,10 +2091,10 @@ pub struct WorkspaceServerCapabilities {
 pub struct Registration {
     /// The id used to register the request. The id can be used to deregister
     /// the request again.
-    pub id: String,
+    pub id: Box<str>,
 
     /// The method / capability to register for.
-    pub method: String,
+    pub method: Box<str>,
 
     /// Options necessary for the registration.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2148,7 +2148,7 @@ pub struct DeclarationOptions {
 #[serde(rename_all = "camelCase")]
 pub struct StaticRegistrationOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: Option<Box<str>>,
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Clone, Deserialize, Serialize, Copy)]
@@ -2187,7 +2187,7 @@ pub struct DocumentSymbolOptions {
     ///
     /// @since 3.16.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
+    pub label: Option<Box<str>>,
 
     #[serde(flatten)]
     pub work_done_progress_options: WorkDoneProgressOptions,
@@ -2229,7 +2229,7 @@ pub struct StaticTextDocumentRegistrationOptions {
     pub document_selector: Option<DocumentSelector>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: Option<Box<str>>,
 }
 
 /// General parameters to unregister a capability.
@@ -2237,10 +2237,10 @@ pub struct StaticTextDocumentRegistrationOptions {
 pub struct Unregistration {
     /// The id used to unregister the request or notification. Usually an id
     /// provided during the register request.
-    pub id: String,
+    pub id: Box<str>,
 
     /// The method / capability to unregister for.
-    pub method: String,
+    pub method: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -2288,7 +2288,7 @@ pub struct TextDocumentContentChangeEvent {
     pub range_length: Option<u32>,
 
     /// The new text of the document.
-    pub text: String,
+    pub text: Box<str>,
 }
 
 /// Describe options to be used when registering for text document change events.
@@ -2351,7 +2351,7 @@ pub struct DidSaveTextDocumentParams {
     /// Optional the content when saved. Depends on the includeText value
     /// when the save notification was requested.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
+    pub text: Option<Box<str>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -2498,7 +2498,7 @@ pub struct RelativePattern {
 ///   but not `example.0`)
 ///
 /// @since 3.17.0
-pub type Pattern = String;
+pub type Pattern = Box<str>;
 
 bitflags! {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
@@ -2563,7 +2563,7 @@ impl PublishDiagnosticsParams {
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
 pub enum Documentation {
-    String(String),
+    String(Box<str>),
     MarkupContent(MarkupContent),
 }
 
@@ -2580,22 +2580,22 @@ pub enum Documentation {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum MarkedString {
-    String(String),
+    String(Box<str>),
     LanguageString(LanguageString),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 pub struct LanguageString {
-    pub language: String,
-    pub value: String,
+    pub language: Box<str>,
+    pub value: Box<str>,
 }
 
 impl MarkedString {
-    pub fn from_markdown(markdown: String) -> MarkedString {
+    pub fn from_markdown(markdown: Box<str>) -> MarkedString {
         MarkedString::String(markdown)
     }
 
-    pub fn from_language_code(language: String, code_block: String) -> MarkedString {
+    pub fn from_language_code(language: Box<str>, code_block: Box<str>) -> MarkedString {
         MarkedString::LanguageString(LanguageString {
             language,
             value: code_block,
@@ -2646,7 +2646,7 @@ impl From<Vec<LocationLink>> for GotoDefinitionResponse {
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct ExecuteCommandParams {
     /// The identifier of the actual command handler.
-    pub command: String,
+    pub command: Box<str>,
     /// Arguments that the command should be invoked with.
     #[serde(default)]
     pub arguments: Vec<Value>,
@@ -2659,7 +2659,7 @@ pub struct ExecuteCommandParams {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 pub struct ExecuteCommandRegistrationOptions {
     /// The commands to be executed on the server
-    pub commands: Vec<String>,
+    pub commands: Vec<Box<str>>,
 
     #[serde(flatten)]
     pub execute_command_options: ExecuteCommandOptions,
@@ -2672,7 +2672,7 @@ pub struct ApplyWorkspaceEditParams {
     /// presented in the user interface for example on an undo
     /// stack to undo the workspace edit.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub label: Option<String>,
+    pub label: Option<Box<str>>,
 
     /// The edits to apply.
     pub edit: WorkspaceEdit,
@@ -2689,7 +2689,7 @@ pub struct ApplyWorkspaceEditResponse {
     /// logging or to provide a suitable error for a request that
     /// triggered the edit
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub failure_reason: Option<String>,
+    pub failure_reason: Option<Box<str>>,
 
     /// Depending on the client's failure handling strategy `failedChange` might
     /// contain the index of the change that failed. This property is only available
@@ -2738,7 +2738,7 @@ pub enum MarkupKind {
 #[derive(Debug, Eq, PartialEq, Deserialize, Serialize, Clone)]
 pub struct MarkupContent {
     pub kind: MarkupKind,
-    pub value: String,
+    pub value: Box<str>,
 }
 
 /// A parameter literal used to pass a partial result token.
@@ -2789,9 +2789,9 @@ mod tests {
     #[test]
     fn one_of() {
         test_serialization(&OneOf::<bool, ()>::Left(true), r#"true"#);
-        test_serialization(&OneOf::<String, ()>::Left("abcd".into()), r#""abcd""#);
+        test_serialization(&OneOf::<Box<str>, ()>::Left("abcd".into()), r#""abcd""#);
         test_serialization(
-            &OneOf::<String, WorkDoneProgressOptions>::Right(WorkDoneProgressOptions {
+            &OneOf::<Box<str>, WorkDoneProgressOptions>::Right(WorkDoneProgressOptions {
                 work_done_progress: Some(false),
             }),
             r#"{"workDoneProgress":false}"#,

@@ -46,14 +46,14 @@ pub struct WorkspaceSymbolParams {
     pub work_done_progress_params: WorkDoneProgressParams,
 
     /// A non-empty query string
-    pub query: String,
+    pub query: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 pub struct WorkspaceSymbolResolveSupportCapability {
     /// The properties that a client can resolve lazily. Usually
     /// `location.range`
-    pub properties: Vec<String>,
+    pub properties: Vec<Box<str>>,
 }
 
 /// A special workspace symbol that supports locations without a range
@@ -63,7 +63,7 @@ pub struct WorkspaceSymbolResolveSupportCapability {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceSymbol {
     /// The name of this symbol.
-    pub name: String,
+    pub name: Box<str>,
 
     /// The kind of this symbol.
     pub kind: SymbolKind,
@@ -77,7 +77,7 @@ pub struct WorkspaceSymbol {
     /// if necessary). It can't be used to re-infer a hierarchy for the document
     /// symbols.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub container_name: Option<String>,
+    pub container_name: Option<Box<str>>,
 
     /// The location of this symbol. Whether a server is allowed to
     /// return a location without a range depends on the client

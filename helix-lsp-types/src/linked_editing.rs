@@ -57,5 +57,5 @@ pub struct LinkedEditingRanges {
     /// the given ranges. If no pattern is provided, the client configuration's word
     /// pattern will be used.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub word_pattern: Option<String>,
+    pub word_pattern: Option<Box<str>>,
 }

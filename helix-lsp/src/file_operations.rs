@@ -22,7 +22,7 @@ impl FileOperationFilter {
             let is_non_file_schema = filter
                 .scheme
                 .as_ref()
-                .is_some_and(|schema| schema != "file");
+                .is_some_and(|schema| **schema != *"file");
             if is_non_file_schema {
                 continue;
             }

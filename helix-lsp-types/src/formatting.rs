@@ -16,11 +16,11 @@ pub type DocumentOnTypeFormattingClientCapabilities = DynamicRegistrationClientC
 #[serde(rename_all = "camelCase")]
 pub struct DocumentOnTypeFormattingOptions {
     /// A character on which formatting should be triggered, like `}`.
-    pub first_trigger_character: String,
+    pub first_trigger_character: Box<str>,
 
     /// More trigger characters.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub more_trigger_character: Option<Vec<String>>,
+    pub more_trigger_character: Option<Vec<Box<str>>>,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -48,7 +48,7 @@ pub struct FormattingOptions {
 
     /// Signature for further properties.
     #[serde(flatten)]
-    pub properties: HashMap<String, FormattingProperty>,
+    pub properties: HashMap<Box<str>, FormattingProperty>,
 
     /// Trim trailing whitespace on a line.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -68,7 +68,7 @@ pub struct FormattingOptions {
 pub enum FormattingProperty {
     Bool(bool),
     Number(i32),
-    String(String),
+    String(Box<str>),
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
@@ -95,7 +95,7 @@ pub struct DocumentOnTypeFormattingParams {
     pub text_document_position: TextDocumentPositionParams,
 
     /// The character that has been typed.
-    pub ch: String,
+    pub ch: Box<str>,
 
     /// The format options.
     pub options: FormattingOptions,
@@ -110,11 +110,11 @@ pub struct DocumentOnTypeFormattingRegistrationOptions {
     pub document_selector: Option<DocumentSelector>,
 
     /// A character on which formatting should be triggered, like `}`.
-    pub first_trigger_character: String,
+    pub first_trigger_character: Box<str>,
 
     /// More trigger characters.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub more_trigger_character: Option<Vec<String>>,
+    pub more_trigger_character: Option<Vec<Box<str>>>,
 }
 
 #[cfg(test)]
@@ -140,7 +140,7 @@ mod tests {
             &FormattingOptions {
                 tab_size: 123,
                 insert_spaces: true,
-                properties: vec![("prop".to_string(), FormattingProperty::Number(1))]
+                properties: vec![("prop".into(), FormattingProperty::Number(1))]
                     .into_iter()
                     .collect(),
                 trim_trailing_whitespace: None,

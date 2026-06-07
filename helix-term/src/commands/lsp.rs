@@ -265,12 +265,12 @@ fn diag_picker(
         ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
             match item.diag.code.as_ref() {
                 Some(NumberOrString::Number(n)) => n.to_string().into(),
-                Some(NumberOrString::String(s)) => s.as_str().into(),
+                Some(NumberOrString::String(s)) => s.as_ref().into(),
                 None => "".into(),
             }
         }),
         ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
-            item.diag.message.as_str().into()
+            item.diag.message.as_ref().into()
         }),
     ];
     let mut primary_column = 3; // message
@@ -413,7 +413,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 // the current file. It should be rare though, so we concatenate that
                 // URI in with the symbol name in this picker.
                 ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
-                    item.symbol.name.as_str().into()
+                    item.symbol.name.as_ref().into()
                 }),
                 ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
                     item.symbol
@@ -464,9 +464,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
-                let request = language_server
-                    .workspace_symbols(pattern.to_string())
-                    .unwrap();
+                let request = language_server.workspace_symbols(pattern.into()).unwrap();
                 let offset_encoding = language_server.offset_encoding();
                 async move {
                     let symbols = request
@@ -528,7 +526,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             display_symbol_kind(item.symbol.kind).into()
         }),
         ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
-            item.symbol.name.as_str().into()
+            item.symbol.name.as_ref().into()
         })
         .without_filtering(),
         ui::PickerColumn::new("container", |item: &SymbolInformationItem, _| {
@@ -591,8 +589,8 @@ impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> Row<'_> {
         match &self.lsp_item {
-            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
-            lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
+            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_ref().into(),
+            lsp::CodeActionOrCommand::Command(command) => command.title.as_ref().into(),
         }
     }
 }
@@ -1119,7 +1117,7 @@ pub fn rename_symbol(cx: &mut Context) {
                     .into())
             }
             Some(lsp::PrepareRenameResponse::RangeWithPlaceholder { placeholder, .. }) => {
-                Ok(placeholder)
+                Ok(placeholder.into_string())
             }
             Some(lsp::PrepareRenameResponse::DefaultBehavior { .. }) => {
                 Ok(get_prefill_from_word_boundary(editor))
@@ -1156,7 +1154,7 @@ pub fn rename_symbol(cx: &mut Context) {
                 let offset_encoding = language_server.offset_encoding();
                 let pos = doc.position(view.id, offset_encoding);
                 let future = language_server
-                    .rename_symbol(doc.identifier(), pos, input.to_string())
+                    .rename_symbol(doc.identifier(), pos, input.into())
                     .unwrap();
 
                 match block_on(future) {
@@ -1387,13 +1385,12 @@ fn compute_inlay_hints_for_view(
                     };
 
                 let mut label = match hint.label {
-                    lsp::InlayHintLabel::String(s) => s,
-                    lsp::InlayHintLabel::LabelParts(parts) => parts
-                        .into_iter()
-                        .map(|p| p.value)
-                        .collect::<Vec<_>>()
-                        .join(""),
+                    lsp::InlayHintLabel::String(s) => s.into_string(),
+                    lsp::InlayHintLabel::LabelParts(parts) => {
+                        parts.into_iter().map(|p| p.value).collect::<String>()
+                    }
                 };
+
                 // Truncate the hint if too long
                 if let Some(limit) = inlay_hints_length_limit {
                     // Limit on displayed width

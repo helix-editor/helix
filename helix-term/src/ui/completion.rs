@@ -41,7 +41,7 @@ impl menu::Item for CompletionItem {
         };
 
         let label = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.label.as_str(),
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.label.as_ref(),
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
@@ -650,7 +650,7 @@ fn lsp_item_to_transaction(
             selection,
             edit_offset,
             replace_mode,
-            new_text,
+            new_text.into_string(),
         );
         (transaction, None)
     }

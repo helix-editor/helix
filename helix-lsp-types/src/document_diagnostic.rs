@@ -63,7 +63,7 @@ fn serialize_option_arc_str<S: serde::Serializer>(
 fn deserialize_option_arc_str<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Arc<str>>, D::Error> {
-    Option::<String>::deserialize(deserializer).map(|opt| opt.map(|s| s.into()))
+    Option::<Box<str>>::deserialize(deserializer).map(|opt| opt.map(|s| s.into()))
 }
 
 /// Diagnostic registration options.
@@ -109,7 +109,7 @@ pub struct DocumentDiagnosticParams {
 
     /// The result ID of a previous response if provided.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub previous_result_id: Option<String>,
+    pub previous_result_id: Option<Box<str>>,
 
     #[serde(flatten)]
     pub work_done_progress_params: WorkDoneProgressParams,
@@ -127,7 +127,7 @@ pub struct FullDocumentDiagnosticReport {
     /// An optional result ID. If provided it will be sent on the next diagnostic request for the
     /// same document.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result_id: Option<String>,
+    pub result_id: Option<Box<str>>,
 
     /// The actual items.
     pub items: Vec<Diagnostic>,
@@ -142,7 +142,7 @@ pub struct FullDocumentDiagnosticReport {
 #[serde(rename_all = "camelCase")]
 pub struct UnchangedDocumentDiagnosticReport {
     /// A result ID which will be sent on the next diagnostic request for the same document.
-    pub result_id: String,
+    pub result_id: Box<str>,
 }
 
 /// The document diagnostic report kinds.

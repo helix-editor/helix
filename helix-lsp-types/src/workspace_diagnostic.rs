@@ -31,7 +31,7 @@ pub struct PreviousResultId {
     pub uri: Url,
 
     /// The value of the previous result ID.
-    pub value: String,
+    pub value: Box<str>,
 }
 
 /// Parameters of the workspace diagnostic request.
@@ -41,7 +41,7 @@ pub struct PreviousResultId {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceDiagnosticParams {
     /// The additional identifier provided during registration.
-    pub identifier: Option<String>,
+    pub identifier: Option<Box<str>>,
 
     /// The currently known diagnostic reports with their
     /// previous result ids.

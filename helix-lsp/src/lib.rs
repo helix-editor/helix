@@ -132,10 +132,10 @@ pub mod util {
             severity,
             code,
             source: diag.source.clone(),
-            message: diag.message.to_owned(),
+            message: diag.message.clone(),
             related_information: None,
             tags,
-            data: diag.data.to_owned(),
+            data: diag.data.clone(),
             ..Default::default()
         }
     }
@@ -426,7 +426,8 @@ pub mod util {
                 Some(start..end)
             }) == Some(0..doc.len_chars());
             if is_document_replacement {
-                let new_text = Rope::from(edits.pop().unwrap().new_text);
+                let new_text =
+                    Rope::from(edits.pop().map(|edit| edit.new_text.into_string()).unwrap());
                 return helix_core::diff::compare_ropes(doc, &new_text);
             }
         }
@@ -851,7 +852,7 @@ impl LspProgressMap {
         self.0.entry(id).or_default().insert(
             token,
             ProgressStatus::Started {
-                title: status.title.clone(),
+                title: status.title.clone().into_string(),
                 progress: lsp::WorkDoneProgress::Begin(status),
             },
         );
@@ -1083,7 +1084,7 @@ mod tests {
                         character: 0,
                     },
                 },
-                new_text: "\n  ".to_string(),
+                new_text: "\n  ".into(),
             },
             TextEdit {
                 range: Range {
@@ -1096,7 +1097,7 @@ mod tests {
                         character: 0,
                     },
                 },
-                new_text: "\n  ".to_string(),
+                new_text: "\n  ".into(),
             },
         ];
 
@@ -1119,7 +1120,7 @@ mod tests {
                 start: Position::new(0, sc),
                 end: Position::new(0, ec),
             },
-            new_text: text.to_string(),
+            new_text: text.into(),
         };
 
         // Edits are given out of order and the second overlaps the first
@@ -1145,7 +1146,7 @@ mod tests {
                 start: Position::new(0, sc),
                 end: Position::new(0, ec),
             },
-            new_text: text.to_string(),
+            new_text: text.into(),
         };
 
         let edits = vec![edit(4, 5, "Y"), edit(0, 1, "X")];

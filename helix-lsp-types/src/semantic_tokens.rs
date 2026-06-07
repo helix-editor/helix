@@ -7,6 +7,7 @@ use crate::{
     PartialResultParams, Range, StaticRegistrationOptions, TextDocumentIdentifier,
     TextDocumentRegistrationOptions, WorkDoneProgressOptions, WorkDoneProgressParams,
 };
+
 /// A set of predefined token types. This set is not fixed
 /// and clients can specify additional token types via the
 /// corresponding client capabilities.
@@ -237,7 +238,7 @@ pub struct SemanticTokens {
     /// A server can then instead of computing all semantic tokens again simply
     /// send a delta.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result_id: Option<String>,
+    pub result_id: Option<Box<str>>,
 
     /// The actual tokens. For a detailed description about how the data is
     /// structured please see
@@ -322,7 +323,7 @@ impl From<SemanticTokensDelta> for SemanticTokensFullDeltaResult {
 #[serde(rename_all = "camelCase")]
 pub struct SemanticTokensDelta {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub result_id: Option<String>,
+    pub result_id: Option<Box<str>>,
     /// For a detailed description how these edits are structured please see
     /// <https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L131>
     pub edits: Vec<SemanticTokensEdit>,
@@ -508,7 +509,7 @@ pub struct SemanticTokensDeltaParams {
 
     /// The result id of a previous response. The result Id can either point to a full response
     /// or a delta response depending on what was received last.
-    pub previous_result_id: String,
+    pub previous_result_id: Box<str>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
