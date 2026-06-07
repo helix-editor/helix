@@ -89,3 +89,6 @@
   (_) @anchor
   (#set! "scope" "tail")) @align
 
+
+; String bodies (triple-quoted strings span lines) are literal content.
+(string) @opaque

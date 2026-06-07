@@ -80,3 +80,8 @@ namespace geometry {
   }
 
 } // namespace geometry
+
+const char *raw = R"(
+unindented
+  indented
+)";

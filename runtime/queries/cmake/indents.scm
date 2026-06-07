@@ -9,3 +9,14 @@
 ] @indent
 
 ")" @outdent
+
+[
+  (else)
+  (elseif)
+  (endif)
+  (endforeach)
+  (endwhile)
+  (endfunction)
+  (endmacro)
+  (endblock)
+] @outdent

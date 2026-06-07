@@ -8,16 +8,6 @@ use ropey::Rope;
 use std::{ops::Range, path::PathBuf, process::Command};
 
 #[test]
-fn test_treesitter_indent_rust() {
-    standard_treesitter_test("rust.rs", "source.rust");
-}
-
-#[test]
-fn test_treesitter_indent_cpp() {
-    standard_treesitter_test("cpp.cpp", "source.cpp");
-}
-
-#[test]
 fn test_treesitter_indent_rust_helix() {
     // We pin a specific git revision to prevent unrelated changes from causing the indent tests to fail.
     // Ideally, someone updates this once in a while and fixes any errors that occur.
@@ -160,24 +150,11 @@ fn indent_tests_dir() -> PathBuf {
     test_dir
 }
 
-fn indent_test_path(name: &str) -> PathBuf {
-    let mut path = indent_tests_dir();
-    path.push(name);
-    path
-}
-
 fn indent_tests_config() -> Configuration {
     let mut config_path = indent_tests_dir();
     config_path.push("languages.toml");
     let config = std::fs::read_to_string(config_path).unwrap();
     toml::from_str(&config).unwrap()
-}
-
-fn standard_treesitter_test(file_name: &str, lang_scope: &str) {
-    let test_path = indent_test_path(file_name);
-    let test_file = std::fs::File::open(test_path).unwrap();
-    let doc = ropey::Rope::from_reader(test_file).unwrap();
-    test_treesitter_indent(file_name, doc, lang_scope, Vec::new())
 }
 
 /// Test that all the lines in the given file are indented as expected.

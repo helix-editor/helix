@@ -25,6 +25,10 @@
   ")"
   "]"
   "}"
+  "else"
+  "elseif"
+  "catch"
+  "finally"
 ] @outdent
 
 (argument_list

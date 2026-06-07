@@ -101,3 +101,11 @@ func process(items []int) (int, error) {
 
 	return point.X, nil
 }
+
+func rawString() string {
+	query := `
+first
+	indented in raw
+last`
+	return query
+}

@@ -36,3 +36,8 @@ class Example(private val value: Int) {
         return result
     }
 }
+
+val multi = """
+unindented
+    indented
+"""

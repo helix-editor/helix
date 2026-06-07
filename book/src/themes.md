@@ -168,6 +168,8 @@ These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/
 
 When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
+This list is also the reference for the capture names used in `highlights.scm` queries (`@function`, `@type`, …) — see [Adding languages](./guides/adding_languages.md). When several captures cover the same text the **last** matching pattern in the file wins; when they sit on nested nodes the **innermost** node wins regardless of order, so capture the leaf you mean (put `@function` on the called identifier, not a node wrapping it). A method call is `@function.method`; a field access with no call is `@variable.other.member`.
+
 We use a similar set of scopes as
 [Sublime Text](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
@@ -178,8 +180,8 @@ We use a similar set of scopes as
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
   - `parameter` - Generic type parameters (`T`)
   - `enum`
-    - `variant`
-- `constructor`
+    - `variant` - Enum variants
+- `constructor` - Constructors, struct/record literals, type names in value position
 
 - `constant` (TODO: constant.other.placeholder for `%v`)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
@@ -237,17 +239,17 @@ We use a similar set of scopes as
 
 - `operator` - `||`, `+=`, `>`
 
-- `function`
-  - `builtin`
-  - `method`
+- `function` - Function definitions and calls
+  - `builtin` - Language built-in functions
+  - `method` - Method definitions and calls (`obj.method()`)
     - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
-  - `macro`
+  - `macro` - Macro invocations (e.g. `println!` in Rust)
   - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
   - `builtin`
 
-- `namespace`
+- `namespace` - Modules and namespaces (e.g. `std::collections`, package names)
 
 - `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
 See also [#2380]
@@ -282,6 +284,8 @@ See also [#2380]
     - `moved` - renamed or moved files/changes
     - `conflict` - merge conflicts
     - `gutter` - gutter indicator
+
+- `embedded` - Interpolated expressions embedded in a string template (`${…}`)
 
 #### Interface
 

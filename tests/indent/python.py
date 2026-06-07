@@ -81,3 +81,11 @@ def match_example(command):
             return 0
         case _:
             return -1
+
+
+def docstring_example():
+    text = """
+first line
+    indented in string
+back"""
+    return text

@@ -4,6 +4,11 @@ Writing language injection queries allows one to highlight a specific node as a 
 In addition to the [standard][upstream-docs] language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.
 
+Injection drives more than highlighting: within an injected region Helix also
+uses the injected language's own indentation, textobjects, and comment tokens —
+so, for example, editing JavaScript inside an HTML `<script>` indents and
+comments as JavaScript.
+
 An example of a simple query that would highlight all strings as bash in Nix:
 ```scm
 ((string_expression (string_fragment) @injection.content)

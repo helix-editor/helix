@@ -104,3 +104,8 @@ func process(_ direction: Direction, count: Int) {
     height: 20)
   print(result)
 }
+
+let multi = """
+unindented
+  indented
+"""

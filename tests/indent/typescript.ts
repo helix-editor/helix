@@ -74,3 +74,12 @@ function totals(): number {
     .map((n) => n * 2)
     .reduce((a, b) => a + b, 0);
 }
+
+function template(): string {
+  const html = `
+  <div>
+    content
+  </div>
+`;
+  return html;
+}

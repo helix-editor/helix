@@ -21,3 +21,9 @@
   ")"
   "]"
 ] @outdent
+
+; Heredoc / nowdoc bodies are literal content.
+[
+  (heredoc)
+  (nowdoc)
+] @opaque

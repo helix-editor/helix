@@ -23,16 +23,26 @@
   "]"
 ] @outdent
 
-; Single statement after if/while/for without brackets
+; Single statement after if/while/for without braces. Capture the body child
+; naturally; on a typed newline the engine descends into it.
 (if_statement
   consequence: (_) @indent
   (#not-kind-eq? @indent "block")
+  (#set! "scope" "all"))
+; Braceless `else` body (the body is the alternative field). Skip `else if`
+; (alternative is an if_statement) and braced bodies.
+(if_statement
+  alternative: (_) @indent
+  (#not-kind-eq? @indent "block")
+  (#not-kind-eq? @indent "if_statement")
   (#set! "scope" "all"))
 (while_statement
   body: (_) @indent
   (#not-kind-eq? @indent "block")
   (#set! "scope" "all"))
 (for_statement
-  (_) @indent
+  body: (_) @indent
   (#not-kind-eq? @indent "block")
   (#set! "scope" "all"))
+
+(string_literal) @opaque

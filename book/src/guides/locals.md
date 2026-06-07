@@ -7,7 +7,9 @@ the highlight class of that definition rather than the class assigned by
 `highlights.scm`.
 
 Query files should be placed in `runtime/queries/{language}/locals.scm` when
-contributing to Helix.
+contributing to Helix. Like other query files, `locals.scm` may reuse another
+language's with `; inherits: <lang>` on the first line. Locals are resolved in
+their own pass with their own precedence, independently of `highlights.scm`.
 
 ## Captures
 

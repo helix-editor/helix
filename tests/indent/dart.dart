@@ -11,3 +11,8 @@ class Example {
     }
   }
 }
+
+var multi = '''
+unindented
+  indented
+''';

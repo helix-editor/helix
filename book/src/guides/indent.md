@@ -99,6 +99,10 @@ level for the line.
   captured, only the extension of the innermost one is prevented. All other
   ancestors are unaffected (regardless of whether the innermost ancestor would
   actually have been extended).
+- `@opaque`:
+  Mark a literal body such as a string, heredoc, or block comment. Lines that
+  begin inside the captured node keep their existing indentation instead of being
+  reindented, so the contents of multi-line literals are left untouched.
 
 #### `@indent` / `@outdent`
 
@@ -251,6 +255,32 @@ To help, we need to signal an end to the extension. We can do this with
 (return_statement) @extend.prevent-once
 ```
 
+#### Brace-less bodies
+
+A brace-less single-statement body: `if (cond)` with its statement on the next
+line and no `{}` is a *following sibling* of the header, so the upward
+traversal from the line above never reaches it. Capture the body directly and
+give it the `all` scope:
+
+```scm
+(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "all"))
+(while_statement
+  body: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "all"))
+```
+
+When a new line is typed right after the header, Helix descends into the
+field-named body (`body`, `consequence`, or `alternative`) that the line opens,
+so the body's own `@indent` governs it — no wrapper node or `@extend` is needed.
+The `#not-kind-eq?` guard skips the braced form, which the surrounding block
+already indents. Give `else` and `do .. while` their own pattern (on the
+`alternative` / `body` field) so the trailing `else` / `while` keyword line is
+not indented along with the body.
+
 #### `@indent.always` / `@outdent.always`
 
 As mentioned before, normally if there is more than one `@indent` or `@outdent`
@@ -372,3 +402,10 @@ Then, on the closing brace, we encounter an outdent with a scope of "all", which
 means the first line is included, and the indent level is cancelled out on this
 line. (Note these scopes are the defaults for `@indent` and `@outdent`—they are
 written explicitly for demonstration.)
+
+## Testing
+
+`cargo xtask indent-check [language]` checks the queries against the fixtures in
+`tests/indent/<language-id>.<ext>` in both modes: re-indenting each line
+and simulating a newline typed after it, so a rule that is correct one way but
+wrong the other is caught.

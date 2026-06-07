@@ -22,6 +22,9 @@ int compute(int a, int b) {
     a -= 5;
   for (int i = 0; i < b; i++)
     a += i;
+  do
+    a++;
+  while (a < 100);
   switch (b) {
   case 1:
     return a;

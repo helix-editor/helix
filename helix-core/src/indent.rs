@@ -372,6 +372,7 @@ pub struct IndentQuery {
     anchor_capture: Option<Capture>,
     extend_capture: Option<Capture>,
     extend_prevent_once_capture: Option<Capture>,
+    opaque_capture: Option<Capture>,
 }
 
 impl IndentQuery {
@@ -445,6 +446,7 @@ impl IndentQuery {
             anchor_capture: query.get_capture("anchor"),
             extend_capture: query.get_capture("extend"),
             extend_prevent_once_capture: query.get_capture("extend.prevent-once"),
+            opaque_capture: query.get_capture("opaque"),
             query,
         })
     }
@@ -808,6 +810,57 @@ fn extend_nodes<'a>(
     }
 }
 
+/// When a newline is typed after a header (`while (c)`, `if x:`), the body it
+/// opens begins on the *next* line — a following sibling the upward indent walk
+/// never reaches, which is why brace-less bodies historically needed wrapper
+/// `@indent` rules or `@extend`. Walk up from the deepest preceding node; if an
+/// ancestor exposes a body field (`body`/`consequence`/`alternative`) that
+/// begins at/after the cursor, return it so the indent walk can start *inside*
+/// the body and its own scope governs the new line.
+///
+/// Matching on a body *field* (not just any following sibling) is what
+/// distinguishes a real body from a peer statement: a statement list / block
+/// does not field-name its children, so `foo();` followed by `bar();` finds no
+/// field and is correctly left alone.
+fn following_body_for_new_line<'a>(deepest_preceding: &Node<'a>, byte_pos: u32) -> Option<Node<'a>> {
+    const BODY_FIELDS: [&str; 3] = ["body", "consequence", "alternative"];
+    let mut node = deepest_preceding.clone();
+    while let Some(parent) = node.parent() {
+        // Only consider ancestors that lie entirely before the cursor: those are
+        // part of the header. Once an ancestor extends past the cursor it
+        // *contains* the new line (an already-open body like `if (c) {`), which
+        // the normal containment walk handles — stop.
+        if node.end_byte() > byte_pos {
+            break;
+        }
+        // The body the new line opens is the field-named sibling immediately
+        // after this header node (`while (c)` -> body, `if x:` -> consequence).
+        // Requiring the *immediate* next sibling avoids jumping to a later body
+        // such as an `else` arm while the cursor is still in the consequence.
+        let mut cursor = parent.walk();
+        if cursor.goto_first_child() {
+            loop {
+                if cursor.node().id() == node.id() {
+                    if cursor.goto_next_sibling() {
+                        let child = cursor.node();
+                        if child.start_byte() >= byte_pos
+                            && cursor.field_name().is_some_and(|f| BODY_FIELDS.contains(&f))
+                        {
+                            return Some(child);
+                        }
+                    }
+                    break;
+                }
+                if !cursor.goto_next_sibling() {
+                    break;
+                }
+            }
+        }
+        node = parent;
+    }
+    None
+}
+
 /// Prepare an indent query by computing:
 /// - The node from which to start the query (this is non-trivial due to `@extend` captures)
 /// - The indent captures for all relevant nodes.
@@ -855,17 +908,29 @@ fn init_indent_query<'a, 'b>(
     };
     let extend_captures = query_result.extend_captures;
 
+    // When typing a newline, descend into the body the new line opens so its own
+    // scope governs the indent (structural replacement for wrapper/`@extend`
+    // rules on delimited and brace-less bodies). Otherwise fall back to `@extend`.
+    let descended = new_line_byte_pos.is_some()
+        && deepest_preceding
+            .as_ref()
+            .and_then(|dp| following_body_for_new_line(dp, byte_pos))
+            .map(|body| node = body)
+            .is_some();
+
     // Check for extend captures, potentially changing the node that the indent calculation starts with
     if let Some(deepest_preceding) = deepest_preceding {
-        extend_nodes(
-            &mut node,
-            deepest_preceding,
-            &extend_captures,
-            text,
-            line,
-            tab_width,
-            indent_width,
-        );
+        if !descended {
+            extend_nodes(
+                &mut node,
+                deepest_preceding,
+                &extend_captures,
+                text,
+                line,
+                tab_width,
+                indent_width,
+            );
+        }
     }
     Some((node, query_result.indent_captures))
 }
@@ -908,6 +973,38 @@ fn init_indent_query<'a, 'b>(
 /// );
 /// ```
 #[allow(clippy::too_many_arguments)]
+/// Whether `byte_pos` lies in the *interior* of a node captured `@opaque` — a
+/// string / heredoc / block-comment body that began on an earlier line. The
+/// leading whitespace of such lines is literal content, so indentation must
+/// leave it untouched rather than reformat it as code.
+pub fn is_opaque_interior(
+    query: &IndentQuery,
+    syntax: &Syntax,
+    text: RopeSlice,
+    byte_pos: u32,
+) -> bool {
+    let Some(opaque) = query.opaque_capture else {
+        return false;
+    };
+    let line = text.byte_to_line(byte_pos as usize);
+    let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
+        .execute_query(&query.query, &syntax.tree().root_node(), RopeInput::new(text));
+    while let Some(m) = cursor.next_match() {
+        for matched in m.matched_nodes() {
+            if matched.capture == opaque {
+                let node = &matched.node;
+                if node.start_byte() <= byte_pos
+                    && byte_pos < node.end_byte()
+                    && text.byte_to_line(node.start_byte() as usize) < line
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 pub fn treesitter_indent_for_pos<'a>(
     query: &IndentQuery,
     syntax: &Syntax,
@@ -919,6 +1016,19 @@ pub fn treesitter_indent_for_pos<'a>(
     new_line: bool,
 ) -> Option<Indentation<'a>> {
     let byte_pos = text.char_to_byte(pos) as u32;
+    // Lines inside an `@opaque` node (a string / heredoc / block-comment body)
+    // are literal content, not code: preserve their existing leading whitespace
+    // instead of reformatting it.
+    if is_opaque_interior(query, syntax, text, byte_pos) {
+        let line_slice = text.line(line);
+        let first = line_slice
+            .first_non_whitespace_char()
+            .unwrap_or_else(|| line_slice.len_chars());
+        return Some(Indentation {
+            align: Some(line_slice.slice(..first)),
+            ..Default::default()
+        });
+    }
     let new_line_byte_pos = new_line.then_some(byte_pos);
     let (mut node, mut indent_captures) = init_indent_query(
         query,
@@ -995,6 +1105,51 @@ pub fn treesitter_indent_for_pos<'a>(
         }
     }
     Some(result)
+}
+
+/// Whether the token at `byte_pos` (expected to be the first token on its line)
+/// is captured `@outdent`/`@outdent.always` by the indent query — i.e. the
+/// editor dedents that line as the token is entered (a closing bracket, a
+/// `case`/`else`/`except` keyword, …). Used to tell a *recoverable* typing
+/// over-indent (the leading token will pull the line back) from a real one (a
+/// plain statement that the new-line indent placed too deep).
+pub fn is_outdent_token_at(
+    query: &IndentQuery,
+    syntax: &Syntax,
+    text: RopeSlice,
+    byte_pos: u32,
+) -> bool {
+    let Some(mut node) = syntax
+        .tree()
+        .root_node()
+        .descendant_for_byte_range(byte_pos, byte_pos)
+    else {
+        return false;
+    };
+    let result = query_indents(query, syntax, text, byte_pos..byte_pos + 1, None);
+    // Check the leading token and any ancestor that starts at the same byte (the
+    // @outdent may sit on the token itself or on a node it opens, e.g.
+    // `(access_specifier) @outdent`).
+    loop {
+        if result
+            .indent_captures
+            .get(&node.id())
+            .is_some_and(|caps| {
+                caps.iter().any(|c| {
+                    matches!(
+                        c.capture_type,
+                        IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways
+                    )
+                })
+            })
+        {
+            return true;
+        }
+        match node.parent() {
+            Some(parent) if parent.start_byte() == node.start_byte() => node = parent,
+            _ => return false,
+        }
+    }
 }
 
 /// Returns the indentation for a new line.

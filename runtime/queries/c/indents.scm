@@ -16,6 +16,8 @@
   ")"
 ] @outdent
 
+; Single statement after if/while/for/do without braces. Capture the body child
+; naturally; on a typed newline the engine descends into it (no wrapper trick).
 (if_statement
   consequence: (_) @indent
   (#not-kind-eq? @indent "compound_statement")
@@ -29,8 +31,7 @@
   (#not-kind-eq? @indent "compound_statement")
   (#set! "scope" "all"))
 (for_statement
-  ")"
-  (_) @indent
+  body: (_) @indent
   (#not-kind-eq? @indent "compound_statement")
   (#set! "scope" "all"))
 

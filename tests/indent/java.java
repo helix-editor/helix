@@ -37,6 +37,13 @@ public class Example {
         return 0;
     }
   }
+
+  String textBlock() {
+    return """
+unindented
+        indented
+""";
+  }
 }
 
 class Braceless {

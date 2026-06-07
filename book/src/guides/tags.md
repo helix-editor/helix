@@ -34,6 +34,10 @@ recognized:
 | `definition.struct`    |
 | `definition.type`      |
 
+Captures outside this list are ignored by the symbol pickers, so map a
+language-specific construct onto the closest listed kind rather than inventing a
+new one.
+
 ### `@name`
 
 Marks the name identifier node within a match. `@definition.*` should capture
@@ -52,7 +56,12 @@ within that same match:
 
 Marks a node as a call site or type reference. These are used by workspace
 symbol search to locate usages. `@reference.call` and `@reference.class` are
-the common variants.
+the common variants. As with definitions, `@name` captures the identifier:
+
+```scm
+(call
+  function: (identifier) @name) @reference.call
+```
 
 [Example query files][example-queries] can be found in the Helix GitHub
 repository.

@@ -114,6 +114,13 @@
   )
   arguments: (_) @outdent
 )
+; Same again for `.await` off a multiline receiver, so it lines up with the
+; other links in the chain instead of indenting a level deeper.
+(await_expression
+  (_) @val
+  "." @outdent
+  (#match? @val "(\\A[^\\n\\r]+(\\(|\\{|\\[)[\\t ]*(\\n|\\r))")
+)
 
 
 ; Indent if guards in patterns.
@@ -146,3 +153,9 @@
   (#set! "scope" "all")
 )
   
+
+; Multi-line string / raw-string bodies are literal content: preserve them.
+[
+  (string_literal)
+  (raw_string_literal)
+] @opaque

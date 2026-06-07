@@ -12,3 +12,8 @@ function classify($value)
             return "other";
     }
 }
+
+$doc = <<<EOT
+unindented
+    indented
+EOT;

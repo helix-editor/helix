@@ -269,12 +269,14 @@ fn await_chain_off_multiline_call() -> Result<(), Error> {
     Ok(())
 }
 
-// Known hard case helix's rust indent query still gets wrong (kept commented so
-// the corpus stays green; documenting the limitation): multi-line string / raw
-// string bodies are reindented as if they were code, which would corrupt the
-// literal — no node distinguishes string interior lines for the indent walk.
-//   let s = "first
-//   second";
-//   let r = r#"
-//   raw line
-//       indented raw"#;
+// Multi-line string / raw-string bodies are literal content: the @opaque rule
+// preserves their existing leading whitespace instead of reformatting it.
+fn strings() {
+    let s = "first
+second
+    indented in string";
+    let r = r#"
+raw line
+    indented raw"#;
+    println!("{s}{r}");
+}
