@@ -6095,11 +6095,10 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
         let loader = editor.syn_loader.load();
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let root = syntax.tree().root_node();
 
             let selection = doc.selection(view.id).clone().transform(|range| {
                 let new_range = movement::goto_treesitter_object(
-                    text, range, object, direction, &root, syntax, &loader, count,
+                    text, range, object, direction, syntax, &loader, count,
                 );
 
                 if editor.mode == Mode::Select {

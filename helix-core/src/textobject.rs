@@ -263,11 +263,13 @@ pub fn textobject_treesitter(
     loader: &syntax::Loader,
     _count: usize,
 ) -> Range {
-    let root = syntax.tree().root_node();
-    let textobject_query = loader.textobject_query(syntax.root_language());
+    let byte_pos = slice.char_to_byte(range.cursor(slice));
+    let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
+    let root = syntax
+        .tree_for_byte_range(byte_pos as u32, byte_pos as u32)
+        .root_node();
+    let textobject_query = loader.textobject_query(syntax.layer(layer).language);
     let get_range = move || -> Option<Range> {
-        let byte_pos = slice.char_to_byte(range.cursor(slice));
-
         let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
         let node = textobject_query?
             .capture_nodes(&capture_name, &root, slice)?
