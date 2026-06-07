@@ -189,6 +189,7 @@ fn test_treesitter_indent(
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
                 &syntax,
+                &loader,
                 tab_width,
                 indent_style.indent_width(tab_width),
                 text,

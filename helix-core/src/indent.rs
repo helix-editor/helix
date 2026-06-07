@@ -633,7 +633,7 @@ fn get_node_end_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32
 
 fn query_indents<'a>(
     query: &IndentQuery,
-    syntax: &Syntax,
+    root: &Node,
     text: RopeSlice<'a>,
     range: std::ops::Range<u32>,
     new_line_byte_pos: Option<u32>,
@@ -643,7 +643,7 @@ fn query_indents<'a>(
 
     let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
         &query.query,
-        &syntax.tree().root_node(),
+        root,
         RopeInput::new(text),
     );
 
@@ -822,7 +822,10 @@ fn extend_nodes<'a>(
 /// distinguishes a real body from a peer statement: a statement list / block
 /// does not field-name its children, so `foo();` followed by `bar();` finds no
 /// field and is correctly left alone.
-fn following_body_for_new_line<'a>(deepest_preceding: &Node<'a>, byte_pos: u32) -> Option<Node<'a>> {
+fn following_body_for_new_line<'a>(
+    deepest_preceding: &Node<'a>,
+    byte_pos: u32,
+) -> Option<Node<'a>> {
     const BODY_FIELDS: [&str; 3] = ["body", "consequence", "alternative"];
     let mut node = deepest_preceding.clone();
     while let Some(parent) = node.parent() {
@@ -844,7 +847,9 @@ fn following_body_for_new_line<'a>(deepest_preceding: &Node<'a>, byte_pos: u32) 
                     if cursor.goto_next_sibling() {
                         let child = cursor.node();
                         if child.start_byte() >= byte_pos
-                            && cursor.field_name().is_some_and(|f| BODY_FIELDS.contains(&f))
+                            && cursor
+                                .field_name()
+                                .is_some_and(|f| BODY_FIELDS.contains(&f))
                         {
                             return Some(child);
                         }
@@ -867,7 +872,7 @@ fn following_body_for_new_line<'a>(deepest_preceding: &Node<'a>, byte_pos: u32) 
 #[allow(clippy::too_many_arguments)]
 fn init_indent_query<'a, 'b>(
     query: &IndentQuery,
-    syntax: &'a Syntax,
+    root: &Node<'a>,
     text: RopeSlice<'b>,
     tab_width: usize,
     indent_width: usize,
@@ -877,10 +882,7 @@ fn init_indent_query<'a, 'b>(
 ) -> Option<(Node<'a>, HashMap<usize, Vec<IndentCapture<'b>>>)> {
     // The innermost tree-sitter node which is considered for the indent
     // computation. It may change if some preceding node is extended
-    let mut node = syntax
-        .tree()
-        .root_node()
-        .descendant_for_byte_range(byte_pos, byte_pos)?;
+    let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
 
     let (query_result, deepest_preceding) = {
         // The query range should intersect with all nodes directly preceding
@@ -903,7 +905,7 @@ fn init_indent_query<'a, 'b>(
             .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
             .unwrap_or(byte_pos..byte_pos + 1);
 
-        let query_result = query_indents(query, syntax, text, query_range, new_line_byte_pos);
+        let query_result = query_indents(query, root, text, query_range, new_line_byte_pos);
         (query_result, deepest_preceding)
     };
     let extend_captures = query_result.extend_captures;
@@ -988,7 +990,11 @@ pub fn is_opaque_interior(
     };
     let line = text.byte_to_line(byte_pos as usize);
     let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
-        .execute_query(&query.query, &syntax.tree().root_node(), RopeInput::new(text));
+        .execute_query(
+            &query.query,
+            &syntax.tree_for_byte_range(byte_pos, byte_pos).root_node(),
+            RopeInput::new(text),
+        );
     while let Some(m) = cursor.next_match() {
         for matched in m.matched_nodes() {
             if matched.capture == opaque {
@@ -1007,7 +1013,8 @@ pub fn is_opaque_interior(
 
 pub fn treesitter_indent_for_pos<'a>(
     query: &IndentQuery,
-    syntax: &Syntax,
+    syntax: &'a Syntax,
+    loader: &syntax::Loader,
     tab_width: usize,
     indent_width: usize,
     text: RopeSlice<'a>,
@@ -1016,6 +1023,24 @@ pub fn treesitter_indent_for_pos<'a>(
     new_line: bool,
 ) -> Option<Indentation<'a>> {
     let byte_pos = text.char_to_byte(pos) as u32;
+    // Inside an injection layer indent with that language's query and tree,
+    // then shift the whole result by the injection's base indent.
+    let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);
+    // Only a *different* language injection needs special handling; a
+    // same-language injection (e.g. rust macro token-trees) is already indented
+    // correctly by the root walk, and offsetting it would double-count.
+    let injected = (layer != syntax.root_layer()
+        && syntax.layer(layer).language != syntax.root_language())
+    .then(|| loader.indent_query(syntax.layer(layer).language))
+    .flatten();
+    let query = injected.unwrap_or(query);
+    let tree = if injected.is_some() {
+        syntax.tree_for_byte_range(byte_pos, byte_pos)
+    } else {
+        syntax.tree()
+    };
+    let root = tree.root_node();
+
     // Lines inside an `@opaque` node (a string / heredoc / block-comment body)
     // are literal content, not code: preserve their existing leading whitespace
     // instead of reformatting it.
@@ -1032,7 +1057,7 @@ pub fn treesitter_indent_for_pos<'a>(
     let new_line_byte_pos = new_line.then_some(byte_pos);
     let (mut node, mut indent_captures) = init_indent_query(
         query,
-        syntax,
+        &root,
         text,
         tab_width,
         indent_width,
@@ -1104,7 +1129,55 @@ pub fn treesitter_indent_for_pos<'a>(
             break;
         }
     }
+    // The injected walk above is relative to the injection's own tree root (the
+    // embedded code starts at level 0). Shift it by the indent of the injection's
+    // first content line so it sits where the host language placed the block.
+    if injected.is_some() {
+        result.indent += injection_base_level(syntax, text, byte_pos, tab_width, indent_width);
+    }
     Some(result)
+}
+
+/// The indent level (in the host document) of the first content line of the
+/// injection layer that `byte_pos` belongs to (i.e. where the embedded code
+/// begins). Used to offset an injection's own (0-based) indentation.
+fn injection_base_level(
+    syntax: &Syntax,
+    text: RopeSlice,
+    byte_pos: u32,
+    tab_width: usize,
+    indent_width: usize,
+) -> usize {
+    let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);
+    // A content line of the injection is one whose first non-whitespace char
+    // belongs to this layer (the opening `<script>` line does not — its first
+    // token is host markup).
+    let in_layer = |line: usize| match text.line(line).first_non_whitespace_char() {
+        Some(fnw) => {
+            let b = text.char_to_byte(text.line_to_char(line) + fnw) as u32;
+            syntax.layer_for_byte_range(b, b) == layer
+        }
+        None => false,
+    };
+    let bl = text.byte_to_line(byte_pos as usize);
+    let first = if in_layer(bl) {
+        // Inside the injection: walk back to its first content line.
+        let mut f = bl;
+        while f > 0 && in_layer(f - 1) {
+            f -= 1;
+        }
+        f
+    } else {
+        // Typing the first content line from the host boundary (e.g. just after
+        // `<script>`): the injection begins on a following line.
+        let total = text.len_lines();
+        let mut f = bl + 1;
+        while f + 1 < total && !in_layer(f) {
+            f += 1;
+        }
+        f
+    };
+    indent_level_for_line(text.line(first), tab_width, indent_width)
 }
 
 /// Whether the token at `byte_pos` (expected to be the first token on its line)
@@ -1119,30 +1192,23 @@ pub fn is_outdent_token_at(
     text: RopeSlice,
     byte_pos: u32,
 ) -> bool {
-    let Some(mut node) = syntax
-        .tree()
-        .root_node()
-        .descendant_for_byte_range(byte_pos, byte_pos)
-    else {
+    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
+    let Some(mut node) = root.descendant_for_byte_range(byte_pos, byte_pos) else {
         return false;
     };
-    let result = query_indents(query, syntax, text, byte_pos..byte_pos + 1, None);
+    let result = query_indents(query, &root, text, byte_pos..byte_pos + 1, None);
     // Check the leading token and any ancestor that starts at the same byte (the
     // @outdent may sit on the token itself or on a node it opens, e.g.
     // `(access_specifier) @outdent`).
     loop {
-        if result
-            .indent_captures
-            .get(&node.id())
-            .is_some_and(|caps| {
-                caps.iter().any(|c| {
-                    matches!(
-                        c.capture_type,
-                        IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways
-                    )
-                })
+        if result.indent_captures.get(&node.id()).is_some_and(|caps| {
+            caps.iter().any(|c| {
+                matches!(
+                    c.capture_type,
+                    IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways
+                )
             })
-        {
+        }) {
             return true;
         }
         match node.parent() {
@@ -1179,6 +1245,7 @@ pub fn indent_for_newline(
         if let Some(indent) = treesitter_indent_for_pos(
             query,
             syntax,
+            loader,
             tab_width,
             indent_width,
             text,
@@ -1210,6 +1277,7 @@ pub fn indent_for_newline(
                         let computed_indent = treesitter_indent_for_pos(
                             query,
                             syntax,
+                            loader,
                             tab_width,
                             indent_width,
                             text,

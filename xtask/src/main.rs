@@ -127,6 +127,7 @@ pub mod tasks {
                 let suggested = treesitter_indent_for_pos(
                     indent_query,
                     &syntax,
+                    &loader,
                     tab_width,
                     indent_style.indent_width(tab_width),
                     text,
@@ -178,6 +179,7 @@ pub mod tasks {
                             let typed = treesitter_indent_for_pos(
                                 indent_query,
                                 &syntax,
+                                &loader,
                                 tab_width,
                                 indent_style.indent_width(tab_width),
                                 text,
