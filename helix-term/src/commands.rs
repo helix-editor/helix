@@ -4473,9 +4473,15 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            // Continue the comment leader using the comment tokens of the layer at the cursor.
+            // Continue the comment leader using the comment tokens of the layer at the comment
+            // leader (i.e. the first non-whitespace char on the line). Looking up at the cursor
+            // would land inside an injected layer (e.g. `comment`, or markdown in a doc comment)
+            // and miss the host language's tokens.
             let continue_comment_token = if config.continue_comments {
-                doc.language_config_at(&loader, text.char_to_byte(pos))
+                text.line(current_line)
+                    .first_non_whitespace_char()
+                    .map(|c| text.char_to_byte(line_start + c))
+                    .and_then(|byte| doc.language_config_at(&loader, byte))
                     .and_then(|config| config.comment_tokens.as_ref())
                     .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
             } else {
