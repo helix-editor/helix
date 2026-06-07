@@ -28,21 +28,21 @@
 (if_statement
   consequence: (_) @indent
   (#not-kind-eq? @indent "block")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 ; Braceless `else` body (the body is the alternative field). Skip `else if`
 ; (alternative is an if_statement) and braced bodies.
 (if_statement
   alternative: (_) @indent
   (#not-kind-eq? @indent "block")
   (#not-kind-eq? @indent "if_statement")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 (while_statement
   body: (_) @indent
   (#not-kind-eq? @indent "block")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 (for_statement
   body: (_) @indent
   (#not-kind-eq? @indent "block")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 
 (string_literal) @opaque

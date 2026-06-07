@@ -43,7 +43,7 @@
   (_) @expr-start
   (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 
 (control_transfer_statement
@@ -51,7 +51,7 @@
   (_) @expr-start
   (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 
 (if_statement

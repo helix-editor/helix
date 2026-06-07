@@ -33,8 +33,8 @@
 
 (argument_list
   . (_) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 
 (curly_expression
   . (_) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align

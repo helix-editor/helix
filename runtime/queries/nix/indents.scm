@@ -40,11 +40,11 @@
 ; branches, so the chain stays flat instead of stair-stepping.
 (if_expression
   consequence: (_) @indent
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 (if_expression
   alternative: (_) @indent
   (#not-kind-eq? @indent "if_expression")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 
 ; Function application: arguments carried onto following lines. Nested
 ; applications share a line, so they collapse to a single level.

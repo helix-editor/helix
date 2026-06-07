@@ -44,7 +44,7 @@
   consequence: (_) @indent
   (#not-kind-eq? @indent "statement_block")
   alternative: (_)
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 (else_clause
   (_) @_body
   (#not-kind-eq? @_body "statement_block")
@@ -61,7 +61,7 @@
 (do_statement
   body: (_) @indent
   (#not-kind-eq? @indent "statement_block")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 
 ; Template-literal bodies are literal content (between interpolations).
 (template_string) @opaque

@@ -2,16 +2,17 @@
 
 Helix uses tree-sitter to correctly indent new lines. This requires a
 tree-sitter grammar and an `indent.scm` query file placed in
-`runtime/queries/{language}/indents.scm`. The indentation for a line is
-calculated by traversing the syntax tree from the lowest node at the
-beginning of the new line (see [Indent queries](#indent-queries)).
-Each of these nodes contributes to the total indent when it is
-captured by the query (in what way depends on the name of
-the capture).
+`runtime/queries/{language}/indents.scm`.
 
-Note that it matters where these added indents begin. For example,
-multiple indent level increases that start on the same line only increase
-the total indent level by 1. See [Capture types](#capture-types).
+The indent level of a line is **the number of `@indent` scopes that contain
+it**. An `@indent` capture on a node opens a scope spanning the lines *after*
+the node's first line through its last line; a line is indented once for every
+such scope wrapping it. (A few capture types adjust this — `@outdent` cancels a
+level, `@align` aligns to a column, etc. (see [Capture types](#capture-types).)
+
+Note that it matters where these scopes *begin*: multiple scopes that open on
+the same physical line only increase the indent by 1 (the same-line rule). See
+[Capture types](#capture-types).
 
 By default, Helix uses the `hybrid` indentation heuristic. This means that
 indent queries are not used to compute the expected absolute indentation of a
@@ -61,26 +62,30 @@ fn need_hero(some_hero: Hero, life: Life) -> { // ←─╮
 } // ←──────────────────────────────────────────────╯
 ```
 
-From this starting node, the syntax tree is traversed up until the root node.
-Each indent capture is collected along the way, and then combined according to
-their [capture types](#capture-types) and [scopes](#scopes) to a final indent
-level for the line.
+From this starting node, the syntax tree is walked up to the root, collecting
+every `@indent`/`@outdent`/`@align`/... capture on an ancestor. Each `@indent`
+ancestor whose scope *contains* the line counts for one indent level (scopes
+opening on the same line collapse to one); the [capture types](#capture-types)
+describe the adjustments.
 
 ### Capture types
 
-- `@indent` (default scope `tail`):
-  Increase the indent level by 1. Multiple occurrences in the same line *do not*
-  stack. If there is at least one `@indent` and one `@outdent` capture on the
-  same line, the indent level isn't changed at all.
-- `@outdent` (default scope `all`):
-  Decrease the indent level by 1. The same rules as for `@indent` apply.
-- `@indent.always` (default scope `tail`):
-  Increase the indent level by 1. Multiple occurrences on the same line *do*
-  stack. The final indent level is `@indent.always` – `@outdent.always`. If
-  an `@indent` and an `@indent.always` are on the same line, the `@indent` is
-  ignored.
-- `@outdent.always` (default scope `all`):
-  Decrease the indent level by 1. The same rules as for `@indent.always` apply.
+- `@indent`:
+  Open an indent scope on this node — every line it contains is indented one
+  more level. Scopes that open on the same line collapse: multiple `@indent`
+  beginning on one line only add 1. A node captured by *both* `@indent` and
+  `@outdent` contributes nothing (its level is cancelled) — used e.g. for a
+  nested `else if` that should not stack a second level.
+  By default the scope opens at the node's own first line; see the
+  [`header`](#scope-header) scope to open it at the parent (header) line instead.
+- `@outdent`:
+  Decrease by 1 the indent of the line on which this (usually a closing token
+  like `}`/`)`/`]`, or a keyword like `else`) begins.
+- `@indent.always`:
+  Like `@indent` but does *not* collapse — multiple on the same line each add a
+  level. The net level contribution is `@indent.always` − `@outdent.always`.
+- `@outdent.always`:
+  Like `@outdent` but stacks, the counterpart to `@indent.always`.
 - `@align` (default scope `all`):
   Align everything inside this node to some anchor. The anchor is given
   by the start of the node captured by `@anchor` in the same pattern.
@@ -131,11 +136,43 @@ fn shout(things: Vec<Thing>) {
 ["}" ")"] @outdent
 ```
 
-Note how on the second line, we have two blocks begin on the same line. In this
-case, since both captures occur on the same line, they are combined and only
-result in a net increase of 1. Also note that the closing `}`s are part of the
-`@indent` captures, but the 3 `@outdent`s also combine into 1 and result in that
-line losing one indent level.
+Note how on the second line two blocks open on the same line: since both scopes
+*begin* on that line they collapse, for a net increase of 1. On the last line,
+the three block scopes all contain it, but it begins with three `@outdent` `}`
+tokens that cancel them, so the line lands back at the enclosing level.
+
+#### Same-line collapse
+
+The collapse above is a deliberate, load-bearing invariant:
+
+> A line is indented by **one level per physical line on which a containing
+> `@indent` scope opens**, not one level per scope. Several `@indent` scopes
+> that *open* on the same line together add a single level.
+
+This is what makes **method/builder chains flatten instead of staircasing**.
+Grammars typically nest a chain so each `.method()` link is a `call` inside a
+`member_expression` inside the previous link, and several of those nodes *begin*
+on the receiver's line:
+
+```rust
+let x = thing       // ← chain opens here
+    .foo()          // each link aligned one level in,
+    .bar()          // not progressively deeper
+    .baz();
+```
+
+```scm
+(call_expression) @indent
+```
+
+Even though many `call_expression`/`member_expression` scopes contain the
+`.bar()` line, they all *open* on the `thing` line, so they collapse to a single
+level and the continuation lines line up. Without the collapse, every link would
+add a level and the chain would stair-step to the right.
+
+If you instead want each scope to count even when several open on one line (for
+example YAML's "list item *and* map both start on the same line") opt out with
+`@indent.always` (described below), which does not collapse.
 
 #### `@extend` / `@extend.prevent-once`
 
@@ -257,29 +294,31 @@ To help, we need to signal an end to the extension. We can do this with
 
 #### Brace-less bodies
 
-A brace-less single-statement body: `if (cond)` with its statement on the next
-line and no `{}` is a *following sibling* of the header, so the upward
-traversal from the line above never reaches it. Capture the body directly and
-give it the `all` scope:
+A brace-less single-statement body — `if (cond)` with its statement on the next
+line and no `{}` — is a body the indent must wrap, but the body node's *own*
+first line is the line that needs the indent (there is no separate opening line).
+Capture the body and give it the [`header`](#scope-header) scope, which opens the
+scope at the **header** (the captured node's parent) line instead of the body's
+own line, so the body line is contained:
 
 ```scm
 (if_statement
   consequence: (_) @indent
   (#not-kind-eq? @indent "compound_statement")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 (while_statement
   body: (_) @indent
   (#not-kind-eq? @indent "compound_statement")
-  (#set! "scope" "all"))
+  (#set! "scope" "header"))
 ```
 
-When a new line is typed right after the header, Helix descends into the
-field-named body (`body`, `consequence`, or `alternative`) that the line opens,
-so the body's own `@indent` governs it — no wrapper node or `@extend` is needed.
-The `#not-kind-eq?` guard skips the braced form, which the surrounding block
-already indents. Give `else` and `do .. while` their own pattern (on the
-`alternative` / `body` field) so the trailing `else` / `while` keyword line is
-not indented along with the body.
+The query already names exactly the brace-less body (the `consequence:` /
+`body:` field, with `#not-kind-eq?` skipping the braced form the surrounding
+block indents), so the engine just opens that capture's scope at its parent — it
+does not itself inspect node kinds or field names. This works for a multi-line
+brace-less body too (e.g. one returning a lambda). Give `else` and `do / while`
+their own pattern (on the `alternative` / `body` field) so the trailing `else` /
+`while` keyword line is not indented along with the body.
 
 #### `@indent.always` / `@outdent.always`
 
@@ -362,46 +401,29 @@ The captures given by the 2 arguments must/must not start on the same line.
 - `#one-line?`/`#not-one-line?`:
 The captures given by the fist argument must/must span a total of one line.
 
-### Scopes
+### <a name="scope-header"></a>The `header` scope
 
-Added indents don't always apply to the whole node. For example, in most
-cases when a node should be indented, we actually only want everything
-except for its first line to be indented. For this, there are several
-scopes (more scopes may be added in the future if required):
+By default an `@indent` scope opens at the captured node's own first line, so the
+lines *inside* it are indented and its first line is not. Sometimes the node you
+must capture *is* the line that needs indenting — a brace-less body such as the
+statement after `if (cond)` (see [Brace-less bodies](#brace-less-bodies)). For
+this, set `scope` to `header`:
 
-- `tail`:
-This scope applies to everything except for the first line of the
-captured node.
-- `all`:
-This scope applies to the whole captured node. This is only different from
-`tail` when the captured node is the first node on its line.
-
-For example, imagine we have the following function
-
-```rust
-fn aha() { // ←─────────────────────────────────────╮
-  let take = "on me";  // ←──────────────╮  scope:  │
-  let take = "me on";             //     ├─ "tail"  ├─ (block) @indent
-  let ill = be_gone_days(1 || 2); //     │          │
-} // ←───────────────────────────────────┴──────────┴─ "}" @outdent
-                                         //                scope: "all"
+```scm
+(if_statement
+  consequence: (_) @indent
+  (#not-kind-eq? @indent "compound_statement")
+  (#set! "scope" "header"))
 ```
 
-We can write the following query with the `#set!` declaration:
+`header` opens the scope at the captured node's **parent** (the `if_statement`
+header) line instead of the node's own line, so the body's first line is
+contained and indented. The query selects exactly the body, so the engine just
+honours the annotation — it does not match on node kinds or field names itself.
 
-  ```scm
-  ((block) @indent
-   (#set! "scope" "tail"))
-  ("}" @outdent
-   (#set! "scope" "all"))
-  ```
-
-As we can see, the "tail" scope covers the node, except for the first line.
-Everything up to and including the closing brace gets an indent level of 1.
-Then, on the closing brace, we encounter an outdent with a scope of "all", which
-means the first line is included, and the indent level is cancelled out on this
-line. (Note these scopes are the defaults for `@indent` and `@outdent`—they are
-written explicitly for demonstration.)
+(Older queries used `tail` / `all` scopes to control whether a node's first line
+was included; under the containment model those are no longer needed and have
+been removed. `header` is the one scope the engine reads.)
 
 ## Testing
 

@@ -40,7 +40,7 @@
   "def") @indent @extend
 (ERROR
   (block) @indent @extend
-  (#set! "scope" "all"))
+  )
 
 [
   (if_statement)
@@ -83,12 +83,11 @@
 (parameters
   .
   (identifier) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 (argument_list
   .
   (_) @anchor
-  (#set! "scope" "tail")) @align
-
+  ) @align
 
 ; String bodies (triple-quoted strings span lines) are literal content.
 (string) @opaque

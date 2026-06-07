@@ -1,4 +1,7 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_house::TREE_SITTER_MATCH_LIMIT;
@@ -290,21 +293,6 @@ fn add_indent_level(
     }
 }
 
-/// Return true if only whitespace comes before the node on its line.
-/// If given, new_line_byte_pos is treated the same way as any existing newline.
-fn is_first_in_line(node: &Node, text: RopeSlice, new_line_byte_pos: Option<u32>) -> bool {
-    let line = text.byte_to_line(node.start_byte() as usize);
-    let mut line_start_byte_pos = text.line_to_byte(line) as u32;
-    if let Some(pos) = new_line_byte_pos {
-        if line_start_byte_pos < pos && pos <= node.start_byte() {
-            line_start_byte_pos = pos;
-        }
-    }
-    text.byte_slice(line_start_byte_pos as usize..node.start_byte() as usize)
-        .chars()
-        .all(|c| c.is_whitespace())
-}
-
 #[derive(Debug, Default)]
 pub struct IndentQueryPredicates {
     not_kind_eq: Vec<(Capture, Box<str>)>,
@@ -362,7 +350,9 @@ impl IndentQueryPredicates {
 #[derive(Debug)]
 pub struct IndentQuery {
     query: Query,
-    properties: HashMap<Pattern, IndentScope>,
+    /// Patterns carrying `(#set! "scope" "header")` — the only indent scope the
+    /// containment engine reads.
+    header_patterns: HashSet<Pattern>,
     predicates: HashMap<Pattern, IndentQueryPredicates>,
     indent_capture: Option<Capture>,
     indent_always_capture: Option<Capture>,
@@ -377,20 +367,19 @@ pub struct IndentQuery {
 
 impl IndentQuery {
     pub fn new(grammar: Grammar, source: &str) -> Result<Self, tree_sitter::query::ParseError> {
-        let mut properties = HashMap::new();
+        let mut header_patterns = HashSet::new();
         let mut predicates: HashMap<Pattern, IndentQueryPredicates> = HashMap::new();
         let query = Query::new(grammar, source, |pattern, predicate| match predicate {
             UserPredicate::SetProperty { key: "scope", val } => {
-                let scope = match val {
-                    Some("all") => IndentScope::All,
-                    Some("tail") => IndentScope::Tail,
+                match val {
+                    Some("header") => {
+                        header_patterns.insert(pattern);
+                    }
                     Some(other) => {
                         return Err(format!("unknown scope (#set! scope \"{other}\")").into())
                     }
                     None => return Err("missing scope value (#set! scope ...)".into()),
                 };
-
-                properties.insert(pattern, scope);
 
                 Ok(())
             }
@@ -436,7 +425,7 @@ impl IndentQuery {
         })?;
 
         Ok(Self {
-            properties,
+            header_patterns,
             predicates,
             indent_capture: query.get_capture("indent"),
             indent_always_capture: query.get_capture("indent.always"),
@@ -472,56 +461,6 @@ pub struct Indentation<'a> {
 
 impl<'a> Indentation<'a> {
     /// Add some other [Indentation] to this.
-    /// The added indent should be the total added indent from one line.
-    /// Indent should always be added starting from the bottom (or equivalently, the innermost tree-sitter node).
-    fn add_line(&mut self, added: Indentation<'a>) {
-        // Align overrides the indent from outer scopes.
-        if self.align.is_some() {
-            return;
-        }
-        if added.align.is_some() {
-            self.align = added.align;
-            return;
-        }
-        self.indent += added.indent;
-        self.indent_always += added.indent_always;
-        self.outdent += added.outdent;
-        self.outdent_always += added.outdent_always;
-    }
-
-    /// Add an indent capture to this indent.
-    /// Only captures that apply to the same line should be added together in this way (otherwise use `add_line`)
-    /// and the captures should be added starting from the innermost tree-sitter node (currently this only matters
-    /// if multiple `@align` patterns occur on the same line).
-    fn add_capture(&mut self, added: IndentCaptureType<'a>) {
-        match added {
-            IndentCaptureType::Indent => {
-                if self.indent_always == 0 {
-                    self.indent = 1;
-                }
-            }
-            IndentCaptureType::IndentAlways => {
-                // any time we encounter an `indent.always` on the same line, we
-                // want to cancel out all regular indents
-                self.indent_always += 1;
-                self.indent = 0;
-            }
-            IndentCaptureType::Outdent => {
-                if self.outdent_always == 0 {
-                    self.outdent = 1;
-                }
-            }
-            IndentCaptureType::OutdentAlways => {
-                self.outdent_always += 1;
-                self.outdent = 0;
-            }
-            IndentCaptureType::Align(align) => {
-                if self.align.is_none() {
-                    self.align = Some(align);
-                }
-            }
-        }
-    }
     fn net_indent(&self) -> isize {
         (self.indent + self.indent_always) as isize
             - ((self.outdent + self.outdent_always) as isize)
@@ -565,7 +504,11 @@ impl<'a> Indentation<'a> {
 #[derive(Debug)]
 struct IndentCapture<'a> {
     capture_type: IndentCaptureType<'a>,
-    scope: IndentScope,
+    /// `(#set! "scope" "header")`: open this `@indent`'s scope at the captured
+    /// node's *header* (its parent's start line) instead of the node's own first
+    /// line, so a brace-less body (`if (c)\n stmt;`) whose own first line needs
+    /// the indent is contained.
+    header: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 enum IndentCaptureType<'a> {
@@ -575,26 +518,6 @@ enum IndentCaptureType<'a> {
     OutdentAlways,
     /// Alignment given as a string of whitespace
     Align(RopeSlice<'a>),
-}
-
-impl IndentCaptureType<'_> {
-    fn default_scope(&self) -> IndentScope {
-        match self {
-            IndentCaptureType::Indent | IndentCaptureType::IndentAlways => IndentScope::Tail,
-            IndentCaptureType::Outdent | IndentCaptureType::OutdentAlways => IndentScope::All,
-            IndentCaptureType::Align(_) => IndentScope::All,
-        }
-    }
-}
-/// This defines which part of a node an [IndentCapture] applies to.
-/// Each [IndentCaptureType] has a default scope, but the scope can be changed
-/// with `#set!` property declarations.
-#[derive(Debug, Clone, Copy)]
-enum IndentScope {
-    /// The indent applies to the whole node
-    All,
-    /// The indent applies to everything except for the first line of the node
-    Tail,
 }
 
 /// A capture from the indent query which does not define an indent but extends
@@ -700,14 +623,9 @@ fn query_indents<'a>(
             };
 
             // Apply additional settings for this capture
-            let scope = query
-                .properties
-                .get(&m.pattern())
-                .copied()
-                .unwrap_or_else(|| capture_type.default_scope());
             let indent_capture = IndentCapture {
                 capture_type,
-                scope,
+                header: query.header_patterns.contains(&m.pattern()),
             };
             added_indent_captures.push((node_id, indent_capture))
         }
@@ -812,21 +730,21 @@ fn extend_nodes<'a>(
 
 /// When a newline is typed after a header (`while (c)`, `if x:`), the body it
 /// opens begins on the *next* line — a following sibling the upward indent walk
-/// never reaches, which is why brace-less bodies historically needed wrapper
-/// `@indent` rules or `@extend`. Walk up from the deepest preceding node; if an
-/// ancestor exposes a body field (`body`/`consequence`/`alternative`) that
-/// begins at/after the cursor, return it so the indent walk can start *inside*
-/// the body and its own scope governs the new line.
+/// never reaches, which is why brace-less bodies need either a wrapper `@indent`
+/// rule or descent into the body before the containment walk starts.
 ///
-/// Matching on a body *field* (not just any following sibling) is what
-/// distinguishes a real body from a peer statement: a statement list / block
-/// does not field-name its children, so `foo();` followed by `bar();` finds no
-/// field and is correctly left alone.
-fn following_body_for_new_line<'a>(
+/// Walk up from the deepest preceding node and return the immediate next sibling
+/// of the first ancestor whose end lies before the cursor. The caller then
+/// decides whether to actually descend — the signal is the query's
+/// `(#set! "scope" "header")` annotation on that sibling, which is exactly how
+/// brace-less body rules already mark their body capture (c/java/nix and parts
+/// of ecma). This keeps tree-sitter field names out of the engine: the query
+/// alone says what is a body. A statement-list child is not header-scoped in any
+/// query, so `foo();` then `bar();` correctly finds no descent target.
+fn candidate_body_for_new_line<'a>(
     deepest_preceding: &Node<'a>,
     byte_pos: u32,
 ) -> Option<Node<'a>> {
-    const BODY_FIELDS: [&str; 3] = ["body", "consequence", "alternative"];
     let mut node = deepest_preceding.clone();
     while let Some(parent) = node.parent() {
         // Only consider ancestors that lie entirely before the cursor: those are
@@ -836,21 +754,17 @@ fn following_body_for_new_line<'a>(
         if node.end_byte() > byte_pos {
             break;
         }
-        // The body the new line opens is the field-named sibling immediately
-        // after this header node (`while (c)` -> body, `if x:` -> consequence).
-        // Requiring the *immediate* next sibling avoids jumping to a later body
-        // such as an `else` arm while the cursor is still in the consequence.
+        // The body the new line opens is the sibling immediately after this
+        // header node (`while (c)` -> body, `if x:` -> consequence). Requiring
+        // the *immediate* next sibling avoids jumping to a later body such as
+        // an `else` arm while the cursor is still in the consequence.
         let mut cursor = parent.walk();
         if cursor.goto_first_child() {
             loop {
                 if cursor.node().id() == node.id() {
                     if cursor.goto_next_sibling() {
                         let child = cursor.node();
-                        if child.start_byte() >= byte_pos
-                            && cursor
-                                .field_name()
-                                .is_some_and(|f| BODY_FIELDS.contains(&f))
-                        {
+                        if child.start_byte() >= byte_pos {
                             return Some(child);
                         }
                     }
@@ -884,7 +798,7 @@ fn init_indent_query<'a, 'b>(
     // computation. It may change if some preceding node is extended
     let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
 
-    let (query_result, deepest_preceding) = {
+    let (query_result, deepest_preceding, candidate_body) = {
         // The query range should intersect with all nodes directly preceding
         // the position of the indent query in case one of them is extended.
         let mut deepest_preceding = None; // The deepest node preceding the indent query position
@@ -900,25 +814,43 @@ fn init_indent_query<'a, 'b>(
             }
             prec
         });
+        // When typing a newline, the body the new line opens is a sibling past
+        // the cursor — extend the query range to cover it so its capture (and
+        // in particular its `(#set! "scope" "header")` annotation) is present
+        // in the result, the signal we use to drive descent.
+        let candidate_body = new_line_byte_pos
+            .and(deepest_preceding.as_ref())
+            .and_then(|dp| candidate_body_for_new_line(dp, byte_pos));
+        let upper = candidate_body
+            .as_ref()
+            .map(|b| b.end_byte())
+            .unwrap_or(byte_pos + 1);
         let query_range = deepest_preceding
             .as_ref()
-            .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
-            .unwrap_or(byte_pos..byte_pos + 1);
+            .map(|prec| prec.byte_range().end - 1..upper)
+            .unwrap_or(byte_pos..upper);
 
         let query_result = query_indents(query, root, text, query_range, new_line_byte_pos);
-        (query_result, deepest_preceding)
+        (query_result, deepest_preceding, candidate_body)
     };
     let extend_captures = query_result.extend_captures;
 
     // When typing a newline, descend into the body the new line opens so its own
     // scope governs the indent (structural replacement for wrapper/`@extend`
-    // rules on delimited and brace-less bodies). Otherwise fall back to `@extend`.
-    let descended = new_line_byte_pos.is_some()
-        && deepest_preceding
-            .as_ref()
-            .and_then(|dp| following_body_for_new_line(dp, byte_pos))
-            .map(|body| node = body)
-            .is_some();
+    // rules on delimited and brace-less bodies). The query — via its
+    // `(#set! "scope" "header")` annotation on the body capture — is the single
+    // source of truth for whether the candidate sibling is actually a body to
+    // descend into. Otherwise fall back to `@extend`.
+    let descended = candidate_body
+        .as_ref()
+        .filter(|body| {
+            query_result
+                .indent_captures
+                .get(&body.id())
+                .is_some_and(|defs| defs.iter().any(|c| c.header))
+        })
+        .map(|body| node = body.clone())
+        .is_some();
 
     // Check for extend captures, potentially changing the node that the indent calculation starts with
     if let Some(deepest_preceding) = deepest_preceding {
@@ -1054,10 +986,51 @@ pub fn treesitter_indent_for_pos<'a>(
             ..Default::default()
         });
     }
-    let new_line_byte_pos = new_line.then_some(byte_pos);
-    let (mut node, mut indent_captures) = init_indent_query(
+    // Compute the indent by *scope containment*: the level of a line is the
+    // number of `@indent` scopes that contain it (see `containment_accounting`).
+    let mut result = containment_accounting(
         query,
         &root,
+        text,
+        tab_width,
+        indent_width,
+        line,
+        byte_pos,
+        new_line,
+    )?;
+    // The injected walk above is relative to the injection's own tree root (the
+    // embedded code starts at level 0). Shift it by the indent of the injection's
+    // first content line so it sits where the host language placed the block.
+    if injected.is_some() {
+        result.indent += injection_base_level(syntax, text, byte_pos, tab_width, indent_width);
+    }
+    Some(result)
+}
+
+/// Compute indentation by *scope containment*.
+///
+/// Each node carrying an `@indent`/`@indent.always` capture defines a scope
+/// spanning the lines after its start up to its end. The indent level of a line
+/// is the number of such scopes containing it (collapsing scopes that open on the
+/// same physical line to one level), minus any `@outdent` whose token begins the line.
+/// `@align`/`@extend`/`@opaque` are kept as overlays.
+fn containment_accounting<'a>(
+    query: &IndentQuery,
+    root: &Node<'a>,
+    text: RopeSlice<'a>,
+    tab_width: usize,
+    indent_width: usize,
+    line: usize,
+    byte_pos: u32,
+    new_line: bool,
+) -> Option<Indentation<'a>> {
+    let new_line_byte_pos = new_line.then_some(byte_pos);
+    // Reuse the standard setup: this applies @extend repositioning / body-descent
+    // and returns the per-node capture map (all ancestors of the cursor intersect
+    // the query range, so their captures are present).
+    let (start_node, captures) = init_indent_query(
+        query,
+        root,
         text,
         tab_width,
         indent_width,
@@ -1066,76 +1039,111 @@ pub fn treesitter_indent_for_pos<'a>(
         new_line_byte_pos,
     )?;
 
-    let mut result = Indentation::default();
-    // We always keep track of all the indent changes on one line, in order to only indent once
-    // even if there are multiple "indent" nodes on the same line
-    let mut indent_for_line = Indentation::default();
-    let mut indent_for_line_below = Indentation::default();
+    // The line whose indent we are computing (post-insertion coordinates).
+    let target_line = line + new_line as usize;
 
+    let mut indent_levels: usize = 0;
+    let mut indent_always: usize = 0;
+    let mut outdent: usize = 0;
+    let mut outdent_always: usize = 0;
+    let mut align: Option<RopeSlice<'a>> = None;
+    // Same-line collapse: a scope contributes at most one level per physical line
+    // it opens on.
+    let mut counted_start_lines: Vec<usize> = Vec::new();
+
+    let mut node = start_node;
     loop {
-        let is_first = is_first_in_line(&node, text, new_line_byte_pos);
+        if let Some(defs) = captures.get(&node.id()) {
+            // Aggregate this node's captures.
+            let mut has_indent = false;
+            let mut has_indent_always = false;
+            let mut has_outdent = false;
+            let mut has_outdent_always = false;
+            let mut header_scoped = false;
+            let mut node_align: Option<RopeSlice<'a>> = None;
+            for def in defs {
+                match def.capture_type {
+                    IndentCaptureType::Indent => {
+                        has_indent = true;
+                        header_scoped |= def.header;
+                    }
+                    IndentCaptureType::IndentAlways => {
+                        has_indent_always = true;
+                        header_scoped |= def.header;
+                    }
+                    IndentCaptureType::Outdent => has_outdent = true,
+                    IndentCaptureType::OutdentAlways => has_outdent_always = true,
+                    IndentCaptureType::Align(a) => node_align = Some(a),
+                }
+            }
 
-        // Apply all indent definitions for this node.
-        // Since we only iterate over each node once, we can remove the
-        // corresponding captures from the HashMap to avoid cloning them.
-        if let Some(definitions) = indent_captures.remove(&node.id()) {
-            for definition in definitions {
-                match definition.scope {
-                    IndentScope::All => {
-                        if is_first {
-                            indent_for_line.add_capture(definition.capture_type);
-                        } else {
-                            indent_for_line_below.add_capture(definition.capture_type);
-                        }
-                    }
-                    IndentScope::Tail => {
-                        indent_for_line_below.add_capture(definition.capture_type);
-                    }
+            let node_start = get_node_start_line(text, &node, new_line_byte_pos);
+            let end = get_node_end_line(text, &node, new_line_byte_pos);
+            // `scope "header"` (set by the query on a brace-less body rule such as
+            // `(if_statement consequence: (_) @indent (#set! scope "header"))`)
+            // opens the scope at the *header* — the captured node's parent — so the
+            // body's own first line is contained. The query selects the body node,
+            // so its parent is the header by construction.
+            let start = if header_scoped {
+                node.parent()
+                    .map(|p| get_node_start_line(text, &p, new_line_byte_pos))
+                    .unwrap_or(node_start)
+            } else {
+                node_start
+            };
+            // A scope contains the target line if it opens before it and closes on
+            // or after it.
+            let contains = start < target_line && target_line <= end;
+            // A token-style outdent (`}`, `else`, `case`) sits on the line it
+            // dedents.
+            let opens_target = node_start == target_line;
+
+            if (has_indent || has_indent_always) && (has_outdent || has_outdent_always) {
+                // A node carrying both indent and outdent (e.g. swift's nested
+                // else-if `(if_statement (if_statement) @outdent)`) cancels its own
+                // level: it must not create a scope.
+            } else {
+                if has_indent && contains && !counted_start_lines.contains(&start) {
+                    counted_start_lines.push(start);
+                    indent_levels += 1;
+                }
+                if has_indent_always && contains {
+                    indent_always += 1;
+                }
+                if has_outdent && opens_target {
+                    outdent += 1;
+                }
+                if has_outdent_always && opens_target {
+                    outdent_always += 1;
+                }
+            }
+            // Innermost containing alignment wins (first seen on the upward walk).
+            if let Some(a) = node_align {
+                if contains && align.is_none() {
+                    align = Some(a);
                 }
             }
         }
-
-        if let Some(parent) = node.parent() {
-            let node_line = get_node_start_line(text, &node, new_line_byte_pos);
-            let parent_line = get_node_start_line(text, &parent, new_line_byte_pos);
-
-            if node_line != parent_line {
-                // Don't add indent for the line below the line of the query
-                if node_line < line + (new_line as usize) {
-                    result.add_line(indent_for_line_below);
-                }
-
-                if node_line == parent_line + 1 {
-                    indent_for_line_below = indent_for_line;
-                } else {
-                    result.add_line(indent_for_line);
-                    indent_for_line_below = Indentation::default();
-                }
-
-                indent_for_line = Indentation::default();
-            }
-
-            node = parent;
-        } else {
-            // Only add the indentation for the line below if that line
-            // is not after the line that the indentation is calculated for.
-            let node_start_line = text.byte_to_line(node.start_byte() as usize);
-            if node_start_line < line
-                || (new_line && node_start_line == line && node.start_byte() < byte_pos)
-            {
-                result.add_line(indent_for_line_below);
-            }
-            result.add_line(indent_for_line);
-            break;
+        match node.parent() {
+            Some(parent) => node = parent,
+            None => break,
         }
     }
-    // The injected walk above is relative to the injection's own tree root (the
-    // embedded code starts at level 0). Shift it by the indent of the injection's
-    // first content line so it sits where the host language placed the block.
-    if injected.is_some() {
-        result.indent += injection_base_level(syntax, text, byte_pos, tab_width, indent_width);
+
+    // `@align` is an absolute alignment (to the anchor column); the containment
+    // levels it spans are already encoded in that column, so don't stack them on
+    // top.
+    if align.is_some() {
+        indent_levels = 0;
+        indent_always = 0;
     }
-    Some(result)
+    Some(Indentation {
+        indent: indent_levels,
+        indent_always,
+        outdent,
+        outdent_always,
+        align,
+    })
 }
 
 /// The indent level (in the host document) of the first content line of the
@@ -1374,127 +1382,6 @@ mod test {
         assert_eq!(
             indent_level_for_line(line.slice(..), tab_width, indent_width),
             2
-        );
-    }
-
-    #[test]
-    fn add_capture() {
-        let indent = || Indentation {
-            indent: 1,
-            ..Default::default()
-        };
-        let indent_always = || Indentation {
-            indent_always: 1,
-            ..Default::default()
-        };
-        let outdent = || Indentation {
-            outdent: 1,
-            ..Default::default()
-        };
-        let outdent_always = || Indentation {
-            outdent_always: 1,
-            ..Default::default()
-        };
-
-        fn add_capture<'a>(
-            mut indent: Indentation<'a>,
-            capture: IndentCaptureType<'a>,
-        ) -> Indentation<'a> {
-            indent.add_capture(capture);
-            indent
-        }
-
-        // adding an indent to no indent makes an indent
-        assert_eq!(
-            indent(),
-            add_capture(Indentation::default(), IndentCaptureType::Indent)
-        );
-        assert_eq!(
-            indent_always(),
-            add_capture(Indentation::default(), IndentCaptureType::IndentAlways)
-        );
-        assert_eq!(
-            outdent(),
-            add_capture(Indentation::default(), IndentCaptureType::Outdent)
-        );
-        assert_eq!(
-            outdent_always(),
-            add_capture(Indentation::default(), IndentCaptureType::OutdentAlways)
-        );
-
-        // adding an indent to an already indented has no effect
-        assert_eq!(indent(), add_capture(indent(), IndentCaptureType::Indent));
-        assert_eq!(
-            outdent(),
-            add_capture(outdent(), IndentCaptureType::Outdent)
-        );
-
-        // adding an always to a regular makes it always
-        assert_eq!(
-            indent_always(),
-            add_capture(indent(), IndentCaptureType::IndentAlways)
-        );
-        assert_eq!(
-            outdent_always(),
-            add_capture(outdent(), IndentCaptureType::OutdentAlways)
-        );
-
-        // adding an always to an always is additive
-        assert_eq!(
-            Indentation {
-                indent_always: 2,
-                ..Default::default()
-            },
-            add_capture(indent_always(), IndentCaptureType::IndentAlways)
-        );
-        assert_eq!(
-            Indentation {
-                outdent_always: 2,
-                ..Default::default()
-            },
-            add_capture(outdent_always(), IndentCaptureType::OutdentAlways)
-        );
-
-        // adding regular to always should be associative
-        assert_eq!(
-            Indentation {
-                indent_always: 1,
-                ..Default::default()
-            },
-            add_capture(
-                add_capture(indent(), IndentCaptureType::Indent),
-                IndentCaptureType::IndentAlways
-            )
-        );
-        assert_eq!(
-            Indentation {
-                indent_always: 1,
-                ..Default::default()
-            },
-            add_capture(
-                add_capture(indent(), IndentCaptureType::IndentAlways),
-                IndentCaptureType::Indent
-            )
-        );
-        assert_eq!(
-            Indentation {
-                outdent_always: 1,
-                ..Default::default()
-            },
-            add_capture(
-                add_capture(outdent(), IndentCaptureType::Outdent),
-                IndentCaptureType::OutdentAlways
-            )
-        );
-        assert_eq!(
-            Indentation {
-                outdent_always: 1,
-                ..Default::default()
-            },
-            add_capture(
-                add_capture(outdent(), IndentCaptureType::OutdentAlways),
-                IndentCaptureType::Outdent
-            )
         );
     }
 
