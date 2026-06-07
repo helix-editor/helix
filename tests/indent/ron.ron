@@ -1,0 +1,7 @@
+Config(
+    name: "test",
+    values: [
+        1,
+        2,
+    ],
+)
