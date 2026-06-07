@@ -61,6 +61,7 @@ arrayvec = "0.7"
 
 # dev dependencies
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+quickcheck = { version = "1", default-features = false }
 
 [workspace.package]
 version = "25.7.1"
