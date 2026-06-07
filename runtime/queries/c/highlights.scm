@@ -112,7 +112,10 @@
 
 [(true) (false)] @constant.builtin.boolean
 
-(enumerator name: (identifier) @type.enum.variant)
+; C enumerators are integer constants; colour the definition the same as a use
+; site (a SCREAMING_SNAKE reference resolves to @constant above), not as a
+; distinct enum variant. C++ overrides this to keep @type.enum.variant.
+(enumerator name: (identifier) @constant)
 
 (string_literal) @string
 (system_lib_string) @string
