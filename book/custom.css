@@ -129,7 +129,7 @@ code.hljs {
   --fg: #bcbdd0;
   --heading-fg: #fff;
 
-  --sidebar-bg: #281733;
+  --sidebar-bg: hsl(276.4, 37.8%, 11%);
   --sidebar-fg: #c8c9db;
   --sidebar-non-existent: #505274;
   --sidebar-active: #a4a0e8;
@@ -149,7 +149,7 @@ code.hljs {
   --theme-popup-border: #737480;
   --theme-hover: rgba(0, 0, 0, .2);
 
-  --quote-bg: #281733;
+  --quote-bg: rgba(0, 0, 0, .25);
   --quote-border: hsl(226, 15%, 22%);
 
   --table-border-color: hsl(226, 23%, 76%);
@@ -174,7 +174,7 @@ code.hljs {
 /* highlight.js theme, :where() is used to avoid increasing specificity */
 
 :where(.colibri) .hljs {
-  background: #2f1e2e;
+  background: hsl(303.5, 22.1%, 9.5%);
   color: #a39e9b;
 }
 
