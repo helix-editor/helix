@@ -15,7 +15,7 @@ An example of a simple query that would highlight all strings as bash in Nix:
   (#set! injection.language "bash"))
 ```
 Another example is this query, which highlights links in comments and keywords like "TODO", by reusing the dedicated "comment" language:
-```
+```scm
 ((comment) @injection.content
   (#set! injection.language "comment"))
 ```
