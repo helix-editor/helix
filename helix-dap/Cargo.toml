@@ -29,5 +29,8 @@ futures-util.workspace = true
 tokio-stream.workspace = true
 sonic-rs.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 fern = "0.7"
