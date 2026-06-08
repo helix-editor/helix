@@ -59,7 +59,7 @@
     devShells =
       lib.mapAttrs (system: pkgs: {
         default = let
-          commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
+          commonRustFlagsEnv = "-C link-arg=-fuse-ld=mold -C target-cpu=native --cfg tokio_unstable";
           platformRustFlagsEnv = lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
         in
           pkgs.mkShell {
@@ -70,9 +70,10 @@
             ];
             nativeBuildInputs = with pkgs;
               [
-                lld
+                mold
                 cargo-flamegraph
                 rust-bin.nightly.latest.rust-analyzer
+                mdbook
               ]
               ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
               ++ (lib.optional stdenv.isLinux lldb);
