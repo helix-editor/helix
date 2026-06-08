@@ -472,8 +472,8 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | -----                        | -------------                                              |
 | `Shift-Tab`, `Up`, `Ctrl-p`  | Previous entry                                             |
 | `Tab`, `Down`, `Ctrl-n`      | Next entry                                                 |
-| `PageUp`, `Ctrl-u`           | Page up                                                    |
-| `PageDown`, `Ctrl-d`         | Page down                                                  |
+| `Ctrl-u`                     | Page up the list                                          |
+| `Ctrl-d`                     | Page down the list                                        |
 | `Home`                       | Go to first entry                                          |
 | `End`                        | Go to last entry                                           |
 | `Enter`                      | Open selected                                              |
@@ -481,6 +481,10 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `Ctrl-s`                     | Open horizontally                                          |
 | `Ctrl-v`                     | Open vertically                                            |
 | `Ctrl-t`                     | Toggle preview                                             |
+| `PageUp`                     | Scroll the preview up a page (page up the list when no preview is shown)   |
+| `PageDown`                   | Scroll the preview down a page (page down the list when no preview is shown) |
+| `Alt-k`, `Shift-Up`          | Scroll the preview up a line                              |
+| `Alt-j`, `Shift-Down`        | Scroll the preview down a line                            |
 | `Escape`, `Ctrl-c`           | Close picker                                               |
 
 ## Prompt
