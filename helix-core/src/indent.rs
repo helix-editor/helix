@@ -535,6 +535,9 @@ enum ExtendCapture {
 struct IndentQueryResult<'a> {
     indent_captures: HashMap<usize, Vec<IndentCapture<'a>>>,
     extend_captures: HashMap<usize, Vec<ExtendCapture>>,
+    /// Byte ranges of nodes captured by `@opaque`, collected in the same pass so the
+    /// opaque-interior check doesn't need a second query.
+    opaque_ranges: Vec<std::ops::Range<u32>>,
 }
 
 fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
@@ -563,6 +566,7 @@ fn query_indents<'a>(
 ) -> IndentQueryResult<'a> {
     let mut indent_captures: HashMap<usize, Vec<IndentCapture>> = HashMap::new();
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
+    let mut opaque_ranges: Vec<std::ops::Range<u32>> = Vec::new();
 
     let mut cursor = InactiveQueryCursor::new(range, TREE_SITTER_MATCH_LIMIT).execute_query(
         &query.query,
@@ -617,6 +621,11 @@ fn query_indents<'a>(
                     .or_insert_with(|| Vec::with_capacity(1))
                     .push(ExtendCapture::PreventOnce);
                 continue;
+            } else if capture == query.opaque_capture {
+                // Collected here so `treesitter_indent_for_pos` can test for an
+                // opaque interior without a second query pass.
+                opaque_ranges.push(matched_node.node.start_byte()..matched_node.node.end_byte());
+                continue;
             } else {
                 // Ignore any unknown captures (these may be needed for predicates such as #match?)
                 continue;
@@ -652,6 +661,7 @@ fn query_indents<'a>(
     let result = IndentQueryResult {
         indent_captures,
         extend_captures,
+        opaque_ranges,
     };
 
     log::trace!("indent result = {:?}", result);
@@ -793,7 +803,11 @@ fn init_indent_query<'a, 'b>(
     line: usize,
     byte_pos: u32,
     new_line_byte_pos: Option<u32>,
-) -> Option<(Node<'a>, HashMap<usize, Vec<IndentCapture<'b>>>)> {
+) -> Option<(
+    Node<'a>,
+    HashMap<usize, Vec<IndentCapture<'b>>>,
+    Vec<std::ops::Range<u32>>,
+)> {
     // The innermost tree-sitter node which is considered for the indent
     // computation. It may change if some preceding node is extended
     let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
@@ -834,6 +848,7 @@ fn init_indent_query<'a, 'b>(
         (query_result, deepest_preceding, candidate_body)
     };
     let extend_captures = query_result.extend_captures;
+    let opaque_ranges = query_result.opaque_ranges;
 
     // When typing a newline, descend into the body the new line opens so its own
     // scope governs the indent (structural replacement for wrapper/`@extend`
@@ -866,7 +881,7 @@ fn init_indent_query<'a, 'b>(
             );
         }
     }
-    Some((node, query_result.indent_captures))
+    Some((node, query_result.indent_captures, opaque_ranges))
 }
 
 /// Use the syntax tree to determine the indentation for a given position.
@@ -907,10 +922,25 @@ fn init_indent_query<'a, 'b>(
 /// );
 /// ```
 #[allow(clippy::too_many_arguments)]
+/// Whether `byte_pos` falls in the interior of an `@opaque` node spanning
+/// `[start, end)` that began on an *earlier* line — i.e. a string / heredoc /
+/// block-comment body whose leading whitespace is literal content. Shared by the
+/// hot path (which collects `@opaque` ranges in the containment pass) and the
+/// standalone [`is_opaque_interior`].
+fn opaque_hit(start: u32, end: u32, byte_pos: u32, text: RopeSlice) -> bool {
+    start <= byte_pos
+        && byte_pos < end
+        && text.byte_to_line(start as usize) < text.byte_to_line(byte_pos as usize)
+}
+
 /// Whether `byte_pos` lies in the *interior* of a node captured `@opaque` — a
 /// string / heredoc / block-comment body that began on an earlier line. The
 /// leading whitespace of such lines is literal content, so indentation must
 /// leave it untouched rather than reformat it as code.
+///
+/// `treesitter_indent_for_pos` does not call this — it derives the same answer
+/// from the captures of its single containment pass — so this exists for external
+/// callers (e.g. the indent-check xtask) that only need the opaque test.
 pub fn is_opaque_interior(
     query: &IndentQuery,
     syntax: &Syntax,
@@ -920,7 +950,6 @@ pub fn is_opaque_interior(
     let Some(opaque) = query.opaque_capture else {
         return false;
     };
-    let line = text.byte_to_line(byte_pos as usize);
     let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
         .execute_query(
             &query.query,
@@ -929,14 +958,15 @@ pub fn is_opaque_interior(
         );
     while let Some(m) = cursor.next_match() {
         for matched in m.matched_nodes() {
-            if matched.capture == opaque {
-                let node = &matched.node;
-                if node.start_byte() <= byte_pos
-                    && byte_pos < node.end_byte()
-                    && text.byte_to_line(node.start_byte() as usize) < line
-                {
-                    return true;
-                }
+            if matched.capture == opaque
+                && opaque_hit(
+                    matched.node.start_byte(),
+                    matched.node.end_byte(),
+                    byte_pos,
+                    text,
+                )
+            {
+                return true;
             }
         }
     }
@@ -974,22 +1004,9 @@ pub fn treesitter_indent_for_pos<'a>(
     };
     let root = tree.root_node();
 
-    // Lines inside an `@opaque` node (a string / heredoc / block-comment body)
-    // are literal content, not code: preserve their existing leading whitespace
-    // instead of reformatting it.
-    if is_opaque_interior(query, syntax, text, byte_pos) {
-        let line_slice = text.line(line);
-        let first = line_slice
-            .first_non_whitespace_char()
-            .unwrap_or_else(|| line_slice.len_chars());
-        return Some(Indentation {
-            align: Some(line_slice.slice(..first)),
-            ..Default::default()
-        });
-    }
     // Compute the indent by *scope containment*: the level of a line is the
     // number of `@indent` scopes that contain it (see `containment_accounting`).
-    let mut result = containment_accounting(
+    let (mut result, opaque) = containment_accounting(
         query,
         &root,
         text,
@@ -999,6 +1016,18 @@ pub fn treesitter_indent_for_pos<'a>(
         byte_pos,
         new_line,
     )?;
+    // Lines inside an `@opaque` node are literal content, not code: preserve their
+    // existing leading whitespace instead of reformatting it.
+    if opaque {
+        let line_slice = text.line(line);
+        let first = line_slice
+            .first_non_whitespace_char()
+            .unwrap_or_else(|| line_slice.len_chars());
+        return Some(Indentation {
+            align: Some(line_slice.slice(..first)),
+            ..Default::default()
+        });
+    }
     // The injected walk above is relative to the injection's own tree root (the
     // embedded code starts at level 0). Shift it by the indent of the injection's
     // first content line so it sits where the host language placed the block.
@@ -1025,12 +1054,12 @@ fn containment_accounting<'a>(
     line: usize,
     byte_pos: u32,
     new_line: bool,
-) -> Option<Indentation<'a>> {
+) -> Option<(Indentation<'a>, bool)> {
     let new_line_byte_pos = new_line.then_some(byte_pos);
     // Reuse the standard setup: this applies @extend repositioning / body-descent
     // and returns the per-node capture map (all ancestors of the cursor intersect
     // the query range, so their captures are present).
-    let (start_node, captures) = init_indent_query(
+    let (start_node, captures, opaque_ranges) = init_indent_query(
         query,
         root,
         text,
@@ -1040,6 +1069,16 @@ fn containment_accounting<'a>(
         byte_pos,
         new_line_byte_pos,
     )?;
+
+    // Opaque interior: determined from the captures of the pass above, so no
+    // second query is needed. The caller preserves the line's existing leading
+    // whitespace in this case.
+    if opaque_ranges
+        .iter()
+        .any(|r| opaque_hit(r.start, r.end, byte_pos, text))
+    {
+        return Some((Indentation::default(), true));
+    }
 
     // The line whose indent we are computing (post-insertion coordinates).
     let target_line = line + new_line as usize;
@@ -1139,13 +1178,16 @@ fn containment_accounting<'a>(
         indent_levels = 0;
         indent_always = 0;
     }
-    Some(Indentation {
-        indent: indent_levels,
-        indent_always,
-        outdent,
-        outdent_always,
-        align,
-    })
+    Some((
+        Indentation {
+            indent: indent_levels,
+            indent_always,
+            outdent,
+            outdent_always,
+            align,
+        },
+        false,
+    ))
 }
 
 /// The indent level (in the host document) of the first content line of the
