@@ -6987,6 +6987,8 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let view_id = view.id;
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
+        #[cfg(scancode)]
+        let event = cx.editor.scancode_apply(event);
         let alphabet = &cx.editor.config().jump_label_alphabet;
         let Some(i) = event
             .char()
@@ -7004,6 +7006,8 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         }
         cx.on_next_key(move |cx, event| {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
+            #[cfg(scancode)]
+            let event = cx.editor.scancode_apply(event);
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
