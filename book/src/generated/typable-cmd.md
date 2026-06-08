@@ -97,5 +97,6 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
-| `:workspace-trust` | Add current workspace to the list of trusted workspaces. |
-| `:workspace-untrust` | Remove current workspace from the list of trusted workspaces. |
+| `:workspace-trust` | Allow language servers and local config for the current workspace. Snapshots the `.helix/` hash so future edits prompt to re-allow. |
+| `:workspace-untrust` | Revoke the current workspace's trust grant or exclusion. |
+| `:workspace-exclude` | Mark the current workspace as never-prompt. Never prompts for trust again. |

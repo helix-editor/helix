@@ -168,10 +168,6 @@ pub fn workspace_trust_file() -> PathBuf {
     data_dir().join("trusted_workspaces")
 }
 
-pub fn workspace_exclude_file() -> PathBuf {
-    data_dir().join("excluded_workspaces")
-}
-
 /// Merge two TOML documents, merging values from `right` onto `left`
 ///
 /// `merge_depth` sets the nesting depth up to which values are merged instead

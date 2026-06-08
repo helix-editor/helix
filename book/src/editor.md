@@ -22,6 +22,7 @@
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
+- [`[editor.workspace-trust]` Section](#editorworkspace-trust-section)
 
 ### `[editor]` Section
 
@@ -527,4 +528,23 @@ Example:
 enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
+```
+
+### `[editor.workspace-trust]` Section
+
+Controls implicit workspace trust. See the [workspace
+trust](./workspace-trust.md) chapter for the full feature.
+
+| Key      | Description                                                                                                                                  | Default     |
+| ---      | ---                                                                                                                                          | ---         |
+| `level`  | `"none"`: prompt for every workspace. `"servers"`: trust LSP and DAP launches but still gate local config and git. `"all"`: trust everything. | `"servers"` |
+| `prompt` | Whether opening a file in an untrusted workspace pops a modal. The statusline `[⚠]` indicator is always shown either way.                    | `true`      |
+
+Example:
+
+```toml
+[editor.workspace-trust]
+# Start language servers automatically; still require :workspace-trust for
+# .helix/config.toml and .helix/languages.toml.
+level = "servers"
 ```

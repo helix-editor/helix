@@ -1463,7 +1463,9 @@ dependencies = [
  "helix-stdx",
  "log",
  "once_cell",
+ "parking_lot",
  "serde",
+ "sha2",
  "tempfile",
  "threadpool",
  "toml",
@@ -2429,6 +2431,17 @@ checksum = "89f599ac0c323ebb1c6082821a54962b839832b03984598375bff3975b804423"
 dependencies = [
  "digest",
  "sha1",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
 ]
 
 [[package]]

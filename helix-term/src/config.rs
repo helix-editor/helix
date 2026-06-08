@@ -125,10 +125,26 @@ impl Config {
 
         let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
         let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
-        if let helix_loader::workspace_trust::TrustStatus::Trusted =
-            helix_loader::workspace_trust::quick_query_workspace(global_parsed.editor.insecure)
+
+        // We need to build a transient `WorkspaceTrust` just to ask whether the workspace is
+        // trusted enough to load its `.helix/config.toml`. The persisted-trust file on disk is the
+        // source of truth either way; this transient instance has an empty cache and is dropped
+        // after the check.
+        let trust = helix_loader::workspace_trust::WorkspaceTrust::new(
+            (&global_parsed.editor.workspace_trust).into(),
+        );
+        if trust
+            .query_current(helix_loader::workspace_trust::TrustQuery::LocalConfig)
+            .is_trusted()
         {
-            Config::load(Ok(&global_config), local_config)
+            let mut merged = Config::load(Ok(&global_config), local_config)?;
+            // editor.workspace-trust is global/user-scope only. Without this override, a
+            // workspace's `.helix/config.toml` could set `level = "all"`; once the user trusted
+            // *that* workspace, refresh_config would re-load with the override merged in and from
+            // then on every subsequent workspace in the session would be implicitly trusted. Pin
+            // the gate's own configuration to the global file.
+            merged.editor.workspace_trust = global_parsed.editor.workspace_trust;
+            Ok(merged)
         } else {
             Ok(global_parsed)
         }
