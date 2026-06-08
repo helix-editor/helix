@@ -20,8 +20,8 @@ use std::path::Path;
 use futures_util::Future;
 mod handlers;
 
+use helix_stdx::Url;
 use ignore::DirEntry;
-use url::Url;
 
 #[cfg(windows)]
 fn true_color() -> bool {

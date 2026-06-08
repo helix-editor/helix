@@ -82,7 +82,6 @@ thiserror.workspace = true
 
 # opening URLs
 open = "5.3.5"
-url = "2.5.4"
 
 # config
 toml.workspace = true
