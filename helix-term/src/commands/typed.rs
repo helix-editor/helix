@@ -2478,14 +2478,24 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         .unwrap_or_else(|| doc.text_width());
 
     let rope = doc.text();
+    let comment_tokens: Vec<&str> = doc
+        .language_config()
+        .and_then(|config| config.comment_tokens.as_deref())
+        .map(|tokens| tokens.iter().map(String::as_str).collect())
+        .unwrap_or_default();
+    let options = helix_core::wrap::ReflowOptions {
+        text_width,
+        tab_width: doc.tab_width(),
+        line_ending: doc.line_ending.as_str(),
+        comment_tokens: &comment_tokens,
+    };
 
-    let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(rope, selection, |range| {
-        let fragment = range.fragment(rope.slice(..));
-        let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
-
-        (range.from(), range.to(), Some(reflowed_text))
-    });
+    let changes: Vec<_> = doc
+        .selection(view.id)
+        .line_ranges(rope.slice(..))
+        .flat_map(|(start, end)| helix_core::wrap::reflow(rope.slice(..), start, end, &options))
+        .collect();
+    let transaction = Transaction::change(rope, changes.into_iter());
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);

@@ -1075,3 +1075,22 @@ async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reflow_selections_in_one_paragraph() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #[a|]# b c d e
+            f #(g|)# h
+        "},
+        ":reflow 5<ret>",
+        indoc! {"\
+            #[a|]# b c
+            d e f
+            #(g|)# h
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
