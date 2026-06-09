@@ -15,7 +15,7 @@ use crate::{
 
 use helix_core::{
     conflict::{
-        conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion,
+        conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion, SectionKind,
         NO_HIGHLIGHT_PAIR,
     },
     diagnostic::NumberOrString,
@@ -734,10 +734,18 @@ impl EditorView {
                 continue;
             };
 
+            // For side↔side pairs (no Base involved) both sides are
+            // "added" — neither is conceptually "removed" in a conflict.
+            let is_side_side = region.refine_pair_indices(pair).is_some_and(|(i, j)| {
+                region.sections[i].kind == SectionKind::Side
+                    && region.sections[j].kind == SectionKind::Side
+            });
+            let left_hl = if is_side_side { added_hl } else { removed_hl };
+
             let (removed, added) = entry
                 .diffs
                 .get_or_insert_with(|| refine_diff(text, left, right));
-            spans.extend(removed.iter().map(|r| (removed_hl, r.clone())));
+            spans.extend(removed.iter().map(|r| (left_hl, r.clone())));
             spans.extend(added.iter().map(|r| (added_hl, r.clone())));
         }
 
