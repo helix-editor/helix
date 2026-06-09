@@ -1,0 +1,41 @@
+name: Rust setup
+description: Install a Rust toolchain and warm the cargo + tree-sitter grammar caches.
+
+inputs:
+  toolchain:
+    description: Rust toolchain to install.
+    required: true
+  components:
+    description: Comma-separated rustup components.
+    required: false
+    default: ''
+  cache-key:
+    description: shared-key for Swatinem/rust-cache.
+    required: true
+  cache-grammars:
+    description: Whether to cache runtime/grammars. Only set true for jobs that fetch grammars (cargo test / xtask query-check).
+    required: false
+    default: 'false'
+  grammar-cache-version:
+    description: Bump to bust the grammar cache.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      with:
+        shared-key: ${{ inputs.cache-key }}
+
+    - if: inputs.cache-grammars == 'true'
+      uses: actions/cache@v5
+      with:
+        path: runtime/grammars
+        key: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ inputs.grammar-cache-version }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-stable-v${{ inputs.grammar-cache-version }}-tree-sitter-grammars-
