@@ -92,7 +92,7 @@ fn setup_integration_logging() {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
+                crate::logging::log_timestamp(),
                 record.target(),
                 record.level(),
                 message

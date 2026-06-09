@@ -65,7 +65,6 @@ indexmap = { version = "2.14", features = ["serde"] }
 
 # Logging
 fern = "0.7"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 
 # File picker

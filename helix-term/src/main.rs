@@ -19,7 +19,7 @@ fn setup_logging(verbosity: u64) -> Result<()> {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
+                helix_term::logging::log_timestamp(),
                 record.target(),
                 record.level(),
                 message
