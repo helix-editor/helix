@@ -13,11 +13,14 @@ use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 pub trait RopeSliceExt<'a>: Sized {
     fn ends_with(self, text: &str) -> bool;
     fn starts_with(self, text: &str) -> bool;
+    #[must_use]
     fn regex_input(self) -> RegexInput<RopeyCursor<'a>>;
+    #[must_use]
     fn regex_input_at_bytes<R: RangeBounds<usize>>(
         self,
         byte_range: R,
     ) -> RegexInput<RopeyCursor<'a>>;
+    #[must_use]
     fn regex_input_at<R: RangeBounds<usize>>(self, char_range: R) -> RegexInput<RopeyCursor<'a>>;
     fn first_non_whitespace_char(self) -> Option<usize>;
     fn last_non_whitespace_char(self) -> Option<usize>;
@@ -137,6 +140,8 @@ pub trait RopeSliceExt<'a>: Sized {
     /// let graphemes: Vec<_> = text.graphemes().collect();
     /// assert_eq!(graphemes.as_slice(), &["😶‍🌫️", "🏴‍☠️", "🖼️"]);
     /// ```
+    #[inline]
+    #[must_use]
     fn graphemes(self) -> RopeGraphemes<'a> {
         self.graphemes_at(0)
     }
@@ -154,6 +159,7 @@ pub trait RopeSliceExt<'a>: Sized {
     /// let graphemes: Vec<_> = text.graphemes_rev().collect();
     /// assert_eq!(graphemes.as_slice(), &["🖼️", "🏴‍☠️", "😶‍🌫️"]);
     /// ```
+    #[must_use]
     fn graphemes_rev(self) -> RopeGraphemes<'a>;
     /// Returns an iterator over the grapheme clusters in the slice at the given byte index.
     ///
@@ -170,11 +176,14 @@ pub trait RopeSliceExt<'a>: Sized {
     /// let graphemes: Vec<_> = text.slice(..).graphemes_at(27).reversed().collect();
     /// assert_eq!(graphemes.as_slice(), &["🏴‍☠️", "😶‍🌫️"]);
     /// ```
+    #[must_use]
     fn graphemes_at(self, byte_idx: usize) -> RopeGraphemes<'a>;
     /// Returns an iterator over the grapheme clusters in a rope and the byte index where each
     /// grapheme cluster starts.
     ///
     /// Same as `grapheme_indices_at(0)`.
+    #[inline]
+    #[must_use]
     fn grapheme_indices(self) -> RopeGraphemeIndices<'a> {
         self.grapheme_indices_at(0)
     }
@@ -199,6 +208,7 @@ pub trait RopeSliceExt<'a>: Sized {
     ///   &[(27, "🖼️".into()), (14, "🏴‍☠️".into()), (0, "😶‍🌫️".into())]
     /// );
     /// ```
+    #[must_use]
     fn grapheme_indices_at(self, byte_idx: usize) -> RopeGraphemeIndices<'a>;
     /// Finds the byte index of the next grapheme boundary after `byte_idx`.
     ///
