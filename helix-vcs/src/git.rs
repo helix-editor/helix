@@ -123,10 +123,10 @@ fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
         ..gix::open::Permissions::default_for_level(trust)
     };
     let options = gix::open::Options::default().permissions(permissions);
-
-    let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
-    git_open_opts_map.full = options.clone();
-    git_open_opts_map.reduced = options;
+    let git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options> {
+        full: options.clone(),
+        reduced: options,
+    };
 
     let open_options = gix::discover::upwards::Options {
         dot_git_only: true,
