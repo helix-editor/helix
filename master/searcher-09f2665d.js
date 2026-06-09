@@ -142,7 +142,7 @@ window.search = window.search || {};
         const teaser = makeTeaser(escapeHTML(result.doc.body), searchterms);
         teaser_count++;
 
-        // The ?URL_MARK_PARAM= parameter belongs inbetween the page and the #heading-anchor
+        // The ?URL_MARK_PARAM= parameter belongs in between the page and the #heading-anchor
         const url = doc_urls[result.ref].split('#');
         if (url.length === 1) { // no anchor found
             url.push('');
@@ -341,6 +341,9 @@ window.search = window.search || {};
                         marker.unmark();
                     }, 300);
                 }
+                // also removes the `?URL_MARK_PARAM=` search param so that
+                // in-page navigation doesn't make highlights unexpectedly appear again
+                setSearchUrlParameters('', 'replace');
             };
 
             for (let i = 0; i < markers.length; i++) {
@@ -357,7 +360,7 @@ window.search = window.search || {};
             e.shiftKey ||
             e.target.type === 'textarea' ||
             e.target.type === 'text' ||
-            !hasFocus() && /^(?:input|select|textarea)$/i.test(e.target.nodeName)
+            !hasFocus() && mdbook_something_else_has_focus(e)
         ) {
             return;
         }

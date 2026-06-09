@@ -624,6 +624,15 @@ html:not(.js) .sidebar-resize-handle {
     margin-block-start: 0.6em;
 }
 
+.chapter li.header-item {
+    /* Make sure there is plenty of spacing between sections so they don't blend in
+       with each other. */
+    margin-block-end: 0.5em;
+    /* Avoid too much spacing between lines when section heading word wraps so that
+       it can be distinguished between successive headings. */
+    line-height: 1.5em;
+}
+
 /* When expanded, rotate the chevron to point down. */
 .chapter li.expanded > span > .chapter-fold-toggle div {
     transform: rotate(90deg);
