@@ -64,8 +64,7 @@ termini = "1"
 indexmap = { version = "2.14", features = ["serde"] }
 
 # Logging
-fern = "0.7"
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 
 # File picker
 nucleo.workspace = true

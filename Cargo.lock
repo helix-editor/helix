@@ -370,15 +370,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fern"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4316185f709b23713e41e3195f90edef7fb00c3ed4adc79769cf09cc762a3b29"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "filetime"
 version = "0.2.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1398,7 +1389,6 @@ name = "helix-dap"
 version = "25.7.1"
 dependencies = [
  "anyhow",
- "fern",
  "futures-executor",
  "futures-util",
  "helix-core",
@@ -1521,7 +1511,6 @@ dependencies = [
  "content_inspector",
  "crossterm",
  "dashmap",
- "fern",
  "futures-util",
  "grep-matcher",
  "grep-regex",

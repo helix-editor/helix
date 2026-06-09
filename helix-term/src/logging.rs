@@ -1,11 +1,70 @@
-//! Logging support for the editor binary.
-//!
-//! The timestamp is formatted by hand so we don't need chrono's `clock` feature
-//! (which drags in the `iana-time-zone` timezone subtree just to read the local
-//! offset). We only need to *format* a `SystemTime`, and log files in UTC are
-//! unambiguous across machines, so that is what we emit.
+//! Logging support for `hx`.
 
+use std::io::Write;
+use std::path::Path;
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Minimal `log::Log` implementation: a level filter plus a single line-buffered sink.
+struct Logger {
+    level: log::LevelFilter,
+    sink: Mutex<Box<dyn Write + Send>>,
+}
+
+impl log::Log for Logger {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= self.level
+    }
+
+    fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+        if let Ok(mut sink) = self.sink.lock() {
+            let _ = writeln!(
+                sink,
+                "{} {} [{}] {}",
+                log_timestamp(),
+                record.target(),
+                record.level(),
+                record.args()
+            );
+        }
+    }
+
+    fn flush(&self) {
+        if let Ok(mut sink) = self.sink.lock() {
+            let _ = sink.flush();
+        }
+    }
+}
+
+fn install(
+    level: log::LevelFilter,
+    sink: Box<dyn Write + Send>,
+) -> Result<(), log::SetLoggerError> {
+    log::set_boxed_logger(Box::new(Logger {
+        level,
+        sink: Mutex::new(sink),
+    }))?;
+    log::set_max_level(level);
+    Ok(())
+}
+
+/// Install the global logger writing to `path` (created if absent, appended to).
+pub fn init_file(level: log::LevelFilter, path: &Path) -> std::io::Result<()> {
+    let file = std::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)?;
+    install(level, Box::new(file)).map_err(std::io::Error::other)
+}
+
+/// Install the global logger writing to stdout (used by integration tests).
+#[cfg(feature = "integration")]
+pub fn init_stdout(level: log::LevelFilter) {
+    let _ = install(level, Box::new(std::io::stdout()));
+}
 
 /// RFC3339-style UTC timestamp for a log line: `YYYY-MM-DDTHH:MM:SS.mmm`.
 pub fn log_timestamp() -> String {
@@ -48,7 +107,10 @@ mod tests {
         // epoch
         assert_eq!(format_timestamp(0, 0), "1970-01-01T00:00:00.000");
         // next day, and time-of-day + millis
-        assert_eq!(format_timestamp(86_400 + 3661, 7), "1970-01-02T01:01:01.007");
+        assert_eq!(
+            format_timestamp(86_400 + 3661, 7),
+            "1970-01-02T01:01:01.007"
+        );
         // a leap day: 2024-02-29T12:30:45.123 UTC == 1709209845 s
         assert_eq!(
             format_timestamp(1_709_209_845, 123),
