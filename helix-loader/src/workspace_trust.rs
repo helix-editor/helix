@@ -492,7 +492,7 @@ pub fn compute_workspace_hash(workspace: &Path) -> Option<String> {
 
 /// Length-prefix a field before feeding it to the hasher.
 fn hash_field(hasher: &mut Sha256, bytes: &[u8]) {
-    hasher.update(&(bytes.len() as u64).to_le_bytes());
+    hasher.update((bytes.len() as u64).to_le_bytes());
     hasher.update(bytes);
 }
 
