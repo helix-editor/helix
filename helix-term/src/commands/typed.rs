@@ -2275,7 +2275,7 @@ fn get_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 }
 
 /// Change config at runtime. Access nested values by dot syntax, for
-/// example to disable smart case search, use `:set search.smart-case false`.
+/// example to disable smart case search, use `:set-option search.smart-case false`.
 fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -2283,30 +2283,30 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 
     let (key, arg) = (&args[0].to_lowercase(), args[1].trim());
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    // Validate that the key exists and determine its type
+    let config_json = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let existing_value = config_json
+        .pointer(&pointer)
+        .ok_or_else(|| anyhow::anyhow!("Unknown key `{}`", key))?;
 
-    *value = if value.is_string() {
-        // JSON strings require quotes, so we can't .parse() directly
+    // Construct the value to set
+    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
+    let value: Value = if existing_value.is_string() {
         Value::String(arg.to_string())
     } else {
         arg.parse().map_err(field_error)?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
 
     cx.editor
         .config_events
         .0
-        .send(ConfigEvent::Update(config))?;
+        .send(ConfigEvent::UpdateField(key.clone(), value))?;
     Ok(())
 }
 
 /// Toggle boolean config option at runtime. Access nested values by dot
-/// syntax, for example to toggle smart case search, use `:toggle search.smart-
+/// syntax, for example to toggle smart case search, use `:toggle-option search.smart-
 /// case`.
 fn toggle_option(
     cx: &mut compositor::Context,
@@ -2321,11 +2321,12 @@ fn toggle_option(
 
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    // Read the current config to get the existing value
+    let config_json = serde_json::json!(&cx.editor.config().deref());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let existing_value = config_json.pointer(&pointer).ok_or_else(key_error)?;
 
-    *value = match value {
+    let new_value = match existing_value {
         Value::Bool(ref value) => {
             ensure!(
                 args.len() == 1,
@@ -2359,7 +2360,7 @@ fn toggle_option(
             ensure!(
                 args.len() == 2,
                 "Bad arguments. For {kind} configurations use: `:toggle {key} val1 val2 ...`",
-                kind = match value {
+                kind = match existing_value {
                     Value::Number(_) => "number",
                     Value::Array(_) => "array",
                     Value::Object(_) => "object",
@@ -2375,28 +2376,26 @@ fn toggle_option(
 
             if let Some(wrongly_typed_value) = values
                 .iter()
-                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(&*value))
+                .find(|v| std::mem::discriminant(*v) != std::mem::discriminant(existing_value))
             {
-                bail!("value '{wrongly_typed_value}' has a different type than '{value}'");
+                bail!("value '{wrongly_typed_value}' has a different type than '{existing_value}'");
             }
 
             values
                 .iter()
-                .skip_while(|e| *e != value)
+                .skip_while(|e| *e != existing_value)
                 .nth(1)
                 .unwrap_or(&values[0])
                 .clone()
         }
     };
 
-    let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
-        .map_err(|err| anyhow::anyhow!("Failed to parse config: {err}"))?;
+    let status = format!("'{key}' is now set to {new_value}");
 
     cx.editor
         .config_events
         .0
-        .send(ConfigEvent::Update(config))?;
+        .send(ConfigEvent::UpdateField(key.clone(), new_value))?;
     cx.editor.set_status(status);
     Ok(())
 }
