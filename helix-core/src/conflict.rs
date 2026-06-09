@@ -548,91 +548,221 @@ pub fn conflict_refine_pair(state: &HashMap<usize, usize>, region: &ConflictRegi
     pair.min(max)
 }
 
-// ── Word-level diff ───────────────────────────────────────────────────────────
+// ── Multi-level refinement (jj-style) ─────────────────────────────────────────
 
-/// A word-token source backed by a contiguous substring of a `Rope`.
+/// Whether `c` is a word character.
 ///
-/// Tokens are non-whitespace runs of characters.
-/// To avoid double allocation, token strings are built on-demand during
-/// `tokenize()` rather than pre-collecting them. This amortizes the cost
-/// across the single `InternedInput::new()` call.
-struct WordTokens<'a> {
-    text: &'a Rope,
-    positions: Vec<(usize, usize)>,
+/// Unlike jj's `is_word_byte`, underscore is NOT included so that
+/// `snake_case` identifiers split into separate word tokens, giving
+/// finer-grained highlighting than jj's default behaviour.
+fn is_word_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c > '\x7F'
 }
 
-impl<'a> WordTokens<'a> {
-    fn new(text: &'a Rope, start: usize, end: usize) -> Self {
-        let mut positions = Vec::new();
-        let mut tok_start: Option<usize> = None;
-        for (i, ch) in text.slice(start..end).chars().enumerate() {
-            let pos = start + i;
-            if ch.is_whitespace() {
-                if let Some(s) = tok_start.take() {
-                    positions.push((s, pos));
-                }
-            } else if tok_start.is_none() {
-                tok_start = Some(pos);
-            }
+/// Tokenize a char range by lines. Each line (including trailing newline) becomes
+/// one token.
+fn tokenize_line_ranges(text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut line_start = range.start;
+    for (i, ch) in text.slice(range.clone()).chars().enumerate() {
+        let pos = range.start + i;
+        if ch == '\n' {
+            ranges.push(line_start..pos + 1);
+            line_start = pos + 1;
         }
-        if let Some(s) = tok_start {
-            positions.push((s, end));
-        }
-        Self { text, positions }
     }
+    if line_start < range.end {
+        ranges.push(line_start..range.end);
+    }
+    ranges
 }
 
-impl<'a> imara_diff::TokenSource for WordTokens<'a> {
+/// Tokenize a char range by jj-style words.  Only runs of word characters
+/// become tokens; non-word characters are skipped.
+fn tokenize_word_ranges(text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut word_start: Option<usize> = None;
+    for (i, ch) in text.slice(range.clone()).chars().enumerate() {
+        let pos = range.start + i;
+        if is_word_char(ch) {
+            if word_start.is_none() {
+                word_start = Some(pos);
+            }
+        } else if let Some(start) = word_start.take() {
+            ranges.push(start..pos);
+        }
+    }
+    if let Some(start) = word_start {
+        ranges.push(start..range.end);
+    }
+    ranges
+}
+
+/// Tokenize a char range into individual non-word characters.
+/// Word characters are skipped — they were handled at the word level.
+fn tokenize_nonword_ranges(text: &Rope, range: Range<usize>) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    for (i, ch) in text.slice(range.clone()).chars().enumerate() {
+        let pos = range.start + i;
+        if !is_word_char(ch) {
+            ranges.push(pos..pos + 1);
+        }
+    }
+    ranges
+}
+
+/// A generic token source backed by a `Rope` and a pre-computed range list.
+struct RopeTokenSource<'a> {
+    text: &'a Rope,
+    ranges: Vec<Range<usize>>,
+}
+
+impl<'a> imara_diff::TokenSource for RopeTokenSource<'a> {
     type Token = String;
     type Tokenizer = Box<dyn Iterator<Item = String> + 'a>;
 
     fn tokenize(&self) -> Self::Tokenizer {
         let text = self.text;
-        let positions = self.positions.clone();
-        Box::new(
-            positions
-                .into_iter()
-                .map(move |(s, e)| text.slice(s..e).chars().collect()),
-        )
+        let ranges = self.ranges.clone();
+        Box::new(ranges.into_iter().map(move |r| text.slice(r).to_string()))
     }
 
     fn estimate_tokens(&self) -> u32 {
-        self.positions.len() as u32
+        self.ranges.len() as u32
     }
 }
 
-/// Compute word-level diff between two sections of `text`.
+/// Run a single-level histogram diff of `left` vs `right` within `text`.
 ///
-/// Returns `(removed_ranges, added_ranges)` as half-open char-index intervals.
+/// Each matching token pair yields its own (left, right) char-range pair.
+/// This is critical when tokens are non-contiguous (e.g. nonword level
+/// skips word chars), so that each matched token stands alone and does
+/// not also cover the skipped characters between tokens.
+fn single_level_diff(
+    text: &Rope,
+    left: Range<usize>,
+    right: Range<usize>,
+    tokenizer: impl Fn(&Rope, Range<usize>) -> Vec<Range<usize>>,
+) -> Vec<(Range<usize>, Range<usize>)> {
+    let left_ranges = tokenizer(text, left);
+    let right_ranges = tokenizer(text, right);
+
+    if left_ranges.is_empty() || right_ranges.is_empty() {
+        return vec![];
+    }
+
+    let left_source = RopeTokenSource {
+        text,
+        ranges: left_ranges.clone(),
+    };
+    let right_source = RopeTokenSource {
+        text,
+        ranges: right_ranges.clone(),
+    };
+
+    let input = InternedInput::new(left_source, right_source);
+    let diff = Diff::compute(Algorithm::Histogram, &input);
+
+    let mut matches: Vec<(Range<usize>, Range<usize>)> = Vec::new();
+    let mut left_idx = 0usize;
+    let mut right_idx = 0usize;
+
+    for hunk in diff.hunks() {
+        let l_start = hunk.before.start as usize;
+        let l_end = hunk.before.end as usize;
+        let r_start = hunk.after.start as usize;
+        let r_end = hunk.after.end as usize;
+
+        // Emit one pair per matching token before this hunk.
+        while left_idx < l_start && right_idx < r_start {
+            matches.push((
+                left_ranges[left_idx].clone(),
+                right_ranges[right_idx].clone(),
+            ));
+            left_idx += 1;
+            right_idx += 1;
+        }
+
+        left_idx = l_end;
+        right_idx = r_end;
+    }
+
+    // Remaining matching tokens after the last hunk.
+    while left_idx < left_ranges.len() && right_idx < right_ranges.len() {
+        matches.push((
+            left_ranges[left_idx].clone(),
+            right_ranges[right_idx].clone(),
+        ));
+        left_idx += 1;
+        right_idx += 1;
+    }
+
+    matches
+}
+
+/// Refine existing matches by re-diffing each gap at a finer granularity.
+/// Returns a new match list with any sub-matches inserted.
+fn refine_matches(
+    text: &Rope,
+    matches: &[(Range<usize>, Range<usize>)],
+    tokenizer: impl Fn(&Rope, Range<usize>) -> Vec<Range<usize>>,
+) -> Vec<(Range<usize>, Range<usize>)> {
+    let mut refined = Vec::with_capacity(matches.len());
+    refined.push(matches[0].clone());
+
+    for window in matches.windows(2) {
+        let (prev_left, prev_right) = &window[0];
+        let (next_left, next_right) = &window[1];
+
+        if prev_left.end < next_left.start && prev_right.end < next_right.start {
+            let gap_left = prev_left.end..next_left.start;
+            let gap_right = prev_right.end..next_right.start;
+            refined.extend(single_level_diff(text, gap_left, gap_right, &tokenizer));
+        }
+
+        refined.push((next_left.clone(), next_right.clone()));
+    }
+
+    refined
+}
+
+/// Compute a jj-style multi-level diff between two sections of `text`.
+///
+/// First diffs by lines, then refines changed regions at word granularity,
+/// then at non-word character granularity.  Returns `(removed_ranges,
+/// added_ranges)` as half-open char-index intervals.
 pub fn refine_diff(
     text: &Rope,
     left: (usize, usize),
     right: (usize, usize),
 ) -> (Vec<Range<usize>>, Vec<Range<usize>>) {
-    let left_tokens = WordTokens::new(text, left.0, left.1);
-    let right_tokens = WordTokens::new(text, right.0, right.1);
+    // Level 1: line-level diff
+    let raw = single_level_diff(text, left.0..left.1, right.0..right.1, tokenize_line_ranges);
 
-    let left_positions = left_tokens.positions.clone();
-    let right_positions = right_tokens.positions.clone();
+    // Build match list with empty boundary sentinels.
+    let mut matches: Vec<(Range<usize>, Range<usize>)> = Vec::with_capacity(raw.len() + 2);
+    matches.push((left.0..left.0, right.0..right.0));
+    matches.extend(raw);
+    matches.push((left.1..left.1, right.1..right.1));
 
-    let input = InternedInput::new(left_tokens, right_tokens);
-    let diff = Diff::compute(Algorithm::Histogram, &input);
+    // Level 2: word-level refinement
+    matches = refine_matches(text, &matches, tokenize_word_ranges);
 
+    // Level 3: nonword-level refinement
+    matches = refine_matches(text, &matches, tokenize_nonword_ranges);
+
+    // Convert gaps between matches to removed/added ranges.
     let mut removed: Vec<Range<usize>> = Vec::new();
     let mut added: Vec<Range<usize>> = Vec::new();
+    for window in matches.windows(2) {
+        let (prev_left, prev_right) = &window[0];
+        let (next_left, next_right) = &window[1];
 
-    for hunk in diff.hunks() {
-        for &(s, e) in &left_positions[hunk.before.start as usize..hunk.before.end as usize] {
-            match removed.last_mut() {
-                Some(r) if r.end == s => r.end = e,
-                _ => removed.push(s..e),
-            }
+        if prev_left.end < next_left.start {
+            removed.push(prev_left.end..next_left.start);
         }
-        for &(s, e) in &right_positions[hunk.after.start as usize..hunk.after.end as usize] {
-            match added.last_mut() {
-                Some(r) if r.end == s => r.end = e,
-                _ => added.push(s..e),
-            }
+        if prev_right.end < next_right.start {
+            added.push(prev_right.end..next_right.start);
         }
     }
 
@@ -1307,5 +1437,183 @@ mod tests {
             added_text.contains("qux"),
             "expected 'qux' in added: {added_text}"
         );
+    }
+
+    #[test]
+    fn refine_diff_current_incoming_ws() {
+        // Regression: whitespace between None and } in current-incoming
+        // should highlight only the 4 extra spaces (common \n is skipped).
+        let text = concat!(
+            "<<<<<<< side #1\n",
+            "    let location =\n",
+            "        if args.onto.is_none() && args.insert_after.is_none() ",
+            "&& args.insert_before.is_none() {\n",
+            "            None\n",
+            "        } else {\n",
+            "            Some(compute_commit_location(\n",
+            "                ui,\n",
+            "                &workspace_command,\n",
+            "                args.onto.as_deref(),\n",
+            "                args.insert_after.as_deref(),\n",
+            "                args.insert_before.as_deref(),\n",
+            "                \"duplicated commits\",\n",
+            "            )?)\n",
+            "        };\n",
+            "||||||| base\n",
+            "    let location = if args.destination.is_none()\n",
+            "        && args.insert_after.is_none()\n",
+            "        && args.insert_before.is_none()\n",
+            "    {\n",
+            "        None\n",
+            "    } else {\n",
+            "        Some(compute_commit_location(\n",
+            "            ui,\n",
+            "            &workspace_command,\n",
+            "            args.destination.as_deref(),\n",
+            "            args.insert_after.as_deref(),\n",
+            "            args.insert_before.as_deref(),\n",
+            "            \"duplicated commits\",\n",
+            "        )?)\n",
+            "    };\n",
+            "=======\n",
+            "    let location = if args.destination.is_none()\n",
+            "        && args.insert_after.is_none()\n",
+            "        && args.insert_before.is_none()\n",
+            "    {\n",
+            "        None\n",
+            "    } else {\n",
+            "        Some(compute_commit_location(\n",
+            "            ui,\n",
+            "            &workspace_command,\n",
+            "            args.destination.as_deref(),\n",
+            "            args.insert_after.as_deref(),\n",
+            "            args.insert_before.as_deref(),\n",
+            "            \"duplicated revisions\",\n",
+            "        )?)\n",
+            "    };\n",
+            ">>>>>>> side #2\n",
+        );
+        let r = rope(text);
+        let c = &find_conflicts(&r)[0];
+        let base = base_content(c).unwrap();
+        let current = current_content(c);
+        let incoming = incoming_content(c);
+
+        // ── current-base ──────────────────────────────────────────────────
+        let (removed, added) = refine_diff(&r, current, base);
+        let pos_cur = r
+            .to_string()
+            .find("None\n        ")
+            .expect("current-side None followed by 8 spaces");
+        assert!(!removed.is_empty(), "current-base: expected removed ranges");
+        assert!(!added.is_empty(), "current-base: expected added ranges");
+        // Same None→} whitespace diff as current-incoming (4 extra spaces).
+        // Match any 4-char removed range inside the "\n        }" gap.
+        assert!(
+            removed.iter().any(|range| {
+                range.start >= pos_cur + 5
+                    && range.end <= pos_cur + 13
+                    && range.end - range.start == 4
+            }),
+            "current-base: expected 4 extra spaces between None and }}"
+        );
+
+        // ── base-incoming ─────────────────────────────────────────────────
+        let (removed, added) = refine_diff(&r, base, incoming);
+        assert!(
+            !removed.is_empty(),
+            "base-incoming: expected removed ranges"
+        );
+        assert!(!added.is_empty(), "base-incoming: expected added ranges");
+        // Only the string differs — no whitespace changes.
+        let rem_text: String = removed
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            !rem_text.contains("None"),
+            "base-incoming: None should not be in removed: {rem_text:?}"
+        );
+
+        // ── current-incoming ──────────────────────────────────────────────
+        let (removed, added) = refine_diff(&r, current, incoming);
+        assert!(
+            !removed.is_empty(),
+            "current-incoming: expected removed ranges"
+        );
+        assert!(!added.is_empty(), "current-incoming: expected added ranges");
+        assert!(
+            removed.iter().any(|range| {
+                range.start >= pos_cur + 5
+                    && range.end <= pos_cur + 13
+                    && range.end - range.start == 4
+            }),
+            "current-incoming: expected 4 extra spaces between None and }}"
+        );
+    }
+
+    #[test]
+    fn refine_diff_underscore_word() {
+        // jj treats underscore and non-ASCII as word chars.
+        // "fn foo_bar() {}" → "fn foo_baz() {}" should highlight only
+        // "bar" vs "baz" — the fn, foo_, (){} should all match.
+        let text = "<<<<<<< HEAD\nfn foo_bar() {}\n=======\nfn foo_baz() {}\n>>>>>>> branch\n";
+        let r = rope(text);
+        let c = &find_conflicts(&r)[0];
+        let (removed, added) = refine_diff(&r, current_content(c), incoming_content(c));
+        let rem_text: String = removed
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join("");
+        let add_text: String = added
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join("");
+        assert_eq!(
+            removed.len(),
+            1,
+            "expected 1 removed range, got {removed:?}"
+        );
+        assert_eq!(added.len(), 1, "expected 1 added range, got {added:?}");
+        // Underscore splits words, so only "bar" / "baz" are highlighted.
+        assert_eq!(rem_text, "bar");
+        assert_eq!(add_text, "baz");
+    }
+
+    #[test]
+    fn refine_diff_line_level_match() {
+        // Shared lines should be matched at the line level, not shown as changes.
+        let text = concat!(
+            "<<<<<<< HEAD\n",
+            "shared_prefix\n",
+            "only_in_current\n",
+            "shared_suffix\n",
+            "=======\n",
+            "shared_prefix\n",
+            "only_in_incoming\n",
+            "shared_suffix\n",
+            ">>>>>>> branch\n",
+        );
+        let r = rope(text);
+        let c = &find_conflicts(&r)[0];
+        let (removed, added) = refine_diff(&r, current_content(c), incoming_content(c));
+        let rem_text: String = removed
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join("");
+        let add_text: String = added
+            .iter()
+            .map(|range| r.slice(range.clone()).to_string())
+            .collect::<Vec<_>>()
+            .join("");
+        // Only the differing word within the differing line should be
+        // highlighted — "current" vs "incoming".  The rest is matched
+        // at line → word → nonword levels.
+        assert_eq!(rem_text, "current");
+        assert_eq!(add_text, "incoming");
     }
 }
