@@ -44,6 +44,14 @@ enum Event {
     Clear,
 }
 
+/// Sends an event to the coordinator task (lossy).
+///
+/// The coordinator stops when its [`Handler`] is dropped. A closed channel means that index is no
+/// longer in use, so dropping the event is harmless.
+fn send(coordinator: &mpsc::UnboundedSender<Event>, event: Event) {
+    let _ = coordinator.send(event);
+}
+
 #[derive(Debug)]
 pub struct Handler {
     pub(super) index: WordIndex,
@@ -119,7 +127,7 @@ impl AsyncHook for Hook {
                 } else {
                     // The change is large: update the index immediately rather than waiting out
                     // the debounce.
-                    self.coordinator.send(Event::Update(doc, change)).unwrap();
+                    send(&self.coordinator, Event::Update(doc, change));
                     timeout
                 }
             }
@@ -127,11 +135,9 @@ impl AsyncHook for Hook {
                 // If there are pending changes that haven't been indexed since the last debounce,
                 // forget them and delete the old text.
                 if let Some(change) = self.changes.remove(&doc) {
-                    self.coordinator
-                        .send(Event::Delete(doc, change.old_text))
-                        .unwrap();
+                    send(&self.coordinator, Event::Delete(doc, change.old_text));
                 } else {
-                    self.coordinator.send(Event::Delete(doc, text)).unwrap();
+                    send(&self.coordinator, Event::Delete(doc, text));
                 }
                 timeout
             }
@@ -149,7 +155,7 @@ impl AsyncHook for Hook {
                     .clone();
                 change.dirty = false;
             }
-            self.coordinator.send(Event::Update(doc, change)).unwrap();
+            send(&self.coordinator, Event::Update(doc, change));
         }
     }
 }
@@ -446,7 +452,7 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let doc = doc!(event.editor, &event.doc);
         if doc.word_completion_enabled() {
-            coordinator.send(Event::Insert(doc.text().clone())).unwrap();
+            send(&coordinator, Event::Insert(doc.text().clone()));
         }
         Ok(())
     });
@@ -485,14 +491,14 @@ pub(crate) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut ConfigDidChange<'_>| {
         // The feature has been turned off. Clear the index and reclaim any used memory.
         if event.old.word_completion.enable && !event.new.word_completion.enable {
-            coordinator.send(Event::Clear).unwrap();
+            send(&coordinator, Event::Clear);
         }
 
         // The feature has been turned on. Index open documents.
         if !event.old.word_completion.enable && event.new.word_completion.enable {
             for doc in event.editor.documents() {
                 if doc.word_completion_enabled() {
-                    coordinator.send(Event::Insert(doc.text().clone())).unwrap();
+                    send(&coordinator, Event::Insert(doc.text().clone()));
                 }
             }
         }
