@@ -169,7 +169,7 @@ impl WorkspaceTrust {
     }
 
     /// Raw on-disk trust status for `workspace`, ignoring implicit-trust-level shortcuts and the
-    /// [`demote_for_query`] mapping. Use this when you need to distinguish *Stale* (was trusted,
+    /// `demote_for_query` mapping. Use this when you need to distinguish *Stale* (was trusted,
     /// `.helix/` changed) from *Untrusted* (never trusted)
     pub fn status(&self, workspace: &Path) -> TrustStatus {
         self.entry(workspace).status
@@ -230,7 +230,7 @@ impl WorkspaceTrust {
     /// Workspace-wide "is this workspace in restricted mode and would running `trust`
     /// change anything visible at the workspace level?" check.
     ///
-    /// Reads the entire cache entry through [`Self::entry`] in a single lock acquisition (so the
+    /// Reads the entire cache entry through `Self::entry` in a single lock acquisition (so the
     /// `Untrusted` branch's `has_local_config` snapshot is consistent with the status read). Cheap
     /// on the hot render path after the first query.
     pub fn workspace_restricted(&self, workspace: &Path) -> bool {
