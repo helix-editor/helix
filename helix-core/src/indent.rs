@@ -794,6 +794,7 @@ fn candidate_body_for_new_line<'a>(
 /// - The node from which to start the query (this is non-trivial due to `@extend` captures)
 /// - The indent captures for all relevant nodes.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn init_indent_query<'a, 'b>(
     query: &IndentQuery,
     root: &Node<'a>,
