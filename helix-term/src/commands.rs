@@ -1575,14 +1575,14 @@ fn should_open_url_externally(url: &Url) -> bool {
         return true;
     }
 
-    let content_type = std::fs::File::open(url.path()).and_then(|file| {
+    let is_binary = std::fs::File::open(url.path()).and_then(|file| {
         // Read up to 1kb to detect the content type
         let mut read_buffer = Vec::new();
         let n = file.take(1024).read_to_end(&mut read_buffer)?;
-        Ok(content_inspector::inspect(&read_buffer[..n]))
+        Ok(crate::is_binary(&read_buffer[..n]))
     });
 
-    matches!(content_type, Ok(content_inspector::ContentType::BINARY))
+    matches!(is_binary, Ok(true))
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
