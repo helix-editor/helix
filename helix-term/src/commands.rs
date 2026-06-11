@@ -7126,6 +7126,7 @@ fn jump_to_labels(
                 .filter(|_| event.modifiers.is_empty())
                 .and_then(|ch| alphabet.iter().position(|&it| it == ch))
             else {
+                doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
                 return;
             };
             if let Some(mut range) = labels.get(outer + inner).copied() {
@@ -7154,6 +7155,8 @@ fn jump_to_labels(
 
                 let doc_id = doc.id();
                 jump_to_labels(cx, view_id, doc_id, labels, (initial_selection, history));
+            } else {
+                doc_mut!(cx.editor, &doc).remove_jump_labels(view_id);
             }
         });
     });
