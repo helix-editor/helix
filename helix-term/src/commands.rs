@@ -7077,7 +7077,7 @@ fn jump_to_labels(
     view_id: ViewId,
     doc: DocumentId,
     labels: Vec<Range>,
-    mut history: Vec<usize>,
+    (initial_selection, mut history): (Selection, Vec<usize>),
 ) {
     // Accept two characters matching a visible label. Jump to the candidate
     // for that label if it exists.
@@ -7093,12 +7093,15 @@ fn jump_to_labels(
                 if history.len() > 1 {
                     let index = history.pop().expect("History is not empty");
                     selection.remove(index)
+                } else if history.len() == 1 {
+                    history.pop().expect("History is not empty");
+                    initial_selection.clone()
                 } else {
                     selection
                 }
             };
             doc_mut!(cx.editor, &doc).set_selection(view_id, new_selection);
-            return jump_to_labels(cx, view_id, doc, labels, history);
+            return jump_to_labels(cx, view_id, doc, labels, (initial_selection, history));
         }
 
         let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -7150,7 +7153,7 @@ fn jump_to_labels(
                 doc.set_selection(view_id, new_selection);
 
                 let doc_id = doc.id();
-                jump_to_labels(cx, view_id, doc_id, labels, history);
+                jump_to_labels(cx, view_id, doc_id, labels, (initial_selection, history));
             }
         });
     });
@@ -7409,9 +7412,10 @@ fn jump_to_words(cx: &mut Context) {
     overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
     let doc = doc_mut!(cx.editor, &doc.id());
     doc.set_jump_labels(view.id, overlays);
+    let initial_selection = doc.selection(view.id).clone();
     let doc = doc.id();
 
-    jump_to_labels(cx, view.id, doc, words, vec![])
+    jump_to_labels(cx, view.id, doc, words, (initial_selection, vec![]))
 }
 
 fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
