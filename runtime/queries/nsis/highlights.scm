@@ -56,6 +56,17 @@
 (plugin_call
   function: (identifier) @function.method)
 
+; ── Macro Invocations ──
+
+; Built-in macros → @function.builtin
+(macro_invocation
+  name: (define_reference) @function.builtin
+  (#match? @function.builtin "^\\$\\{(?i)(If|IfNot|Unless|ElseIf|ElseIfNot|ElseUnless|Else|EndIf|EndUnless|AndIf|AndIfNot|AndUnless|OrIf|OrIfNot|OrUnless|IfCmd|IfThen|IfNotThen|Switch|Select|Case|Case2|Case3|Case4|Case5|CaseElse|Case_Else|Default|EndSwitch|EndSelect|For|ForEach|Next|ExitFor|Do|DoWhile|DoUntil|Loop|LoopWhile|LoopUntil|ExitDo|While|EndWhile|ExitWhile|Break|Continue|Cmd|Abort|Errors|FileExists|RebootFlag|Silent|AltRegView|RtlLanguage|ShellVarContextAll|RegKeyIsEmpty|SectionIsBold|SectionIsExpanded|SectionIsPartiallySelected|SectionIsReadOnly|SectionIsSectionGroup|SectionIsSectionGroupEnd|SectionIsSelected|SectionIsSubSection|SectionIsSubSectionEnd|Contains|ContainsS|EndsWith|EndsWithS|StartsWith|StartsWithS|IsLowerCase|IsUpperCase|IsDomainController|IsNT|IsSafeBootMode|IsServerOS|IsServicePack|IsStarterEdition|IsWin2003R2|OSHasMediaCenter|OSHasTabletSupport|BannerTrimPath|DirState|DriveSpace|GetBaseName|GetDrives|GetExeName|GetExePath|GetFileAttributes|GetFileExt|GetFileName|GetFileVersion|GetOptions|GetOptionsS|GetParameters|GetParent|GetRoot|GetSize|GetTime|Locate|RefreshShellIcons|StrFilter|StrFilterS|VersionCompare|VersionConvert|WordAdd|WordAddS|WordFind|WordFind2X|WordFind2XS|WordFind3X|WordFind3XS|WordFindS|WordInsert|WordInsertS|WordReplace|WordReplaceS|ConfigRead|ConfigReadS|ConfigWrite|ConfigWriteS|FileJoin|FileReadFromEnd|FileRecode|LineFind|LineRead|LineSum|TextCompare|TextCompareS|TrimNewLines|DisableX64FSRedirection|EnableX64FSRedirection|GetNativeMachineArchitecture|IsNativeAMD64|IsNativeARM64|IsNativeIA32|IsNativeMachineArchitecture|IsWow64|RunningX64|AtLeastBuild|AtLeastServicePack|AtLeastWaaS|AtMostBuild|AtMostServicePack|AtMostWaaS|WinVerGetBuild|WinVerGetMajor|WinVerGetMinor|WinVerGetServicePackLevel|MementoSection|MementoSectionDone|MementoSectionEnd|MementoSectionEx|MementoSectionRestore|MementoSectionSave|MementoUnselectedSection)\\}$"))
+
+; User-defined/third-party macros → @function.macro
+(macro_invocation
+  name: (define_reference) @function.macro)
+
 ; ── Labels ──
 
 (label
