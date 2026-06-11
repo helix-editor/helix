@@ -611,7 +611,7 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
-        goto_words, "Add cursors to two-character labels",
+        goto_words, "Add cursors to two-character labels (undo with Backspace)",
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
