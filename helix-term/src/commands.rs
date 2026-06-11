@@ -7274,6 +7274,37 @@ fn jump_to_words(cx: &mut Context) {
 
     let primary_selection = doc.selection(view.id).primary();
     let cursor = primary_selection.cursor(text);
+
+    // if the cursor is sitting on a word include it in jump labels
+    let crt_word = text.get_char(cursor).and_then(|char| {
+        if char_is_word(char) {
+            let word = textobject::textobject_word(
+                text,
+                primary_selection,
+                textobject::TextObject::Inside,
+                1,
+                false,
+            );
+            let add_label = text
+                .slice(word.anchor..)
+                .graphemes()
+                .take(2)
+                .take_while(|g| g.chars().all(char_is_word))
+                .count()
+                == 2;
+            if add_label {
+                Some(word)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+    if let Some(word) = crt_word {
+        words.push(word);
+    }
+
     let mut cursor_fwd = Range::point(cursor);
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
