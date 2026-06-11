@@ -805,18 +805,23 @@ impl DoubleEndedIterator for Traverse<'_> {
 
 #[cfg(test)]
 mod test {
+    use arc_swap::ArcSwap;
+
     use super::*;
     use crate::editor::GutterConfig;
     use crate::DocumentId;
 
     #[test]
     fn find_split_in_direction() {
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 80,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+            },
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
@@ -865,12 +870,15 @@ mod test {
 
     #[test]
     fn swap_split_in_direction() {
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: 180,
-            height: 80,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+            },
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
 
         let doc_l0 = DocumentId::default();
         let mut view = View::new(doc_l0, GutterConfig::default());
@@ -983,12 +991,15 @@ mod test {
     #[test]
     fn all_vertical_views_have_same_width() {
         let tree_area_width = 180;
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: tree_area_width,
-            height: 80,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: tree_area_width,
+                height: 80,
+            },
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(0, 0, 180, 80);
         tree.insert(view);
@@ -1021,12 +1032,15 @@ mod test {
     #[test]
     fn vsplit_gap_rounding() {
         let (tree_area_width, tree_area_height) = (80, 24);
-        let mut tree = Tree::new(Rect {
-            x: 0,
-            y: 0,
-            width: tree_area_width,
-            height: tree_area_height,
-        });
+        let mut tree = Tree::new(
+            Rect {
+                x: 0,
+                y: 0,
+                width: tree_area_width,
+                height: tree_area_height,
+            },
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        );
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(0, 0, tree_area_width, tree_area_height);
         tree.insert(view);
