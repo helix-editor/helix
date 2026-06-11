@@ -3780,7 +3780,7 @@ auto-format = true
 
 [[grammar]]
 name = "nsis"
-source = { git = "https://github.com/idleberg/tree-sitter-nsis", rev = "21f25d76d9253a0967cb02de8bee1499e697f115" }
+source = { git = "https://github.com/idleberg/tree-sitter-nsis", rev = "aff788a88ae08010ce44931e85b755f97aeb2f87" }
 
 [[language]]
 name = "cabal"
