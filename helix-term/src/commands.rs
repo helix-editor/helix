@@ -7142,7 +7142,7 @@ fn jump_to_labels(
                     doc.selection(view_id).clone().push(range)
                 };
                 let new_position = new_selection.ranges().iter().position(|r| *r == range);
-                if prev_position != new_position {
+                if history.is_empty() || prev_position != new_position {
                     if let Some(position) = new_position {
                         history.push(position);
                     }
