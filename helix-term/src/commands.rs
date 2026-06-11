@@ -7130,18 +7130,23 @@ fn jump_to_labels(
                 let doc = doc_mut!(cx.editor, &doc);
                 let view = view_mut!(cx.editor, view_id);
                 push_jump(view, doc);
+
+                let prev_position = doc
+                    .selection(view_id)
+                    .ranges()
+                    .iter()
+                    .position(|r| *r == range);
                 let new_selection = if history.is_empty() {
                     range.into()
                 } else {
                     doc.selection(view_id).clone().push(range)
                 };
-                history.push(
-                    new_selection
-                        .ranges()
-                        .iter()
-                        .position(|r| *r == range)
-                        .expect("Pushed the range above"),
-                );
+                let new_position = new_selection.ranges().iter().position(|r| *r == range);
+                if prev_position != new_position {
+                    if let Some(position) = new_position {
+                        history.push(position);
+                    }
+                }
                 doc.set_selection(view_id, new_selection);
 
                 let doc_id = doc.id();
