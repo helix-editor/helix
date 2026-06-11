@@ -7083,7 +7083,7 @@ fn jump_to_labels(
     // for that label if it exists.
     cx.on_next_key(move |cx, event| {
         // Undo last selection
-        if event.code == KeyCode::Backspace {
+        if event.modifiers.is_empty() && event.code == KeyCode::Backspace {
             let new_selection = {
                 let selection = doc!(cx.editor, &doc).selection(view_id).clone();
                 history = history
@@ -7412,6 +7412,7 @@ fn jump_to_words(cx: &mut Context) {
     overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
     let doc = doc_mut!(cx.editor, &doc.id());
     doc.set_jump_labels(view.id, overlays);
+
     let initial_selection = doc.selection(view.id).clone();
     let doc = doc.id();
 
