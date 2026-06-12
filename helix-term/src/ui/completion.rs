@@ -214,7 +214,7 @@ impl Completion {
                     doc.append_changes_to_history(view);
 
                     // item always present here
-                    let (transaction, additional_edits, snippet) = match item.clone() {
+                    let (transaction, additional_edits, snippet, command) = match item.clone() {
                         CompletionItem::Lsp(mut item) => {
                             let language_server = language_server!(item);
 
@@ -237,16 +237,18 @@ impl Completion {
                                 trigger_offset,
                                 replace_mode,
                             );
-                            let add_edits = item.item.additional_text_edits;
+                            let add_edits = item.item.additional_text_edits.take();
+                            let command = completion_command(&CompletionItem::Lsp(item));
 
                             (
                                 transaction,
                                 add_edits.map(|edits| (edits, encoding)),
                                 snippet,
+                                command,
                             )
                         }
                         CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
-                            (transaction, None, None)
+                            (transaction, None, None, None)
                         }
                     };
 
@@ -276,6 +278,12 @@ impl Completion {
                             doc.apply(&transaction, view.id);
                         }
                     }
+
+                    // The LSP spec requires the command to be executed after the text edits have been applied.
+                    if let Some((command, server_id)) = command {
+                        editor.execute_lsp_command(command, server_id);
+                    }
+
                     // we could have just inserted a trigger char (like a `crate::` completion for rust
                     // so we want to retrigger immediately when accepting a completion.
                     trigger_auto_completion(editor, true);
