@@ -656,9 +656,76 @@ fn lsp_item_to_transaction(
     }
 }
 
+/// Returns the `command` to execute after accepting a completion item, together with
+/// the language server that should execute it, if the item carries one.
+fn completion_command(
+    item: &CompletionItem,
+) -> Option<(lsp::Command, helix_lsp::LanguageServerId)> {
+    match item {
+        CompletionItem::Lsp(item) => item
+            .item
+            .command
+            .clone()
+            .map(|command| (command, item.provider)),
+        CompletionItem::Other(_) => None,
+    }
+}
+
 fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
     transaction
         .changes_iter()
         .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use helix_lsp::LanguageServerId;
+
+    fn lsp_item(command: Option<lsp::Command>) -> CompletionItem {
+        CompletionItem::Lsp(LspCompletionItem {
+            item: lsp::CompletionItem {
+                label: "foo".to_string(),
+                command,
+                ..Default::default()
+            },
+            provider: LanguageServerId::default(),
+            resolved: true,
+            provider_priority: 0,
+        })
+    }
+
+    #[test]
+    fn returns_command_and_provider_when_present() {
+        let command = lsp::Command {
+            title: "Do something".to_string(),
+            command: "my-lsp.someAction".to_string(),
+            arguments: Some(vec![serde_json::json!(42)]),
+        };
+        let item = lsp_item(Some(command.clone()));
+
+        assert_eq!(
+            completion_command(&item),
+            Some((command, LanguageServerId::default()))
+        );
+    }
+
+    #[test]
+    fn returns_none_when_command_absent() {
+        let item = lsp_item(None);
+        assert_eq!(completion_command(&item), None);
+    }
+
+    #[test]
+    fn returns_none_for_non_lsp_item() {
+        let item = CompletionItem::Other(core::CompletionItem {
+            transaction: Transaction::new(&helix_core::Rope::new()),
+            label: "foo".into(),
+            kind: "word".into(),
+            documentation: None,
+            provider: helix_core::completion::CompletionProvider::Word,
+        });
+        assert_eq!(completion_command(&item), None);
+    }
 }
