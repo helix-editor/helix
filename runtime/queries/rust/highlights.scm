@@ -357,9 +357,15 @@
 
 (function_item
   name: (identifier) @function)
-
 (function_signature_item
   name: (identifier) @function)
+
+(function_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
+(function_signature_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
 
 ; -------
 ; Guess Other Types
