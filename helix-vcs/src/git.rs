@@ -46,13 +46,11 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     // Get the actual data that git would make out of the git object.
     // This will apply the user's git config or attributes like crlf conversions.
     //
-    // SECURITY: `filter.*.clean` / `filter.*.smudge` drivers in the repo `.git/config` are external
-    // programs and run from inside this call, which is the workspace-controlled exec attack surface
-    // (CVE-2026-44465 class). The workspace-trust gate (`trust_full`) currently does NOT close this
-    // hole — gix `Trust::Reduced` mostly affects which config *files* are loaded, not which keys
-    // within `.git/config` are honored. Closing the hole requires either dropping this pipeline
-    // call (loses autocrlf and LFS smudge) or surgically refusing external filter programs via
-    // gix's permissions API. Deferred.
+    // The whole filter pipeline still runs in untrusted (`Trust::Reduced`) mode so built-in
+    // conversions like autocrlf keep working, but gix drops `filter.*.clean` / `filter.*.smudge`
+    // drivers defined in untrusted (repository-local) config, so those external programs are not
+    // executed unless the workspace was explicitly trusted. This relies on `open_repo` forcing the
+    // trust level instead of letting gix re-derive it from `.git` ownership; see the note there.
     if let Some(work_dir) = repo.workdir() {
         let rela_path = file.strip_prefix(work_dir)?;
         let rela_path = gix::path::try_into_bstr(rela_path)?;
@@ -96,10 +94,15 @@ pub fn for_each_changed_file(
 }
 
 fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
-    // `trust_full` is decided by the caller from the workspace-trust state. We force gix to use
-    // the same options for both `Trust::Reduced` and `Trust::Full` to bypass its file-ownership
-    // heuristic — a malicious git config in a user-owned directory must still be treated as
-    // untrusted unless the user explicitly trusted the workspace.
+    // `trust_full` is the workspace-trust decision made by the caller, and it must be the
+    // authority on the gix trust level. gix's own discovery (`discover_*`) ignores a
+    // caller-supplied trust level: it always re-derives trust from `.git` ownership, so a malicious
+    // `.git/config` in a user-owned directory would be opened as `Trust::Full` regardless of our
+    // gate. Worse, the GIT_DIR-environment branch of that discovery panics because it never sets a
+    // trust level at all. So we split discovery from opening: find the repository path ourselves,
+    // then `open_opts(..).with(trust)`, which forces the trust level and skips gix's ownership
+    // check. Under `Trust::Reduced`, gix then refuses to honor untrusted repository-local config
+    // such as `filter.*` smudge/clean drivers.
 
     let trust = if trust_full {
         gix::sec::Trust::Full
@@ -122,24 +125,23 @@ fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
         config,
         ..gix::open::Permissions::default_for_level(trust)
     };
-    let options = gix::open::Options::default().permissions(permissions);
-    let git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options> {
-        full: options.clone(),
-        reduced: options,
-    };
 
-    let open_options = gix::discover::upwards::Options {
+    let discover_options = gix::discover::upwards::Options {
         dot_git_only: true,
         ..Default::default()
     };
+    let (repo_path, _trust_from_ownership) = gix::discover::upwards_opts(path, discover_options)
+        .context("failed to discover git repo")?;
+    let (git_dir, _work_dir) = repo_path.into_repository_and_work_tree_directories();
 
-    Ok(
-        ThreadSafeRepository::discover_with_environment_overrides_opts(
-            path,
-            open_options,
-            git_open_opts_map,
-        )?,
-    )
+    let options = gix::open::Options::default()
+        .permissions(permissions)
+        // `git_dir` is the discovered `.git` directory (or a linked-worktree git dir), so open it
+        // as-is rather than letting gix append `.git` again.
+        .open_path_as_is(true)
+        .with(trust);
+
+    Ok(ThreadSafeRepository::open_opts(git_dir, options)?)
 }
 
 /// Emulates the result of running `git status` from the command line.
