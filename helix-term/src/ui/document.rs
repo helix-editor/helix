@@ -335,6 +335,7 @@ impl<'a> TextRenderer<'a> {
         style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
+        let mut is_tab = false;
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };
         let nnbsp = if is_virtual { " " } else { &self.nnbsp };
@@ -345,6 +346,7 @@ impl<'a> TextRenderer<'a> {
         };
         let grapheme = match grapheme.raw {
             Grapheme::Tab { width } => {
+                is_tab = true;
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
                 &tab[..grapheme_tab_width]
             }
@@ -359,13 +361,18 @@ impl<'a> TextRenderer<'a> {
         let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
-            self.surface.set_grapheme(
-                self.viewport.x + (position.col - self.offset.col) as u16,
-                self.viewport.y + position.row as u16,
-                grapheme,
-                width,
-                style,
-            );
+            let x = self.viewport.x + (position.col - self.offset.col) as u16;
+            let y = self.viewport.y + position.row as u16;
+            if is_tab {
+                // A tab expands to `width` single-column cells; writing them
+                // individually keeps background styles (selection, cursorline)
+                // across the whole tab and avoids the redraw diff clipping
+                // `render-whitespace` pads. A single `set_grapheme` would pack
+                // them into one wide cell and leave the rest unstyled.
+                self.surface.set_tab(x, y, grapheme, style);
+            } else {
+                self.surface.set_grapheme(x, y, grapheme, width, style);
+            }
         } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
             let rect = Rect::new(
