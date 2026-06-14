@@ -1460,6 +1460,7 @@ dependencies = [
  "anyhow",
  "cc",
  "etcetera",
+ "globset",
  "helix-stdx",
  "log",
  "once_cell",

@@ -446,6 +446,8 @@ pub struct WorkspaceTrustConfig {
     /// `[⚠]` indicator is always shown either way; disabling the prompt is for users who would
     /// rather act explicitly via `:workspace-trust` than be interrupted. Defaults to `true`.
     pub prompt: bool,
+    /// Glob patterns whose matching workspaces are implicitly trusted.
+    pub trusted: Vec<String>,
 }
 
 impl Default for WorkspaceTrustConfig {
@@ -453,6 +455,7 @@ impl Default for WorkspaceTrustConfig {
         Self {
             level: ImplicitTrustLevelConfig::default(),
             prompt: true,
+            trusted: Vec::new(),
         }
     }
 }
@@ -469,7 +472,7 @@ pub enum ImplicitTrustLevelConfig {
     #[default]
     Servers,
     /// Trust everything implicitly. Explicit excludes still win.
-    All,
+    Insecure,
 }
 
 impl From<ImplicitTrustLevelConfig> for ImplicitTrustLevel {
@@ -477,7 +480,7 @@ impl From<ImplicitTrustLevelConfig> for ImplicitTrustLevel {
         match v {
             ImplicitTrustLevelConfig::None => ImplicitTrustLevel::None,
             ImplicitTrustLevelConfig::Servers => ImplicitTrustLevel::Servers,
-            ImplicitTrustLevelConfig::All => ImplicitTrustLevel::All,
+            ImplicitTrustLevelConfig::Insecure => ImplicitTrustLevel::Insecure,
         }
     }
 }
@@ -487,6 +490,7 @@ impl From<&WorkspaceTrustConfig> for helix_loader::workspace_trust::Config {
         Self {
             level: v.level.into(),
             prompt: v.prompt,
+            trusted_globs: helix_loader::workspace_trust::build_trusted_globs(&v.trusted),
         }
     }
 }

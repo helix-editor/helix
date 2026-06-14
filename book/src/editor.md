@@ -535,16 +535,26 @@ trigger-length = 4
 Controls implicit workspace trust. See the [workspace
 trust](./workspace-trust.md) chapter for the full feature.
 
-| Key      | Description                                                                                                                                  | Default     |
-| ---      | ---                                                                                                                                          | ---         |
-| `level`  | `"none"`: prompt for every workspace. `"servers"`: trust LSP and DAP launches but still gate local config and git. `"all"`: trust everything. | `"servers"` |
-| `prompt` | Whether opening a file in an untrusted workspace pops a modal. The statusline `[⚠]` indicator is always shown either way.                    | `true`      |
+| Key       | Description                                                              | Default     |
+| ---       | ---                                                                      | ---         |
+| `level`   | The default level of trust for every workspace.                         | `"servers"` |
+| `prompt`  | Whether to show a modal when opening a file in an untrusted workspace.   | `true`      |
+| `trusted` | Glob patterns whose matching workspaces are trusted without a grant.     | `[]`        |
 
 Example:
 
 ```toml
 [editor.workspace-trust]
-# Start language servers automatically; still require :workspace-trust for
-# .helix/config.toml and .helix/languages.toml.
+# Even if `false`, the statusline `[⚠]` indicator is still shown.
+prompt = false
+
+# "none":     prompt for every workspace.
+# "servers":  trust LSP and DAP launches but still gate local config and git;
+#             .helix/config.toml, .helix/languages.toml, etc. need :workspace-trust.
+# "insecure": trust everything (discouraged).
 level = "servers"
+
+# Discouraged: skips .helix/ change detection and trusts anything that lands
+# under a matching path. `~` and environment variables are expanded.
+trusted = ["~/src/github.com/me/*"]
 ```

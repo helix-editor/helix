@@ -139,7 +139,7 @@ impl Config {
         {
             let mut merged = Config::load(Ok(&global_config), local_config)?;
             // editor.workspace-trust is global/user-scope only. Without this override, a
-            // workspace's `.helix/config.toml` could set `level = "all"`; once the user trusted
+            // workspace's `.helix/config.toml` could set `level = "insecure"`; once the user trusted
             // *that* workspace, refresh_config would re-load with the override merged in and from
             // then on every subsequent workspace in the session would be implicitly trusted. Pin
             // the gate's own configuration to the global file.

@@ -319,7 +319,7 @@ pub fn test_editor_config() -> helix_view::editor::Config {
         },
         // Trust everything implicitly so tests don't hit popups.
         workspace_trust: WorkspaceTrustConfig {
-            level: ImplicitTrustLevelConfig::All,
+            level: ImplicitTrustLevelConfig::Insecure,
             ..Default::default()
         },
         ..Default::default()

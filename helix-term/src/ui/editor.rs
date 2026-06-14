@@ -1168,7 +1168,7 @@ impl EditorView {
 /// change something visible at the workspace level.
 fn workspace_trust_indicator_visible(editor: &Editor) -> bool {
     if editor.workspace_trust.implicit_level()
-        == helix_loader::workspace_trust::ImplicitTrustLevel::All
+        == helix_loader::workspace_trust::ImplicitTrustLevel::Insecure
     {
         return false;
     }

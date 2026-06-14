@@ -25,6 +25,17 @@
 //! `hash` is omitted for excluded entries. The "one file per workspace" shape is safe under
 //! multiple concurrent helix instances writing trust for *different* workspaces (different
 //! filenames). Two instances racing to trust the same workspace converge to identical content.
+//!
+//! ## Trusted globs (discouraged)
+//!
+//! `[editor.workspace-trust] trusted = [...]` is an escape hatch for users who keep many repos in a
+//! predictable layout (`~/src/github.com/me/*`) and don't want to grant trust one workspace at a
+//! time. A workspace whose path matches one of these globs is implicitly trusted for everything.
+//!
+//! This is deliberately weaker than an explicit `:workspace-trust` grant and is discouraged: it
+//! bypasses the `.helix/` hash pin (changes to local config are never re-checked) and it trusts any
+//! repository that happens to land under a matching directory, including ones cloned there later. An
+//! explicit [`Self::exclude`] still wins over a matching glob.
 
 use std::{
     collections::HashMap,
@@ -34,6 +45,7 @@ use std::{
     sync::Arc,
 };
 
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use parking_lot::Mutex;
 use sha2::{Digest, Sha256};
 
@@ -93,7 +105,7 @@ pub enum ImplicitTrustLevel {
     #[default]
     Servers,
     /// Everything is trusted unless the workspace is explicitly excluded.
-    All,
+    Insecure,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +113,8 @@ pub struct Config {
     pub level: ImplicitTrustLevel,
     /// Whether to surface the trust modal on `DocumentDidOpen` for untrusted workspaces.
     pub prompt: bool,
+    /// Workspaces whose path matches one of these globs are implicitly trusted.
+    pub trusted_globs: GlobSet,
 }
 
 impl Default for Config {
@@ -108,8 +122,29 @@ impl Default for Config {
         Self {
             level: ImplicitTrustLevel::default(),
             prompt: true,
+            trusted_globs: GlobSet::empty(),
         }
     }
+}
+
+/// Compile workspace-trust glob patterns into a matcher. `~` and environment variables are expanded
+/// in each pattern; invalid patterns are logged and skipped rather than failing the whole config
+/// load. Returns an empty set (matches nothing) when `patterns` is empty or all entries are invalid.
+pub fn build_trusted_globs(patterns: &[String]) -> GlobSet {
+    let mut builder = GlobSetBuilder::new();
+    for pattern in patterns {
+        let expanded = helix_stdx::path::expand(pattern);
+        match Glob::new(&expanded.to_string_lossy()) {
+            Ok(glob) => {
+                builder.add(glob);
+            }
+            Err(err) => log::error!("ignoring invalid workspace-trust glob {pattern:?}: {err}"),
+        }
+    }
+    builder.build().unwrap_or_else(|err| {
+        log::error!("failed to compile workspace-trust globs: {err}");
+        GlobSet::empty()
+    })
 }
 
 /// Runtime workspace-trust state. Cheap to clone (shared `Arc`).
@@ -140,7 +175,7 @@ impl WorkspaceTrust {
     /// build, `hx --health`) where prompting isn't meaningful.
     pub fn fully_trusted() -> Self {
         Self::new(Config {
-            level: ImplicitTrustLevel::All,
+            level: ImplicitTrustLevel::Insecure,
             ..Config::default()
         })
     }
@@ -194,13 +229,17 @@ impl WorkspaceTrust {
     pub fn query(&self, workspace: &Path, query: TrustQuery) -> TrustStatus {
         let raw = self.status(workspace);
 
-        // Explicit excludes always win, regardless of `level`.
+        // Explicit excludes always win.
         if raw == TrustStatus::Excluded {
             return TrustStatus::Excluded;
         }
 
         // Implicit-trust shortcuts only apply once we've ruled out excludes.
-        if self.config.level == ImplicitTrustLevel::All {
+        if self.config.level == ImplicitTrustLevel::Insecure {
+            return TrustStatus::Trusted;
+        }
+        // A config-listed glob grants full implicit trust to the matching workspace.
+        if self.is_glob_trusted(workspace) {
             return TrustStatus::Trusted;
         }
         if self.config.level == ImplicitTrustLevel::Servers
@@ -227,6 +266,11 @@ impl WorkspaceTrust {
         self.query(&workspace, query)
     }
 
+    /// Whether `workspace` matches one of the configured trust globs. Empty glob set never matches.
+    fn is_glob_trusted(&self, workspace: &Path) -> bool {
+        !self.config.trusted_globs.is_empty() && self.config.trusted_globs.is_match(workspace)
+    }
+
     /// Workspace-wide "is this workspace in restricted mode and would running `trust`
     /// change anything visible at the workspace level?" check.
     ///
@@ -234,9 +278,8 @@ impl WorkspaceTrust {
     /// `Untrusted` branch's `has_local_config` snapshot is consistent with the status read). Cheap
     /// on the hot render path after the first query.
     pub fn workspace_restricted(&self, workspace: &Path) -> bool {
-        // `level = "all"` is the "trust system off" setting — the indicator can never reflect
-        // anything actionable in that mode.
-        if self.config.level == ImplicitTrustLevel::All {
+        // If the workspace is fully trusted there's no restrictions.
+        if self.config.level == ImplicitTrustLevel::Insecure || self.is_glob_trusted(workspace) {
             return false;
         }
         let entry = self.entry(workspace);
@@ -683,8 +726,8 @@ mod test {
     }
 
     #[test]
-    fn level_all_does_not_bypass_excluded() {
-        // Regression: under `level = "all"` an exclude entry on disk must still produce
+    fn level_insecure_does_not_bypass_excluded() {
+        // Regression: under `level = "insecure"` an exclude entry on disk must still produce
         // `TrustStatus::Excluded` from `query()`. The old shortcut read only the in-memory cache,
         // so a cold cache silently returned `Trusted`.
         let dir = tempfile::tempdir().unwrap();
@@ -694,18 +737,60 @@ mod test {
         let bootstrap = WorkspaceTrust::new(Config::default());
         bootstrap.exclude(workspace);
 
-        // Fresh state (cold cache) under level=All.
+        // Fresh state (cold cache) under level=Insecure.
         let trust = WorkspaceTrust::new(Config {
-            level: ImplicitTrustLevel::All,
+            level: ImplicitTrustLevel::Insecure,
             ..Config::default()
         });
         assert_eq!(
             trust.query(workspace, TrustQuery::Lsp),
             TrustStatus::Excluded,
-            "level=all must honor disk-persisted excludes even on a cold cache"
+            "level=insecure must honor disk-persisted excludes even on a cold cache"
         );
         assert_eq!(
             trust.query(workspace, TrustQuery::LocalConfig),
+            TrustStatus::Excluded
+        );
+    }
+
+    #[test]
+    fn trusted_glob_grants_full_trust_but_exclude_wins() {
+        let dir = tempfile::tempdir().unwrap();
+        let trusted = dir.path().join("trusted_proj");
+        fs::create_dir_all(&trusted).unwrap();
+
+        let pattern = format!("{}/*", dir.path().display());
+        let trust = WorkspaceTrust::new(Config {
+            level: ImplicitTrustLevel::None,
+            trusted_globs: build_trusted_globs(&[pattern]),
+            ..Config::default()
+        });
+
+        // Matching workspace is fully trusted for every capability, even local config (which
+        // `level = "servers"` would still gate).
+        assert_eq!(
+            trust.query(&trusted, TrustQuery::LocalConfig),
+            TrustStatus::Trusted
+        );
+        assert_eq!(trust.query(&trusted, TrustQuery::Git), TrustStatus::Trusted);
+        assert!(!trust.workspace_restricted(&trusted));
+
+        // A non-matching path (no `dir/*` segment match: it has a deeper component) still trusts
+        // since `other` is directly under `dir`. Use a sibling outside `dir` to confirm no match.
+        let outside = tempfile::tempdir().unwrap();
+        assert_eq!(
+            trust.query(outside.path(), TrustQuery::LocalConfig),
+            TrustStatus::Untrusted
+        );
+
+        // Explicit excludes beat a matching glob.
+        trust.exclude(&trusted);
+        assert_eq!(
+            trust.query(&trusted, TrustQuery::LocalConfig),
+            TrustStatus::Excluded
+        );
+        assert_eq!(
+            trust.query(&trusted, TrustQuery::Lsp),
             TrustStatus::Excluded
         );
     }
