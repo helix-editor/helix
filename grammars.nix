@@ -3,53 +3,65 @@
   lib,
   runCommand,
   includeGrammarIf ? _: true,
-  grammarOverlays ? [],
+  grammarOverlays ? [ ],
   ...
-}: let
-  languagesConfig =
-    builtins.fromTOML (builtins.readFile ./languages.toml);
-  isGitGrammar = grammar:
+}:
+let
+  languagesConfig = builtins.fromTOML (builtins.readFile ./languages.toml);
+
+  isGitGrammar =
+    grammar:
     builtins.hasAttr "source" grammar
     && builtins.hasAttr "git" grammar.source
     && builtins.hasAttr "rev" grammar.source;
+
   isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
-  toGitHubFetcher = url: let
-    match = builtins.match "https://github\\.com/([^/]*)/([^/]*)/?" url;
-  in {
-    owner = builtins.elemAt match 0;
-    repo = builtins.elemAt match 1;
-  };
+
+  toGitHubFetcher =
+    url:
+    let
+      match = builtins.match "https://github\\.com/([^/]*)/([^/]*)/?" url;
+    in
+    {
+      owner = builtins.elemAt match 0;
+      repo = builtins.elemAt match 1;
+    };
+
   # If `use-grammars.only` is set, use only those grammars.
   # If `use-grammars.except` is set, use all other grammars.
   # Otherwise use all grammars.
-  useGrammar = grammar:
-    if languagesConfig ? use-grammars.only
-    then builtins.elem grammar.name languagesConfig.use-grammars.only
-    else if languagesConfig ? use-grammars.except
-    then !(builtins.elem grammar.name languagesConfig.use-grammars.except)
-    else true;
+  useGrammar =
+    grammar:
+    if languagesConfig ? use-grammars.only then
+      builtins.elem grammar.name languagesConfig.use-grammars.only
+    else if languagesConfig ? use-grammars.except then
+      !(builtins.elem grammar.name languagesConfig.use-grammars.except)
+    else
+      true;
+
   grammarsToUse = builtins.filter useGrammar languagesConfig.grammar;
+
   gitGrammars = builtins.filter isGitGrammar grammarsToUse;
-  buildGrammar = grammar: let
-    gh = toGitHubFetcher grammar.source.git;
-    sourceGit = builtins.fetchTree {
-      type = "git";
-      url = grammar.source.git;
-      rev = grammar.source.rev;
-      ref = grammar.source.ref or "HEAD";
-      shallow = true;
-    };
-    sourceGitHub = builtins.fetchTree {
-      type = "github";
-      owner = gh.owner;
-      repo = gh.repo;
-      inherit (grammar.source) rev;
-    };
-    source =
-      if isGitHubGrammar grammar
-      then sourceGitHub
-      else sourceGit;
-  in
+
+  buildGrammar =
+    grammar:
+    let
+      gh = toGitHubFetcher grammar.source.git;
+      sourceGit = builtins.fetchTree {
+        type = "git";
+        url = grammar.source.git;
+        rev = grammar.source.rev;
+        ref = grammar.source.ref or "HEAD";
+        shallow = true;
+      };
+      sourceGitHub = builtins.fetchTree {
+        type = "github";
+        owner = gh.owner;
+        repo = gh.repo;
+        inherit (grammar.source) rev;
+      };
+      source = if isGitHubGrammar grammar then sourceGitHub else sourceGit;
+    in
     stdenv.mkDerivation {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
 
@@ -58,9 +70,7 @@
 
       src = source;
       sourceRoot =
-        if builtins.hasAttr "subpath" grammar.source
-        then "source/${grammar.source.subpath}"
-        else "source";
+        if builtins.hasAttr "subpath" grammar.source then "source/${grammar.source.subpath}" else "source";
 
       dontConfigure = true;
 
@@ -104,25 +114,28 @@
         runHook postFixup
       '';
     };
+
   grammarsToBuild = builtins.filter includeGrammarIf gitGrammars;
-  builtGrammars =
-    builtins.map (grammar: {
-      inherit (grammar) name;
-      value = buildGrammar grammar;
-    })
-    grammarsToBuild;
-  extensibleGrammars =
-    lib.makeExtensible (self: builtins.listToAttrs builtGrammars);
-  overlaidGrammars =
-    lib.pipe extensibleGrammars
-    (builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays);
+
+  builtGrammars = builtins.map (grammar: {
+    inherit (grammar) name;
+    value = buildGrammar grammar;
+  }) grammarsToBuild;
+
+  extensibleGrammars = lib.makeExtensible (self: builtins.listToAttrs builtGrammars);
+
+  overlaidGrammars = lib.pipe extensibleGrammars (
+    builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays
+  );
+
   sharedLibExtension = stdenv.hostPlatform.extensions.sharedLibrary;
-  grammarLinks =
-    lib.mapAttrsToList
-    (name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}")
-    (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
+
+  grammarLinks = lib.mapAttrsToList (
+    name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}"
+  ) (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
+
 in
-  runCommand "consolidated-helix-grammars" {} ''
-    mkdir -p $out
-    ${builtins.concatStringsSep "\n" grammarLinks}
-  ''
+runCommand "consolidated-helix-grammars" { } ''
+  mkdir -p $out
+  ${builtins.concatStringsSep "\n" grammarLinks}
+''
