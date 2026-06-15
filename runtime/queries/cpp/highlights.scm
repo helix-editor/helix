@@ -115,7 +115,7 @@
   "<=>"
   "[]"
   "()"
-  "^^" ; C++26 reflection operator (reflect_expression)
+  "\^\^" ; C++26 reflection operator (reflect_expression)
 ] @operator
 
 ; C++26 splice brackets `[: reflection :]` (splice_specifier / splice_type_specifier).
