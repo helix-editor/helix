@@ -461,8 +461,7 @@ fn shebang_interpreter(text: RopeSlice) -> Option<RopeSlice> {
     use helix_stdx::rope::Regex;
     use once_cell::sync::Lazy;
 
-    const NIX_SHELL: &str =
-        r"(?m)^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?nix-shell(?:\s+[^\n]*)?\s-i\s+([^\s]+)";
+    const NIX_SHELL: &str = r"(?m)^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?(?:nix-shell(?:\s+[^\n]*)?\s-i|nix(?:\s+[^\n]*)?\s(?:--command|-c))\s+([^\s]+)";
     const SHEBANG: &str = r"^#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
 
     static NIX_SHELL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(NIX_SHELL).unwrap());
@@ -1251,6 +1250,18 @@ mod test {
             Some("nu"),
         );
         assert_shebang_interpreter("#!nix-shell -p bash -i bash\n", Some("bash"));
+        assert_shebang_interpreter(
+            "#!/usr/bin/env nix\n#! nix shell github:tomberek/-#python3With.prettytable --command python\n",
+            Some("python"),
+        );
+        assert_shebang_interpreter(
+            "#!/usr/bin/env nix\n#! nix shell github:tomberek/-#perlWith.HTMLTokeParserSimple.LWP -c perl -x\n",
+            Some("perl"),
+        );
+        assert_shebang_interpreter(
+            "#!/usr/bin/env nix\n#! nix shell --impure --expr ``\n#! nix with (import (builtins.getFlake ''nixpkgs'') {});\n#! nix terraform.withPlugins (plugins: [ plugins.openstack ])\n#! nix ``\n#! nix --command bash\n",
+            Some("bash"),
+        );
     }
 
     #[test]
