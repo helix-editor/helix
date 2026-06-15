@@ -1,141 +1,77 @@
 {
   stdenv,
   lib,
-  runCommand,
+  linkFarm,
   includeGrammarIf ? _: true,
   grammarOverlays ? [ ],
-  ...
+  callPackage,
 }:
 let
-  languagesConfig = builtins.fromTOML (builtins.readFile ./languages.toml);
+  # Load the TOML
+  languagesConfig = lib.importTOML ./languages.toml;
 
-  isGitGrammar =
-    grammar:
-    builtins.hasAttr "source" grammar
-    && builtins.hasAttr "git" grammar.source
-    && builtins.hasAttr "rev" grammar.source;
+  # All grammars are git grammar, this is future-proofing
+  isGitGrammar = grammar: grammar ? source.git && grammar ? source.rev;
 
-  isGitHubGrammar = grammar: lib.hasPrefix "https://github.com" grammar.source.git;
-
-  toGitHubFetcher =
-    url:
-    let
-      match = builtins.match "https://github\\.com/([^/]*)/([^/]*)/?" url;
-    in
-    {
-      owner = builtins.elemAt match 0;
-      repo = builtins.elemAt match 1;
-    };
+  # grammar builder
+  buildGrammar = callPackage ./grammar-build.nix { };
 
   # If `use-grammars.only` is set, use only those grammars.
   # If `use-grammars.except` is set, use all other grammars.
   # Otherwise use all grammars.
   useGrammar =
+    let
+      hasOnly = languagesConfig ? use-grammars.only;
+      hasExcept = languagesConfig ? use-grammars.except;
+    in
     grammar:
-    if languagesConfig ? use-grammars.only then
+    if hasOnly then
       builtins.elem grammar.name languagesConfig.use-grammars.only
-    else if languagesConfig ? use-grammars.except then
+    else if hasExcept then
       !(builtins.elem grammar.name languagesConfig.use-grammars.except)
     else
       true;
 
-  grammarsToUse = builtins.filter useGrammar languagesConfig.grammar;
+  # Filter the grammars to the ones that we must build
+  grammarsToBuild = builtins.filter (
+    g: (useGrammar g) && (isGitGrammar g) && (includeGrammarIf g)
+  ) languagesConfig.grammar;
 
-  gitGrammars = builtins.filter isGitGrammar grammarsToUse;
-
-  buildGrammar =
-    grammar:
-    let
-      gh = toGitHubFetcher grammar.source.git;
-      sourceGit = builtins.fetchTree {
-        type = "git";
-        url = grammar.source.git;
-        rev = grammar.source.rev;
-        ref = grammar.source.ref or "HEAD";
-        shallow = true;
+  # Build an attrset of grammars that looks like:
+  # {
+  #    ${name} = built-grammar;
+  # }
+  builtGrammars = lib.foldr (
+    grammar: attrset:
+    attrset
+    // {
+      ${grammar.name} = buildGrammar {
+        inherit (grammar) name source;
       };
-      sourceGitHub = builtins.fetchTree {
-        type = "github";
-        owner = gh.owner;
-        repo = gh.repo;
-        inherit (grammar.source) rev;
-      };
-      source = if isGitHubGrammar grammar then sourceGitHub else sourceGit;
-    in
-    stdenv.mkDerivation {
-      # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
+    }
+  ) { } grammarsToBuild;
 
-      pname = "helix-tree-sitter-${grammar.name}";
-      version = grammar.source.rev;
+  # Combine all overlays to one
+  composedOverlays = lib.composeManyExtensions grammarOverlays;
 
-      src = source;
-      sourceRoot =
-        if builtins.hasAttr "subpath" grammar.source then "source/${grammar.source.subpath}" else "source";
+  # Apply the overlays
+  extensibleGrammars = lib.pipe builtGrammars [
+    # We need to pretend this is a function
+    lib.const
+    # Extend the grammars with the overlays
+    (lib.extends composedOverlays)
+    # Make the overall pkgset extensible
+    lib.makeExtensible
+  ];
 
-      dontConfigure = true;
-
-      FLAGS = [
-        "-Isrc"
-        "-g"
-        "-O3"
-        "-fPIC"
-        "-fno-exceptions"
-        "-Wl,-z,relro,-z,now"
-      ];
-
-      SHARED_LIB = grammar.name + stdenv.hostPlatform.extensions.sharedLibrary;
-
-      buildPhase = ''
-        runHook preBuild
-
-        if [[ -e src/scanner.cc ]]; then
-          $CXX -c src/scanner.cc -o scanner.o $FLAGS
-        elif [[ -e src/scanner.c ]]; then
-          $CC -c src/scanner.c -o scanner.o $FLAGS
-        fi
-
-        $CC -c src/parser.c -o parser.o $FLAGS
-        $CXX -shared -o $SHARED_LIB *.o
-
-        runHook postBuild
-      '';
-
-      installPhase = ''
-        runHook preInstall
-        mkdir $out
-        mv $SHARED_LIB $out/
-        runHook postInstall
-      '';
-
-      # Strip failed on darwin: strip: error: symbols referenced by indirect symbol table entries that can't be stripped
-      fixupPhase = lib.optionalString stdenv.isLinux ''
-        runHook preFixup
-        $STRIP $out/$SHARED_LIB
-        runHook postFixup
-      '';
-    };
-
-  grammarsToBuild = builtins.filter includeGrammarIf gitGrammars;
-
-  builtGrammars = builtins.map (grammar: {
-    inherit (grammar) name;
-    value = buildGrammar grammar;
-  }) grammarsToBuild;
-
-  extensibleGrammars = lib.makeExtensible (self: builtins.listToAttrs builtGrammars);
-
-  overlaidGrammars = lib.pipe extensibleGrammars (
-    builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays
-  );
-
-  sharedLibExtension = stdenv.hostPlatform.extensions.sharedLibrary;
-
-  grammarLinks = lib.mapAttrsToList (
-    name: artifact: "ln -s ${artifact}/${name}${sharedLibExtension} $out/${name}${sharedLibExtension}"
-  ) (lib.filterAttrs (n: v: lib.isDerivation v) overlaidGrammars);
-
+  extension = stdenv.hostPlatform.extensions.sharedLibrary;
 in
-runCommand "consolidated-helix-grammars" { } ''
-  mkdir -p $out
-  ${builtins.concatStringsSep "\n" grammarLinks}
-''
+# The attrset has some functions since it was extensible,
+# so first filter those out.
+# Then we must append the shared library extension to all the
+# name so the symlinks have the correct name
+linkFarm "consolidated-helix-grammars" (
+  lib.mapAttrs' (name: lib.nameValuePair (name + extension)) (
+    lib.filterAttrs (lib.const lib.isDerivation) extensibleGrammars
+  )
+)
