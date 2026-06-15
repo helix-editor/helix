@@ -340,13 +340,6 @@ language-servers = [ "rust-analyzer" ]
 indent = { tab-width = 4, unit = "    " }
 persistent-diagnostic-sources = ["rustc", "clippy"]
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-'`' = '`'
-
 [language.debugger]
 name = "lldb-dap"
 transport = "stdio"
@@ -567,13 +560,6 @@ comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "janet-format" }
 grammar = "janet-simple"
-
-[language.auto-pairs]
-'"' = '"'
-'(' = ')'
-'[' = ']'
-'{' = '}'
-"`" = "`"
 
 [[grammar]]
 name = "janet-simple"
@@ -1115,14 +1101,6 @@ language-servers = [ "vscode-html-language-server", "superhtml" ]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-"<" = ">"
-
 [[grammar]]
 name = "html"
 source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "73a3947324f6efddf9e17c0ea58d454843590cc0" }
@@ -1134,14 +1112,6 @@ injection-regex = "htmldjango"
 language-servers = ["djlsp", "vscode-html-language-server", "superhtml"]
 file-types = []
 roots = ["manage.py"]
-
-[language.auto-pairs]
-'"' = '"'
-'(' = ')'
-'[' = ']'
-'{' = '}'
-'%' = '%'
-'<' = '>'
 
 [[grammar]]
 name = "htmldjango"
@@ -1172,12 +1142,6 @@ shebangs = []
 comment-token = "#"
 language-servers = [ "nls" ]
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
 
 [[grammar]]
 name = "nickel"
@@ -1443,13 +1407,6 @@ indent = { tab-width = 2, unit = "  " }
 rulers = [101]
 text-width = 100
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-'⟨' = '⟩'
-
 [[grammar]]
 name = "lean"
 source = { git = "https://github.com/Julian/tree-sitter-lean", rev = "d98426109258b266e1e92358c5f11716d2e8f638" }
@@ -1544,12 +1501,6 @@ block-comment-tokens = { start = "(*", end = "*)" }
 language-servers = [ "ocamllsp" ]
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-
 [[grammar]]
 name = "ocaml"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "59e2b9f63526db8b95cf59dde6b2402ec2e48b52", subpath = "grammars/ocaml" }
@@ -1563,12 +1514,6 @@ block-comment-tokens = { start = "(*", end = "*)" }
 comment-token = "(**)"
 language-servers = [ "ocamllsp" ]
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
 
 [[grammar]]
 name = "ocaml-interface"
@@ -1584,12 +1529,6 @@ indent = { tab-width = 1, unit = " " }
 grammar = "scheme"
 auto-format = true
 formatter = { command = "dune", args = ["format-dune-file"] }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
 
 [[language]]
 name = "lua"
@@ -1845,11 +1784,6 @@ language-servers = ["ts_query_ls"]
 grammar = "query"
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'[' = ']'
-'"' = '"'
-
 [[grammar]]
 name = "query"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-query", rev = "a6674e279b14958625d7a530cabe06119c7a1532" }
@@ -1982,12 +1916,6 @@ grammar = "commonlisp"
 name = "commonlisp"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp", rev = "32323509b3d9fe96607d151c2da2c9009eb13a2f" }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-
 [[language]]
 name = "comment"
 scope = "scope.comment"
@@ -2090,17 +2018,6 @@ language-servers = [ "marksman", "markdown-oxide", "rumdl" ]
 indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 word-completion.trigger-length = 4
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-'`' = '`'
-'‘' = '’'
-'«' = '»'
-'“' = '”'
 
 [[grammar]]
 name = "markdown"
@@ -2802,12 +2719,6 @@ comment-token = ";"
 block-comment-tokens = { start = "#|", end = "|#" }
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-
 [[grammar]]
 name = "scheme"
 source = { git = "https://github.com/6cdh/tree-sitter-scheme", rev = "c6cb7c7d7a04b3f5d999c28e2e9c0c31b2d50ece" }
@@ -3107,12 +3018,6 @@ injection-regex = "sml"
 file-types = ["sml"]
 block-comment-tokens = { start = "(*", end = "*)" }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-
 [[grammar]]
 name = "sml"
 source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554614520d4a0706b34dc0c317c6b608" }
@@ -3321,14 +3226,6 @@ file-types = [
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-"<" = ">"
-
 [[grammar]]
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
@@ -3340,13 +3237,6 @@ injection-regex = "dtd"
 file-types = ["dtd", "ent"]
 indent = {tab-width = 2, unit = "  "}
 block-comment-tokens = { start = "<!--", end = "-->" }
-
-[language.auto-pairs]
-'(' = ')'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-'<' = '>'
 
 [[grammar]]
 name = "dtd"
@@ -3360,14 +3250,6 @@ file-types = ["wit"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-"<" = ">"
 
 [[grammar]]
 name = "wit"
@@ -3571,14 +3453,6 @@ indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "<!--", end = "-->" }
 grammar = "xml"
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-"<" = ">"
-
 [[language]]
 name = "pem"
 scope = "source.pem"
@@ -3767,13 +3641,6 @@ block-comment-tokens = { start = "#[", end = "]#" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "nimlangserver" ]
 
-[language.auto-pairs]
-'(' = ')'
-'[' = ']'
-'"' = '"'
-"'" = "'"
-'{' = '}'
-
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/alaviss/tree-sitter-nim", rev = "c5f0ce3b65222f5dbb1a12f9fe894524881ad590" }
@@ -3926,13 +3793,6 @@ block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = ["tinymist"]
 indent = { tab-width = 2, unit = "  " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'$' = '$'
-'"' = '"'
-
 [[grammar]]
 name = "typst"
 source = { git = "https://github.com/uben0/tree-sitter-typst", rev = "13863ddcbaa7b68ee6221cea2e3143415e64aea4" }
@@ -4053,13 +3913,6 @@ auto-format = false
 comment-token = "--"
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-'`' = '`'
-
 [[grammar]]
 name = "unison"
 source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "3c97db76d3cdbd002dfba493620c2d5df2fd6fa9" }
@@ -4105,13 +3958,6 @@ comment-token = "--"
 # the agda language server is of questionable functionality.
 auto-format = false
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'"' = '"'
-"'" = "'"
-'{' = '}'
-'(' = ')'
-'[' = ']'
 
 # [language.debugger]
 # ?? can this be used for proof assistant support? explore
@@ -4226,12 +4072,6 @@ file-types = ["tact"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs]
-'"' = '"'
-'{' = '}'
-'(' = ')'
-'<' = '>'
-
 [[grammar]]
 name = "tact"
 source = { git = "https://github.com/tact-lang/tree-sitter-tact", rev = "ec57ab29c86d632639726631fb2bb178d23e1c91" }
@@ -4269,12 +4109,6 @@ injection-regex = "fidl"
 file-types = ["fidl"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
-
-[language.auto-pairs]
-'"' = '"'
-'{' = '}'
-'(' = ')'
-'<' = '>'
 
 [[grammar]]
 name = "fidl"
@@ -4315,12 +4149,6 @@ comment-token = ";"
 indent = { tab-width = 1, unit = " " }
 grammar = "scheme"
 language-servers = ["hyuga"]
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
 
 [[language]]
 name = "hyprlang"
@@ -4403,13 +4231,6 @@ grammar = "glimmer"
 language-servers = ["ember-language-server"]
 formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
 
-[language.auto-pairs]
-'"' = '"'
-'{' = '}'
-'(' = ')'
-'<' = '>'
-"'" = "'"
-
 [[grammar]]
 name = "glimmer"
 source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "88af85568bde3b91acb5d4c352ed094d0c1f9d84" }
@@ -4425,12 +4246,6 @@ block-comment-tokens = [
   { start = "/**", end = "*/" },
 ]
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'"' = '"'
-'{' = '}'
-'(' = ')'
-'<' = '>'
 
 [[grammar]]
 name = "ohm"
@@ -4460,11 +4275,6 @@ file-types = ["adl"]
 roots = []
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
-
-[language.auto-pairs]
-'"' = '"'
-'{' = '}'
-'<' = '>'
 
 [[grammar]]
 name = "adl"
@@ -4516,12 +4326,6 @@ block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["pest-language-server"]
 
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-
 [[grammar]]
 name = "pest"
 source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "c19629a0c50e6ca2485c3b154b1dde841a08d169" }
@@ -4531,10 +4335,6 @@ name = "elisp"
 scope = "source.elisp"
 file-types = ["el"]
 comment-tokens = [";"]
-
-[language.auto-pairs]
-'(' = ')'
-'"' = '"'
 
 [[grammar]]
 name = "elisp"
@@ -4557,13 +4357,6 @@ language-servers = [
 indent = { tab-width = 2, unit = "  " }
 grammar = "glimmer-javascript"
 
-[language.auto-pairs]
-'<' = '>'
-"'" = "'"
-"{" = "}"
-"(" = ")"
-'"' = '"'
-
 [[grammar]]
 name = "glimmer-javascript"
 source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer-javascript", rev = "d9cf7a2f1dad3c6b660148eaf77e955d418fdb8b" }
@@ -4584,13 +4377,6 @@ language-servers = [
 ]
 indent = { tab-width = 2, unit = "  " }
 grammar = "glimmer-typescript"
-
-[language.auto-pairs]
-'<' = '>'
-"'" = "'"
-"{" = "}"
-"(" = ")"
-'"' = '"'
 
 [[grammar]]
 name = "glimmer-typescript"
@@ -4689,13 +4475,6 @@ block-comment-tokens = [
 ]
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -5250,13 +5029,6 @@ file-types = ["bovex", "bibvex"]
 comment-tokens = []
 block-comment-tokens = [{start = "(*", end = "*)"}, {start = "[*", end = "*]"}]
 indent = {tab-width = 2, unit = "  "}
-[language.auto-pairs]
-'(' = ')'
-'[' = ']'
-'{' = '}'
-'"' = '"'
-'“' = '”'
-'‘' = '’'
 
 [[language]]
 name = "haxe"
