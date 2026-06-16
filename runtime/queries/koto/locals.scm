@@ -9,7 +9,7 @@
   (identifier) @local.definition.variable.parameter)
 
 (arg
-  (variable (identifier)) @local.definition.parameter)
+  (variable (identifier)) @local.definition.variable.parameter)
 
 (import_item
   (identifier) @local.definition.namespace)

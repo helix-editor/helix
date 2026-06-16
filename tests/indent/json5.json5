@@ -1,0 +1,10 @@
+{
+    name: "test",
+    nested: {
+        value: 1,
+    },
+    list: [
+        1,
+        2,
+    ],
+}

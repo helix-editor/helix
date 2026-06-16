@@ -15,7 +15,7 @@
 
 (primary_constr_args (_) @variable.parameter)
 
-((identifier_pattern (long_identifier (identifier) @special))
+((identifier_pattern (long_identifier_or_op (identifier) @special))
  (#match? @special "^\_.*"))
 
 ((long_identifier
@@ -30,10 +30,13 @@
 
 (type_name type_name: (_) @type)
 
+; The generic `type` node was split into concrete type nodes; colour named
+; type references (simple_type) and the head of a generic application.
 [
- (type)
+ (simple_type)
  (atomic_type)
 ] @type
+(generic_type (long_identifier) @type)
 
 (member_signature
   .
@@ -112,7 +115,7 @@
       (long_identifier (identifier)* (identifier) @function)
       (identifier) @function
     ])
-    (typed_expression . (long_identifier_or_op (long_identifier (identifier)* . (identifier) @function.call)))
+    (typed_expression . (long_identifier_or_op (long_identifier (identifier)* . (identifier) @function)))
     (dot_expression base: (_) @variable.other.member field: (_) @function)
   ] @function)
 
@@ -300,8 +303,6 @@
   "in"
   "do"
   "do!"
-  "event"
-  "field"
   "fun"
   "function"
   "get"
@@ -309,8 +310,6 @@
   "lazy"
   "new"
   "of"
-  "param"
-  "property"
   "struct"
   "val"
   "module"
@@ -324,7 +323,7 @@
 
 (match_expression "with" @keyword.control.conditional)
 
-((type
+((simple_type
   (long_identifier (identifier) @type.builtin))
  (#any-of? @type.builtin "bool" "byte" "sbyte" "int16" "uint16" "int" "uint" "int64" "uint64" "nativeint" "unativeint" "decimal" "float" "double" "float32" "single" "char" "string" "unit"))
 

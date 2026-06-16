@@ -33,7 +33,7 @@
 (rem_statement) @comment
 
 ; Function calls
-(function_call) @function.call
+(function_call) @function
 
 ; Numbers
 (line_number) @constant.numeric

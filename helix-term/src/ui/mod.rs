@@ -99,6 +99,7 @@ pub fn raw_regex_prompt(
 ) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
+    let view_id = view.id;
     let snapshot = doc.selection(view.id).clone();
     let offset_snapshot = doc.view_offset(view.id);
     let config = cx.editor.config();
@@ -110,7 +111,8 @@ pub fn raw_regex_prompt(
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
             match event {
                 PromptEvent::Abort => {
-                    let (view, doc) = current!(cx.editor);
+                    let doc = doc_mut!(cx.editor, &doc_id);
+                    let view = view_mut!(cx.editor, view_id);
                     doc.set_selection(view.id, snapshot.clone());
                     doc.set_view_offset(view.id, offset_snapshot);
                 }
@@ -137,14 +139,15 @@ pub fn raw_regex_prompt(
                         .build(input)
                     {
                         Ok(regex) => {
-                            let (view, doc) = current!(cx.editor);
+                            let doc = doc_mut!(cx.editor, &doc_id);
+                            let view = view_mut!(cx.editor, view_id);
 
                             // revert state to what it was before the last update
                             doc.set_selection(view.id, snapshot.clone());
 
                             if event == PromptEvent::Validate {
                                 // Equivalent to push_jump to store selection just before jump
-                                view.jumps.push((doc_id, snapshot.clone()));
+                                view.push_jump(doc, (doc_id, snapshot.clone()));
                             }
 
                             fun(cx, regex, input, event);
@@ -153,7 +156,8 @@ pub fn raw_regex_prompt(
                             view.ensure_cursor_in_view(doc, config.scrolloff);
                         }
                         Err(err) => {
-                            let (view, doc) = current!(cx.editor);
+                            let doc = doc_mut!(cx.editor, &doc_id);
+                            let view = view_mut!(cx.editor, view_id);
                             doc.set_selection(view.id, snapshot.clone());
                             doc.set_view_offset(view.id, offset_snapshot);
 

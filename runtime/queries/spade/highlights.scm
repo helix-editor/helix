@@ -67,7 +67,7 @@
 
 [
   "use"
-] @keyword.import
+] @keyword.control.import
 
 [
   "gen"
