@@ -14,7 +14,8 @@
         (#eq? @_prop "template")
         value: [
           (string) @injection.content
-          (template_string) @injection.content
+          (template_string (string_fragment) @injection.content)
+          (string_fragment) @injection.content
         ])))
   (#set! injection.language "angular"))
 
@@ -34,10 +35,10 @@
         (#eq? @_prop "styles")
         value: [
           (string) @injection.content
-          (template_string) @injection.content
-          (array
-            (string) @injection.content)
-          (array
-            (template_string) @injection.content)
+          (template_string (string_fragment) @injection.content)
+          (string_fragment) @injection.content
+          (array (template_string (string_fragment) @injection.content))
+          (array (string) @injection.content)
         ])))
   (#set! injection.language "css"))
+
