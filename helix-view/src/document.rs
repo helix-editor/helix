@@ -2285,6 +2285,39 @@ impl Document {
         });
     }
 
+    /// Replaces `provider`'s diagnostics that fall within any of `regions` with `diagnostics`,
+    /// leaving every other diagnostic untouched, including `provider`'s own diagnostics that lie
+    /// outside `regions`.
+    ///
+    /// This is the incremental counterpart to [`Document::replace_diagnostics`]: when only bounded
+    /// regions of the document have been re-examined (e.g. the areas around an edit), the caller
+    /// re-checks those regions and splices the results in, rather than recomputing the whole
+    /// document. Diagnostics outside `regions` keep the positions they were edit-mapped to.
+    ///
+    /// `regions` are half-open char ranges in the current document text; `diagnostics` are expected
+    /// to fall within them. A diagnostic is considered inside a region when their ranges overlap.
+    pub fn splice_diagnostics(
+        &mut self,
+        diagnostics: impl IntoIterator<Item = Diagnostic>,
+        regions: &[std::ops::Range<usize>],
+        provider: &DiagnosticProvider,
+    ) {
+        self.diagnostics.retain(|d| {
+            &d.provider != provider
+                || !regions
+                    .iter()
+                    .any(|region| d.range.start < region.end && region.start < d.range.end)
+        });
+        self.diagnostics.extend(diagnostics);
+        self.diagnostics.sort_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.provider.clone(),
+            )
+        });
+    }
+
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
     pub fn clear_diagnostics_for_language_server(&mut self, id: LanguageServerId) {
         self.diagnostics
