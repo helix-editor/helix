@@ -21,7 +21,7 @@ use globset::{GlobBuilder, GlobMatcher};
 
 use crate::{
     indent::{IndentStyle, MAX_INDENT},
-    LineEnding,
+    LineEnding, SpellingLanguage,
 };
 
 /// Configuration declared for a path in `.editorconfig` files.
@@ -31,7 +31,7 @@ pub struct EditorConfig {
     pub tab_width: Option<NonZeroU8>,
     pub line_ending: Option<LineEnding>,
     pub encoding: Option<&'static Encoding>,
-    // pub spelling_language: Option<SpellingLanguage>,
+    pub spelling_language: Option<SpellingLanguage>,
     pub trim_trailing_whitespace: Option<bool>,
     pub insert_final_newline: Option<bool>,
     pub max_line_length: Option<NonZeroU16>,
@@ -144,6 +144,7 @@ impl EditorConfig {
             "utf-16be" => Some(encoding_rs::UTF_16BE),
             _ => None,
         });
+        let spelling_language = pairs.get("spelling_language").and_then(|s| s.parse().ok());
         let trim_trailing_whitespace =
             pairs
                 .get("trim_trailing_whitespace")
@@ -170,6 +171,7 @@ impl EditorConfig {
             tab_width,
             line_ending,
             encoding,
+            spelling_language,
             trim_trailing_whitespace,
             insert_final_newline,
             max_line_length,

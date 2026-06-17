@@ -50,7 +50,7 @@ use helix_core::{
         self,
         config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     },
-    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, SpellingLanguage, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap::{self as dap, registry::DebugAdapterId};
 use helix_lsp::lsp;
@@ -1343,6 +1343,9 @@ pub struct Editor {
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
     pub workspace_trust: WorkspaceTrust,
+
+    /// Loaded spellchecking dictionaries keyed by language.
+    pub dictionaries: HashMap<SpellingLanguage, Arc<parking_lot::RwLock<crate::Dictionary>>>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1468,6 +1471,7 @@ impl Editor {
             cursor_cache: CursorCache::default(),
             dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
             workspace_trust,
+            dictionaries: HashMap::new(),
         }
     }
 
