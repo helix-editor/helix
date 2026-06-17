@@ -13,6 +13,7 @@ use super::{menu::Item, Menu, PromptEvent, Text};
 pub struct Select<T: Item> {
     message: Text,
     options: Menu<T>,
+    id: Option<&'static str>,
 }
 
 impl<T: Item> Select<T> {
@@ -38,6 +39,18 @@ impl<T: Item> Select<T> {
         Self {
             message,
             options: menu,
+            id: None,
+        }
+    }
+
+    pub fn with_id(self, id: &'static str) -> Self {
+        let Self {
+            message, options, ..
+        } = self;
+        Self {
+            message,
+            options: options.close_by_id(id),
+            id: Some(id),
         }
     }
 }
@@ -98,5 +111,9 @@ impl<T: Item> Component for Select<T> {
         // Options menu
         let menu_area = area.clip_top(message_height + 2);
         self.options.render(menu_area, surface, cx);
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        self.id
     }
 }

@@ -1126,6 +1126,7 @@ impl Application {
                     }
                     Ok(MethodCall::ShowMessageRequest(params)) => {
                         if let Some(actions) = params.actions.filter(|a| !a.is_empty()) {
+                            let select_id = "lsp-show-message-request";
                             let id = id.clone();
                             let select = ui::Select::new(
                                 params.message,
@@ -1150,9 +1151,9 @@ impl Application {
                                         }
                                     }
                                 },
-                            );
-                            self.compositor
-                                .replace_or_push("lsp-show-message-request", select);
+                            )
+                            .with_id(select_id);
+                            self.compositor.replace_or_push(select_id, select);
                             // Avoid sending a reply. The `Select` callback above sends the reply.
                             return;
                         } else {

@@ -36,6 +36,7 @@ pub struct Menu<T: Item> {
     viewport: (u16, u16),
     recalculate: bool,
     auto_close: bool,
+    close_id: Option<&'static str>,
 }
 
 impl<T: Item> Menu<T> {
@@ -61,6 +62,7 @@ impl<T: Item> Menu<T> {
             viewport: (0, 0),
             recalculate: true,
             auto_close: false,
+            close_id: None,
         }
     }
 
@@ -131,6 +133,11 @@ impl<T: Item> Menu<T> {
 
     pub fn auto_close(mut self, auto_close: bool) -> Self {
         self.auto_close = auto_close;
+        self
+    }
+
+    pub fn close_by_id(mut self, id: &'static str) -> Self {
+        self.close_id = Some(id);
         self
     }
 
@@ -241,9 +248,14 @@ impl<T: Item + 'static> Component for Menu<T> {
             _ => return EventResult::Ignored(None),
         };
 
-        let close_fn: Option<Callback> = Some(Box::new(|compositor: &mut Compositor, _| {
+        let close_id = self.close_id;
+        let close_fn: Option<Callback> = Some(Box::new(move |compositor: &mut Compositor, _| {
             // remove the layer
-            compositor.pop();
+            if let Some(id) = close_id {
+                compositor.remove(id);
+            } else {
+                compositor.pop();
+            }
         }));
 
         // Ignore tab key when supertab is turned on in order not to interfere
