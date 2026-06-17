@@ -237,6 +237,11 @@ fn request_document_diagnostics_for_language_severs(
                         retry_language_servers.insert(server_id);
                     }
                 }
+                // Pull diagnostics are only requested from language servers, so non-LSP
+                // providers never reach this path.
+                Some(Some((Err(err), _, _))) => {
+                    log::error!("Pull diagnostic request failed: {err}");
+                }
                 Some(None) => break,
                 // The request was cancelled.
                 None => return,
