@@ -134,6 +134,7 @@ fn jump_to_position(
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
+    let scrolloff = editor.config().scrolloff;
     let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
@@ -157,6 +158,7 @@ fn jump_to_position(
     if action.align_view(view, doc.id()) {
         align_view(doc, view, Align::Center);
     }
+    view.ensure_cursor_in_view(doc, scrolloff);
 }
 
 fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
