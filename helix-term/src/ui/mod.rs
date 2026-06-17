@@ -32,10 +32,9 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
-use tui::text::{Span, Spans};
-
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
+use tui::text::{Span, Spans};
 
 struct Utf8PathBuf {
     path: String,
@@ -255,7 +254,23 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
                 return None;
             }
             Some(entry.into_path())
-        });
+        })
+        .peekable();
+
+    let mut files: Box<dyn Iterator<Item = PathBuf> + Send> =
+        if config.file_picker.git_ignore && files.peek().is_none() {
+            let tracked_root = root.clone();
+            Box::new(
+                editor
+                    .diff_providers
+                    .tracked_files(&root)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(move |path| path.starts_with(&tracked_root) && path.is_file()),
+            )
+        } else {
+            Box::new(files)
+        };
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
     let columns = [PickerColumn::new(
