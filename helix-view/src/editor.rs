@@ -205,6 +205,8 @@ pub struct FilePickerConfig {
     /// WalkBuilder options
     /// Maximum Depth to recurse directories in file picker and global search. Defaults to `None`.
     pub max_depth: Option<usize>,
+    /// Where to render the preview pane relative to the list of matches. Defaults to `right`.
+    pub preview_position: PickerPreviewPosition,
 }
 
 impl Default for FilePickerConfig {
@@ -219,7 +221,28 @@ impl Default for FilePickerConfig {
             git_global: true,
             git_exclude: true,
             max_depth: None,
+            preview_position: PickerPreviewPosition::default(),
         }
+    }
+}
+
+/// Where the picker's preview pane is rendered relative to the list of matches.
+/// `auto` picks `right` or `down` based on the terminal's aspect ratio.
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerPreviewPosition {
+    #[default]
+    Right,
+    Left,
+    Up,
+    Down,
+    Auto,
+}
+
+impl PickerPreviewPosition {
+    #[must_use]
+    pub fn is_horizontal(self) -> bool {
+        matches!(self, Self::Left | Self::Right)
     }
 }
 
