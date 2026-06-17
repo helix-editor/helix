@@ -89,6 +89,7 @@ markdown-oxide = { command = "markdown-oxide" }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
+microcad-lsp = { command = "microcad-lsp", args = [ "--stdio" ] }
 mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
 mm0-rs = { command = "mm0-rs", args = [ "server" ] }
@@ -5447,6 +5448,25 @@ indent = { tab-width = 4, unit = "    " }
 language-servers = ["tilt"]
 formatter = {command = "buildifier"} # Official formatter tool for starlark/bazel
 auto-format = true
+
+[[language]]
+name = "microcad"
+scope = "source.µcad"
+injection-regex = "microcad"
+file-types = ["µcad", "mcad", "ucad"]
+comment-tokens = [ "//", "///", "//!" ]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+language-servers = [ "microcad-lsp" ]
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[grammar]]
+name = "microcad"
+source = { git = "https://codeberg.org/microcad/tree-sitter-microcad", rev = "339420b9cfbb9d6e96ed1f881c1632af4c3fcd22" }
 
 [[language]]
 name = "gnuplot"
