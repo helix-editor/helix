@@ -174,6 +174,11 @@ pub struct Document {
     /// Current indent style.
     pub indent_style: IndentStyle,
     editor_config: EditorConfig,
+    /// The language to spell check this buffer against, or `None` to disable spell checking.
+    ///
+    /// Seeded from the document's `.editorconfig` (`spelling_language = en_US`) and overwritten by
+    /// `:set-spelling-language`.
+    pub spelling_language: Option<helix_core::SpellingLanguage>,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -745,6 +750,7 @@ impl Document {
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),
+            spelling_language: None,
             line_ending,
             restore_cursor: false,
             syntax: None,
@@ -1240,6 +1246,8 @@ impl Document {
         {
             self.line_ending = line_ending;
         }
+        // The spelling language comes straight from `.editorconfig`; there is nothing to detect.
+        self.spelling_language = self.editor_config.spelling_language.clone();
     }
 
     pub fn detect_editor_config(&mut self) {

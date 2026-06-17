@@ -2425,6 +2425,52 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
     Ok(())
 }
 
+fn spelling_language(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    use helix_view::handlers::spelling::SpellingEvent;
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if args.is_empty() {
+        let doc = doc!(cx.editor);
+        let status = match &doc.spelling_language {
+            Some(language) => language.to_string(),
+            None => "off".to_string(),
+        };
+        cx.editor.set_status(status);
+        return Ok(());
+    }
+
+    let doc_id = doc!(cx.editor).id();
+    if matches!(&args[0], "off" | "none" | "disable") {
+        let doc = doc_mut!(cx.editor);
+        doc.spelling_language = None;
+        doc.replace_diagnostics(
+            [],
+            &[],
+            Some(&helix_core::diagnostic::DiagnosticProvider::Spelling),
+        );
+        helix_event::dispatch(helix_view::events::DiagnosticsDidChange {
+            editor: cx.editor,
+            doc: doc_id,
+        });
+    } else {
+        let language: helix_core::SpellingLanguage = args[0].parse()?;
+        doc_mut!(cx.editor).spelling_language = Some(language);
+        helix_event::send_blocking(
+            &cx.editor.handlers.spelling.event_tx,
+            SpellingEvent::DocumentOpened { doc: doc_id },
+        );
+    }
+
+    Ok(())
+}
+
 fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -3794,6 +3840,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
         completer: CommandCompleter::positional(&[completers::language]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "set-spelling-language",
+        aliases: &["spelling"],
+        doc: "Set the spell-checking language for the current buffer (e.g. `en_US`), or `off` to disable. Shows the current language if no value is given.",
+        fun: spelling_language,
+        completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(1)),
             ..Signature::DEFAULT
