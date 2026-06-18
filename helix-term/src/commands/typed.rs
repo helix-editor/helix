@@ -3850,7 +3850,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["spelling"],
         doc: "Set the spell-checking language for the current buffer (e.g. `en_US`), or `off` to disable. Shows the current language if no value is given.",
         fun: spelling_language,
-        completer: CommandCompleter::none(),
+        completer: CommandCompleter::positional(&[completers::spelling_language]),
         signature: Signature {
             positionals: (0, Some(1)),
             ..Signature::DEFAULT
