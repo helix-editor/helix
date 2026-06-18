@@ -2246,7 +2246,7 @@ impl Document {
             severity,
             code,
             tags,
-            source: diagnostic.source.clone(),
+            source: diagnostic.source.clone().map(Cow::Owned),
             data: diagnostic.data.clone(),
             provider,
         })
@@ -2277,7 +2277,9 @@ impl Document {
                 }
 
                 if let Some(source) = &d.source {
-                    unchanged_sources.contains(source)
+                    unchanged_sources
+                        .iter()
+                        .any(|s| s.as_str() == source.as_ref())
                 } else {
                     false
                 }

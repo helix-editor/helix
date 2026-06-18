@@ -366,7 +366,7 @@ fn spelling_diagnostic(text: RopeSlice, start: usize, end: usize, word: &str) ->
         code: None,
         provider: PROVIDER,
         tags: Vec::new(),
-        source: None,
+        source: Some(Cow::Borrowed("spelling")),
         data: None,
     }
 }
