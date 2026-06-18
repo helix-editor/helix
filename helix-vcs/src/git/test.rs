@@ -33,6 +33,25 @@ fn exec_git_cmd(args: &str, git_dir: &Path) {
     }
 }
 
+fn git_output(args: &str, git_dir: &Path) -> String {
+    let res = Command::new("git")
+        .arg("-C")
+        .arg(git_dir)
+        .args(args.split_whitespace())
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_TERMINAL_PROMPT", "false")
+        .output()
+        .unwrap_or_else(|_| panic!("`git {args}` failed"));
+    if !res.status.success() {
+        println!("{}", String::from_utf8_lossy(&res.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&res.stderr));
+        panic!("`git {args}` failed (see output above)")
+    }
+    String::from_utf8_lossy(&res.stdout).trim().to_string()
+}
+
 fn create_commit(repo: &Path, add_modified: bool) {
     if add_modified {
         exec_git_cmd("add -A", repo);
@@ -124,6 +143,131 @@ fn symlink() {
 
     assert_eq!(git::get_diff_base(&file_link).unwrap(), contents);
     assert_eq!(git::get_diff_base(&file).unwrap(), contents);
+}
+
+#[test]
+fn branches_lists_current_and_local_branches() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"main").unwrap();
+    create_commit(temp_git.path(), true);
+    exec_git_cmd("branch feature", temp_git.path());
+
+    let repository = git::repository(temp_git.path()).unwrap();
+    let work_dir = std::fs::canonicalize(temp_git.path()).unwrap();
+    assert_eq!(repository.work_dir(), work_dir.as_path());
+
+    let branches = repository.branches().unwrap();
+    let main = branches
+        .iter()
+        .find(|branch| branch.name() == "main")
+        .unwrap();
+    assert!(main.is_current());
+    assert_eq!(main.kind(), crate::BranchKind::Local);
+
+    let feature = branches
+        .iter()
+        .find(|branch| branch.name() == "feature")
+        .unwrap();
+    assert!(!feature.is_current());
+    assert_eq!(feature.kind(), crate::BranchKind::Local);
+}
+
+#[test]
+fn repository_errors_outside_git_worktree() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir outside git");
+    let err = git::repository(temp_dir.path()).unwrap_err();
+
+    assert!(
+        format!("{err:#}").contains("current directory is not inside a git worktree"),
+        "{err:#}"
+    );
+}
+
+#[test]
+fn switch_branch_switches_clean_worktree() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"main").unwrap();
+    create_commit(temp_git.path(), true);
+    exec_git_cmd("branch feature", temp_git.path());
+
+    let repository = git::repository(temp_git.path()).unwrap();
+    let branches = repository.branches().unwrap();
+    let feature = branches
+        .iter()
+        .find(|branch| branch.name() == "feature")
+        .unwrap();
+
+    repository.switch_branch(feature).unwrap();
+
+    assert_eq!(
+        git_output("branch --show-current", temp_git.path()),
+        "feature"
+    );
+}
+
+#[test]
+fn switch_branch_tracks_remote_branch() {
+    let remote = tempfile::tempdir().expect("create temp dir for remote");
+    exec_git_cmd("init --bare", remote.path());
+
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"main").unwrap();
+    create_commit(temp_git.path(), true);
+    exec_git_cmd(
+        &format!("remote add origin {}", remote.path().display()),
+        temp_git.path(),
+    );
+    exec_git_cmd("push -u origin main", temp_git.path());
+    exec_git_cmd("branch feature", temp_git.path());
+    exec_git_cmd("push origin feature", temp_git.path());
+    exec_git_cmd("branch -D feature", temp_git.path());
+
+    let repository = git::repository(temp_git.path()).unwrap();
+    let branches = repository.branches().unwrap();
+    let feature = branches
+        .iter()
+        .find(|branch| branch.name() == "origin/feature")
+        .unwrap();
+    assert_eq!(feature.kind(), crate::BranchKind::Remote);
+
+    repository.switch_branch(feature).unwrap();
+
+    assert_eq!(
+        git_output("branch --show-current", temp_git.path()),
+        "feature"
+    );
+    assert_eq!(
+        git_output(
+            "rev-parse --abbrev-ref --symbolic-full-name @{u}",
+            temp_git.path()
+        ),
+        "origin/feature"
+    );
+}
+
+#[test]
+fn switch_branch_refuses_dirty_worktree() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"main").unwrap();
+    create_commit(temp_git.path(), true);
+    exec_git_cmd("branch feature", temp_git.path());
+
+    File::create(&file).unwrap().write_all(b"dirty").unwrap();
+
+    let repository = git::repository(temp_git.path()).unwrap();
+    let branches = repository.branches().unwrap();
+    let feature = branches
+        .iter()
+        .find(|branch| branch.name() == "feature")
+        .unwrap();
+    let err = repository.switch_branch(feature).unwrap_err();
+
+    assert!(err.to_string().contains("uncommitted changes"));
+    assert_eq!(git_output("branch --show-current", temp_git.path()), "main");
 }
 
 /// Test that `get_diff_base` returns content when the file is a symlink to
