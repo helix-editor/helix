@@ -624,12 +624,6 @@ pub fn code_action(cx: &mut Context) {
             })
             .collect();
 
-    if futures.is_empty() {
-        cx.editor
-            .set_error("No configured language server supports code actions");
-        return;
-    }
-
     cx.jobs.callback(async move {
         let mut actions = Vec::new();
 
@@ -640,11 +634,16 @@ pub fn code_action(cx: &mut Context) {
             }
         }
 
-        // Sort the gathered actions into a useful order, highest priority first. See
-        // `lsp_code_action_priority` for how LSP actions are ranked.
-        actions.sort_by_key(|action| std::cmp::Reverse(action.priority));
-
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            // Spelling actions are produced internally rather than by a language server, so they
+            // are gathered here alongside the LSP actions.
+            let mut actions = actions;
+            actions.extend(editor.spelling_actions());
+
+            // Sort the gathered actions into a useful order, highest priority first. See
+            // `lsp_code_action_priority` for how LSP actions are ranked.
+            actions.sort_by_key(|action| std::cmp::Reverse(action.priority));
+
             if actions.is_empty() {
                 editor.set_error("No code actions available");
                 return;
