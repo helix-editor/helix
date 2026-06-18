@@ -107,6 +107,48 @@ async fn shell_expansion() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn register_expansion() -> anyhow::Result<()> {
+    test_statusline(
+        r#":set-register a hello world<ret>:echo %reg{a}"#,
+        "hello world",
+        Severity::Info,
+    )
+    .await?;
+    test_statusline(r#":echo %reg{a}"#, "", Severity::Info).await?;
+    test_statusline(
+        r#":echo %reg{abc}"#,
+        "'echo': Invalid register `abc`: should only be a single character",
+        Severity::Error,
+    )
+    .await?;
+
+    // Register expansion evaluation is *not* recursive.
+    test_statusline(
+        r#":set-register a b<ret>:set-register b hello<ret>:echo %reg{%reg{a}}"#,
+        "'echo': Invalid register `%reg{a}`: should only be a single character",
+        Severity::Error,
+    )
+    .await?;
+    test_statusline(
+        r#":set-register a hello<ret>:set-register b %%reg{a}<ret>:echo %reg{b}"#,
+        "%reg{a}",
+        Severity::Info,
+    )
+    .await?;
+
+    // However, you can copy the contents of one register into another with this expansion if you
+    // want to.
+    test_statusline(
+        r#":set-register a hello<ret>:set-register b %reg{a}<ret>:echo %reg{b}"#,
+        "hello",
+        Severity::Info,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn percent_escaping() -> anyhow::Result<()> {
     test_statusline(
         r#":sh echo hello 10%"#,

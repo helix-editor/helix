@@ -8,7 +8,12 @@ use std::{
 use anyhow::bail;
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{
+    current_ref, doc,
+    editor::{LspConfig, WordCompletion},
+    input::parse_macro,
+    Editor,
+};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -294,6 +299,19 @@ pub fn test_editor_config() -> helix_view::editor::Config {
             enable: false,
             ..Default::default()
         },
+        // The word-index hook accumulates per-document pending changes across
+        // every `DocumentDidChange` and composes them on the next event for the
+        // same doc id. Each test builds a fresh `Application` that reuses
+        // `DocumentId(1)`, so the previous test's pending change tries to
+        // compose with the next test's `set_input` change (different lengths,
+        // hits the `len_after == len` assertion).
+        // Until hooks can be unregistered, keep the hook quiet by turning the
+        // feature off here.
+        word_completion: WordCompletion {
+            enable: false,
+            ..Default::default()
+        },
+        insecure: true,
         ..Default::default()
     }
 }

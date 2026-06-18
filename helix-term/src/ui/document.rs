@@ -359,10 +359,11 @@ impl<'a> TextRenderer<'a> {
         let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
-            self.surface.set_string(
+            self.surface.set_grapheme(
                 self.viewport.x + (position.col - self.offset.col) as u16,
                 self.viewport.y + position.row as u16,
                 grapheme,
+                width,
                 style,
             );
         } else if cut_off_start != 0 && cut_off_start < width {
@@ -414,7 +415,7 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
-    pub fn set_string(&mut self, x: u16, y: u16, string: impl AsRef<str>, style: Style) {
+    pub fn set_string(&mut self, x: u16, y: u16, string: &str, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }
@@ -422,14 +423,7 @@ impl<'a> TextRenderer<'a> {
             .set_string(x, y + self.viewport.y, string, style)
     }
 
-    pub fn set_stringn(
-        &mut self,
-        x: u16,
-        y: u16,
-        string: impl AsRef<str>,
-        width: usize,
-        style: Style,
-    ) {
+    pub fn set_stringn(&mut self, x: u16, y: u16, string: &str, width: usize, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }

@@ -1,5 +1,5 @@
 (php_tag) @tag
-"?>" @tag
+(php_end_tag) @tag
 
 ; Variables
 
@@ -45,6 +45,10 @@
 (function_definition
   name: (name) @function)
 
+; Property hooks (PHP 8.4): `get`/`set` parse as a plain `name`; anchor to the
+; first child so names in the hook body aren't caught.
+(property_hook . (name) @keyword)
+
 ; Member
 
 (property_element
@@ -58,7 +62,7 @@
 ; Basic tokens
 [
   (string)
-  (string_value)
+  (string_content)
   (encapsed_string)
   (heredoc)
   (heredoc_body)
@@ -66,8 +70,8 @@
 ] @string
 (boolean) @constant.builtin.boolean
 (null) @constant.builtin
-(integer) @constant.builtin.integer
-(float) @constant.builtin.float
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
 (comment) @comment
 
 "$" @operator
@@ -78,7 +82,7 @@
 "as" @keyword
 "break" @keyword
 "case" @keyword
-"catch" @keyword
+"catch" @keyword.control.exception
 "class" @keyword
 "const" @keyword
 "continue" @keyword
@@ -95,10 +99,10 @@
 "endwhile" @keyword
 "extends" @keyword
 "final" @keyword
-"finally" @keyword
+"finally" @keyword.control.exception
 "for" @keyword
 "foreach" @keyword
-"function" @keyword
+"function" @keyword.function
 "global" @keyword
 "if" @keyword
 "implements" @keyword
@@ -113,11 +117,11 @@
 "public" @keyword
 "require_once" @keyword
 "require" @keyword
-"return" @keyword
+"return" @keyword.control.return
 "static" @keyword
 "switch" @keyword
-"throw" @keyword
+"throw" @keyword.control.exception
 "trait" @keyword
-"try" @keyword
+"try" @keyword.control.exception
 "use" @keyword
 "while" @keyword

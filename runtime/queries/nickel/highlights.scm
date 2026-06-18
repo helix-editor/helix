@@ -39,6 +39,8 @@
   "=>" @operator
 )
 (record_field) @variable.other.member
+; Field access `o.field`: the id of a record operation chain.
+(record_operation_chain id: (ident) @variable.other.member)
 
 [
   "."

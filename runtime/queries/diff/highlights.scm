@@ -4,3 +4,7 @@
 (commit) @constant
 (location) @attribute
 (command) @markup.bold
+
+(comment) @comment
+; Rename/copy similarity percentage (`similarity index 95%`).
+(score) @constant.numeric

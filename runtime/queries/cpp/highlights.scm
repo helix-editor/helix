@@ -9,11 +9,22 @@
 
 (using_declaration ("using" "namespace" (identifier) @namespace))
 (using_declaration ("using" "namespace" (qualified_identifier name: (identifier) @namespace)))
+; Only a Capitalised qualified leaf (`Color::Red`) is an enum variant; a
+; lowercase one (`std::cout`) is a value/member and falls through to @variable.
+((qualified_identifier name: (identifier) @type.enum.variant)
+ (#match? @type.enum.variant "^[A-Z]"))
+; C colours enumerator definitions @constant (see c/highlights.scm); C++ resolves
+; enum values through the qualified path above as @type.enum.variant, so keep the
+; definition matching that.
+(enumerator name: (identifier) @type.enum.variant)
 (namespace_definition name: (namespace_identifier) @namespace)
 (namespace_identifier) @namespace
 
-(auto) @type
-"decltype" @type
+; Type-introducing declarations
+(concept_definition name: (identifier) @type.definition)
+(alias_declaration name: (type_identifier) @type.definition)
+
+(auto) @type.builtin
 
 (ref_qualifier ["&" "&&"] @type.builtin)
 (reference_declarator ["&" "&&"] @type.builtin)
@@ -104,7 +115,11 @@
   "<=>"
   "[]"
   "()"
+  "^^" ; C++26 reflection operator (reflect_expression)
 ] @operator
+
+; C++26 splice brackets `[: reflection :]` (splice_specifier / splice_type_specifier).
+(splice_specifier ["[:" ":]"] @punctuation.bracket)
 
 
 ; These casts are parsed as function calls, but are not.
@@ -162,6 +177,7 @@
 
 ; Modifiers that aren't plausibly type/storage related.
 [
+  "decltype"
   "explicit"
   "friend"
   "virtual"

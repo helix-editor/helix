@@ -28,6 +28,14 @@ square brackets:
 The ordering of the nodes within the alternation (square brackets) is not
 taken into consideration.
 
+Angle brackets need care: `<` and `>` are usually comparison operators too, so
+capturing them globally would rainbow-colour every comparison. Capture them only
+within the generic node instead, which also marks that node as a scope:
+
+```tsq
+(type_arguments ["<" ">"] @rainbow.bracket) @rainbow.scope
+```
+
 > Note: Why are these nodes quoted? Most syntax highlights capture text
 > surrounded by parentheses. These are _named nodes_ and correspond to the
 > names of rules in the grammar. Brackets are usually written in tree-sitter

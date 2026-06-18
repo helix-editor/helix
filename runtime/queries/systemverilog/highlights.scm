@@ -10,7 +10,8 @@
 
 
 ;; Keywords
-(["begin" "end" "this"]) @keyword
+(["begin" "end"]) @keyword
+("this") @variable.builtin
 (["input" "output" "inout" "ref"]) @keyword
 (["alias" "and" "assert" "assign" "assume" "before" "bind" "binsof" "break"
   "case" "checker" "class" "class" "clocking" "config" "const" "constraint"

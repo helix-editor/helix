@@ -13,12 +13,19 @@
   (properties)
 ] @indent
 
+; switch arms add the second indent level (case keyword at switch level, body
+; one deeper); they stay @indent.
 [
-  (elseif_clause)
-  (else_clause)
   (case_clause)
   (otherwise_clause)
-  (catch_clause)
 ] @indent @extend
 
-[ "end" ] @outdent
+; if/try branch keywords align with the construct: the enclosing statement
+; already indents their bodies, so the clauses are NOT @indent and the keyword
+; outdents.
+[
+  "else"
+  "elseif"
+  "catch"
+  "end"
+] @outdent

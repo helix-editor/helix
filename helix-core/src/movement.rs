@@ -558,22 +558,27 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
     }
 }
 
-/// Finds the range of the next or previous textobject in the syntax sub-tree of `node`.
+/// Finds the range of the next or previous textobject in the syntax tree.
 /// Returns the range in the forwards direction.
-#[allow(clippy::too_many_arguments)]
 pub fn goto_treesitter_object(
     slice: RopeSlice,
     range: Range,
     object_name: &str,
     dir: Direction,
-    slice_tree: &Node,
     syntax: &Syntax,
     loader: &syntax::Loader,
     count: usize,
 ) -> Range {
-    let textobject_query = loader.textobject_query(syntax.root_language());
     let get_range = move |range: Range| -> Option<Range> {
         let byte_pos = slice.char_to_byte(range.cursor(slice));
+
+        // Walk the layer at the cursor with that language's own tree and textobject query.
+        // Resolved per step so the motion can cross into and out of injected regions.
+        let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
+        let slice_tree = syntax
+            .tree_for_byte_range(byte_pos as u32, byte_pos as u32)
+            .root_node();
+        let textobject_query = loader.textobject_query(syntax.layer(layer).language);
 
         let cap_name = |t: TextObject| format!("{}.{}", object_name, t);
         let nodes = textobject_query?.capture_nodes_any(
@@ -582,7 +587,7 @@ pub fn goto_treesitter_object(
                 &cap_name(TextObject::Around),
                 &cap_name(TextObject::Inside),
             ],
-            slice_tree,
+            &slice_tree,
             slice,
         )?;
 

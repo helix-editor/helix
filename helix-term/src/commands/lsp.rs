@@ -1,4 +1,4 @@
-use futures_util::{stream::FuturesOrdered, FutureExt};
+use futures_util::{stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -341,7 +341,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
@@ -460,7 +460,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesOrdered<_> = doc
+        let mut futures: FuturesUnordered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
@@ -661,7 +661,7 @@ pub fn code_action(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
@@ -890,7 +890,7 @@ where
     F: Future<Output = helix_lsp::Result<Option<lsp::GotoDefinitionResponse>>> + 'static + Send,
 {
     let (view, doc) = current_ref!(cx.editor);
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(feature)
         .map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
@@ -986,7 +986,7 @@ pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
     let (view, doc) = current_ref!(cx.editor);
 
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::GotoReference)
         .map(|language_server| {
             let offset_encoding = language_server.offset_encoding();
@@ -1048,7 +1048,7 @@ pub fn hover(cx: &mut Context) {
     }
 
     let mut seen_language_servers = HashSet::new();
-    let mut futures: FuturesOrdered<_> = doc
+    let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Hover)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {

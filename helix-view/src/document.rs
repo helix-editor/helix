@@ -207,7 +207,7 @@ pub struct Document {
 
     pub readonly: bool,
 
-    pub previous_diagnostic_id: Option<String>,
+    pub previous_diagnostic_ids: HashMap<LanguageServerId, String>,
 
     /// Annotations for LSP document color swatches
     pub color_swatches: Option<DocumentColorSwatches>,
@@ -610,9 +610,13 @@ fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
         .map(|encoding| (encoding, false))
         .or_else(|| encoding::Encoding::for_bom(buf).map(|(encoding, _bom_size)| (encoding, true)))
         .unwrap_or_else(|| {
-            let mut encoding_detector = chardetng::EncodingDetector::new();
+            let mut encoding_detector =
+                chardetng::EncodingDetector::new(chardetng::Iso2022JpDetection::Allow);
             encoding_detector.feed(buf, is_empty);
-            (encoding_detector.guess(None, true), false)
+            (
+                encoding_detector.guess(None, chardetng::Utf8Detection::Allow),
+                false,
+            )
         });
     let decoder = encoding.new_decoder();
 
@@ -705,7 +709,7 @@ where
 }
 
 use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
-use url::Url;
+use helix_stdx::Url;
 
 impl Document {
     pub fn from(
@@ -760,7 +764,7 @@ impl Document {
             is_welcome: false,
             document_highlight_controllers: HashMap::new(),
             syn_loader,
-            previous_diagnostic_id: None,
+            previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
         }
@@ -1111,7 +1115,22 @@ impl Document {
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
-                dst.sync_all().await?;
+                // Ignore ENOTSUP/EOPNOTSUPP (Operation not supported) errors from sync_all()
+                // This is known to occur on SMB filesystems on macOS where fsync is not supported
+                match dst.sync_all().await {
+                    Ok(_) => (),
+                    Err(err) if err.kind() == io::ErrorKind::Unsupported => (),
+                    // Some extra OS errors are thrown on macOS for example if fsync is not
+                    // available for this filesystem. NOTE: on macOS, ENOTSUP and EOPNOTSUPP are
+                    // not the same code, so we need to suppress the unreachable_patterns lint on
+                    // Unix generally.
+                    #[allow(unreachable_patterns)]
+                    #[cfg(unix)]
+                    Err(err)
+                        if matches!(err.raw_os_error(), Some(libc::ENOTSUP | libc::EOPNOTSUPP)) => {
+                    }
+                    Err(err) => return Err(err.into()),
+                }
                 Ok(())
             }
             .await;
@@ -1413,6 +1432,7 @@ impl Document {
     /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.view_data.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
         self.document_highlights.remove(&view_id);
@@ -1875,6 +1895,23 @@ impl Document {
         self.language.as_deref()
     }
 
+    /// The language configuration of the injection layer at `byte_pos`,
+    /// so language-specific behavior follows embedded languages. Falls back to the
+    /// document's root language config when there is no syntax tree.
+    pub fn language_config_at<'a>(
+        &'a self,
+        loader: &'a syntax::Loader,
+        byte_pos: usize,
+    ) -> Option<&'a LanguageConfiguration> {
+        match self.syntax() {
+            Some(syntax) => {
+                let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
+                Some(&**loader.language(syntax.layer(layer).language).config())
+            }
+            None => self.language_config(),
+        }
+    }
+
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
@@ -2004,8 +2041,8 @@ impl Document {
 
     #[inline]
     /// File path on disk.
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     /// File path as a URL.
@@ -2014,7 +2051,7 @@ impl Document {
     }
 
     pub fn uri(&self) -> Option<helix_core::Uri> {
-        Some(self.path()?.clone().into())
+        Some(self.path()?.into())
     }
 
     #[inline]

@@ -468,7 +468,7 @@ Options for navigating and editing using tab key.
 
 Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the [Enhanced Keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol), consider setting extra keybindings:
 
-```
+```toml
 [keys.normal]
 tab = "move_parent_node_end"
 S-tab = "move_parent_node_start"
@@ -485,12 +485,12 @@ S-tab = "extend_parent_node_start"
 
 Options for rendering diagnostics inside the text like shown below
 
-```
+```text
 fn main() {
   let foo = bar;
             └─ no such value in this scope
 }
-````
+```
 
 | Key        | Description | Default |
 |------------|-------------|---------|
@@ -504,7 +504,7 @@ The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, 
 
 The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
 
-```
+```text
 fn main() {
   let baz = 1;
   let foo = bar; a local variable with a similar name exists: baz

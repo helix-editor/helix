@@ -1,97 +1,72 @@
-; Expressions 
-
-(call_expression
-  function: (identifier) @function)
-
-(call_expression
-  function: (selector_expression
-    field: (identifier) @function.method))
-
-
-; Type Definitions
-
-(type_declaration (identifier) @type)
-
-(definition 
-  relation: (identifier) @variable)
-
-
-; Relation Definitions 
-
-(relation_def (identifier) @variable.other.member)
-
-(direct_relationship (identifier) @type)
-(direct_relationship (conditional (identifier) @function))
-
-(relation_ref 
-  . (identifier) @type
-  (identifier) @variable.other.member)
-
-(indirect_relation
-  . (identifier) @variable.other.member
-    (identifier) @variable)
-
-
-; Condition Defintions
-
 (condition_declaration
   name: (identifier) @function)
 
-(condition_declaration (param (identifier) @variable.parameter))
+(condition_declaration
+  (param
+    name: (identifier) @variable.parameter))
 
-(binary_expression (identifier) @variable)
+(conditional
+  condition: (identifier) @function)
 
-((type_identifier) @type.builtin
-  (#any-of? @type.builtin "string" "int" "map" "uint" "list" "timestamp" "bool" "duration" "double" "ipaddress"))
+(type_declaration
+  name: (extended_identifier) @type)
 
+(definition
+  relation: (extended_identifier) @variable)
 
-; Operators
+(indirect_relation
+  relation: (extended_identifier) @variable.other.member
+  tupleset: (extended_identifier) @variable)
 
-[
-  "!="
-  "%"
-  "&"
-  "&&"
-  "&^"
-  "*"
-  "+"
-  "-"
-  "/"
-  "<"
-  "<<"
-  "<="
-  "=="
-  ">"
-  ">="
-  ">>"
-  "^"
-  "|"
-  "||"
-] @operator
+(relation_ref) @type
+(all) @type
 
-[
-  "or"
-  "and"
-  "but not"
-  "from"
-  "with"
-] @keyword.operator
+((simple_type_identifier) @type.builtin)
 
-; Keywords
-
-[
-  "model"
-  "schema"
-  "type"
-  "relations"
-  "define"
-] @keyword
-
-[
-  "condition"
-] @keyword.function
-
-; Misc
+((container_type_identifier) @type.builtin)
 
 (version) @constant.numeric
+(int) @constant.numeric.integer
+(uint) @constant.numeric.integer
+(float) @constant.numeric.float
+
+(string) @string
+(bytes) @string.special
+
+(boolean) @constant.builtin.boolean
+(null) @constant.builtin
+
+(condition_body
+  (identifier) @variable)
+
+(parenthesized_condition
+  (identifier) @variable)
+
+(bracket_condition
+  (identifier) @variable)
+
+(braced_condition
+  (identifier) @variable)
+
+(operator) @operator
+(condition_operator) @operator
+
+(condition_body ["{" "}"] @punctuation.bracket)
+(parenthesized_condition ["(" ")"] @punctuation.bracket)
+(bracket_condition ["[" "]"] @punctuation.bracket)
+(braced_condition ["{" "}"] @punctuation.bracket)
+
+(model) @keyword
+(module "module" @keyword)
+(schema "schema" @keyword)
+(contents "contents" @keyword)
+(relations "relations" @keyword)
+(type_declaration "extend" @keyword)
+(type_declaration "type" @keyword)
+(definition "define" @keyword)
+
+(indirect_relation "from" @keyword.operator)
+(conditional "with" @keyword.operator)
+(condition_declaration "condition" @keyword.function)
+
 (comment) @comment
