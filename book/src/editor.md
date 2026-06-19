@@ -24,12 +24,12 @@
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
 - [`[editor.completion-highlight]` Section](#editorcompletion-highlight-section)
+- [`[editor.scrolloff]` Section](#editorscrolloff-section)
 
 ### `[editor]` Section
 
 | Key | Description | Default |
 |--|--|---------|
-| `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `mouse-yank-register` | Which register to use for mouse yanks. | `*` |
 | `middle-click-paste` | Middle click paste support | `true` |
@@ -554,4 +554,21 @@ Example:
 ```toml
 [editor.completion-highlight]
 highlight-type = "vibrant"
+```
+
+### `[editor.scrolloff]` Section
+
+Options for setting scrolloff shown below
+
+
+| Key        | Description | Default |
+|------------|-------------|---------|
+| `vertical` | Number of lines of padding around the top and bottom of the screen when scrolling | `5` |
+| `horizontal` | Number of lines of padding around the left and right of the screen when scrolling | `5` |
+
+Settings the scrolloff to `999` for `vertical` will center the line with the cursor.
+```toml
+[editor.scrolloff]
+vertical = 5
+horizontal = 5
 ```

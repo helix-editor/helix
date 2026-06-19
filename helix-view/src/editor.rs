@@ -329,13 +329,51 @@ where
     Ok(chars)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ScrolloffConfig {
+    pub horizontal: usize,
+    pub vertical: usize,
+}
+
+fn deserialize_scrolloff_config<'de, D>(deserializer: D) -> Result<ScrolloffConfig, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Debug, Deserialize)]
+    #[serde(untagged)]
+    enum ScrolloffConfigDe {
+        Legacy(usize),
+        Split(ScrolloffConfig),
+    }
+
+    let scrolloff = ScrolloffConfigDe::deserialize(deserializer)?;
+    match scrolloff {
+        ScrolloffConfigDe::Legacy(u) => Ok(ScrolloffConfig {
+            horizontal: u,
+            vertical: u,
+        }),
+        ScrolloffConfigDe::Split(s) => Ok(s),
+    }
+}
+
+impl Default for ScrolloffConfig {
+    fn default() -> Self {
+        Self {
+            horizontal: 5,
+            vertical: 5,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
     /// Whether to enable the welcome screen
     pub welcome_screen: bool,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
-    pub scrolloff: usize,
+    #[serde(deserialize_with = "deserialize_scrolloff_config")]
+    pub scrolloff: ScrolloffConfig,
     /// Number of lines to scroll at once. Defaults to 3
     pub scroll_lines: isize,
     /// Mouse support. Defaults to true.
@@ -1585,7 +1623,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             welcome_screen: true,
-            scrolloff: 5,
+            scrolloff: ScrolloffConfig::default(),
             scroll_lines: 3,
             mouse: true,
             mouse_yank_register: '*',
