@@ -77,6 +77,10 @@
 (declConst name: (identifier) @constant)
 (declEnumValue name: (identifier) @constant)
 
+; Delphi inline variables: `var x: T` and `var y := …` (also `for var i …`).
+(varDef (identifier) @variable)
+(varAssignDef (identifier) @variable)
+
 ; -- Constant usage
 
 [
@@ -232,6 +236,7 @@
 	(kIndex)
 	(kNodefault)
 	(kStored)
+	(kDispId)
 
 	(kStatic)
 	(kVirtual)
@@ -317,6 +322,7 @@
 
 	(kClass)
 	(kInterface)
+	(kDispInterface)
 	(kObject)
 	(kRecord)
 	(kObjcclass)

@@ -5,19 +5,25 @@
 (super) @function.builtin
 
 (function_expression_body (identifier) @function.method)
-((identifier)(selector (argument_part)) @function.method)
+((identifier) @function.method (selector (argument_part)))
 
 ; Annotations
 ; --------------------
 (annotation
-  name: (identifier) @attribute)
-(marker_annotation
   name: (identifier) @attribute)
 
 ; Types
 ; --------------------
 (class_definition
   name: (identifier) @type)
+
+; Dart 3 extension types and extensions
+(extension_type_declaration
+  name: (identifier) @type)
+(extension_declaration
+  name: (identifier) @type)
+(representation_declaration
+  name: (identifier) @variable.other.member)
 
 (constructor_signature
   name: (identifier) @function.method)
@@ -82,6 +88,14 @@
 
 (named_argument
   (label (identifier) @variable))
+
+; Dart 3 dot-shorthand (`.red`): the member resolved from the context type.
+(dot_shorthand
+  (identifier) @variable.other.member)
+
+; Statement labels (`outer:` … `break outer;`).
+(labeled_statement
+  (identifier) @label)
 
 ; Literals
 ; --------------------
@@ -190,12 +204,15 @@
   "throw"
   "catch"
   "finally"
+  (rethrow_builtin)
   (break_statement)
 ] @keyword.control.exception
 
 ; Reserved words (cannot be used as identifiers)
 [
     (case_builtin)
+    (assert_builtin)
+    (part_of_builtin)
     "abstract"
     "async"
     "async*"
@@ -204,7 +221,6 @@
     "class"
     "covariant"
     "deferred"
-    "dynamic"
     "enum"
     "extends"
     "extension"
@@ -233,4 +249,4 @@
 
 ; when used as an identifier:
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(abstract|as|base|covariant|deferred|dynamic|export|external|factory|final|Function|get|implements|import|interface|library|operator|mixin|part|sealed|set|static|typedef)$"))
+ (#match? @variable.builtin "^(abstract|as|base|covariant|deferred|export|external|factory|final|Function|get|implements|import|interface|library|operator|mixin|part|sealed|set|static|typedef)$"))

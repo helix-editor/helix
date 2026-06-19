@@ -25,7 +25,7 @@
   "until"
   "do"
   "repeat"
-] @keyword.control.loop
+] @keyword.control.repeat
 
 [
   "in"
@@ -95,5 +95,5 @@
 [(comment) (block_comment)] @comment
 (dis_expr) @comment
 
-["(" ")"] @punctuaton.bracket
+["(" ")"] @punctuation.bracket
 [":" "::" "."] @punctuation.special

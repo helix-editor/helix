@@ -5,29 +5,14 @@ use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
 
 fn setup_logging(verbosity: u64) -> Result<()> {
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
+    let level = match verbosity {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _3_or_more => log::LevelFilter::Trace,
     };
 
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(helix_loader::log_file())?);
-
-    base_config.chain(file_config).apply()?;
+    helix_term::logging::init_file(level, &helix_loader::log_file())?;
 
     Ok(())
 }

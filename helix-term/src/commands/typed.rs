@@ -1567,6 +1567,13 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
             if view.doc.eq(&doc_id) {
+                // Reloading commits the diff against disk through the first view
+                // only (above). Any other view onto this document is left
+                // pointing at the pre-reload revision, so sync it now; otherwise
+                // its jumplist entries keep referencing the old (e.g. larger)
+                // text and a later commit panics when mapping them through a
+                // changeset whose pre-image no longer contains them.
+                view.sync_changes(doc);
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
@@ -2141,7 +2148,7 @@ pub(super) fn goto_line_number(
                 .expect("update_goto_line_number_preview should always set last_selection");
 
             let (view, doc) = current!(cx.editor);
-            view.jumps.push((doc.id(), last_selection));
+            view.push_jump(doc, (doc.id(), last_selection));
         }
 
         // When a user hits backspace and there are no numbers left,

@@ -87,20 +87,7 @@ fn setup_integration_logging() {
         .map(|lvl| lvl.parse().unwrap())
         .unwrap_or(log::LevelFilter::Info);
 
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
+    crate::logging::init_stdout(level);
 }
 
 impl Application {
@@ -357,7 +344,11 @@ impl Application {
 
                     #[cfg(feature = "integration")]
                     {
-                        if _idle_handled {
+                        // Don't report idle while a save is still in flight, or an assertion on the post-save document state (e.g. its path,
+                        // set in `handle_document_write`) can run before the `DocumentSavedEvent` is processed. Slow file I/O on Windows
+                        // (atomic_save's rename/fsync dance over the still-open temp file) makes this race observable.
+                        // Errors produce an event too, so it cannot hang.
+                        if _idle_handled && self.editor.write_count == 0 {
                             return true;
                         }
                     }

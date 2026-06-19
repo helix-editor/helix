@@ -2,6 +2,11 @@
 (import_declaration (identifier) @local.definition.namespace)
 (function_declaration name: (simple_identifier) @local.definition.function)
 
+; Parameters: the `name` field is the in-body binding (external_name is the
+; call-site label, handled as a discard below).
+(parameter name: (simple_identifier) @local.definition.variable.parameter)
+(lambda_parameter name: (simple_identifier) @local.definition.variable.parameter)
+
 ; Scopes
 [
  (for_statement)
@@ -17,3 +22,10 @@
  (protocol_declaration)
  (lambda_literal)
 ] @local.scope
+
+(simple_identifier) @local.reference
+
+; Discards: identifiers that look like references but aren't variable uses.
+(call_expression (simple_identifier) @_) ; foo() call name
+(navigation_suffix (simple_identifier) @_) ; .bar member/method name
+(parameter external_name: (simple_identifier) @_) ; call-site argument label

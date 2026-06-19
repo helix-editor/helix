@@ -38,7 +38,7 @@
 (palette_index) @variable.other.member
 
 ; `path_directive`
-(path_directive (property) @keyword.import)
+(path_directive (property) @keyword.control.import)
 (path_directive (path_value (string) @string.special.path ))
 
 

@@ -22,3 +22,7 @@ pub fn ts_queries() -> PathBuf {
 pub fn themes() -> PathBuf {
     runtime().join("themes")
 }
+
+pub fn tests_indent() -> PathBuf {
+    project_root().join("tests").join("indent")
+}

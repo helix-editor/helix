@@ -12,9 +12,12 @@
   (type_case)
   (communication_case)
   (argument_list)
+  (parameter_list)
   (field_declaration_list)
   (block)
   (var_declaration)
+  (selector_expression)
+  (binary_expression)
 ] @indent
 
 [
@@ -31,16 +34,17 @@
     (#not-kind-eq? @outer "expression_switch_statement")
 )
 
-; Starting a line after a new case should indent.
-[
-  (communication_case)
-  (expression_case)
-  (default_case)
-  (type_case)
-] @extend
-
 ; Handle ERROR nodes for when auto-pairs is disabled.
 ; Typing an opening delimiter without a closing one produces an ERROR node.
 (ERROR "{") @indent @extend
 (ERROR "(") @indent
 (ERROR "[") @indent
+
+; Labels (`Loop:`, `done:`) are de-indented one level by gofmt.
+; Capturing the label_name (a child, not an ancestor of the labeled body)
+; outdents only the label line.
+(labeled_statement
+  (label_name) @outdent)
+
+; Raw string literals (backticks) span lines and are literal content.
+(raw_string_literal) @opaque

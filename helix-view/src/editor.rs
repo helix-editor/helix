@@ -1898,7 +1898,7 @@ impl Editor {
                     }
                 } else {
                     let jump = (view.doc, doc.selection(view.id).clone());
-                    view.jumps.push(jump);
+                    view.push_jump(doc, jump);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
                         view.add_to_history(view.doc);
@@ -2507,11 +2507,13 @@ impl Editor {
 
     pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
         let view = view_mut!(self, view_id);
-        if let Some((doc_id, selection)) = view
-            .jumps
-            .backward(view_id, doc_mut!(self, &view.doc), count)
-            .cloned()
-        {
+        let doc = doc_mut!(self, &view.doc);
+        // `backward` may push the current selection (valid at the document's
+        // current revision) onto the jumplist. Sync first so the view's
+        // `doc_revisions` matches, otherwise that entry would be left ahead of
+        // it and a later sync would map it out of bounds.
+        view.sync_changes(doc);
+        if let Some((doc_id, selection)) = view.jumps.backward(view_id, doc, count).cloned() {
             self.jump_to(view_id, doc_id, selection);
         }
     }
