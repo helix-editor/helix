@@ -575,8 +575,6 @@ impl NotificationPopup {
             );
         }
         let content_lines = self.wrap_text(&item.notification.message, wrap_width);
-        let mut y_pos = content_area.y;
-
         // Calculate prefix (icon/emoji + space)
         let mut prefix = String::new();
         if config.show_emojis {
@@ -593,6 +591,7 @@ impl NotificationPopup {
         let show_prefix = !prefix.is_empty() && content_area.width > prefix_width + 1;
 
         for (i, line) in content_lines.iter().enumerate() {
+            let y_pos = content_area.y + i as u16;
             if y_pos >= content_area.y + content_area.height {
                 break; // No more space
             }
@@ -616,8 +615,6 @@ impl NotificationPopup {
                 available,
                 notification_style,
             );
-
-            y_pos += 1;
         }
     }
 }
