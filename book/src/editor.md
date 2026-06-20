@@ -22,6 +22,7 @@
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
+- [`[editor.workspace-trust]` Section](#editorworkspace-trust-section)
 
 ### `[editor]` Section
 
@@ -527,4 +528,33 @@ Example:
 enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
+```
+
+### `[editor.workspace-trust]` Section
+
+Controls implicit workspace trust. See the [workspace
+trust](./workspace-trust.md) chapter for the full feature.
+
+| Key       | Description                                                              | Default     |
+| ---       | ---                                                                      | ---         |
+| `level`   | The default level of trust for every workspace.                         | `"servers"` |
+| `prompt`  | Whether to show a modal when opening a file in an untrusted workspace.   | `true`      |
+| `trusted` | Glob patterns whose matching workspaces are trusted without a grant.     | `[]`        |
+
+Example:
+
+```toml
+[editor.workspace-trust]
+# Even if `false`, the statusline `[⚠]` indicator is still shown.
+prompt = false
+
+# "none":     prompt for every workspace.
+# "servers":  trust LSP and DAP launches but still gate local config and git;
+#             .helix/config.toml, .helix/languages.toml, etc. need :workspace-trust.
+# "insecure": trust everything (discouraged).
+level = "servers"
+
+# Discouraged: skips .helix/ change detection and trusts anything that lands
+# under a matching path. `~` and environment variables are expanded.
+trusted = ["~/src/github.com/me/*"]
 ```

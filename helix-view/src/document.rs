@@ -159,6 +159,11 @@ pub struct Document {
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
+    /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
+    /// `.svn` / `.jj` / `.helix`). Avoids per-call `find_workspace_in` ancestor walks for hot
+    /// consumers like the statusline trust indicator, LSP launch, and DAP launch. Taken in
+    /// `set_path` so save-as recomputes.
+    workspace_root: OnceCell<PathBuf>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -726,6 +731,7 @@ impl Document {
             active_snippet: None,
             path: None,
             relative_path: OnceCell::new(),
+            workspace_root: OnceCell::new(),
             encoding,
             has_bom,
             text,
@@ -1271,6 +1277,7 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
+        trust_full: bool,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
@@ -1297,12 +1304,12 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
+        match provider_registry.get_diff_base(&path, trust_full) {
             Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.version_control_head = provider_registry.get_current_head_name(&path, trust_full);
 
         Ok(())
     }
@@ -1331,6 +1338,8 @@ impl Document {
         // `take` to remove any prior relative path that may have existed.
         // This will get set in `relative_path()`.
         self.relative_path.take();
+        // Same story: invalidate so the next workspace_root() recomputes against the new path.
+        self.workspace_root.take();
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -2091,6 +2100,20 @@ impl Document {
                     .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
             })
             .as_deref()
+    }
+
+    /// The workspace root for this document — the nearest ancestor that contains a `.git`, `.svn`,
+    /// `.jj`, or `.helix`. Falls back to the current working directory's workspace when the
+    /// document has no path (scratch buffers). Lazily memoised on first call.
+    pub fn workspace_root(&self) -> &Path {
+        self.workspace_root
+            .get_or_init(|| match self.path.as_deref() {
+                Some(p) => p
+                    .parent()
+                    .map(|dir| helix_loader::find_workspace_in(dir).0)
+                    .unwrap_or_else(|| helix_loader::find_workspace().0),
+                None => helix_loader::find_workspace().0,
+            })
     }
 
     pub fn display_name(&self) -> Cow<'_, str> {

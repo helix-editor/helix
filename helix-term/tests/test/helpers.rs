@@ -7,10 +7,11 @@ use std::{
 
 use anyhow::bail;
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{
     current_ref, doc,
-    editor::{LspConfig, WordCompletion},
+    editor::{ImplicitTrustLevelConfig, LspConfig, WordCompletion, WorkspaceTrustConfig},
     input::parse_macro,
     Editor,
 };
@@ -202,7 +203,12 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_loader(None))?,
+        None => Application::new(
+            Args::default(),
+            test_config(),
+            test_syntax_loader(None),
+            WorkspaceTrust::fully_trusted(),
+        )?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -311,7 +317,11 @@ pub fn test_editor_config() -> helix_view::editor::Config {
             enable: false,
             ..Default::default()
         },
-        insecure: true,
+        // Trust everything implicitly so tests don't hit popups.
+        workspace_trust: WorkspaceTrustConfig {
+            level: ImplicitTrustLevelConfig::Insecure,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -402,7 +412,12 @@ impl AppBuilder {
             bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
         }
 
-        let mut app = Application::new(self.args, self.config, self.syn_loader)?;
+        let mut app = Application::new(
+            self.args,
+            self.config,
+            self.syn_loader,
+            WorkspaceTrust::fully_trusted(),
+        )?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);
