@@ -2099,14 +2099,19 @@ impl Editor {
 
         let path = path.map(|path| path.into());
         let doc = doc_mut!(self, &doc_id);
+        // the path that will be written: the override, else the document's own path
+        let save_path = path.clone().or_else(|| doc.path().cloned());
         let doc_save_future = doc.save(path, force)?;
 
-        // When a file is written to, notify the file event handler if the watcher isn't active.
+        // When a file is written to, notify the file event handler, unless the
+        // watcher already covers it, in which case filesentry reports the write.
         let handler = self.language_servers.file_event_handler.clone();
-        let watcher_active = self.file_watcher.is_active();
+        let watched = save_path
+            .as_deref()
+            .is_some_and(|path| self.file_watcher.is_watching(path));
         let future = async move {
             let res = doc_save_future.await;
-            if !watcher_active {
+            if !watched {
                 if let Ok(event) = &res {
                     handler.file_changed(event.path.clone());
                 }
