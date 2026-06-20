@@ -1,8 +1,9 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
-use std::io::Read;
-use std::path::Path;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -17,7 +18,7 @@ use gix::status::{
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::FileChange;
+use crate::{BlameLine, FileChange};
 
 #[cfg(test)]
 mod test;
@@ -79,6 +80,40 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
 }
 
+pub fn line_blame(file: &Path, contents: Option<&str>, line: usize) -> Result<BlameLine> {
+    debug_assert!(!file.exists() || file.is_file());
+    debug_assert!(file.is_absolute());
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
+
+    let repo_dir = get_repo_dir(&file)?;
+    let work_dir = repo_workdir(repo_dir)?;
+    let relative_path = file.strip_prefix(&work_dir)?;
+    let line_range = format!("{},+1", line + 1);
+
+    let output = if let Some(contents) = contents {
+        git_command_with_stdin_and_path(
+            &work_dir,
+            &[
+                "blame",
+                "--line-porcelain",
+                "--contents",
+                "-",
+                "-L",
+                line_range.as_str(),
+            ],
+            relative_path,
+            contents.as_bytes(),
+        )?
+    } else {
+        git_command_with_path(
+            &work_dir,
+            &["blame", "--line-porcelain", "-L", line_range.as_str()],
+            relative_path,
+        )?
+    };
+    parse_blame_output(&String::from_utf8_lossy(&output.stdout))
+}
+
 pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
     status(&open_repo(cwd)?.to_thread_local(), f)
 }
@@ -123,6 +158,135 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
     )?;
 
     Ok(res)
+}
+
+fn repo_workdir(cwd: &Path) -> Result<PathBuf> {
+    let repo = open_repo(cwd)?.to_thread_local();
+    let work_dir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("working tree not found"))?;
+
+    Ok(std::fs::canonicalize(work_dir).unwrap_or_else(|_| work_dir.to_path_buf()))
+}
+
+fn git_command_with_path(cwd: &Path, args: &[&str], path: &Path) -> Result<Output> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(cwd)
+        .args(args)
+        .arg("--")
+        .arg(path)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_TERMINAL_PROMPT", "false")
+        .output()
+        .with_context(|| format!("failed to run `git {}`", args.join(" ")))?;
+    if !output.status.success() {
+        bail!("{}", git_failure_message(args, &output));
+    }
+
+    Ok(output)
+}
+
+fn git_command_with_stdin_and_path(
+    cwd: &Path,
+    args: &[&str],
+    path: &Path,
+    stdin: &[u8],
+) -> Result<Output> {
+    let mut child = Command::new("git")
+        .arg("-C")
+        .arg(cwd)
+        .args(args)
+        .arg("--")
+        .arg(path)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_TERMINAL_PROMPT", "false")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("failed to run `git {}`", args.join(" ")))?;
+
+    child
+        .stdin
+        .as_mut()
+        .context("failed to open git stdin")?
+        .write_all(stdin)
+        .context("failed to write git stdin")?;
+
+    let output = child
+        .wait_with_output()
+        .with_context(|| format!("failed to run `git {}`", args.join(" ")))?;
+    if !output.status.success() {
+        bail!("{}", git_failure_message(args, &output));
+    }
+
+    Ok(output)
+}
+
+fn git_failure_message(args: &[&str], output: &Output) -> String {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stderr = stderr.trim();
+    let message = if stderr.is_empty() {
+        format!("exit status {}", output.status)
+    } else {
+        stderr.to_string()
+    };
+    format!("git {} failed: {message}", args.join(" "))
+}
+
+fn parse_blame_output(output: &str) -> Result<BlameLine> {
+    let commit = output
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().next())
+        .context("missing blame commit")?;
+    if commit.chars().all(|ch| ch == '0') {
+        bail!("line has no committed blame");
+    }
+
+    let mut author = None;
+    let mut author_time = None;
+    let mut author_tz = None;
+
+    for line in output.lines().skip(1) {
+        if line.starts_with('\t') {
+            break;
+        }
+
+        if let Some(value) = line.strip_prefix("author ") {
+            author = Some(value.to_string());
+        } else if let Some(value) = line.strip_prefix("author-time ") {
+            author_time = Some(value.parse::<gix::date::SecondsSinceUnixEpoch>()?);
+        } else if let Some(value) = line.strip_prefix("author-tz ") {
+            author_tz = Some(parse_git_timezone(value)?);
+        }
+    }
+
+    let author = author.context("missing blame author")?;
+    let time = gix::date::Time {
+        seconds: author_time.context("missing blame author time")?,
+        offset: author_tz.context("missing blame author timezone")?,
+    };
+    let timestamp = time.format_or_unix(gix::date::time::CustomFormat::new("%Y-%m-%d %H:%M"));
+
+    Ok(BlameLine::new(author, timestamp))
+}
+
+fn parse_git_timezone(value: &str) -> Result<gix::date::OffsetInSeconds> {
+    let bytes = value.as_bytes();
+    if bytes.len() != 5 || !matches!(bytes[0], b'+' | b'-') {
+        bail!("invalid git timezone: {value}");
+    }
+
+    let hours = value[1..3].parse::<i32>()?;
+    let minutes = value[3..5].parse::<i32>()?;
+    let offset = hours * 60 * 60 + minutes * 60;
+    Ok(if bytes[0] == b'-' { -offset } else { offset })
 }
 
 /// Emulates the result of running `git status` from the command line.

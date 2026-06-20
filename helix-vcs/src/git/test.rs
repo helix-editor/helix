@@ -126,6 +126,63 @@ fn symlink() {
     assert_eq!(git::get_diff_base(&file).unwrap(), contents);
 }
 
+#[test]
+fn parse_blame_output_reads_author_and_timestamp() {
+    let output = "\
+abef92a9b341209aeae8802d30fc8c1f971a43df 1 1 1
+author Pascal Kuthe
+author-mail <pascal.kuthe@example.com>
+author-time 1679823847
+author-tz +0200
+summary message
+filename file.txt
+\tcontents
+";
+
+    let blame = git::parse_blame_output(output).unwrap();
+    assert_eq!(blame.author(), "Pascal Kuthe");
+    assert_eq!(blame.timestamp(), "2023-03-26 11:44");
+}
+
+#[test]
+fn parse_blame_output_ignores_uncommitted_lines() {
+    let output = "\
+0000000000000000000000000000000000000000 1 1 1
+author External file (--contents)
+author-time 1679823847
+author-tz +0200
+filename file.txt
+\tcontents
+";
+
+    assert!(git::parse_blame_output(output).is_err());
+}
+
+#[test]
+fn line_blame_reads_author_for_clean_file() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"hello\n").unwrap();
+    create_commit(temp_git.path(), true);
+
+    let blame = git::line_blame(&file, None, 0).unwrap();
+    assert_eq!(blame.author(), "author");
+    assert!(!blame.timestamp().is_empty());
+}
+
+#[test]
+fn line_blame_uses_unsaved_contents() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"hello\n").unwrap();
+    create_commit(temp_git.path(), true);
+
+    assert!(git::line_blame(&file, Some("new\nhello\n"), 0).is_err());
+
+    let blame = git::line_blame(&file, Some("new\nhello\n"), 1).unwrap();
+    assert_eq!(blame.author(), "author");
+}
+
 /// Test that `get_diff_base` returns content when the file is a symlink to
 /// another file that is in a git repo, but the symlink itself is not.
 #[cfg(any(unix, windows))]
