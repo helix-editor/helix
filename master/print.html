@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-cc0efe64.js";
+            window.path_to_searchindex_js = "searchindex-1e3bba83.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c2fa7ea4.js"></script>
@@ -1574,8 +1574,9 @@ space.B = ":echo %sh{git blame -L %{cursor_line},+1 %{buffer_name}}"
 <tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
 <tr><td><code>:echo</code></td><td>Prints the given arguments to the statusline.</td></tr>
 <tr><td><code>:noop</code></td><td>Does nothing.</td></tr>
-<tr><td><code>:workspace-trust</code></td><td>Add current workspace to the list of trusted workspaces.</td></tr>
-<tr><td><code>:workspace-untrust</code></td><td>Remove current workspace from the list of trusted workspaces.</td></tr>
+<tr><td><code>:workspace-trust</code></td><td>Allow language servers and local config for the current workspace.</td></tr>
+<tr><td><code>:workspace-untrust</code></td><td>Revoke the current workspace’s trust grant or exclusion.</td></tr>
+<tr><td><code>:workspace-exclude</code></td><td>Mark the current workspace as never-prompt. Never prompts for trust again.</td></tr>
 </tbody>
 </table>
 </div>
@@ -2303,18 +2304,152 @@ Languages</a> guide for more language configuration information.</p>
 </div>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="workspace-trust"><a class="header" href="#workspace-trust">Workspace trust</a></h1>
-<p>Helix has a number of potentially dangerous features, namely LSP and ability to use local to workspace configurations. Those features can lead to unexpected code execution. To protect against code execution in dangerous contexts, Helix has a workspace trust protection, which will prevent these potentially dangerous features from running automatically.</p>
-<p>Helix will not trust any workspace by default.</p>
-<p>By default, it will prompt about trust when you open new file in a workspace where you didn’t make a decision about trust yet.</p>
-<p>If you decide not to trust a workspace and don’t want to be prompted about trust every time you start a new session in it, you can exclude the workspace by choosing <code>Never</code> option in trust selection window.</p>
-<p>You can always make current workspace trusted by running <code>:workspace-trust</code> command, and untrust it with <code>:workspace-untrust</code>.</p>
-<p>Lists of trusted and excluded workspaces, delimited by newline characters, are stored in <code>~/.local/share/helix/trusted_workspaces</code> and <code>~/.local/share/helix/excluded_workspaces</code> correspondingly.</p>
-<!-- TODO: Windows paths -->
-<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
-<p>You can return to the old behaviour of loading every local <code>.helix/config.toml</code> and <code>.helix/languages.toml</code> and starting LSP’s without an explicit permission by setting following option:</p>
-<pre><code class="language-toml">[editor]
-insecure = true
+<p>Helix has several features that can execute arbitrary code:</p>
+<ul>
+<li>Language servers (LSP)</li>
+<li>Debug adapters (DAP)</li>
+<li>Local workspace configuration (<code>.helix/config.toml</code>, <code>.helix/languages.toml</code>)</li>
+<li>Git integration (filters and other commands in a repository’s <code>.git/config</code>)</li>
+</ul>
+<p>To protect against malicious projects (a checked-out PR, a freshly cloned
+repository, etc.) Helix gates these behind explicit per-workspace trust.
+By default language servers start automatically (their binaries come from
+<code>$PATH</code>, not from the workspace) and debug adapters may be launched, but
+loading <code>.helix/config.toml</code> or <code>.helix/languages.toml</code> and trusting a
+repository’s <code>.git/config</code> requires opting in. Note that debug adapters
+are never started automatically — you launch them yourself — but the same
+trust level still gates whether they may run. The model is intentionally
+similar to <a href="https://direnv.net/">direnv</a>: you run <code>:workspace-trust</code> once
+per workspace and Helix remembers across sessions.</p>
+<h2 id="granting-trust"><a class="header" href="#granting-trust">Granting trust</a></h2>
+<p>When Helix opens a file inside a workspace it has never seen before, a
+modal trust prompt asks:</p>
+<ul>
+<li><strong>Trust</strong> — allow the workspace permanently.</li>
+<li><strong>Never</strong> — exclude the workspace; never prompt again.</li>
+</ul>
+<p><code>&lt;Esc&gt;</code> (or any other dismissal) caches “untrusted for this session” so
+the prompt doesn’t re-fire for every file you open in the workspace. The
+next time you start Helix in that workspace, it’ll prompt again.</p>
+<p>A small <code>[⚠]</code> indicator appears in the bottom-right of the editor (next
+to the macro-recording <code>[@]</code>) whenever the workspace is in restricted mode
+<em>and</em> running <code>:workspace-trust</code> would change observable behavior — i.e.
+when there’s a local config to load or an LSP that would start.</p>
+<p>You can also run <code>:workspace-trust</code> / <code>:workspace-untrust</code> /
+<code>:workspace-exclude</code> directly from the typed command prompt.</p>
+<h2 id="revoking-trust"><a class="header" href="#revoking-trust">Revoking trust</a></h2>
+<p>Run <code>:workspace-untrust</code> to revoke a workspace’s trust grant. The next time
+you open a file in that workspace, you’re back to the untrusted hint.</p>
+<h2 id="detecting-changes-after-trust-was-granted"><a class="header" href="#detecting-changes-after-trust-was-granted">Detecting changes after trust was granted</a></h2>
+<p>When you trust a workspace, Helix records a hash of every file under
+<code>.helix/</code>. If those files change afterwards (a malicious checkout, an
+inadvertent rebase, etc.) Helix detects the mismatch on the next open and
+reports the workspace as <em>stale</em>:</p>
+<pre><code>Workspace `.helix/` config changed since `:workspace-trust`. Local config
+not loaded. Run `:workspace-trust` to re-allow.
 </code></pre>
+<p>In the stale state, language servers continue to run (they use the
+globally-configured binaries on <code>$PATH</code>, which are unchanged), but
+<code>.helix/config.toml</code> and <code>.helix/languages.toml</code> are not loaded. Run
+<code>:workspace-trust</code> again to re-pin the new hash.</p>
+<h2 id="storage"><a class="header" href="#storage">Storage</a></h2>
+<p>Trust grants live in <code>data_dir()/workspace_trust/</code>, one small file per
+workspace. The filename is the SHA-256 of the workspace’s absolute path;
+the contents look like:</p>
+<pre><code>path = /home/user/proj1
+hash = sha256:abc123...
+excluded = false
+</code></pre>
+<ul>
+<li>Linux, macOS: <code>~/.local/share/helix/workspace_trust/</code></li>
+<li>Windows: <code>%AppData%\Roaming\helix\workspace_trust\</code></li>
+</ul>
+<p>The one-file-per-workspace shape is safe under multiple concurrent Helix
+instances — different workspaces never write the same file.</p>
+<h2 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h2>
+<p>Settings live under <code>[editor.workspace-trust]</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Key</th><th>Values</th><th>Default</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>level</code></td><td><code>"none"</code>, <code>"servers"</code>, <code>"insecure"</code></td><td><code>"servers"</code></td><td>What is auto-trusted in every workspace. See below.</td></tr>
+<tr><td><code>prompt</code></td><td><code>true</code>, <code>false</code></td><td><code>true</code></td><td>Whether to surface the modal popup. The <code>[⚠]</code> indicator is shown regardless.</td></tr>
+<tr><td><code>trusted</code></td><td>list of glob patterns</td><td><code>[]</code></td><td>Workspaces matching a pattern are trusted without a grant. Discouraged; see below.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="recommended-setups"><a class="header" href="#recommended-setups">Recommended setups</a></h3>
+<p><strong>Default: trust servers, prompt before loading workspace config.</strong></p>
+<pre><code class="language-toml">[editor.workspace-trust]
+level = "servers"
+prompt = true
+</code></pre>
+<p>Language servers start automatically in every workspace — their binaries
+come from <code>$PATH</code> and are not workspace-controlled — and debug adapters
+you launch are allowed to run. The modal only appears when opening a file
+in a workspace whose <code>.helix/config.toml</code> or <code>.helix/languages.toml</code> would
+unlock something. Trust everything else with one keystroke per workspace,
+deny with another.</p>
+<p><strong>Maximum security: never prompt, trust each workspace by hand.</strong></p>
+<pre><code class="language-toml">[editor.workspace-trust]
+level = "none"
+prompt = false
+</code></pre>
+<p>Nothing trusts implicitly: language servers, debug adapters, local
+config, and git <code>Trust::Full</code> are all off until you run
+<code>:workspace-trust</code>. The popup never appears; the <code>[⚠]</code> indicator in the
+bottom-right is your only signal that the current workspace is
+restricted. Suited to users who would rather grant trust as a
+deliberate action than dismiss a dialog.</p>
+<blockquote class="blockquote-tag blockquote-tag-warning">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
+<p><code>level = "insecure"</code> is highly discouraged. It implicitly trusts every
+workspace you open, which defeats the protection entirely: a
+checked-out PR with a malicious <code>.helix/config.toml</code> would get its
+configuration loaded and any language server it defines launched, with
+no prompt and no indicator. Only set this if you accept full
+responsibility for what’s in every project directory you <code>cd</code> into.</p>
+</blockquote>
+<h3 id="trusting-workspaces-by-path-discouraged"><a class="header" href="#trusting-workspaces-by-path-discouraged">Trusting workspaces by path (discouraged)</a></h3>
+<p>If you keep all your repositories under a predictable layout, you can
+trust them in bulk with glob patterns instead of granting each workspace
+individually:</p>
+<pre><code class="language-toml">[editor.workspace-trust]
+trusted = [
+  "~/src/github.com/me/*",
+  "~/work/repos/*",
+]
+</code></pre>
+<p>A workspace whose path matches a pattern is trusted for everything, just
+as if you had run <code>:workspace-trust</code> in it. <code>~</code> and environment variables
+are expanded.</p>
+<blockquote class="blockquote-tag blockquote-tag-warning">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Warning</p>
+<p>This is weaker than an explicit grant and is discouraged. It skips the
+<code>.helix/</code> change detection entirely (a malicious checkout under a
+matched directory is never flagged as stale), and it trusts <em>any</em>
+repository that later lands under a matching path — including one you
+clone into <code>~/src/github.com/me/</code> from an untrusted source. Prefer
+granting trust per workspace; reach for this only if the prompts are
+genuinely disruptive to your workflow. An explicit <code>:workspace-exclude</code>
+still overrides a matching pattern.</p>
+</blockquote>
+<h2 id="git-trust"><a class="header" href="#git-trust">Git trust</a></h2>
+<p>Workspace trust also gates how Helix opens git repositories. Untrusted
+workspaces are opened in <a href="https://github.com/Byron/gitoxide">gix</a>’s
+<code>Trust::Reduced</code> mode; trusted workspaces use <code>Trust::Full</code>.</p>
+<p>Under <code>Trust::Reduced</code>, gix still runs the full filter pipeline (so
+built-in conversions like <code>core.autocrlf</code> keep working) but ignores
+configuration coming from the untrusted, repository-local <code>.git/config</code>.
+That means <code>filter.*.clean</code> / <code>filter.*.smudge</code> drivers and similar
+keys that would otherwise execute external programs are dropped until you
+trust the workspace.</p>
+<p>Helix forces this trust level explicitly rather than letting gix infer it
+from <code>.git</code> directory ownership — a malicious <code>.git/config</code> in a directory
+you happen to own is still treated as untrusted until you run
+<code>:workspace-trust</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="ecosystem"><a class="header" href="#ecosystem">Ecosystem</a></h1>
 <p>This section has information related to the wider Helix ecosystem.</p>
@@ -2573,6 +2708,7 @@ Its settings will be merged with the configuration directory and the built-in co
 <li><a href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></li>
 <li><a href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></li>
 <li><a href="#editorword-completion-section"><code>[editor.word-completion]</code> Section</a></li>
+<li><a href="#editorworkspace-trust-section"><code>[editor.workspace-trust]</code> Section</a></li>
 </ul>
 <h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
 <div class="table-wrapper">
@@ -3072,6 +3208,36 @@ S-tab = "extend_parent_node_start"
 enable = true
 # Set the trigger length lower so that words are completed more often
 trigger-length = 4
+</code></pre>
+<h3 id="editorworkspace-trust-section"><a class="header" href="#editorworkspace-trust-section"><code>[editor.workspace-trust]</code> Section</a></h3>
+<p>Controls implicit workspace trust. See the <a href="#workspace-trust">workspace
+trust</a> chapter for the full feature.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Key</th><th>Description</th><th>Default</th></tr>
+</thead>
+<tbody>
+<tr><td><code>level</code></td><td>The default level of trust for every workspace.</td><td><code>"servers"</code></td></tr>
+<tr><td><code>prompt</code></td><td>Whether to show a modal when opening a file in an untrusted workspace.</td><td><code>true</code></td></tr>
+<tr><td><code>trusted</code></td><td>Glob patterns whose matching workspaces are trusted without a grant.</td><td><code>[]</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.workspace-trust]
+# Even if `false`, the statusline `[⚠]` indicator is still shown.
+prompt = false
+
+# "none":     prompt for every workspace.
+# "servers":  trust LSP and DAP launches but still gate local config and git;
+#             .helix/config.toml, .helix/languages.toml, etc. need :workspace-trust.
+# "insecure": trust everything (discouraged).
+level = "servers"
+
+# Discouraged: skips .helix/ change detection and trusts anything that lands
+# under a matching path. `~` and environment variables are expanded.
+trusted = ["~/src/github.com/me/*"]
 </code></pre>
 <hr>
 <ol class="footnote-definition">
