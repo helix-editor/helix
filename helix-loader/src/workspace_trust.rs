@@ -35,7 +35,7 @@
 //! This is deliberately weaker than an explicit `:workspace-trust` grant and is discouraged: it
 //! bypasses the `.helix/` hash pin (changes to local config are never re-checked) and it trusts any
 //! repository that happens to land under a matching directory, including ones cloned there later. An
-//! explicit [`Self::exclude`] still wins over a matching glob.
+//! explicit exclude still wins over a matching glob.
 
 use std::{
     collections::HashMap,
