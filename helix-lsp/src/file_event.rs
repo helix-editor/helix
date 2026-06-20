@@ -34,6 +34,10 @@ enum Event {
 struct ClientState {
     client: Weak<Client>,
     registerations: HashMap<String, u32>,
+    /// Monotonic id for the next registration. Not the map length: ids must stay
+    /// unique across unregistrations, or a later registration could reuse an id
+    /// and an unregister would drop both registrations' interests.
+    next_id: u32,
     pending: Vec<lsp::FileEvent>,
 }
 
@@ -223,7 +227,11 @@ impl Handler {
                         registration_id
                     );
 
-                    if !state
+                    // Purge only a *stale* client reusing this id (a different
+                    // `Weak` ptr). Re-registration by the live client is handled
+                    // per-registration below; purging it here would drop the
+                    // client's other registrations.
+                    if state
                         .clients
                         .get(&client_.id())
                         .is_some_and(|state| !state.client.ptr_eq(&client))
@@ -236,10 +244,12 @@ impl Handler {
                         .or_insert_with(|| ClientState {
                             client: client.clone(),
                             registerations: HashMap::with_capacity(8),
+                            next_id: 0,
                             pending: Vec::with_capacity(32),
                         });
                     entry.client = client;
-                    let next_id = u32::try_from(entry.registerations.len()).unwrap();
+                    let next_id = entry.next_id;
+                    entry.next_id += 1;
                     let (mut interest, id) = match entry.registerations.entry(registration_id) {
                         hash_map::Entry::Occupied(entry) => {
                             let id = *entry.get();
@@ -318,10 +328,10 @@ impl Handler {
                     registration_id,
                 } => {
                     let Some(client_state) = state.clients.get_mut(&client_id) else {
-                        return;
+                        continue;
                     };
                     let Some(id) = client_state.registerations.remove(&*registration_id) else {
-                        return;
+                        continue;
                     };
                     let interest = state
                         .interest
