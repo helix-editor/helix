@@ -92,7 +92,7 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
   docs:
-    name: Docs
+    name: Grammar Lint
     runs-on: ubuntu-latest
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
@@ -127,6 +127,7 @@ jobs:
         run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
+        if: always()
         run: |
           git diff
           git diff-files --quiet \

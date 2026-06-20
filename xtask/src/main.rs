@@ -442,7 +442,11 @@ pub mod tasks {
                 .find(|(_, d)| d.config().language_id == lang)
             {
                 Some((language, _)) => language,
-                None => return Err(format!("{}: no configured language '{lang}'", path.display()).into()),
+                None => {
+                    return Err(
+                        format!("{}: no configured language '{lang}'", path.display()).into(),
+                    )
+                }
             };
             let source = std::fs::read_to_string(&path)?;
             let Some(sp) = spans(&loader, &scopes, language, &source) else {
@@ -469,9 +473,9 @@ pub mod tasks {
                 // An assertion line is a comment whose first `^` is preceded only
                 // by the comment leader (no alphanumerics), so code like `a ^ b`
                 // is never mistaken for one.
-                let marker = line.find('^').filter(|&c| {
-                    !line[..c].bytes().any(|b| b.is_ascii_alphanumeric())
-                });
+                let marker = line
+                    .find('^')
+                    .filter(|&c| !line[..c].bytes().any(|b| b.is_ascii_alphanumeric()));
                 let Some(col) = marker else {
                     if !line.trim().is_empty() {
                         base = Some(li);
