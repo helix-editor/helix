@@ -107,12 +107,23 @@ jobs:
           grammar-cache-version: ${{ env.GRAMMAR_CACHE_VERSION }}
 
       - name: Validate queries
+        if: always()
         run: cargo xtask query-check
 
+      - name: Validate indents
+        if: always()
+        run: cargo xtask indent-check
+
+      - name: Validate highlights
+        if: always()
+        run: cargo xtask highlight-check
+
       - name: Validate themes
+        if: always()
         run: cargo xtask theme-check
 
       - name: Generate docs
+        if: always()
         run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
