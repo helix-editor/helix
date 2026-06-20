@@ -434,6 +434,8 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Whether to implicitly trust every workspace or not
     pub insecure: bool,
+    /// Whether to dim text in unfocused views or while jumping to labels.
+    pub enable_focus_dimmer: bool,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1157,6 +1159,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             insecure: false,
+            enable_focus_dimmer: false,
         }
     }
 }

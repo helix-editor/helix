@@ -70,6 +70,7 @@
 | `kitty-keyboard-protocol` | Whether to enable Kitty Keyboard Protocol. Can be `enabled`, `disabled` or `auto` | `"auto"` |
 
 [^3]: In most cases, you also need to enable the `auto-format` setting under `languages.toml`. You can find the reasoning [here](https://github.com/helix-editor/helix/discussions/9043#discussioncomment-7811497).
+| `enable-focus-dimmer` |  Whether to dim text in unfocused views or while jumping to labels. | `false` |
 
 ### `[editor.clipboard-provider]` Section
 
