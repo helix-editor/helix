@@ -515,7 +515,7 @@ impl filesentry::Filter for WatchFilter {
         self.ignore_path_impl(path, is_dir, ignore_files)
     }
 
-    fn ignore_path_rec(&self, mut path: &Path, is_dir: Option<bool>) -> bool {
+    fn ignore_path_rec(&self, mut path: &Path, mut is_dir: Option<bool>) -> bool {
         let i = self
             .ignore_files
             .partition_point(|ignore_files| path < ignore_files.root);
@@ -536,6 +536,10 @@ impl filesentry::Filter for WatchFilter {
                 break;
             };
             path = parent;
+            // Ancestors of the leaf are always directories. Passing the leaf's
+            // `is_dir` up the chain makes a dir-only pattern (gitignore `target/`)
+            // miss the ancestor directory it names.
+            is_dir = Some(true);
         }
         false
     }
@@ -617,5 +621,36 @@ mod tests {
         assert!(is_hardcoded_whitelist(Path::new(".helix")));
         assert!(is_hardcoded_whitelist(Path::new(".github")));
         assert!(!is_hardcoded_whitelist(Path::new(".githup")));
+    }
+
+    #[test]
+    fn ignore_path_rec_treats_ancestors_as_dirs() {
+        use std::sync::Arc;
+
+        use filesentry::Filter;
+        use ignore::gitignore::{Gitignore, GitignoreBuilder};
+
+        use crate::file_watcher::{IgnoreFiles, WatchFilter};
+
+        let mut builder = GitignoreBuilder::new("/repo");
+        // dir-only pattern: matches the `target` directory, not a file named target
+        builder.add_line(None, "target/").unwrap();
+        let ignores = builder.build().unwrap();
+        let filter = WatchFilter {
+            filesentry_ignores: Gitignore::empty(),
+            ignore_files: vec![IgnoreFiles {
+                root: "/repo".into(),
+                ignores: vec![Arc::new(ignores)],
+            }],
+            global_ignores: Vec::new(),
+            hidden: true,
+            watch_vcs: true,
+        };
+
+        // A file under `target/` is ignored even though the leaf is passed as a file:
+        // the walk must re-check the `target` ancestor as a directory.
+        assert!(filter.ignore_path_rec(Path::new("/repo/target/foo.rs"), Some(false)));
+        assert!(filter.ignore_path_rec(Path::new("/repo/target/deep/foo.rs"), Some(false)));
+        assert!(!filter.ignore_path_rec(Path::new("/repo/src/main.rs"), Some(false)));
     }
 }
