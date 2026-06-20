@@ -26,3 +26,10 @@ pub fn themes() -> PathBuf {
 pub fn tests_indent() -> PathBuf {
     project_root().join("tests").join("indent")
 }
+
+pub fn tests_highlight() -> PathBuf {
+    project_root()
+        .join("tests")
+        .join("query")
+        .join("highlights")
+}
