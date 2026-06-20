@@ -164,10 +164,6 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-pub fn workspace_trust_file() -> PathBuf {
-    data_dir().join("trusted_workspaces")
-}
-
 /// Merge two TOML documents, merging values from `right` onto `left`
 ///
 /// `merge_depth` sets the nesting depth up to which values are merged instead
