@@ -23,7 +23,7 @@ A function call might be parsed by tree-sitter into a tree like the following.
 Use `:tree-sitter-subtree` to view the syntax tree of the primary selection. In
 a more intuitive tree format:
 
-```
+```text
             ┌────┐
             │call│
       ┌─────┴────┴─────┐

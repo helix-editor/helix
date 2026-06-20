@@ -121,7 +121,8 @@ pub fn textobject_paragraph(
     let mut line = range.cursor_line(slice);
     let prev_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
     let curr_line_empty = rope_is_line_ending(slice.line(line));
-    let next_line_empty = rope_is_line_ending(slice.line(line.saturating_sub(1)));
+    let next_line_empty =
+        line + 1 >= slice.len_lines() || rope_is_line_ending(slice.line(line + 1));
     let last_char =
         prev_grapheme_boundary(slice, slice.line_to_char(line + 1)) == range.cursor(slice);
     let prev_empty_to_line = prev_line_empty && !curr_line_empty;
@@ -285,11 +286,13 @@ pub fn textobject_treesitter(
     loader: &syntax::Loader,
     _count: usize,
 ) -> Range {
-    let root = syntax.tree().root_node();
-    let textobject_query = loader.textobject_query(syntax.root_language());
+    let byte_pos = slice.char_to_byte(range.cursor(slice));
+    let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
+    let root = syntax
+        .tree_for_byte_range(byte_pos as u32, byte_pos as u32)
+        .root_node();
+    let textobject_query = loader.textobject_query(syntax.layer(layer).language);
     let get_range = move || -> Option<Range> {
-        let byte_pos = slice.char_to_byte(range.cursor(slice));
-
         let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
         let node = textobject_query?
             .capture_nodes(&capture_name, &root, slice)?

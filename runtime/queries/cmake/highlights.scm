@@ -13,7 +13,9 @@
 (normal_command (identifier) @function)
 
 ["ENV" "CACHE"] @string.special.symbol
-["$" "{" "}" "<" ">"] @punctuation
+; `<` `>` (generator-expression delimiters) were dropped upstream with the
+; gen_exp node; `$` `{` `}` still delimit variable references.
+["$" "{" "}"] @punctuation
 ["(" ")"] @punctuation.bracket
 
 [
@@ -22,6 +24,12 @@
   (macro)
   (endmacro)
  ] @keyword.function
+
+; Scope block (`block()` / `endblock()`, CMake 3.25+).
+[
+  (block)
+  (endblock)
+ ] @keyword
 
 [
   (if)
@@ -37,35 +45,39 @@
   (endwhile)
  ] @keyword.control.repeat
 
+; Command arguments are now wrapped in an (argument_list) node, so the
+; argument matches nest inside it rather than sitting directly under the command.
 (function_command
    (function)
-   . (argument) @function
-   (argument)* @variable.parameter
- )
+   (argument_list
+     . (argument) @function
+     (argument)* @variable.parameter))
 
 (macro_command
    (macro)
-   . (argument) @function.macro
-   (argument)* @variable.parameter
- )
+   (argument_list
+     . (argument) @function.macro
+     (argument)* @variable.parameter))
 
 (normal_command
   (identifier) @function.builtin
-  . (argument) @variable
+  (argument_list . (argument) @variable)
   (#match? @function.builtin "^(?i)(set)$"))
 
 (normal_command
   (identifier) @function.builtin
-  . (argument)
-  (argument) @constant
+  (argument_list
+    . (argument)
+    (argument) @constant)
   (#match? @constant "^(?:PARENT_SCOPE|CACHE)$")
   (#match? @function.builtin "^(?i)(unset)$"))
 
 (normal_command
   (identifier) @function.builtin
-  . (argument)
-  . (argument)
-  (argument) @constant
+  (argument_list
+    . (argument)
+    . (argument)
+    (argument) @constant)
   (#match? @constant "^(?:PARENT_SCOPE|CACHE|FORCE)$")
   (#match? @function.builtin "^(?i)(set)$")
  )
@@ -76,21 +88,22 @@
 
 (if_command
    (if)
-   (argument) @operator
+   (argument_list (argument) @operator)
    (#match? @operator "^(?:NOT|AND|OR|COMMAND|POLICY|TARGET|TEST|DEFINED|IN_LIST|EXISTS|IS_NEWER_THAN|IS_DIRECTORY|IS_SYMLINK|IS_ABSOLUTE|MATCHES|LESS|GREATER|EQUAL|LESS_EQUAL|GREATER_EQUAL|STRLESS|STRGREATER|STREQUAL|STRLESS_EQUAL|STRGREATER_EQUAL|VERSION_LESS|VERSION_GREATER|VERSION_EQUAL|VERSION_LESS_EQUAL|VERSION_GREATER_EQUAL)$")
 )
 
 (normal_command
    (identifier) @function.builtin
-   . (argument)
-   (argument) @constant
+   (argument_list
+     . (argument)
+     (argument) @constant)
    (#match? @constant "^(?:ALL|COMMAND|DEPENDS|BYPRODUCTS|WORKING_DIRECTORY|COMMENT|JOB_POOL|VERBATIM|USES_TERMINAL|COMMAND_EXPAND_LISTS|SOURCES)$")
    (#match? @function.builtin "^(?i)(add_custom_target)$")
  )
 
 (normal_command
    (identifier) @function.builtin
-   (argument) @constant
+   (argument_list (argument) @constant)
    (#match? @constant "^(?:OUTPUT|COMMAND|MAIN_DEPENDENCY|DEPENDS|BYPRODUCTS|IMPLICIT_DEPENDS|WORKING_DIRECTORY|COMMENT|DEPFILE|JOB_POOL|VERBATIM|APPEND|USES_TERMINAL|COMMAND_EXPAND_LISTS)$")
    (#match? @function.builtin "^(?i)(add_custom_command)$")
  )

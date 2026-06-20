@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::Path, path::PathBuf};
 
 use crate::theme::Color;
 
@@ -857,7 +857,7 @@ impl Mime {
     #[inline]
     pub fn get<'b, 'a: 'b>(
         &'a self,
-        path: Option<&'b PathBuf>,
+        path: Option<&'b Path>,
         name: Option<&'b str>,
     ) -> Option<&'b Icon> {
         if !self.enabled {
