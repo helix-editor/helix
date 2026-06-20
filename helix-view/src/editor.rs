@@ -493,7 +493,8 @@ impl Default for AutoReloadConfig {
 pub struct AutoReloadPoll {
     /// Enable polling for files outside the watched workspace
     pub enable: bool,
-    /// Polling interval in milliseconds (default: 5000)
+    /// Polling interval in milliseconds (default: 30000). This is only a backstop:
+    /// unwatched files are normally re-checked when the terminal regains focus.
     pub interval: u64,
 }
 
@@ -501,7 +502,7 @@ impl Default for AutoReloadPoll {
     fn default() -> Self {
         AutoReloadPoll {
             enable: true,
-            interval: 5000,
+            interval: 30000,
         }
     }
 }

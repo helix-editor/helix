@@ -189,6 +189,11 @@ pub struct Document {
     // were no saves.
     pub last_saved_time: SystemTime,
 
+    /// On-disk mtime of the last external change auto-reload already surfaced for
+    /// this document (prompt/warning). Lets it show the conflict once instead of
+    /// re-prompting on every poll/focus check while the buffer stays modified.
+    pub auto_reload_seen_mtime: Option<SystemTime>,
+
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
@@ -719,6 +724,7 @@ impl Document {
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
             last_saved_time: SystemTime::now(),
+            auto_reload_seen_mtime: None,
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_servers: HashMap::new(),

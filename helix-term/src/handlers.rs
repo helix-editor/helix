@@ -15,7 +15,7 @@ pub use helix_view::handlers::{word_index, Handlers};
 
 use self::document_colors::DocumentColorsHandler;
 
-mod auto_reload;
+pub(crate) mod auto_reload;
 mod auto_save;
 pub mod completion;
 pub mod diagnostics;

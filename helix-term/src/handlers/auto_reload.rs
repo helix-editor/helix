@@ -105,22 +105,7 @@ impl helix_event::AsyncHook for PollHandler {
             let poll_interval = config.auto_reload.poll.interval;
 
             // Check unwatched documents for external modifications
-            let modified_paths: Vec<PathBuf> = editor
-                .documents()
-                .filter_map(|doc| {
-                    let path = doc.path()?;
-                    // Skip documents that are being watched by filesentry
-                    if editor.file_watcher.is_watching(path) {
-                        return None;
-                    }
-                    let mtime = path.metadata().ok()?.modified().ok()?;
-                    if mtime != doc.last_saved_time {
-                        Some(path.to_path_buf())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            let modified_paths = changed_unwatched_paths(editor);
 
             // Poll extra watched paths (e.g., VCS HEAD files outside workspace)
             let extra_path_changes = editor.file_watcher.poll_extra_paths();
@@ -142,6 +127,38 @@ impl helix_event::AsyncHook for PollHandler {
                     interval: poll_interval,
                 },
             );
+        });
+    }
+}
+
+/// Open documents not covered by the file watcher (outside the workspace, or
+/// ignored) whose on-disk mtime no longer matches their last save.
+fn changed_unwatched_paths(editor: &Editor) -> Vec<PathBuf> {
+    editor
+        .documents()
+        .filter_map(|doc| {
+            let path = doc.path()?;
+            if editor.file_watcher.is_watching(path) {
+                return None;
+            }
+            let mtime = path.metadata().ok()?.modified().ok()?;
+            (mtime != doc.last_saved_time).then(|| path.to_path_buf())
+        })
+        .collect()
+}
+
+/// Re-check unwatched open files when the terminal regains focus -- they are only
+/// polled otherwise, and regaining focus is when a user is most likely to have
+/// just edited them elsewhere. Routes through the same `FileSystemDidChange` path
+/// as the watcher and poll (so prompt de-duplication still applies).
+pub(crate) fn on_focus_gained(editor: &Editor) {
+    if !editor.config().auto_reload.enable {
+        return;
+    }
+    let changed = changed_unwatched_paths(editor);
+    if !changed.is_empty() {
+        dispatch(FileSystemDidChange {
+            fs_events: events_from_paths(changed),
         });
     }
 }
@@ -172,6 +189,13 @@ fn handle_document_change(
     }
 
     if doc.is_modified() {
+        // Surface a conflict (prompt / warning) once per distinct on-disk mtime;
+        // the buffer is modified so we can't reload, and the poll / focus checks
+        // would otherwise re-fire it on every tick.
+        if doc.auto_reload_seen_mtime == Some(mtime) {
+            return;
+        }
+        doc.auto_reload_seen_mtime = Some(mtime);
         if prompt_if_modified {
             let path_str = doc
                 .relative_path()
