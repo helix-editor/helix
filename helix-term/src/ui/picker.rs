@@ -42,7 +42,7 @@ use std::{
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position, Rope,
 };
 use helix_view::{
     editor::Action,
@@ -64,6 +64,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 pub enum PathOrId<'a> {
     Id(DocumentId),
     Path(&'a Path),
+    Document(String),
 }
 
 impl<'a> From<&'a Path> for PathOrId<'a> {
@@ -590,6 +591,21 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let (path_or_id, range) = (self.file_fn.as_ref()?)(editor, current)?;
 
         match path_or_id {
+            PathOrId::Document(s) => {
+                let rope = Rope::from_str(&s);
+                let document =
+                    Document::from(rope, None, editor.config.clone(), editor.syn_loader.clone());
+                let _ = self.preview_cache.insert(
+                    Path::new("/tmp/.helix_error").into(),
+                    CachedPreview::Document(Box::new(document)),
+                );
+                let preview = Preview::Cached(
+                    self.preview_cache
+                        .get(Path::new("/tmp/.helix_error"))
+                        .unwrap(),
+                );
+                Some((preview, range))
+            }
             PathOrId::Path(path) => {
                 if let Some(doc) = editor.document_by_path(path) {
                     return Some((Preview::EditorDocument(doc), range));
