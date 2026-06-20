@@ -19,7 +19,7 @@ use helix_loader::workspace_trust::TrustStatus;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
-use futures_util::{future, StreamExt};
+use futures_util::StreamExt;
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -2348,10 +2348,7 @@ impl Editor {
 
     /// Closes language servers with timeout. The default timeout is 10000 ms, use
     /// `timeout` parameter to override this.
-    pub async fn close_language_servers(
-        &self,
-        timeout: Option<u64>,
-    ) -> Result<(), tokio::time::error::Elapsed> {
+    pub async fn close_language_servers(&self, timeout: Option<u64>) {
         // Remove all language servers from the file event handler.
         // Note: this is non-blocking.
         for client in self.language_servers.iter_clients() {
@@ -2360,16 +2357,24 @@ impl Editor {
                 .remove_client(client.id());
         }
 
-        tokio::time::timeout(
-            Duration::from_millis(timeout.unwrap_or(3000)),
-            future::join_all(
-                self.language_servers
-                    .iter_clients()
-                    .map(|client| client.force_shutdown()),
-            ),
-        )
-        .await
-        .map(|_| ())
+        // Enqueue shutdown+exit for every server (non-blocking fire-and-forget).
+        for client in self.language_servers.iter_clients() {
+            client.force_shutdown();
+        }
+
+        // Wait until shutdown+exit have actually been written to each server's stdin
+        // before the runtime (and the pipes) are torn down, so well-behaved servers
+        // can act on `exit` before kill_on_drop reaps them. This waits only on our
+        // own outbound write -- not on any server response -- so a slow server (e.g.
+        // gopls flushing logs) doesn't delay it. Capped so a wedged write can't hang
+        // the quit.
+        let cap = Duration::from_millis(timeout.unwrap_or(1000));
+        let _ = tokio::time::timeout(cap, async {
+            for client in self.language_servers.iter_clients() {
+                client.wait_shutdown_flushed().await;
+            }
+        })
+        .await;
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {
