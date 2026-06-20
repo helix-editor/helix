@@ -15,7 +15,8 @@ use helix_core::{
     chars::char_is_word,
     diagnostic::{Diagnostic, DiagnosticProvider, Range as DiagnosticRange, Severity},
     diff::compare_ropes,
-    ChangeSet, Operation, Rope, RopeSlice, SpellingLanguage,
+    syntax::Loader,
+    ChangeSet, Operation, Rope, RopeSlice, SpellingLanguage, Syntax,
 };
 use helix_event::{cancelable_future, register_hook, send_blocking, AsyncHook};
 use helix_stdx::rope::{Regex, RopeSliceExt as _};
@@ -161,16 +162,23 @@ fn recheck_document(editor: &mut Editor, doc_id: DocumentId, changes: ChangeSet,
         }
     }
 
+    // Restrict each window to the parts worth checking per the syntax tree. The splice below still
+    // clears the whole window, so a word that left a checked region (e.g. a comment edited into
+    // code) loses its diagnostic.
+    let loader = editor.syn_loader.load_full();
+    let doc = editor.documents.get(&doc_id).unwrap();
+    let check_regions: Vec<Range<usize>> = regions
+        .iter()
+        .flat_map(|window| {
+            spell_check_regions(doc.syntax(), &loader, text.slice(..), window.clone())
+        })
+        .collect();
+
     let diagnostics = {
         let dictionary = dictionary.read();
         let mut diagnostics = Vec::new();
-        for region in &regions {
-            check_region(
-                &dictionary,
-                text.slice(..),
-                region.clone(),
-                &mut diagnostics,
-            );
+        for region in check_regions {
+            check_region(&dictionary, text.slice(..), region, &mut diagnostics);
         }
         diagnostics
     };
@@ -193,12 +201,16 @@ fn check_document(editor: &mut Editor, doc_id: DocumentId) {
     };
     let version = doc.version();
     let text = doc.text().clone();
+    // Cloning the syntax bumps a few refcounts on its (persistent) trees; cheap enough to snapshot
+    // for the off-thread check.
+    let syntax = doc.syntax().cloned();
+    let loader = editor.syn_loader.load_full();
     let Some(dictionary) = lookup_dictionary(editor, language) else {
         return;
     };
 
     let cancel = editor.handlers.spelling.open_request(doc_id);
-    let future = check_text(dictionary, text);
+    let future = check_text(dictionary, text, syntax, loader);
 
     tokio::spawn(async move {
         match cancelable_future(future, cancel).await {
@@ -309,18 +321,46 @@ fn load_dictionary(language: SpellingLanguage) {
 fn check_text(
     dictionary: Arc<RwLock<Dictionary>>,
     text: Rope,
+    syntax: Option<Syntax>,
+    loader: Arc<Loader>,
 ) -> impl Future<Output = Result<Vec<Diagnostic>, tokio::task::JoinError>> {
     tokio::task::spawn_blocking(move || {
         let dictionary = dictionary.read();
         let mut diagnostics = Vec::new();
-        check_region(
-            &dictionary,
+        for region in spell_check_regions(
+            syntax.as_ref(),
+            &loader,
             text.slice(..),
             0..text.len_chars(),
-            &mut diagnostics,
-        );
+        ) {
+            check_region(&dictionary, text.slice(..), region, &mut diagnostics);
+        }
         diagnostics
     })
+}
+
+/// The char ranges within `region` to spell-check. With a syntax tree, checking is restricted to
+/// the natural-language regions selected by each layer's `spellcheck.scm` query (comments, prose,
+/// ...); without a tree (plain text), the whole `region` is checked.
+//
+// `Syntax::spell_regions` works in byte offsets (tree-sitter's native unit) while the spelling
+// diagnostics, like all diagnostics, are in char offsets, so we convert at this boundary. The
+// conversions go away once diagnostics move to byte offsets.
+fn spell_check_regions(
+    syntax: Option<&Syntax>,
+    loader: &Loader,
+    text: RopeSlice,
+    region: Range<usize>,
+) -> Vec<Range<usize>> {
+    let Some(syntax) = syntax else {
+        return vec![region];
+    };
+    let bytes = text.char_to_byte(region.start)..text.char_to_byte(region.end);
+    syntax
+        .spell_regions(text, loader, bytes)
+        .into_iter()
+        .map(|region| text.byte_to_char(region.start)..text.byte_to_char(region.end))
+        .collect()
 }
 
 /// Tokenizes the `region` (a char range) of `text` and appends a diagnostic for each word the
@@ -477,5 +517,32 @@ mod tests {
             (diagnostics[0].range.start, diagnostics[0].range.end),
             (2, 6)
         );
+    }
+
+    /// Runs the full-document check path's logic (region selection + tokenization) against a real
+    /// syntax tree, the way `check_text` does off-thread.
+    fn check_scoped(language: &str, text: &str) -> Vec<Diagnostic> {
+        let loader = helix_core::config::default_lang_loader();
+        let rope = Rope::from_str(text);
+        let language = loader.language_for_name(language).unwrap();
+        let syntax = Syntax::new(rope.slice(..), language, &loader).unwrap();
+        let dictionary = en_us();
+        let mut out = Vec::new();
+        for region in
+            spell_check_regions(Some(&syntax), &loader, rope.slice(..), 0..rope.len_chars())
+        {
+            check_region(&dictionary, rope.slice(..), region, &mut out);
+        }
+        out
+    }
+
+    #[test]
+    fn syntax_scoping_checks_comments_not_code() {
+        // `teh` in the comment is a misspelling; the identically misspelled identifier `teh_value`
+        // is code and must not be flagged.
+        let diagnostics = check_scoped("rust", "// teh bug\nlet teh_value = 1;\n");
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        assert!(diagnostics[0].message.contains("teh"), "{diagnostics:?}");
+        assert_eq!(diagnostics[0].range.start, 3, "the comment occurrence");
     }
 }
