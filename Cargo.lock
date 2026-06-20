@@ -404,7 +404,7 @@ dependencies = [
 [[package]]
 name = "filesentry"
 version = "0.2.2"
-source = "git+https://github.com/helix-editor/filesentry#36cd6cfbb5a9de66976c4be7ed649aa3463d9038"
+source = "git+https://github.com/helix-editor/filesentry?rev=57713a3e062979f3c4f98c5506fee37385c8047d#57713a3e062979f3c4f98c5506fee37385c8047d"
 dependencies = [
  "bitflags",
  "core-foundation-sys",
