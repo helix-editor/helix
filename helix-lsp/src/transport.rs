@@ -52,6 +52,7 @@ pub struct Transport {
 }
 
 impl Transport {
+    #[allow(clippy::type_complexity)]
     pub fn start(
         server_stdout: BufReader<ChildStdout>,
         server_stdin: BufWriter<ChildStdin>,
