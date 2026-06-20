@@ -72,7 +72,7 @@ impl AsyncHook for SpellingHook {
                 job::dispatch_blocking(move |editor, _| {
                     let docs: Vec<_> = editor
                         .documents()
-                        .filter(|doc| doc.spelling_language.as_ref() == Some(&language))
+                        .filter(|doc| doc.spelling_languages.contains(&language))
                         .map(|doc| doc.id())
                         .collect();
                     for doc in docs {
@@ -138,12 +138,13 @@ fn recheck_document(editor: &mut Editor, doc_id: DocumentId, changes: ChangeSet,
     let Some(doc) = editor.documents.get(&doc_id) else {
         return;
     };
-    let Some(language) = doc.spelling_language.clone() else {
+    if doc.spelling_languages.is_empty() {
         return;
-    };
+    }
+    let languages = doc.spelling_languages.clone();
     let stale = doc.version() != version;
     let text = doc.text().clone();
-    let Some(dictionary) = lookup_dictionary(editor, language) else {
+    let Some(dictionaries) = lookup_dictionaries(editor, &languages) else {
         return;
     };
 
@@ -175,10 +176,14 @@ fn recheck_document(editor: &mut Editor, doc_id: DocumentId, changes: ChangeSet,
         .collect();
 
     let diagnostics = {
-        let dictionary = dictionary.read();
+        let guards: Vec<_> = dictionaries
+            .iter()
+            .map(|dictionary| dictionary.read())
+            .collect();
+        let dictionaries: Vec<&Dictionary> = guards.iter().map(|guard| &**guard).collect();
         let mut diagnostics = Vec::new();
         for region in check_regions {
-            check_region(&dictionary, text.slice(..), region, &mut diagnostics);
+            check_region(&dictionaries, text.slice(..), region, &mut diagnostics);
         }
         diagnostics
     };
@@ -196,21 +201,22 @@ fn check_document(editor: &mut Editor, doc_id: DocumentId) {
     let Some(doc) = editor.documents.get(&doc_id) else {
         return;
     };
-    let Some(language) = doc.spelling_language.clone() else {
+    if doc.spelling_languages.is_empty() {
         return;
-    };
+    }
+    let languages = doc.spelling_languages.clone();
     let version = doc.version();
     let text = doc.text().clone();
     // Cloning the syntax bumps a few refcounts on its (persistent) trees; cheap enough to snapshot
     // for the off-thread check.
     let syntax = doc.syntax().cloned();
     let loader = editor.syn_loader.load_full();
-    let Some(dictionary) = lookup_dictionary(editor, language) else {
+    let Some(dictionaries) = lookup_dictionaries(editor, &languages) else {
         return;
     };
 
     let cancel = editor.handlers.spelling.open_request(doc_id);
-    let future = check_text(dictionary, text, syntax, loader);
+    let future = check_text(dictionaries, text, syntax, loader);
 
     tokio::spawn(async move {
         match cancelable_future(future, cancel).await {
@@ -235,6 +241,25 @@ fn check_document(editor: &mut Editor, doc_id: DocumentId) {
             None => (),
         }
     });
+}
+
+/// Returns the dictionaries for `languages`, or `None` if any are not loaded yet (after kicking off
+/// the missing loads). Checking waits until all are present so a not-yet-loaded dictionary can't
+/// cause false positives; the load completion re-checks via [`SpellingEvent::DictionaryLoaded`].
+fn lookup_dictionaries(
+    editor: &mut Editor,
+    languages: &[SpellingLanguage],
+) -> Option<Vec<Arc<RwLock<Dictionary>>>> {
+    let mut dictionaries = Vec::with_capacity(languages.len());
+    let mut missing = false;
+    for language in languages {
+        // Call through for every language so all missing loads are kicked off, not just the first.
+        match lookup_dictionary(editor, language.clone()) {
+            Some(dictionary) => dictionaries.push(dictionary),
+            None => missing = true,
+        }
+    }
+    (!missing).then_some(dictionaries)
 }
 
 /// Returns the dictionary for `language`, kicking off an async load (once) if it isn't loaded yet.
@@ -319,13 +344,17 @@ fn load_dictionary(language: SpellingLanguage) {
 }
 
 fn check_text(
-    dictionary: Arc<RwLock<Dictionary>>,
+    dictionaries: Vec<Arc<RwLock<Dictionary>>>,
     text: Rope,
     syntax: Option<Syntax>,
     loader: Arc<Loader>,
 ) -> impl Future<Output = Result<Vec<Diagnostic>, tokio::task::JoinError>> {
     tokio::task::spawn_blocking(move || {
-        let dictionary = dictionary.read();
+        let guards: Vec<_> = dictionaries
+            .iter()
+            .map(|dictionary| dictionary.read())
+            .collect();
+        let dictionaries: Vec<&Dictionary> = guards.iter().map(|guard| &**guard).collect();
         let mut diagnostics = Vec::new();
         for region in spell_check_regions(
             syntax.as_ref(),
@@ -333,7 +362,7 @@ fn check_text(
             text.slice(..),
             0..text.len_chars(),
         ) {
-            check_region(&dictionary, text.slice(..), region, &mut diagnostics);
+            check_region(&dictionaries, text.slice(..), region, &mut diagnostics);
         }
         diagnostics
     })
@@ -363,16 +392,15 @@ fn spell_check_regions(
         .collect()
 }
 
-/// Tokenizes the `region` (a char range) of `text` and appends a diagnostic for each word the
-/// dictionary rejects. Match offsets from `regex_input_at` are absolute byte offsets in `text`.
+/// Tokenizes the `region` (a char range) of `text` and appends a diagnostic for each word that
+/// every dictionary rejects (a word known to any one of them is accepted). Match offsets from
+/// `regex_input_at` are absolute byte offsets in `text`.
 fn check_region(
-    dictionary: &Dictionary,
+    dictionaries: &[&Dictionary],
     text: RopeSlice,
     region: Range<usize>,
     out: &mut Vec<Diagnostic>,
 ) {
-    // TODO: restrict checking to natural-language regions with a tree-sitter query; this regex
-    // over-checks code identifiers.
     static WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(r"[0-9A-Z]*(['-]?[a-z]+)*").unwrap());
 
     for m in WORDS.find_iter(text.regex_input_at(region)) {
@@ -383,7 +411,10 @@ fn check_region(
         if word.is_empty() {
             continue;
         }
-        if !dictionary.check(&word) {
+        if !dictionaries
+            .iter()
+            .any(|dictionary| dictionary.check(&word))
+        {
             let start = text.byte_to_char(m.start());
             let end = text.byte_to_char(m.end());
             out.push(spelling_diagnostic(text, start, end, &word));
@@ -429,7 +460,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.spelling.event_tx.clone();
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let doc = doc!(event.editor, &event.doc);
-        if doc.spelling_language.is_some() {
+        if !doc.spelling_languages.is_empty() {
             send_blocking(&tx, SpellingEvent::DocumentOpened { doc: event.doc });
         }
         Ok(())
@@ -438,7 +469,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.spelling.event_tx.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         // Mirror the word index: ignore synthetic edits so they don't churn the diagnostics.
-        if !event.ghost_transaction && event.doc.spelling_language.is_some() {
+        if !event.ghost_transaction && !event.doc.spelling_languages.is_empty() {
             send_blocking(
                 &tx,
                 SpellingEvent::DocumentChanged {
@@ -481,8 +512,29 @@ mod tests {
     fn check(text: &str, region: Range<usize>) -> Vec<Diagnostic> {
         let rope = Rope::from_str(text);
         let mut out = Vec::new();
-        check_region(&en_us(), rope.slice(..), region, &mut out);
+        check_region(&[&en_us()], rope.slice(..), region, &mut out);
         out
+    }
+
+    /// A throwaway dictionary containing exactly `words`, for testing multi-dictionary checks.
+    fn mini_dictionary(words: &[&str]) -> Dictionary {
+        let dic = format!("{}\n{}\n", words.len(), words.join("\n"));
+        Dictionary::new("SET UTF-8\n", &dic).unwrap()
+    }
+
+    #[test]
+    fn a_word_known_to_any_dictionary_is_accepted() {
+        // "wrld" is not in en_US, so en_US alone flags it.
+        let rope = Rope::from_str("wrld");
+        let mut out = Vec::new();
+        check_region(&[&en_us()], rope.slice(..), 0..4, &mut out);
+        assert_eq!(out.len(), 1, "{out:?}");
+
+        // A second dictionary that knows "wrld" makes the OR accept it.
+        let custom = mini_dictionary(&["wrld"]);
+        let mut out = Vec::new();
+        check_region(&[&en_us(), &custom], rope.slice(..), 0..4, &mut out);
+        assert!(out.is_empty(), "{out:?}");
     }
 
     #[test]
@@ -531,7 +583,7 @@ mod tests {
         for region in
             spell_check_regions(Some(&syntax), &loader, rope.slice(..), 0..rope.len_chars())
         {
-            check_region(&dictionary, rope.slice(..), region, &mut out);
+            check_region(&[&dictionary], rope.slice(..), region, &mut out);
         }
         out
     }

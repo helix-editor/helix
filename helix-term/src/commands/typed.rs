@@ -2438,18 +2438,23 @@ fn spelling_language(
 
     if args.is_empty() {
         let doc = doc!(cx.editor);
-        let status = match &doc.spelling_language {
-            Some(language) => language.to_string(),
-            None => "off".to_string(),
+        let status = if doc.spelling_languages.is_empty() {
+            "off".to_string()
+        } else {
+            doc.spelling_languages
+                .iter()
+                .map(|language| language.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
         };
         cx.editor.set_status(status);
         return Ok(());
     }
 
     let doc_id = doc!(cx.editor).id();
-    if matches!(&args[0], "off" | "none" | "disable") {
+    if args.len() == 1 && &args[0] == "off" {
         let doc = doc_mut!(cx.editor);
-        doc.spelling_language = None;
+        doc.spelling_languages.clear();
         doc.replace_diagnostics(
             [],
             &[],
@@ -2460,8 +2465,11 @@ fn spelling_language(
             doc: doc_id,
         });
     } else {
-        let language: helix_core::SpellingLanguage = args[0].parse()?;
-        doc_mut!(cx.editor).spelling_language = Some(language);
+        let languages = args
+            .iter()
+            .map(|arg| arg.parse())
+            .collect::<Result<Vec<helix_core::SpellingLanguage>, _>>()?;
+        doc_mut!(cx.editor).spelling_languages = languages;
         helix_event::send_blocking(
             &cx.editor.handlers.spelling.event_tx,
             SpellingEvent::DocumentOpened { doc: doc_id },
@@ -3848,11 +3856,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-spelling-language",
         aliases: &["spelling"],
-        doc: "Set the spell-checking language for the current buffer (e.g. `en_US`), or `off` to disable. Shows the current language if no value is given.",
+        doc: "Set the spell-checking languages for the current buffer (e.g. `en_US`); a word is flagged only when every language rejects it. Pass `off` to disable, or no value to show the current languages.",
         fun: spelling_language,
-        completer: CommandCompleter::positional(&[completers::spelling_language]),
+        completer: CommandCompleter::all(completers::spelling_language),
         signature: Signature {
-            positionals: (0, Some(1)),
+            positionals: (0, None),
             ..Signature::DEFAULT
         },
     },

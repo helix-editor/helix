@@ -89,17 +89,21 @@ impl Editor {
     /// for each of the dictionary's suggestions, plus an "add to dictionary" action.
     pub fn spelling_actions(&self) -> Vec<Action> {
         let (view, doc) = current_ref!(self);
-        let Some(language) = doc.spelling_language.clone() else {
+        // The dictionaries this document is checked against, in configuration order.
+        let dictionaries: Vec<(SpellingLanguage, _)> = doc
+            .spelling_languages
+            .iter()
+            .filter_map(|language| {
+                Some((language.clone(), self.dictionaries.get(language)?.read()))
+            })
+            .collect();
+        if dictionaries.is_empty() {
             return Vec::new();
-        };
-        let Some(dictionary) = self.dictionaries.get(&language) else {
-            return Vec::new();
-        };
+        }
         let doc_id = doc.id();
         let view_id = view.id;
         let selection = doc.selection(view_id).primary();
         let text = doc.text();
-        let dictionary = dictionary.read();
 
         let mut suggestions = Vec::new();
         let mut actions = Vec::new();
@@ -113,8 +117,12 @@ impl Editor {
             }
             let word = Cow::<str>::from(text.slice(range.start..range.end)).into_owned();
 
+            // Offer the suggestions from every dictionary, in order, without duplicates.
             suggestions.clear();
-            dictionary.suggest(&word, &mut suggestions);
+            for (_, dictionary) in &dictionaries {
+                dictionary.suggest(&word, &mut suggestions);
+            }
+            suggestions.dedup();
             for suggestion in &suggestions {
                 let suggestion = suggestion.clone();
                 let title = format!("Replace '{word}' with '{suggestion}'");
@@ -138,32 +146,39 @@ impl Editor {
                 ));
             }
 
-            // The action's closure needs its own copy of the language to move in.
-            let language = language.clone();
-            let title = format!("Add '{word}' to dictionary '{language}'");
-            actions.push(Action::new(
-                title,
-                SPELLING_ACTION_PRIORITY,
-                move |editor| {
-                    let Some(dictionary) = editor.dictionaries.get(&language) else {
-                        return;
-                    };
-                    if let Err(err) = dictionary.write().add(&word) {
-                        log::error!("could not add '{word}' to dictionary '{language}': {err:?}");
-                        return;
-                    }
-                    if let Err(err) = persist_to_personal_dictionary(&word) {
-                        log::error!("could not persist '{word}' to the personal dictionary: {err}");
-                    }
-                    // The dictionary's contents changed; re-check the open documents using it.
-                    send_blocking(
-                        &editor.handlers.spelling.event_tx,
-                        SpellingEvent::DictionaryLoaded {
-                            language: language.clone(),
-                        },
-                    );
-                },
-            ));
+            // "Add to dictionary" targets one dictionary, so offer one action per language.
+            for (language, _) in &dictionaries {
+                let language = language.clone();
+                let word = word.clone();
+                let title = format!("Add '{word}' to dictionary '{language}'");
+                actions.push(Action::new(
+                    title,
+                    SPELLING_ACTION_PRIORITY,
+                    move |editor| {
+                        let Some(dictionary) = editor.dictionaries.get(&language) else {
+                            return;
+                        };
+                        if let Err(err) = dictionary.write().add(&word) {
+                            log::error!(
+                                "could not add '{word}' to dictionary '{language}': {err:?}"
+                            );
+                            return;
+                        }
+                        if let Err(err) = persist_to_personal_dictionary(&word) {
+                            log::error!(
+                                "could not persist '{word}' to the personal dictionary: {err}"
+                            );
+                        }
+                        // The dictionary's contents changed; re-check the open documents using it.
+                        send_blocking(
+                            &editor.handlers.spelling.event_tx,
+                            SpellingEvent::DictionaryLoaded {
+                                language: language.clone(),
+                            },
+                        );
+                    },
+                ));
+            }
         }
 
         actions
