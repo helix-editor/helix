@@ -47,6 +47,8 @@ pub struct Transport {
     pending_requests: Mutex<HashMap<jsonrpc::Id, Sender<Result<Value>>>>,
     shutdown_requested: AtomicBool,
     inject_tx: UnboundedSender<Payload>,
+    /// Notified once the `exit` notification has been flushed to the server's stdin
+    shutdown_flushed: Arc<Notify>,
 }
 
 impl Transport {
@@ -60,11 +62,13 @@ impl Transport {
         UnboundedReceiver<(LanguageServerId, jsonrpc::Call)>,
         UnboundedSender<Payload>,
         Arc<Notify>,
+        Arc<Notify>,
     ) {
         let (client_tx, rx) = unbounded_channel();
         let (tx, client_rx) = unbounded_channel();
         let (inject_tx, inject_rx) = unbounded_channel();
         let notify = Arc::new(Notify::new());
+        let shutdown_flushed = Arc::new(Notify::new());
 
         let transport = Self {
             id,
@@ -72,6 +76,7 @@ impl Transport {
             pending_requests: Mutex::new(HashMap::default()),
             shutdown_requested: AtomicBool::new(false),
             inject_tx,
+            shutdown_flushed: shutdown_flushed.clone(),
         };
 
         let transport = Arc::new(transport);
@@ -91,7 +96,7 @@ impl Transport {
             notify.clone(),
         ));
 
-        (rx, tx, notify)
+        (rx, tx, notify, shutdown_flushed)
     }
 
     async fn recv_server_message(
@@ -402,6 +407,11 @@ impl Transport {
             matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
         }
 
+        fn is_exit(payload: &Payload) -> bool {
+            use lsp::notification::{Exit, Notification};
+            matches!(payload, Payload::Notification(jsonrpc::Notification { method, .. }) if method == Exit::METHOD)
+        }
+
         // TODO: events that use capabilities need to do the right thing
 
         loop {
@@ -452,6 +462,7 @@ impl Transport {
                             pending_messages.push(msg);
                         } else {
                             let is_shutdown_msg = is_shutdown(&msg);
+                            let is_exit_msg = is_exit(&msg);
                             // Set the flag *before* flushing to stdin so that the recv task
                             // cannot observe an unanswered server request in the window between
                             // the kernel delivering the bytes to the server and this store.
@@ -461,7 +472,13 @@ impl Transport {
                                     .store(true, Ordering::Release);
                             }
                             match transport.send_payload_to_server(&mut server_stdin, msg).await {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    // `exit` is the last thing a shutting-down client sends;
+                                    // signal that it has reached the server's stdin.
+                                    if is_exit_msg {
+                                        transport.shutdown_flushed.notify_one();
+                                    }
+                                }
                                 Err(err) => {
                                     error!("{} err: <- {err:?}", transport.name);
                                 }

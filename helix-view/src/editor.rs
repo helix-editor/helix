@@ -2362,10 +2362,19 @@ impl Editor {
             client.force_shutdown();
         }
 
-        // Give the send tasks a brief window to flush the queued bytes to the
-        // servers' stdin pipes before the tokio runtime is dropped. The servers
-        // receive both messages in order and exit gracefully (LSP exit code 0).
-        tokio::time::sleep(Duration::from_millis(timeout.unwrap_or(50))).await;
+        // Wait until shutdown+exit have actually been written to each server's stdin
+        // before the runtime (and the pipes) are torn down, so well-behaved servers
+        // can act on `exit` before kill_on_drop reaps them. This waits only on our
+        // own outbound write -- not on any server response -- so a slow server (e.g.
+        // gopls flushing logs) doesn't delay it. Capped so a wedged write can't hang
+        // the quit.
+        let cap = Duration::from_millis(timeout.unwrap_or(1000));
+        let _ = tokio::time::timeout(cap, async {
+            for client in self.language_servers.iter_clients() {
+                client.wait_shutdown_flushed().await;
+            }
+        })
+        .await;
     }
 
     pub async fn wait_event(&mut self) -> EditorEvent {

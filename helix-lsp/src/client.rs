@@ -56,7 +56,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 pub struct Client {
     id: LanguageServerId,
     name: String,
-    process: parking_lot::Mutex<Option<Child>>,
+    _process: Child,
     server_tx: UnboundedSender<Payload>,
     request_counter: AtomicU64,
     pub(crate) capabilities: OnceCell<lsp::ServerCapabilities>,
@@ -66,6 +66,8 @@ pub struct Client {
     root_uri: Option<lsp::Url>,
     workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
     initialize_notify: Arc<Notify>,
+    /// Notified by the transport once `exit` has been flushed to the server's stdin.
+    shutdown_flushed: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
 }
@@ -243,7 +245,7 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx, initialize_notify) =
+        let (server_rx, server_tx, initialize_notify, shutdown_flushed) =
             Transport::start(reader, writer, stderr, id, name.clone());
 
         let workspace_folders = root_uri
@@ -254,7 +256,7 @@ impl Client {
         let client = Self {
             id,
             name,
-            process: parking_lot::Mutex::new(Some(process)),
+            _process: process,
             server_tx,
             request_counter: AtomicU64::new(0),
             capabilities: OnceCell::new(),
@@ -265,6 +267,7 @@ impl Client {
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
             initialize_notify: initialize_notify.clone(),
+            shutdown_flushed,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -789,19 +792,19 @@ impl Client {
     }
 
     /// Sends the LSP shutdown request followed immediately by the exit
-    /// notification, without waiting for the shutdown response. The server
-    /// receives both messages in order and exits gracefully (code 0 per LSP
-    /// spec). Any late shutdown response is silently discarded.
+    /// notification, without waiting for the shutdown response (fire-and-forget).
+    /// The server receives both in order and exits on its own; any late shutdown
+    /// response is discarded. Quitting therefore never blocks on a slow server
+    /// (e.g. gopls flushing ~1k log messages before it would answer `shutdown`).
     ///
-    /// The child process is transferred to a background OS thread that polls
-    /// for exit with a 30-second deadline. This lets the server finish
-    /// persisting state before being killed, while still guaranteeing cleanup
-    /// of hung servers via kill_on_drop(true) when the Child is finally dropped.
+    /// The child process is not waited on here: it is killed by `kill_on_drop`
+    /// when this `Client` is dropped. `close_language_servers` first gives a short
+    /// grace window so the `exit` reaches stdin and well-behaved servers can begin
+    /// exiting before the kill.
     pub fn force_shutdown(&self) {
-        let id = self.next_request_id();
         let request = jsonrpc::MethodCall {
             jsonrpc: Some(jsonrpc::Version::V2),
-            id,
+            id: self.next_request_id(),
             method: <lsp::request::Shutdown as lsp::request::Request>::METHOD.to_string(),
             params: jsonrpc::Params::None,
         };
@@ -812,29 +815,13 @@ impl Client {
             value: request,
         });
         self.exit();
+    }
 
-        // Transfer child ownership to an OS thread so kill_on_drop fires there,
-        // after the server has had real time to exit, rather than at Arc<Client>
-        // drop time (~50ms from now). The OS thread outlives the tokio runtime.
-        // try_wait() and kill_on_drop both delegate to std::process::Child and
-        // require no tokio runtime — safe on all platforms including Windows.
-        if let Some(mut child) = self.process.lock().take() {
-            let thread_name = format!("lsp-reap-{}", self.name);
-            let _ = std::thread::Builder::new().name(thread_name).spawn(move || {
-                let deadline =
-                    std::time::Instant::now() + std::time::Duration::from_secs(30);
-                loop {
-                    match child.try_wait() {
-                        Ok(Some(_)) => break, // exited cleanly
-                        Ok(None) if std::time::Instant::now() < deadline => {
-                            std::thread::sleep(std::time::Duration::from_millis(50));
-                        }
-                        _ => break, // deadline exceeded or error; kill_on_drop fires on drop
-                    }
-                }
-                // child drops here; kill_on_drop(true) kills any still-running process
-            });
-        }
+    /// Resolves once the `exit` notification has been written to the server's stdin
+    /// (i.e. helix's *outbound* write completed — independent of how slow the server
+    /// is, since it doesn't wait for any server response).
+    pub async fn wait_shutdown_flushed(&self) {
+        self.shutdown_flushed.notified().await;
     }
 
     // -------------------------------------------------------------------------------------------
