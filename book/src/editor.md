@@ -538,6 +538,36 @@ enable = true
 trigger-length = 4
 ```
 
+### `[editor.spelling]` Section
+
+Options for spell checking. Spell checking is off until at least one dictionary is configured
+(here, per-language in `languages.toml`, or per buffer with `:set-spelling-language`). Only
+natural-language regions are checked (comments, strings and prose) using tree-sitter, so code is
+left alone. A word is flagged only when every configured dictionary rejects it.
+
+Dictionaries are loaded from `dictionaries/<language>/<language>.{aff,dic}` in the [runtime
+directories](./install.md#configuring-helixs-runtime-files).
+
+| Key               | Description                                                                                              | Default |
+| ---               | ---                                                                                                      | ---     |
+| `languages`       | The dictionaries to check every document against (e.g. `["en_US"]`). Empty disables spell checking.      | `[]`    |
+| `words`           | Extra accepted words, matched case-insensitively, in addition to the dictionaries.                       | `[]`    |
+| `ignore-regexes`  | Tokens matching any of these regexes are not checked (for example `"^[A-Z0-9_]+$"` to skip `CONSTANTS`). | `[]`    |
+| `min-word-length` | Tokens shorter than this are not checked.                                                                | `1`     |
+
+Per-language settings in `languages.toml` override these: `languages` and
+`min-word-length` replace the global value, while `words` and `ignore-regexes`
+are added to the global lists.
+
+Example:
+
+```toml
+[editor.spelling]
+languages = ["en_US"]
+words = ["Helix", "tokio"]
+ignore-regexes = ["^[A-Z0-9_]+$"]
+```
+
 ### `[editor.workspace-trust]` Section
 
 Controls implicit workspace trust. See the [workspace

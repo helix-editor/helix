@@ -129,3 +129,19 @@ impl fmt::Display for ParseSpellingLanguageError {
 }
 
 impl std::error::Error for ParseSpellingLanguageError {}
+
+impl serde::Serialize for SpellingLanguage {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for SpellingLanguage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let string = <String as serde::Deserialize>::deserialize(deserializer)?;
+        string.parse().map_err(serde::de::Error::custom)
+    }
+}

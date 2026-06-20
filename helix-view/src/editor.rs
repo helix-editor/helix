@@ -48,7 +48,9 @@ use helix_core::{
     diagnostic::DiagnosticProvider,
     syntax::{
         self,
-        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+        config::{
+            AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap, SpellingConfig,
+        },
     },
     Change, LineEnding, Position, Range, Selection, SpellingLanguage, Uri, NATIVE_LINE_ENDING,
 };
@@ -427,6 +429,9 @@ pub struct Config {
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
+    /// Spell checking: which dictionaries to use and how to filter tokens. Off by default (no
+    /// dictionaries); languages can override this in `languages.toml`.
+    pub spelling: SpellingConfig,
     /// Whether to render rainbow colors for matching brackets. Defaults to `false`.
     pub rainbow_brackets: bool,
     /// Whether to enable Kitty Keyboard Protocol
@@ -1236,6 +1241,7 @@ impl Default for Config {
             end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
             editor_config: true,
+            spelling: SpellingConfig::default(),
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),

@@ -72,6 +72,7 @@ These configuration keys are available:
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
 | `word-completion`     | Overrides the [`editor.word-completion`](./editor.md#editorword-completion-section) configuration for the language. |
+| `spelling`            | Layers over the [`editor.spelling`](./editor.md#editorspelling-section) configuration for the language: `languages` and `min-word-length` replace the global value, while `words` and `ignore-regexes` are added to it. |
 | `workspace-lsp-roots`     | Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local `.helix/config.toml`; |
 | `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
 | `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |

@@ -15,7 +15,7 @@ use helix_core::{
     chars::char_is_word,
     diagnostic::{Diagnostic, DiagnosticProvider, Range as DiagnosticRange, Severity},
     diff::compare_ropes,
-    syntax::Loader,
+    syntax::{config::SpellingFilter, Loader},
     ChangeSet, Operation, Rope, RopeSlice, SpellingLanguage, Syntax,
 };
 use helix_event::{cancelable_future, register_hook, send_blocking, AsyncHook};
@@ -144,6 +144,12 @@ fn recheck_document(editor: &mut Editor, doc_id: DocumentId, changes: ChangeSet,
     let languages = doc.spelling_languages.clone();
     let stale = doc.version() != version;
     let text = doc.text().clone();
+    let filter = SpellingFilter::new(
+        &editor.config().spelling.merged(
+            doc.language_config()
+                .and_then(|config| config.spelling.as_ref()),
+        ),
+    );
     let Some(dictionaries) = lookup_dictionaries(editor, &languages) else {
         return;
     };
@@ -183,7 +189,13 @@ fn recheck_document(editor: &mut Editor, doc_id: DocumentId, changes: ChangeSet,
         let dictionaries: Vec<&Dictionary> = guards.iter().map(|guard| &**guard).collect();
         let mut diagnostics = Vec::new();
         for region in check_regions {
-            check_region(&dictionaries, text.slice(..), region, &mut diagnostics);
+            check_region(
+                &dictionaries,
+                &filter,
+                text.slice(..),
+                region,
+                &mut diagnostics,
+            );
         }
         diagnostics
     };
@@ -210,13 +222,19 @@ fn check_document(editor: &mut Editor, doc_id: DocumentId) {
     // Cloning the syntax bumps a few refcounts on its (persistent) trees; cheap enough to snapshot
     // for the off-thread check.
     let syntax = doc.syntax().cloned();
+    let filter = SpellingFilter::new(
+        &editor.config().spelling.merged(
+            doc.language_config()
+                .and_then(|config| config.spelling.as_ref()),
+        ),
+    );
     let loader = editor.syn_loader.load_full();
     let Some(dictionaries) = lookup_dictionaries(editor, &languages) else {
         return;
     };
 
     let cancel = editor.handlers.spelling.open_request(doc_id);
-    let future = check_text(dictionaries, text, syntax, loader);
+    let future = check_text(dictionaries, text, syntax, loader, filter);
 
     tokio::spawn(async move {
         match cancelable_future(future, cancel).await {
@@ -348,6 +366,7 @@ fn check_text(
     text: Rope,
     syntax: Option<Syntax>,
     loader: Arc<Loader>,
+    filter: SpellingFilter,
 ) -> impl Future<Output = Result<Vec<Diagnostic>, tokio::task::JoinError>> {
     tokio::task::spawn_blocking(move || {
         let guards: Vec<_> = dictionaries
@@ -362,7 +381,13 @@ fn check_text(
             text.slice(..),
             0..text.len_chars(),
         ) {
-            check_region(&dictionaries, text.slice(..), region, &mut diagnostics);
+            check_region(
+                &dictionaries,
+                &filter,
+                text.slice(..),
+                region,
+                &mut diagnostics,
+            );
         }
         diagnostics
     })
@@ -397,6 +422,7 @@ fn spell_check_regions(
 /// `regex_input_at` are absolute byte offsets in `text`.
 fn check_region(
     dictionaries: &[&Dictionary],
+    filter: &SpellingFilter,
     text: RopeSlice,
     region: Range<usize>,
     out: &mut Vec<Diagnostic>,
@@ -408,7 +434,7 @@ fn check_region(
             continue;
         }
         let word = Cow::from(text.byte_slice(m.range()));
-        if word.is_empty() {
+        if word.is_empty() || filter.ignores(&word) {
             continue;
         }
         if !dictionaries
@@ -499,7 +525,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use helix_core::Rope;
+    use helix_core::{syntax::config::SpellingConfig, Rope};
 
     /// The `en_US` dictionary vendored under `runtime/dictionaries/`.
     fn en_us() -> Dictionary {
@@ -509,10 +535,15 @@ mod tests {
         Dictionary::new(&aff, &dic).unwrap()
     }
 
+    /// A filter that skips nothing (the default config).
+    fn no_filter() -> SpellingFilter {
+        SpellingFilter::new(&SpellingConfig::default())
+    }
+
     fn check(text: &str, region: Range<usize>) -> Vec<Diagnostic> {
         let rope = Rope::from_str(text);
         let mut out = Vec::new();
-        check_region(&[&en_us()], rope.slice(..), region, &mut out);
+        check_region(&[&en_us()], &no_filter(), rope.slice(..), region, &mut out);
         out
     }
 
@@ -527,13 +558,19 @@ mod tests {
         // "wrld" is not in en_US, so en_US alone flags it.
         let rope = Rope::from_str("wrld");
         let mut out = Vec::new();
-        check_region(&[&en_us()], rope.slice(..), 0..4, &mut out);
+        check_region(&[&en_us()], &no_filter(), rope.slice(..), 0..4, &mut out);
         assert_eq!(out.len(), 1, "{out:?}");
 
         // A second dictionary that knows "wrld" makes the OR accept it.
         let custom = mini_dictionary(&["wrld"]);
         let mut out = Vec::new();
-        check_region(&[&en_us(), &custom], rope.slice(..), 0..4, &mut out);
+        check_region(
+            &[&en_us(), &custom],
+            &no_filter(),
+            rope.slice(..),
+            0..4,
+            &mut out,
+        );
         assert!(out.is_empty(), "{out:?}");
     }
 
@@ -571,6 +608,33 @@ mod tests {
         );
     }
 
+    #[test]
+    fn filter_skips_allowlisted_short_and_ignored_words() {
+        let config = SpellingConfig {
+            words: vec!["Helix".into()],
+            ignore_regexes: vec!["^[A-Z0-9_]+$".into()],
+            min_word_length: Some(3),
+            ..Default::default()
+        };
+        let filter = SpellingFilter::new(&config);
+        let rope = Rope::from_str("Helix HE teh ABC123");
+        let mut out = Vec::new();
+        check_region(
+            &[&en_us()],
+            &filter,
+            rope.slice(..),
+            0..rope.len_chars(),
+            &mut out,
+        );
+        // "Helix" is allowlisted (case-insensitively), "HE" is too short, and "ABC123" matches the
+        // ignore regex; only the genuine misspelling "teh" survives.
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert_eq!(
+            rope.slice(out[0].range.start..out[0].range.end).to_string(),
+            "teh"
+        );
+    }
+
     /// Runs the full-document check path's logic (region selection + tokenization) against a real
     /// syntax tree, the way `check_text` does off-thread.
     fn check_scoped(language: &str, text: &str) -> Vec<Diagnostic> {
@@ -583,7 +647,13 @@ mod tests {
         for region in
             spell_check_regions(Some(&syntax), &loader, rope.slice(..), 0..rope.len_chars())
         {
-            check_region(&[&dictionary], rope.slice(..), region, &mut out);
+            check_region(
+                &[&dictionary],
+                &no_filter(),
+                rope.slice(..),
+                region,
+                &mut out,
+            );
         }
         out
     }

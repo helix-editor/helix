@@ -1247,13 +1247,21 @@ impl Document {
         {
             self.line_ending = line_ending;
         }
-        // The spelling language comes straight from `.editorconfig`; there is nothing to detect.
-        self.spelling_languages = self
-            .editor_config
-            .spelling_language
-            .clone()
-            .into_iter()
-            .collect();
+        // The spelling languages come from `.editorconfig` if set, else the resolved config
+        // (`languages.toml` over `[editor.spelling]`). `:set-spelling-language` overrides afterwards.
+        self.spelling_languages = if let Some(language) = &self.editor_config.spelling_language {
+            vec![language.clone()]
+        } else {
+            let config = self.config.load();
+            config
+                .spelling
+                .merged(
+                    self.language_config()
+                        .and_then(|config| config.spelling.as_ref()),
+                )
+                .languages()
+                .to_vec()
+        };
     }
 
     pub fn detect_editor_config(&mut self) {
