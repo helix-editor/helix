@@ -270,6 +270,11 @@ impl Editor {
                     } else {
                         fs::remove_dir(path)?
                     }
+                    if !self.file_watcher.is_watching(path) {
+                        self.language_servers
+                            .file_event_handler
+                            .file_changed(path.to_path_buf());
+                    }
                 } else if path.is_file() {
                     fs::remove_file(path)?;
                     if !self.file_watcher.is_watching(path) {
