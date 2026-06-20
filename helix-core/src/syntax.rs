@@ -546,7 +546,7 @@ impl FileTypeGlobMatcher {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Syntax {
     inner: tree_house::Syntax,
 }
