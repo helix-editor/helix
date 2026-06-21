@@ -2454,7 +2454,9 @@ fn spelling_language(
     let doc_id = doc!(cx.editor).id();
     if args.len() == 1 && &args[0] == "off" {
         let doc = doc_mut!(cx.editor);
-        doc.spelling_languages.clear();
+        // An empty override forces spell checking off, overriding `.editorconfig` and config.
+        doc.spelling_language_override = Some(Vec::new());
+        doc.detect_spelling_languages();
         doc.replace_diagnostics(
             [],
             &[],
@@ -2469,7 +2471,9 @@ fn spelling_language(
             .iter()
             .map(|arg| arg.parse())
             .collect::<Result<Vec<helix_core::SpellingLanguage>, _>>()?;
-        doc_mut!(cx.editor).spelling_languages = languages;
+        let doc = doc_mut!(cx.editor);
+        doc.spelling_language_override = Some(languages);
+        doc.detect_spelling_languages();
         helix_event::send_blocking(
             &cx.editor.handlers.spelling.event_tx,
             SpellingEvent::DocumentOpened { doc: doc_id },

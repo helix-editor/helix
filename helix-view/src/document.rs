@@ -177,9 +177,13 @@ pub struct Document {
     /// The languages (dictionaries) to spell check this buffer against, or empty to disable spell
     /// checking. A word is flagged only when every dictionary rejects it.
     ///
-    /// Seeded from the document's `.editorconfig` (`spelling_language = en_US`) and overwritten by
-    /// `:set-spelling-language`.
+    /// Resolved by [`Document::detect_spelling_languages`] from the manual override, the
+    /// document's `.editorconfig` (`spelling_language = en_US`), or the resolved config.
     pub spelling_languages: Vec<helix_core::SpellingLanguage>,
+    /// A manual `:set-spelling-language` choice, which takes precedence over `.editorconfig` and
+    /// config when resolving [`Document::spelling_languages`]. `None` means derive from those; an
+    /// empty `Vec` forces spell checking off regardless of what they say.
+    pub spelling_language_override: Option<Vec<helix_core::SpellingLanguage>>,
 
     /// The document's default line ending.
     pub line_ending: LineEnding,
@@ -752,6 +756,7 @@ impl Document {
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),
             spelling_languages: Vec::new(),
+            spelling_language_override: None,
             line_ending,
             restore_cursor: false,
             syntax: None,
@@ -1247,9 +1252,16 @@ impl Document {
         {
             self.line_ending = line_ending;
         }
-        // The spelling languages come from `.editorconfig` if set, else the resolved config
-        // (`languages.toml` over `[editor.spelling]`). `:set-spelling-language` overrides afterwards.
-        self.spelling_languages = if let Some(language) = &self.editor_config.spelling_language {
+        self.detect_spelling_languages();
+    }
+
+    /// Resolves the languages this document is spell-checked against, in precedence order: a manual
+    /// `:set-spelling-language` override, then the `.editorconfig` `spelling_language`, then the
+    /// resolved config (`languages.toml` over `[editor.spelling]`). Re-run when any of these change.
+    pub fn detect_spelling_languages(&mut self) {
+        self.spelling_languages = if let Some(languages) = &self.spelling_language_override {
+            languages.clone()
+        } else if let Some(language) = &self.editor_config.spelling_language {
             vec![language.clone()]
         } else {
             let config = self.config.load();

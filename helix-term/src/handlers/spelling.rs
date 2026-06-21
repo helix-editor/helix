@@ -21,7 +21,7 @@ use helix_core::{
 use helix_event::{cancelable_future, register_hook, send_blocking, AsyncHook};
 use helix_stdx::rope::{Regex, RopeSliceExt as _};
 use helix_view::{
-    events::{DocumentDidChange, DocumentDidClose, DocumentDidOpen},
+    events::{ConfigDidChange, DocumentDidChange, DocumentDidClose, DocumentDidOpen},
     handlers::{spelling::SpellingEvent, Handlers},
     Dictionary, DocumentId, Editor,
 };
@@ -537,6 +537,35 @@ pub(super) fn register_hooks(handlers: &Handlers) {
             .spelling
             .requests
             .remove(&event.doc.id());
+        Ok(())
+    });
+
+    let tx = handlers.spelling.event_tx.clone();
+    register_hook!(move |event: &mut ConfigDidChange<'_>| {
+        // A config change can enable, disable, or change a document's spelling languages (they
+        // derive from `[editor.spelling]` and the per-language config). `:config-reload` also
+        // clears every document's diagnostics (refreshing them from the language servers), so
+        // re-checking each enabled document here restores the squigglies that reload dropped.
+        let doc_ids: Vec<_> = event.editor.documents().map(|doc| doc.id()).collect();
+        for doc_id in doc_ids {
+            let Some(doc) = event.editor.documents.get_mut(&doc_id) else {
+                continue;
+            };
+            let was_enabled = !doc.spelling_languages.is_empty();
+            doc.detect_spelling_languages();
+            if doc.spelling_languages.is_empty() {
+                if was_enabled {
+                    // Disabled for this document; drop any spelling diagnostics it still has.
+                    doc.replace_diagnostics([], &[], Some(&PROVIDER));
+                    helix_event::dispatch(helix_view::events::DiagnosticsDidChange {
+                        editor: event.editor,
+                        doc: doc_id,
+                    });
+                }
+            } else {
+                send_blocking(&tx, SpellingEvent::DocumentOpened { doc: doc_id });
+            }
+        }
         Ok(())
     });
 }
