@@ -886,7 +886,7 @@ fn code_action_on_save_step(
         let future = async move {
             let actions = request.await?;
             let apply = move |editor: &mut Editor| -> Option<Job> {
-                apply_code_actions_of_kind(editor, ls_id, actions);
+                apply_code_actions_of_kind(editor, ls_id, &kind, actions);
                 code_action_on_save_step(doc_id, kinds, tail)
             };
             Ok(Callback::Followup(Box::new(apply)))
@@ -900,10 +900,25 @@ fn code_action_on_save_step(
     )
 }
 
-/// Apply the first returned, non-disabled code action, resolving it if needed.
+/// An action matches a requested kind when its kind equals the request or is a
+/// sub-kind (`source.fixAll.eslint` matches `source.fixAll`, per the LSP kind
+/// hierarchy). Actions without a kind are skipped, so a server that ignores the
+/// `only` filter can't slip an unrelated action into a save.
+fn code_action_kind_matches(action: &CodeAction, requested: &CodeActionKind) -> bool {
+    action.kind.as_ref().is_some_and(|kind| {
+        let (kind, requested) = (kind.as_str(), requested.as_str());
+        kind == requested
+            || (kind.starts_with(requested) && kind[requested.len()..].starts_with('.'))
+    })
+}
+
+/// Apply every returned action whose kind matches `kind` (servers may ignore the
+/// `only` filter, and `source.fixAll` legitimately resolves to several actions),
+/// resolving any that need it.
 fn apply_code_actions_of_kind(
     editor: &mut Editor,
     ls_id: LanguageServerId,
+    kind: &CodeActionKind,
     actions: Option<Vec<CodeActionOrCommand>>,
 ) {
     let Some(actions) = actions else {
@@ -914,7 +929,9 @@ fn apply_code_actions_of_kind(
     };
     let offset_encoding = language_server.offset_encoding();
 
-    let edit = actions
+    // Collect the (resolved) edits while holding the immutable language-server
+    // borrow, then apply them once the borrow is dropped.
+    let edits: Vec<lsp::WorkspaceEdit> = actions
         .iter()
         .filter_map(|action| match action {
             CodeActionOrCommand::CodeAction(code_action) if code_action.disabled.is_none() => {
@@ -922,15 +939,16 @@ fn apply_code_actions_of_kind(
             }
             _ => None,
         })
-        .next()
-        .and_then(
-            |code_action| match resolve_code_action_blocking(code_action, language_server) {
+        .filter(|code_action| code_action_kind_matches(code_action, kind))
+        .filter_map(|code_action| {
+            match resolve_code_action_blocking(code_action, language_server) {
                 Some(resolved) => resolved.edit,
                 None => code_action.edit.clone(),
-            },
-        );
+            }
+        })
+        .collect();
 
-    if let Some(edit) = edit {
+    for edit in edits {
         if let Err(err) = editor.apply_workspace_edit(offset_encoding, &edit) {
             log::error!("code-actions-on-save: failed to apply workspace edit: {err:?}");
         }
