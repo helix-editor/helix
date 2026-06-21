@@ -600,28 +600,29 @@ pub fn code_action(cx: &mut Context) {
 
     let selection_range = doc.selection(view.id).primary();
 
-    let mut futures: FuturesUnordered<_> = code_actions_for_range(doc, selection_range, None)
-        .into_iter()
-        .map(|(request, ls_id)| async move {
-            let Some(mut actions) = request.await? else {
-                return anyhow::Ok(Vec::new());
-            };
+    let mut futures: FuturesUnordered<_> =
+        code_actions_for_range(doc, selection_range, None, CodeActionTriggerKind::INVOKED)
+            .into_iter()
+            .map(|(request, ls_id)| async move {
+                let Some(mut actions) = request.await? else {
+                    return anyhow::Ok(Vec::new());
+                };
 
-            // remove disabled code actions
-            actions.retain(|action| {
-                matches!(
-                    action,
-                    CodeActionOrCommand::Command(_)
-                        | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
-                )
-            });
+                // remove disabled code actions
+                actions.retain(|action| {
+                    matches!(
+                        action,
+                        CodeActionOrCommand::Command(_)
+                            | CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
+                    )
+                });
 
-            Ok(actions
-                .into_iter()
-                .map(|lsp_item| CodeActionItem::lsp(ls_id, lsp_item))
-                .collect())
-        })
-        .collect();
+                Ok(actions
+                    .into_iter()
+                    .map(|lsp_item| CodeActionItem::lsp(ls_id, lsp_item))
+                    .collect())
+            })
+            .collect();
 
     if futures.is_empty() {
         cx.editor
@@ -670,10 +671,11 @@ pub fn code_action(cx: &mut Context) {
 
 // Extracting this to a type alias would require boxing this future
 #[allow(clippy::type_complexity)]
-fn code_actions_for_range(
+pub(crate) fn code_actions_for_range(
     doc: &Document,
     range: helix_core::Range,
     only: Option<Vec<CodeActionKind>>,
+    trigger_kind: CodeActionTriggerKind,
 ) -> Vec<(
     impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>,
     LanguageServerId,
@@ -698,7 +700,7 @@ fn code_actions_for_range(
                     .map(|diag| diagnostic_to_lsp_diagnostic(doc.text(), diag, offset_encoding))
                     .collect(),
                 only: only.clone(),
-                trigger_kind: Some(CodeActionTriggerKind::INVOKED),
+                trigger_kind: Some(trigger_kind),
             };
             let code_action_request =
                 language_server.code_actions(doc.identifier(), lsp_range, code_action_context)?;
@@ -745,11 +747,14 @@ fn code_action_on_save_step(
         let doc = doc!(editor, &doc_id);
         let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());
-        let Some((request, ls_id)) =
-            code_actions_for_range(doc, full_range, Some(vec![kind.clone()]))
-                .into_iter()
-                .next()
-        else {
+        let Some((request, ls_id)) = code_actions_for_range(
+            doc,
+            full_range,
+            Some(vec![kind.clone()]),
+            CodeActionTriggerKind::INVOKED,
+        )
+        .into_iter()
+        .next() else {
             // No server offers this kind for the document: skip to the next.
             return code_action_on_save_step(doc_id, kinds, tail);
         };
