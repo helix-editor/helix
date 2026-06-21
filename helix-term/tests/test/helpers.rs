@@ -7,8 +7,14 @@ use std::{
 
 use anyhow::bail;
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
+use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{
+    current_ref, doc,
+    editor::{ImplicitTrustLevelConfig, LspConfig, WordCompletion, WorkspaceTrustConfig},
+    input::parse_macro,
+    Editor,
+};
 use tempfile::NamedTempFile;
 use termina::event::{Event, KeyEvent};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -198,7 +204,12 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
 
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_loader(None))?,
+        None => Application::new(
+            Args::default(),
+            test_config(),
+            test_syntax_loader(None),
+            WorkspaceTrust::fully_trusted(),
+        )?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -295,6 +306,23 @@ pub fn test_editor_config() -> helix_view::editor::Config {
             enable: false,
             ..Default::default()
         },
+        // The word-index hook accumulates per-document pending changes across
+        // every `DocumentDidChange` and composes them on the next event for the
+        // same doc id. Each test builds a fresh `Application` that reuses
+        // `DocumentId(1)`, so the previous test's pending change tries to
+        // compose with the next test's `set_input` change (different lengths,
+        // hits the `len_after == len` assertion).
+        // Until hooks can be unregistered, keep the hook quiet by turning the
+        // feature off here.
+        word_completion: WordCompletion {
+            enable: false,
+            ..Default::default()
+        },
+        // Trust everything implicitly so tests don't hit popups.
+        workspace_trust: WorkspaceTrustConfig {
+            level: ImplicitTrustLevelConfig::Insecure,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -385,7 +413,12 @@ impl AppBuilder {
             bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
         }
 
-        let mut app = Application::new(self.args, self.config, self.syn_loader)?;
+        let mut app = Application::new(
+            self.args,
+            self.config,
+            self.syn_loader,
+            WorkspaceTrust::fully_trusted(),
+        )?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);

@@ -223,7 +223,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
+            if doc.path() == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -1517,15 +1517,17 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     }
 
     let scrolloff = cx.editor.config().scrolloff;
+    let trust_full = doc_trust_full(cx.editor);
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
-    if let Some(path) = doc.path() {
+    doc.reload(view, &cx.editor.diff_providers, trust_full)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })?;
+    if let Some(path) = doc.path().map(ToOwned::to_owned) {
         cx.editor
             .language_servers
             .file_event_handler
-            .file_changed(path.clone());
+            .file_changed(path);
     }
     Ok(())
 }
@@ -1562,21 +1564,37 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers) {
+        // Per-document trust: each doc's workspace may differ.
+        let trust_full = cx
+            .editor
+            .workspace_trust
+            .query(
+                doc.workspace_root(),
+                helix_loader::workspace_trust::TrustQuery::Git,
+            )
+            .is_trusted();
+        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
             cx.editor.set_error(format!("{}", error));
             continue;
         }
 
-        if let Some(path) = doc.path() {
+        if let Some(path) = doc.path().map(ToOwned::to_owned) {
             cx.editor
                 .language_servers
                 .file_event_handler
-                .file_changed(path.clone());
+                .file_changed(path);
         }
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
             if view.doc.eq(&doc_id) {
+                // Reloading commits the diff against disk through the first view
+                // only (above). Any other view onto this document is left
+                // pointing at the pre-reload revision, so sync it now; otherwise
+                // its jumplist entries keep referencing the old (e.g. larger)
+                // text and a later commit panics when mapping them through a
+                // changeset whose pre-image no longer contains them.
+                view.sync_changes(doc);
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
@@ -2151,7 +2169,7 @@ pub(super) fn goto_line_number(
                 .expect("update_goto_line_number_preview should always set last_selection");
 
             let (view, doc) = current!(cx.editor);
-            view.jumps.push((doc.id(), last_selection));
+            view.push_jump(doc, (doc.id(), last_selection));
         }
 
         // When a user hits backspace and there are no numbers left,
@@ -2746,8 +2764,8 @@ fn move_buffer_impl(
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
+        .map(ToOwned::to_owned)
+        .context("Scratch buffer cannot be moved. Use :write instead")?;
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
@@ -3989,7 +4007,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-trust",
         aliases: &[],
-        doc: "Add current workspace to the list of trusted workspaces.",
+        doc: "Allow language servers and local config for the current workspace.",
         fun: trust_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
@@ -3997,8 +4015,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-untrust",
         aliases: &[],
-        doc: "Remove current workspace from the list of trusted workspaces.",
+        doc: "Revoke the current workspace's trust grant or exclusion.",
         fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-exclude",
+        aliases: &[],
+        doc: "Mark the current workspace as never-prompt. Never prompts for trust again.",
+        fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
     }
@@ -4495,6 +4521,24 @@ fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Comp
     .collect()
 }
 
+fn current_workspace(cx: &compositor::Context) -> std::path::PathBuf {
+    let (_, doc) = current_ref!(cx.editor);
+    doc.workspace_root().to_path_buf()
+}
+
+/// Whether the currently focused document's workspace is trusted for git operations (gix
+/// `Trust::Full`).
+fn doc_trust_full(editor: &helix_view::Editor) -> bool {
+    let (_, doc) = current_ref!(editor);
+    editor
+        .workspace_trust
+        .query(
+            doc.workspace_root(),
+            helix_loader::workspace_trust::TrustQuery::Git,
+        )
+        .is_trusted()
+}
+
 fn trust_workspace(
     cx: &mut compositor::Context,
     args: Args<'_>,
@@ -4504,15 +4548,16 @@ fn trust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).trust_workspace();
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.trust(&workspace);
 
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
-    // HACK
+    // Restart any LSPs that didn't start because trust was missing.
     lsp_restart(cx, args, event)
 }
 
 fn untrust_workspace(
-    _cx: &mut compositor::Context,
+    cx: &mut compositor::Context,
     _args: Args<'_>,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
@@ -4520,6 +4565,26 @@ fn untrust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).untrust_workspace();
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.untrust(&workspace);
+    // Drop any workspace overrides that were merged into the live editor config while trust was
+    // granted. Running LSPs are not stopped here (use `:lsp-stop` for that); this only handles
+    // in-memory config.
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    Ok(())
+}
+
+fn exclude_workspace(
+    cx: &mut compositor::Context,
+    _args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.exclude(&workspace);
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }

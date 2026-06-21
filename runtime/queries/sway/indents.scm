@@ -35,14 +35,14 @@
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 (compound_assignment_expr
   .
   (_) @expr-start
   right: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 (let_declaration
   .
@@ -50,14 +50,14 @@
   value: (_) @indent
   alternative: (_)? @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 (if_expression
   .
   (_) @expr-start
   condition: (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 
 ; Some field expressions where the left part is a multiline expression are not

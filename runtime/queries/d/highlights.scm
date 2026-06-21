@@ -8,6 +8,8 @@
 ; (See accompanying file LICENSE.txt or https://opensource.org/licenses/MIT)
 ; SPDX-License-Identifier: MIT
 
+(identifier) @variable
+
 ; these are listed first, because they override keyword queries
 (identity_expression (in) @operator)
 (identity_expression (is) @operator)
@@ -18,6 +20,11 @@
 
 (call_expression (identifier) @function)
 (call_expression (type (identifier) @function))
+
+; Member access `o.field`: the trailing identifier of a property expression
+; (anchored so the receiver isn't captured). Method calls parse as a
+; call_expression and keep @function above.
+(property_expression (identifier) @variable.other.member .)
 
 (module_fqn) @namespace
 
@@ -204,6 +211,9 @@
     (ulong)
     (real)
     (double)
+    (noreturn)
+    (size_t)
+    (ptrdiff_t)
 ] @type.builtin
 
 [
@@ -217,12 +227,18 @@
     (cfloat)
 ] @warning ; these types are deprecated
 
-(identifier) @variable
+; Named arguments `foo(name: value)` (D named-args proposal).
+(named_argument
+  (identifier) @variable.parameter)
 
 (label (identifier) @label)
 (goto_statement (goto) @keyword (identifier) @label)
 
 (string_literal) @string
+(escape_sequence) @constant.character.escape
+; Interpolated strings `i"…$(expr)…"`: reset the embedded expression so it isn't
+; coloured as part of the string.
+(interpolation_expression) @none
 (int_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
 (char_literal) @constant.character

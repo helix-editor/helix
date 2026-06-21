@@ -1485,17 +1485,27 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
                     .editor
                     .documents
                     .get(&doc)
-                    .and_then(|x| x.path().cloned());
+                    .and_then(|x| x.path().map(|x| x.to_path_buf()));
+
                 for (view, _) in cx.editor.tree.views_mut() {
                     if let Some(x) = cx.editor.documents.get_mut(&doc) {
-                        x.reload(view, &cx.editor.diff_providers)?;
+                        let trust_full = cx
+                            .editor
+                            .workspace_trust
+                            .query(
+                                x.workspace_root(),
+                                helix_loader::workspace_trust::TrustQuery::Git,
+                            )
+                            .is_trusted();
+
+                        x.reload(view, &cx.editor.diff_providers, trust_full)?;
                     }
                 }
                 if let Some(path) = path {
                     cx.editor
                         .language_servers
                         .file_event_handler
-                        .file_changed(path);
+                        .file_changed(path.to_path_buf());
                 }
                 Ok(())
             },
@@ -4778,7 +4788,7 @@ fn set_buffer_uri(cx: &mut Context, uri: SteelString) -> anyhow::Result<()> {
     let current_doc = cx.editor.documents.get_mut(doc);
 
     if let Some(current_doc) = current_doc {
-        if let Ok(url) = url::Url::from_str(uri.as_str()) {
+        if let Ok(url) = helix_stdx::Url::from_str(uri.as_str()) {
             current_doc.uri = Some(Box::new(url));
         } else {
             anyhow::bail!("Unable to parse uri: {:?}", uri);

@@ -1,21 +1,25 @@
-(line_comment) @comment
+(comment) @comment
 
-(identifier) @function
+; The node name on the left of `=` being defined.
+(definition) @type
 
-(labeled_rule
-  (identifier) @type)
+; References to other rules.
+(identifier) @variable
 
-(node_rule
-  (identifier) @variable.parameter)
+(label_name) @label
 
 (token) @string
 
 [
   "="
   "|"
-  ":"
-  "("
-  ")"
   "?"
   "*"
 ] @operator
+
+":" @punctuation.delimiter
+
+[
+  "("
+  ")"
+] @punctuation.bracket

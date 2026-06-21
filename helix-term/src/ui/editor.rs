@@ -369,6 +369,11 @@ impl EditorView {
         theme: &Theme,
         overlay_highlights: &mut Vec<OverlayHighlights>,
     ) {
+        // Skip redundant work if no diagnostics.
+        if doc.diagnostics().is_empty() {
+            return;
+        }
+
         use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
         let get_scope_of = |scope| {
             theme
@@ -715,7 +720,7 @@ impl EditorView {
             let rem_width = surface.area.width.saturating_sub(used_width);
 
             x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                .set_stringn(x, viewport.y, &text, rem_width as usize, style)
                 .0;
 
             if x >= surface.area.right() {
@@ -1180,6 +1185,20 @@ impl EditorView {
     }
 }
 
+/// Whether the focused doc's workspace is in restricted mode and running `trust` would
+/// change something visible at the workspace level.
+fn workspace_trust_indicator_visible(editor: &Editor) -> bool {
+    if editor.workspace_trust.implicit_level()
+        == helix_loader::workspace_trust::ImplicitTrustLevel::Insecure
+    {
+        return false;
+    }
+    let (_, doc) = helix_view::current_ref!(editor);
+    editor
+        .workspace_trust
+        .workspace_restricted(doc.workspace_root())
+}
+
 impl EditorView {
     /// must be called whenever the editor processed input that
     /// is not a `KeyEvent`. In these cases any pending keys/on next
@@ -1278,9 +1297,8 @@ impl EditorView {
 
                     let (view, doc) = current!(cxt.editor);
 
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
+                    let Some(path) = doc.path().map(ToOwned::to_owned) else {
+                        return EventResult::Ignored(None);
                     };
 
                     if let Some(char_idx) =
@@ -1724,13 +1742,30 @@ impl Component for EditorView {
             } else {
                 0
             };
+            let restricted = workspace_trust_indicator_visible(cx.editor);
+            let trust_width = if restricted { 3 } else { 0 };
             surface.set_string(
-                area.x + area.width.saturating_sub(key_width + macro_width),
+                area.x
+                    + area
+                        .width
+                        .saturating_sub(key_width + macro_width + trust_width),
                 area.y + area.height.saturating_sub(1),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
                 style,
             );
+            if restricted {
+                let style = style
+                    .fg(helix_view::graphics::Color::Yellow)
+                    .add_modifier(Modifier::BOLD);
+                surface.set_string(
+                    area.x
+                        .saturating_add(area.width.saturating_sub(3 + macro_width)),
+                    area.y + area.height.saturating_sub(1),
+                    "[⚠]",
+                    style,
+                );
+            }
             if let Some((reg, _)) = cx.editor.macro_recording {
                 let disp = format!("[{}]", reg);
                 let style = style

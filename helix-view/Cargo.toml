@@ -10,11 +10,18 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[lib]
+# Skip libtest benchmark harness, the benches use criterion.
+# cargo bench -p helix-view --features bench
+bench = false
+
 [features]
 default = []
 term = ["termina", "crossterm"]
 steel = ["dep:steel-core", "helix-core/steel"]
 unicode-lines = []
+# Exposes internals. Should not be enabled except for benchmarking.
+bench = []
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
@@ -26,6 +33,7 @@ helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
 
 bitflags.workspace = true
+foldhash.workspace = true
 anyhow = "1"
 termina = { workspace = true, optional = true }
 
@@ -33,7 +41,6 @@ tempfile.workspace = true
 
 # Conversion traits
 once_cell = "1.21"
-url = "2.5.4"
 
 arc-swap.workspace = true
 
@@ -68,3 +75,10 @@ rustix = { version = "1.1", features = ["fs"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
+criterion.workspace = true
+quickcheck.workspace = true
+
+[[bench]]
+name = "word_index"
+harness = false
+required-features = ["bench"]

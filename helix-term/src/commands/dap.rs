@@ -119,6 +119,17 @@ pub fn dap_start_impl(
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
+    // Refuse to spawn a debug adapter in workspace trust restricted mode.
+    let workspace = doc!(cx.editor).workspace_root().to_path_buf();
+    if !cx
+        .editor
+        .workspace_trust
+        .query(&workspace, helix_loader::workspace_trust::TrustQuery::Dap)
+        .is_trusted()
+    {
+        bail!("Workspace is not trusted. Run `:workspace-trust` to enable the debug adapter.");
+    }
+
     let doc = doc!(cx.editor);
     let config = doc
         .language_config()
@@ -389,14 +400,13 @@ fn debug_parameter_prompt(
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let path = match doc.path() {
-        Some(path) => path.clone(),
-        None => {
-            cx.editor
-                .set_error("Can't set breakpoint: document has no path");
-            return;
-        }
+
+    let Some(path) = doc.path().map(ToOwned::to_owned) else {
+        cx.editor
+            .set_error("Can't set breakpoint: document has no path");
+        return;
     };
+
     let text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(text);
     dap_toggle_breakpoint_impl(cx, path, line);
@@ -644,9 +654,8 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).path().map(ToOwned::to_owned) else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
@@ -686,9 +695,8 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
 pub fn dap_edit_log(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).path().map(ToOwned::to_owned) else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {

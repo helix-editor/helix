@@ -30,12 +30,12 @@
 
 ; Rule imports
 (rule_import
-  "use" @keyword.import
-  "rule" @keyword.import
-  "from" @keyword.import
-  "exclude"? @keyword.import
-  "as"? @keyword.import
-  "with"? @keyword.import)
+  "use" @keyword.control.import
+  "rule" @keyword.control.import
+  "from" @keyword.control.import
+  "exclude"? @keyword.control.import
+  "as"? @keyword.control.import
+  "with"? @keyword.control.import)
 
 ; Rule inheritance
 (rule_inheritance

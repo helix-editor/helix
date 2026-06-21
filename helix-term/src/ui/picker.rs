@@ -631,15 +631,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
                                 return Ok(CachedPreview::LargeFile);
                             }
-                            let content_type = std::fs::File::open(&path).and_then(|file| {
+                            let is_binary = std::fs::File::open(&path).and_then(|file| {
                                 // Read up to 1kb to detect the content type
                                 let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-                                let content_type =
-                                    content_inspector::inspect(&self.read_buffer[..n]);
+                                let is_binary = crate::is_binary(&self.read_buffer[..n]);
                                 self.read_buffer.clear();
-                                Ok(content_type)
+                                Ok(is_binary)
                             })?;
-                            if content_type.is_binary() {
+                            if is_binary {
                                 return Ok(CachedPreview::Binary);
                             }
                             let mut doc = Document::open(
@@ -1058,6 +1057,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             Event::Key(event) => *event,
             Event::Paste(..) => return self.prompt_handle_event(event, ctx),
             Event::Resize(..) => return EventResult::Consumed(None),
+            // Picker is a modal and should consume mouse events so clicks don't fall
+            // through to the editor underneath
+            Event::Mouse(_) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 

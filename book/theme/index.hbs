@@ -323,12 +323,13 @@
 
         <script src="{{ resource "clipboard.min.js" }}"></script>
         <script src="{{ resource "highlight.js" }}"></script>
-        <script src="{{ resource "book.js" }}"></script>
 
         <!-- Custom JS scripts -->
         {{#each additional_js}}
         <script src="{{ resource this}}"></script>
         {{/each}}
+
+        <script src="{{ resource "book.js" }}"></script>
 
         {{#if is_print}}
         {{#if mathjax_support}}

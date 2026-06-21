@@ -7,4 +7,4 @@
     ((type_name (regular_identifier) @name)) @definition.type))
 
 (ability_declaration
-  (ability_name) @type _) @definition.type
+  (ability_name) @name _) @definition.type

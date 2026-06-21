@@ -159,6 +159,11 @@ pub struct Document {
 
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
+    /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
+    /// `.svn` / `.jj` / `.helix`). Avoids per-call `find_workspace_in` ancestor walks for hot
+    /// consumers like the statusline trust indicator, LSP launch, and DAP launch. Taken in
+    /// `set_path` so save-as recomputes.
+    workspace_root: OnceCell<PathBuf>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -712,7 +717,7 @@ where
 }
 
 use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
-use url::Url;
+use helix_stdx::Url;
 
 impl Document {
     pub fn from(
@@ -731,6 +736,7 @@ impl Document {
             active_snippet: None,
             path: None,
             relative_path: OnceCell::new(),
+            workspace_root: OnceCell::new(),
             encoding,
             has_bom,
             text,
@@ -1282,6 +1288,7 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
+        trust_full: bool,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
@@ -1308,12 +1315,12 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
+        match provider_registry.get_diff_base(&path, trust_full) {
             Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.version_control_head = provider_registry.get_current_head_name(&path, trust_full);
 
         Ok(())
     }
@@ -1342,6 +1349,8 @@ impl Document {
         // `take` to remove any prior relative path that may have existed.
         // This will get set in `relative_path()`.
         self.relative_path.take();
+        // Same story: invalidate so the next workspace_root() recomputes against the new path.
+        self.workspace_root.take();
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -1435,6 +1444,7 @@ impl Document {
     /// Remove a view's selection and inlay hints from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
+        self.view_data.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
         self.document_highlights.remove(&view_id);
@@ -1897,6 +1907,23 @@ impl Document {
         self.language.as_deref()
     }
 
+    /// The language configuration of the injection layer at `byte_pos`,
+    /// so language-specific behavior follows embedded languages. Falls back to the
+    /// document's root language config when there is no syntax tree.
+    pub fn language_config_at<'a>(
+        &'a self,
+        loader: &'a syntax::Loader,
+        byte_pos: usize,
+    ) -> Option<&'a LanguageConfiguration> {
+        match self.syntax() {
+            Some(syntax) => {
+                let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
+                Some(&**loader.language(syntax.layer(layer).language).config())
+            }
+            None => self.language_config(),
+        }
+    }
+
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
@@ -2040,8 +2067,8 @@ impl Document {
 
     #[inline]
     /// File path on disk.
-    pub fn path(&self) -> Option<&PathBuf> {
-        self.path.as_ref()
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
     }
 
     /// File path as a URL.
@@ -2053,7 +2080,7 @@ impl Document {
     }
 
     pub fn uri(&self) -> Option<helix_core::Uri> {
-        Some(self.path()?.clone().into())
+        Some(self.path()?.into())
     }
 
     #[inline]
@@ -2101,6 +2128,20 @@ impl Document {
                     .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
             })
             .as_deref()
+    }
+
+    /// The workspace root for this document — the nearest ancestor that contains a `.git`, `.svn`,
+    /// `.jj`, or `.helix`. Falls back to the current working directory's workspace when the
+    /// document has no path (scratch buffers). Lazily memoised on first call.
+    pub fn workspace_root(&self) -> &Path {
+        self.workspace_root
+            .get_or_init(|| match self.path.as_deref() {
+                Some(p) => p
+                    .parent()
+                    .map(|dir| helix_loader::find_workspace_in(dir).0)
+                    .unwrap_or_else(|| helix_loader::find_workspace().0),
+                None => helix_loader::find_workspace().0,
+            })
     }
 
     pub fn display_name(&self) -> Cow<'_, str> {

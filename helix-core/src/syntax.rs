@@ -32,7 +32,7 @@ use crate::{indent::IndentQuery, tree_sitter, ChangeSet, Language};
 
 pub use tree_house::{
     highlighter::{Highlight, HighlightEvent},
-    query_iter::QueryIterEvent,
+    query_iter::{CapturedMatch, QueryIterEvent, QueryMatchIter, QueryMatchIterEvent},
     Error as HighlighterError, LanguageLoader, TreeCursor, TREE_SITTER_MATCH_LIMIT,
 };
 
@@ -687,8 +687,9 @@ impl Syntax {
         source: RopeSlice<'a>,
         loader: &'a Loader,
         range: impl RangeBounds<u32>,
-    ) -> QueryIter<'a, 'a, impl FnMut(Language) -> Option<&'a Query> + 'a, ()> {
-        self.query_iter(
+    ) -> QueryMatchIter<'a, 'a, impl FnMut(Language) -> Option<&'a Query> + 'a, ()> {
+        QueryMatchIter::new(
+            &self.inner,
             source,
             |lang| loader.tag_query(lang).map(|q| &q.query),
             range,

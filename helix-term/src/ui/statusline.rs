@@ -505,8 +505,7 @@ where
         let path = get_doc(context).path();
         let path = path
             .as_ref()
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |p| p.to_string_lossy());
         format!(" {} ", path)
     };
 

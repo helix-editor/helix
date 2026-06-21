@@ -32,6 +32,15 @@ impl Default for DocumentId {
     }
 }
 
+#[cfg(test)]
+impl DocumentId {
+    /// Constructs a `DocumentId` with the given non-zero id, for use in tests
+    /// that need several distinct ids without spinning up an `Editor`.
+    pub(crate) fn new(id: usize) -> DocumentId {
+        DocumentId(NonZeroUsize::new(id).expect("document id must be non-zero"))
+    }
+}
+
 impl std::fmt::Display for DocumentId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.0))

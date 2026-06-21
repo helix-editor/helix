@@ -45,6 +45,13 @@
 (interface_method_definition
  name: (identifier) @function.method)
 
+; Member access. Placed before the call rules below so a method call
+; `o.m()` is reclaimed as @function.method, while a plain `o.field`
+; access stays a member.
+(field_name) @variable.other.member
+(selector_expression
+ field: (reference_expression) @variable.other.member)
+
 (call_expression
  name: (selector_expression
   field: (reference_expression) @function.method))
@@ -66,11 +73,6 @@
 
 (struct_field_declaration
  name: (identifier) @variable.other.member)
-
-(field_name) @variable.other.member
-
-(selector_expression
- field: (reference_expression) @variable.other.member)
 
 (int_literal) @constant.numeric.integer
 (escape_sequence) @constant.character.escape
