@@ -41,7 +41,7 @@
 
 "ui.bufferline" = { fg = "inactive_tab_colors", bg = "bg1" }
 "ui.bufferline.active" = { fg = "fg1", bg = "bg3", modifiers = ["bold"] }
-"ui.bufferline.background" = { bg = "transparent" }
+"ui.bufferline.background" = { bg = "bg0" }
 
 "ui.popup" = { fg = "fg1", bg = "bg0" }
 "ui.popup.info" = { fg = "fg1", bg = "bg2" }

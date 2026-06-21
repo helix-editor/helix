@@ -27,10 +27,10 @@ struct Styles {
 impl Styles {
     fn new(theme: &Theme) -> Styles {
         Styles {
-            hint: theme.get("hint"),
-            info: theme.get("info"),
-            warning: theme.get("warning"),
-            error: theme.get("error"),
+            hint: theme.get("hint.diagnostic.inline"),
+            info: theme.get("info.diagnostic.inline"),
+            warning: theme.get("warning.diagnostic.inline"),
+            error: theme.get("error.diagnostic.inline"),
         }
     }
 

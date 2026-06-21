@@ -1,4 +1,4 @@
-; inherits: hlsl
+; inherits: c
 
 [
   (interface_specifier)

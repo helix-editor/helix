@@ -63,7 +63,7 @@
 
 (field name: (lower_case_identifier) @variable.other.member)
 (field_type name: (lower_case_identifier) @variable.other.member)
-(field_access_expr(lower_case_identifier) @variable)
+(field_access_expr(lower_case_identifier) @variable.other.member)
 
 (type_declaration(upper_case_identifier) @type)
 (type_declaration typeName: (lower_type_name) @type.parameter)

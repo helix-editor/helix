@@ -40,7 +40,7 @@ type use `[t`, and so on.
 
 ![Tree-sitter-nav-demo](https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif)
 
-For the full reference see the [unimpaired](./keymap.html#unimpaired) section of the key bind
+For the full reference see the [unimpaired](./keymap.md#unimpaired) section of the key bind
 documentation.
 
 > 💡 This feature relies on tree-sitter textobjects

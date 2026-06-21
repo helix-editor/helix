@@ -53,7 +53,7 @@
   "resource"
 ] @keyword.storage.type
 
-"func" @keyword
+"func" @keyword.function
 
 [
   "static"

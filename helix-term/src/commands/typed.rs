@@ -226,7 +226,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
+            if doc.path() == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -489,6 +489,11 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MoveBufferOptions {
+    pub force: bool,
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -1418,16 +1423,18 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
 
     let scrolloff = cx.editor.config().scrolloff;
     let auto_fetch = cx.editor.config().inline_blame.auto_fetch;
+    let trust_full = doc_trust_full(cx.editor);
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
+    doc.reload(view, &cx.editor.diff_providers, trust_full)
+        .map(|_| {
+            view.ensure_cursor_in_view(doc, scrolloff);
+        })?;
     let doc_id = doc.id();
-    if let Some(path) = doc.path() {
+    if let Some(path) = doc.path().map(ToOwned::to_owned) {
         cx.editor
             .language_servers
             .file_event_handler
-            .file_changed(path.clone());
+            .file_changed(path);
     }
 
     if doc.should_request_full_file_blame(auto_fetch) {
@@ -1485,21 +1492,37 @@ pub fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers) {
+        // Per-document trust: each doc's workspace may differ.
+        let trust_full = cx
+            .editor
+            .workspace_trust
+            .query(
+                doc.workspace_root(),
+                helix_loader::workspace_trust::TrustQuery::Git,
+            )
+            .is_trusted();
+        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
             cx.editor.set_error(format!("{}", error));
             continue;
         }
 
-        if let Some(path) = doc.path() {
+        if let Some(path) = doc.path().map(ToOwned::to_owned) {
             cx.editor
                 .language_servers
                 .file_event_handler
-                .file_changed(path.clone());
+                .file_changed(path);
         }
 
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
             if view.doc.eq(&doc_id) {
+                // Reloading commits the diff against disk through the first view
+                // only (above). Any other view onto this document is left
+                // pointing at the pre-reload revision, so sync it now; otherwise
+                // its jumplist entries keep referencing the old (e.g. larger)
+                // text and a later commit panics when mapping them through a
+                // changeset whose pre-image no longer contains them.
+                view.sync_changes(doc);
                 view.ensure_cursor_in_view(doc, scrolloff);
             }
         }
@@ -2089,7 +2112,7 @@ pub(super) fn goto_line_number(
                 .expect("update_goto_line_number_preview should always set last_selection");
 
             let (view, doc) = current!(cx.editor);
-            view.jumps.push((doc.id(), last_selection));
+            view.push_jump(doc, (doc.id(), last_selection));
         }
 
         // When a user hits backspace and there are no numbers left,
@@ -2764,12 +2787,33 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: false })
+}
+
+fn force_move_buffer(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let new_path: PathBuf = args.first().unwrap().into();
+    move_buffer_impl(cx, new_path, MoveBufferOptions { force: true })
+}
+
+fn move_buffer_impl(
+    cx: &mut compositor::Context,
+    new_path: PathBuf,
+    options: MoveBufferOptions,
+) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
-    let new_path: PathBuf = args.first().unwrap().into();
+        .map(ToOwned::to_owned)
+        .context("Scratch buffer cannot be moved. Use :write instead")?;
 
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
@@ -2778,6 +2822,20 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         .filter(|_| new_path.is_dir())
         .map(|old_file_name| new_path.join(old_file_name))
         .unwrap_or(new_path);
+
+    if old_path.exists() {
+        if let Some(parent) = new_path.parent() {
+            if !parent.exists() {
+                if options.force {
+                    std::fs::DirBuilder::new().recursive(true).create(parent)?;
+                } else {
+                    bail!(
+                        "can't move file, parent directory does not exist (use :mv! to create it)"
+                    )
+                }
+            }
+        }
+    }
 
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
@@ -4528,6 +4586,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
+        name: "move!",
+        aliases: &["mv!"],
+        doc: "Move the current buffer and its corresponding file to a different path creating necessary subdirectories",
+        fun: force_move_buffer,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "yank-diagnostic",
         aliases: &[],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
@@ -4663,7 +4732,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-trust",
         aliases: &[],
-        doc: "Add current workspace to the list of trusted workspaces.",
+        doc: "Allow language servers and local config for the current workspace.",
         fun: trust_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
@@ -4671,8 +4740,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "workspace-untrust",
         aliases: &[],
-        doc: "Remove current workspace from the list of trusted workspaces.",
+        doc: "Revoke the current workspace's trust grant or exclusion.",
         fun: untrust_workspace,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "workspace-exclude",
+        aliases: &[],
+        doc: "Mark the current workspace as never-prompt. Never prompts for trust again.",
+        fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
     }
@@ -5174,6 +5251,24 @@ fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Comp
     .collect()
 }
 
+fn current_workspace(cx: &compositor::Context) -> std::path::PathBuf {
+    let (_, doc) = current_ref!(cx.editor);
+    doc.workspace_root().to_path_buf()
+}
+
+/// Whether the currently focused document's workspace is trusted for git operations (gix
+/// `Trust::Full`).
+fn doc_trust_full(editor: &helix_view::Editor) -> bool {
+    let (_, doc) = current_ref!(editor);
+    editor
+        .workspace_trust
+        .query(
+            doc.workspace_root(),
+            helix_loader::workspace_trust::TrustQuery::Git,
+        )
+        .is_trusted()
+}
+
 fn trust_workspace(
     cx: &mut compositor::Context,
     args: Args<'_>,
@@ -5183,15 +5278,16 @@ fn trust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).trust_workspace();
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.trust(&workspace);
 
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
-    // HACK
+    // Restart any LSPs that didn't start because trust was missing.
     lsp_restart(cx, args, event)
 }
 
 fn untrust_workspace(
-    _cx: &mut compositor::Context,
+    cx: &mut compositor::Context,
     _args: Args<'_>,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
@@ -5199,6 +5295,26 @@ fn untrust_workspace(
         return Ok(());
     }
 
-    helix_loader::workspace_trust::WorkspaceTrust::load(false).untrust_workspace();
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.untrust(&workspace);
+    // Drop any workspace overrides that were merged into the live editor config while trust was
+    // granted. Running LSPs are not stopped here (use `:lsp-stop` for that); this only handles
+    // in-memory config.
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
+    Ok(())
+}
+
+fn exclude_workspace(
+    cx: &mut compositor::Context,
+    _args: Args<'_>,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let workspace = current_workspace(cx);
+    cx.editor.workspace_trust.exclude(&workspace);
+    cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
 }

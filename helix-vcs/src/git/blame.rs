@@ -90,7 +90,7 @@ impl FileBlame {
     /// Compute blame for this file (expensive)
     pub fn try_new(file: PathBuf) -> Result<Self> {
         let thread_safe_repo =
-            open_repo(get_repo_dir(&file)?).context("Failed to open git repo")?;
+            open_repo(get_repo_dir(&file)?, true).context("Failed to open git repo")?;
         let repo = thread_safe_repo.to_thread_local();
         let head = repo.head()?.peel_to_commit()?.id;
 
