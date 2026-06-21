@@ -1864,6 +1864,18 @@ impl NotificationManager {
     }
 
     pub fn add(&mut self, mut notification: Notification) -> usize {
+        // Deduplicate: if an active notification with the same message and
+        // severity already exists, refresh its timestamp and return its id.
+        if let Some(existing) = self.notifications.iter_mut().find(|n| {
+            n.message == notification.message
+                && n.severity == notification.severity
+                && !n.dismissed
+                && !n.is_expired()
+        }) {
+            existing.timestamp = Instant::now();
+            return existing.id;
+        }
+
         notification.id = self.next_id;
         self.next_id += 1;
 
