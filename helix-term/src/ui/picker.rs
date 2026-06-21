@@ -979,10 +979,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
             }
 
+            let conflicts = doc.conflicts();
             EditorView::doc_diagnostics_highlights_into(
                 doc,
                 &cx.editor.theme,
                 &mut overlay_highlights,
+                conflicts,
             );
 
             let mut decorations = DecorationManager::default();

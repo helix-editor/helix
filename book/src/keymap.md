@@ -324,6 +324,19 @@ This layer is a kludge of mappings, mostly pickers.
 
 > 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
 
+##### Conflict resolution
+
+Accessed by typing `Space x` in normal mode. Resolves merge conflict markers.
+
+| Key    | Description                                              | Command                    |
+| ------ | -----------                                              | -------                    |
+| `c`    | Accept current change (`<<<<<<<` side)                   | `conflict_accept_current`  |
+| `i`    | Accept incoming change (`>>>>>>>` side)                  | `conflict_accept_incoming` |
+| `b`    | Accept base change (`|||||||` side, diff3 only)          | `conflict_accept_base`     |
+| `a`    | Accept all changes                                       | `conflict_accept_all`      |
+| `x`    | Accept the change under the cursor                       | `conflict_accept_at_cursor`|
+| `r`    | Cycle word-level conflict diffs                          | `conflict_cycle_diffs`     |
+
 ##### Popup
 
 Displays documentation for item under cursor. Remapping currently not supported.
@@ -383,6 +396,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[g`     | Go to previous change                        | `goto_prev_change`      |
 | `]G`     | Go to last change                            | `goto_last_change`      |
 | `[G`     | Go to first change                           | `goto_first_change`     |
+| `]=`     | Go to next conflict                          | `goto_next_conflict`    |
+| `[=`     | Go to previous conflict                      | `goto_prev_conflict`    |
 | `[x`     | Go to next (X)HTML element                   | `goto_next_xml_element` |
 | `]x`     | Go to previous (X)HTML element               | `goto_prev_xml_element` |
 | `]Space` | Add newline below                            | `add_newline_below`     |

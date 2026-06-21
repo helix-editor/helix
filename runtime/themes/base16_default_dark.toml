@@ -48,6 +48,12 @@
 "diff.plus" = "base0B"
 "diff.delta" = "base09"
 "diff.minus" = "base08"
+"diff.conflict.removed"  = { bg = "#3d2020" }
+"diff.conflict.added"    = { bg = "#1e3020" }
+"diff.conflict.marker"   = { bg = "#202020" }
+"diff.conflict.current"  = { bg = "#1c1c22" }
+"diff.conflict.base"     = { bg = "#202020" }
+"diff.conflict.incoming" = { bg = "#1c221c" }
 
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "base01" }
