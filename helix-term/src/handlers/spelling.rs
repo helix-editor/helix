@@ -429,9 +429,27 @@ fn check_region(
     out: &mut Vec<Diagnostic>,
 ) {
     static WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(r"[0-9A-Z]*(['-]?[a-z]+)*").unwrap());
+    // URLs and email addresses tokenize into word-like fragments (host and path segments) that
+    // aren't real words, so skip any word overlapping one. These match the source text rather than
+    // individual tokens, which is why they can't be expressed as ordinary `ignore-regexes`.
+    static IGNORE_SPANS: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"[a-zA-Z][a-zA-Z0-9+.-]*://\S+|[\w.+-]+@[A-Za-z0-9-]+\.[\w.-]+").unwrap()
+    });
+
+    let ignore_spans: Vec<Range<usize>> = IGNORE_SPANS
+        .find_iter(text.regex_input_at(region.clone()))
+        .map(|m| m.range())
+        .collect();
 
     for m in WORDS.find_iter(text.regex_input_at(region)) {
         if m.range().is_empty() {
+            continue;
+        }
+        // Skip words that fall inside a URL or email address.
+        if ignore_spans
+            .iter()
+            .any(|span| m.start() < span.end && span.start < m.end())
+        {
             continue;
         }
         let word = Cow::from(text.byte_slice(m.range()));
@@ -607,6 +625,16 @@ mod tests {
             (diagnostics[0].range.start, diagnostics[0].range.end),
             (2, 6)
         );
+    }
+
+    #[test]
+    fn skips_words_inside_urls_and_emails() {
+        // Only the prose misspelling "teh" is flagged; the misspelled-looking host/path fragments
+        // ("barbaz", "exampel") inside the URL and email are skipped.
+        let text = "teh https://github.com/foo/barbaz me@exampel.org";
+        let diagnostics = check(text, 0..text.len());
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        assert!(diagnostics[0].message.contains("teh"), "{diagnostics:?}");
     }
 
     #[test]
