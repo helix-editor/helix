@@ -1,6 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 
 use futures_util::stream::FuturesUnordered;
+use helix_core::{diagnostic::DiagnosticProvider, Range};
 use helix_event::{cancelable_future, register_hook, send_blocking, AsyncHook};
 use helix_lsp::lsp::{CodeAction, CodeActionOrCommand, CodeActionTriggerKind};
 use helix_view::{
@@ -55,6 +56,15 @@ fn request_code_action_hint(editor: &mut Editor, doc_id: DocumentId, view_id: Vi
     doc.ensure_view_init(view_id);
 
     let selection_range = doc.selection(view_id).primary();
+
+    // A spelling diagnostic always carries at least an "add to dictionary" action (see the spelling
+    // handler), so an overlapping one means a code action is available without asking a language
+    // server. This is also what lights the hint on buffers that have no language server at all.
+    let has_spelling_action = doc.diagnostics().iter().any(|diagnostic| {
+        diagnostic.provider == DiagnosticProvider::Spelling
+            && selection_range.overlaps(&Range::new(diagnostic.range.start, diagnostic.range.end))
+    });
+
     let mut futures: FuturesUnordered<_> =
         code_actions_for_range(doc, selection_range, None, CodeActionTriggerKind::AUTOMATIC)
             .into_iter()
@@ -77,7 +87,12 @@ fn request_code_action_hint(editor: &mut Editor, doc_id: DocumentId, view_id: Vi
             .collect();
 
     if futures.is_empty() {
-        doc.clear_code_action_hints(view_id);
+        // No language server to query, but a spelling action may still be available here.
+        if has_spelling_action {
+            doc.set_code_action_hints(view_id);
+        } else {
+            doc.clear_code_action_hints(view_id);
+        }
         return;
     };
 
@@ -99,7 +114,7 @@ fn request_code_action_hint(editor: &mut Editor, doc_id: DocumentId, view_id: Vi
         }
 
         job::dispatch(move |editor, _| {
-            apply_code_action_hint(editor, doc_id, view_id, actions);
+            apply_code_action_hint(editor, doc_id, view_id, actions, has_spelling_action);
         })
         .await;
     });
@@ -110,11 +125,12 @@ fn apply_code_action_hint(
     doc_id: DocumentId,
     view_id: ViewId,
     code_actions: Vec<CodeActionOrCommand>,
+    has_spelling_action: bool,
 ) {
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
-    if code_actions.is_empty() {
+    if code_actions.is_empty() && !has_spelling_action {
         doc.clear_code_action_hints(view_id);
         return;
     }
