@@ -2968,7 +2968,7 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
             // CAREFUL: Here be dragons.
             // Slice-relative indices must be correctly mapped to doc-relative indices. This can be very confusing!
             if trimming_trailing_lines {
-                // While `trailing` is true: skip trailing whitespace-only and empty lines (i.e. zero-width selection/document).
+                // While `trailing` is true: skip trailing whitespace-only and empty lines (e.g. zero-width selection/document).
                 // They will be covered by one deletion created later.
                 match find_trailing(*line) {
                     None | Some(0) => {}
