@@ -67,13 +67,12 @@ pub enum SpellingEvent {
 /// Spelling actions sort after LSP code actions (which use a higher priority).
 const SPELLING_ACTION_PRIORITY: u8 = 0;
 
-/// Appends a word to the personal dictionary file, creating it (and its parent directory) if
-/// needed. The file is read back when a dictionary is loaded.
-// TODO: namespace the personal dictionary per language (see the loader's `personal_dictionary_file`).
-fn persist_to_personal_dictionary(word: &str) -> std::io::Result<()> {
+/// Appends a word to the `language`'s personal dictionary file, creating it (and its parent
+/// directory) if needed. The file is read back when that language's dictionary is loaded.
+fn persist_to_personal_dictionary(language: SpellingLanguage, word: &str) -> std::io::Result<()> {
     use std::io::Write as _;
 
-    let path = helix_loader::personal_dictionary_file();
+    let path = helix_loader::personal_dictionary_file(language.as_str());
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -164,7 +163,7 @@ impl Editor {
                             );
                             return;
                         }
-                        if let Err(err) = persist_to_personal_dictionary(&word) {
+                        if let Err(err) = persist_to_personal_dictionary(language.clone(), &word) {
                             log::error!(
                                 "could not persist '{word}' to the personal dictionary: {err}"
                             );

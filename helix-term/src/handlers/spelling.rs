@@ -311,10 +311,11 @@ fn load_dictionary(language: SpellingLanguage) {
             let mut dictionary = Dictionary::new(&aff, &dic)
                 .map_err(|err| anyhow::anyhow!("could not parse dictionary: {err:?}"))?;
 
-            // Append the personal dictionary, skipping entries spellbook rejects rather than
-            // failing the whole load.
-            // TODO: namespace the personal dictionary per language.
-            if let Ok(file) = std::fs::File::open(helix_loader::personal_dictionary_file()) {
+            // Append this language's personal dictionary, skipping entries spellbook rejects rather
+            // than failing the whole load.
+            if let Ok(file) =
+                std::fs::File::open(helix_loader::personal_dictionary_file(language.as_str()))
+            {
                 use std::io::{BufRead as _, BufReader};
                 for line in BufReader::new(file).lines() {
                     let word = line?;

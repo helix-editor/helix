@@ -173,9 +173,13 @@ pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
 }
 
-// TODO: personal dictionary per language.
-pub fn personal_dictionary_file() -> PathBuf {
-    state_dir().join("personal-dictionary.txt")
+/// The personal dictionary for a spelling `language` (e.g. `"en_US"`): the words the user has added
+/// via "Add to dictionary", one per line. Namespaced per language so a word added for one language
+/// isn't accepted in another.
+pub fn personal_dictionary_file(language: &str) -> PathBuf {
+    state_dir()
+        .join("dictionaries")
+        .join(format!("{language}.txt"))
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
