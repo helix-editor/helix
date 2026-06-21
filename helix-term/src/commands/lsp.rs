@@ -19,6 +19,7 @@ use helix_core::{
 };
 use helix_stdx::path;
 use helix_view::{
+    action::Action as CodeActionItem,
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
@@ -33,7 +34,6 @@ use crate::{
 };
 
 use std::{
-    cmp::Ordering,
     collections::{HashSet, VecDeque},
     fmt::Display,
     future::Future,
@@ -588,76 +588,11 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-struct CodeActionOrCommandItem {
-    lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: LanguageServerId,
-}
-
-impl ui::menu::Item for CodeActionOrCommandItem {
+impl ui::menu::Item for CodeActionItem {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> Row<'_> {
-        match &self.lsp_item {
-            lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
-            lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
-        }
+        self.title().into()
     }
-}
-
-/// Determines the category of the `CodeAction` using the `CodeAction::kind` field.
-/// Returns a number that represent these categories.
-/// Categories with a lower number should be displayed first.
-///
-///
-/// While the `kind` field is defined as open ended in the LSP spec (any value may be used)
-/// in practice a closed set of common values (mostly suggested in the LSP spec) are used.
-/// VSCode displays each of these categories separately (separated by a heading in the codeactions picker)
-/// to make them easier to navigate. Helix does not display these  headings to the user.
-/// However it does sort code actions by their categories to achieve the same order as the VScode picker,
-/// just without the headings.
-///
-/// The order used here is modeled after the [vscode sourcecode](https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeActionWidget.ts>)
-fn action_category(action: &CodeActionOrCommand) -> u32 {
-    if let CodeActionOrCommand::CodeAction(CodeAction {
-        kind: Some(kind), ..
-    }) = action
-    {
-        let mut components = kind.as_str().split('.');
-        match components.next() {
-            Some("quickfix") => 0,
-            Some("refactor") => match components.next() {
-                Some("extract") => 1,
-                Some("inline") => 2,
-                Some("rewrite") => 3,
-                Some("move") => 4,
-                Some("surround") => 5,
-                _ => 7,
-            },
-            Some("source") => 6,
-            _ => 7,
-        }
-    } else {
-        7
-    }
-}
-
-fn action_preferred(action: &CodeActionOrCommand) -> bool {
-    matches!(
-        action,
-        CodeActionOrCommand::CodeAction(CodeAction {
-            is_preferred: Some(true),
-            ..
-        })
-    )
-}
-
-fn action_fixes_diagnostics(action: &CodeActionOrCommand) -> bool {
-    matches!(
-        action,
-        CodeActionOrCommand::CodeAction(CodeAction {
-            diagnostics: Some(diagnostics),
-            ..
-        }) if !diagnostics.is_empty()
-    )
 }
 
 pub fn code_action(cx: &mut Context) {
@@ -681,47 +616,9 @@ pub fn code_action(cx: &mut Context) {
                 )
             });
 
-            // Sort codeactions into a useful order. This behaviour is only partially described in the LSP spec.
-            // Many details are modeled after vscode because language servers are usually tested against it.
-            // VScode sorts the codeaction two times:
-            //
-            // First the codeactions that fix some diagnostics are moved to the front.
-            // If both codeactions fix some diagnostics (or both fix none) the codeaction
-            // that is marked with `is_preferred` is shown first. The codeactions are then shown in separate
-            // submenus that only contain a certain category (see `action_category`) of actions.
-            //
-            // Below this done in in a single sorting step
-            actions.sort_by(|action1, action2| {
-                // sort actions by category
-                let order = action_category(action1).cmp(&action_category(action2));
-                if order != Ordering::Equal {
-                    return order;
-                }
-                // within the categories sort by relevancy.
-                // Modeled after the `codeActionsComparator` function in vscode:
-                // https://github.com/microsoft/vscode/blob/eaec601dd69aeb4abb63b9601a6f44308c8d8c6e/src/vs/editor/contrib/codeAction/browser/codeAction.ts
-
-                // if one code action fixes a diagnostic but the other one doesn't show it first
-                let order = action_fixes_diagnostics(action1)
-                    .cmp(&action_fixes_diagnostics(action2))
-                    .reverse();
-                if order != Ordering::Equal {
-                    return order;
-                }
-
-                // if one of the codeactions is marked as preferred show it first
-                // otherwise keep the original LSP sorting
-                action_preferred(action1)
-                    .cmp(&action_preferred(action2))
-                    .reverse()
-            });
-
             Ok(actions
                 .into_iter()
-                .map(|lsp_item| CodeActionOrCommandItem {
-                    lsp_item,
-                    language_server_id: ls_id,
-                })
+                .map(|lsp_item| CodeActionItem::lsp(ls_id, lsp_item))
                 .collect())
         })
         .collect();
@@ -737,10 +634,14 @@ pub fn code_action(cx: &mut Context) {
 
         while let Some(output) = futures.next().await {
             match output {
-                Ok(mut lsp_items) => actions.append(&mut lsp_items),
+                Ok(mut items) => actions.append(&mut items),
                 Err(err) => log::error!("while gathering code actions: {err}"),
             }
         }
+
+        // Sort the gathered actions into a useful order, highest priority first. See
+        // `lsp_code_action_priority` for how LSP actions are ranked.
+        actions.sort_by_key(|action| std::cmp::Reverse(action.priority));
 
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if actions.is_empty() {
@@ -751,39 +652,8 @@ pub fn code_action(cx: &mut Context) {
                 if event != PromptEvent::Validate {
                     return;
                 }
-
-                // always present here
-                let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
-                else {
-                    editor.set_error("Language Server disappeared");
-                    return;
-                };
-                let offset_encoding = language_server.offset_encoding();
-
-                match &action.lsp_item {
-                    lsp::CodeActionOrCommand::Command(command) => {
-                        log::debug!("code action command: {:?}", command);
-                        editor.execute_lsp_command(command.clone(), action.language_server_id);
-                    }
-                    lsp::CodeActionOrCommand::CodeAction(code_action) => {
-                        log::debug!("code action: {:?}", code_action);
-                        let resolved_code_action =
-                            resolve_code_action_blocking(code_action, language_server);
-
-                        if let Some(ref workspace_edit) =
-                            resolved_code_action.as_ref().unwrap_or(code_action).edit
-                        {
-                            let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
-                        }
-
-                        // if code action provides both edit and command first the edit
-                        // should be applied and then the command
-                        if let Some(command) = &code_action.command {
-                            editor.execute_lsp_command(command.clone(), action.language_server_id);
-                        }
-                    }
-                }
+                // Always present on validate.
+                action.unwrap().execute(editor);
             });
             picker.move_down(); // pre-select the first item
 
