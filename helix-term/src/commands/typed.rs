@@ -145,7 +145,7 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 
 fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow::Result<()> {
     for arg in args {
-        let (path, pos) = crate::args::parse_file(&arg);
+        let (path, target) = crate::args::parse_file(&arg);
         let path = helix_stdx::path::expand_tilde(path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
@@ -165,7 +165,24 @@ fn open_impl(cx: &mut compositor::Context, args: Args, action: Action) -> anyhow
             // Otherwise, just open the file
             let _ = cx.editor.open(&path, action)?;
             let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+            let pos = target
+                .section
+                .as_ref()
+                .and_then(|section| {
+                    let syntax = doc.syntax()?;
+                    let text = doc.text().slice(..);
+                    super::syntax::find_section_position(
+                        syntax,
+                        &cx.editor.syn_loader.load(),
+                        text,
+                        doc.id(),
+                        section,
+                    )
+                })
+                .map(Selection::point)
+                .unwrap_or_else(|| {
+                    Selection::point(pos_at_coords(doc.text().slice(..), target.position, true))
+                });
             doc.set_selection(view.id, pos);
             // does not affect opening a buffer without pos
             align_view(doc, view, Align::Center);
