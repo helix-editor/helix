@@ -73,13 +73,13 @@ pub fn render_custom_status<'a>(
     focused: bool,
 ) -> Vec<Span<'static>> {
     // Skip rendering if the function is actually false
-    if let SteelVal::BoolV(false) = elem.render {
+    if let SteelVal::BoolV(false) = elem.render.value() {
         return vec![Span::styled("#f", Style::default())];
     };
 
     let thunk = |engine: &mut Engine, view_id: ViewId| {
         engine.call_function_with_args_from_mut_slice(
-            elem.render.clone(),
+            elem.render.value().clone(),
             &mut [view_id.into_steelval().unwrap(), SteelVal::BoolV(focused)],
         )
     };

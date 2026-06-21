@@ -9,8 +9,10 @@ pub mod steel_implementations {
     use steel::{
         gc::unsafe_erased_pointers::CustomReference,
         rvals::{as_underlying_type, Custom},
-        SteelVal,
+        RootedSteelVal, SteelVal,
     };
+
+    use std::sync::Arc;
 
     use crate::{
         document::Mode,
@@ -24,9 +26,9 @@ pub mod steel_implementations {
         Document, DocumentId, Editor, ViewId,
     };
 
-    #[derive(Clone, Eq, PartialEq, Debug)]
+    #[derive(Debug, Clone)]
     pub struct CustomStatusElement {
-        pub render: SteelVal,
+        pub render: Arc<RootedSteelVal>,
     }
 
     impl Custom for CustomStatusElement {}
@@ -36,9 +38,19 @@ pub mod steel_implementations {
             if !render.is_function() {
                 return Err("Bad value!".into());
             }
-            Ok(Self { render })
+            Ok(Self {
+                render: Arc::new(render.as_rooted()),
+            })
         }
     }
+
+    impl PartialEq for CustomStatusElement {
+        fn eq(&self, other: &Self) -> bool {
+            self.render.value() == other.render.value()
+        }
+    }
+
+    impl Eq for CustomStatusElement {}
 
     impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
     steel::custom_reference!(Editor);
