@@ -2877,7 +2877,7 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
-fn trim_whitespace(
+fn trim_trailing_whitespace_cmd(
     cx: &mut compositor::Context,
     _args: Args,
     event: PromptEvent,
@@ -2887,7 +2887,7 @@ fn trim_whitespace(
     }
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
-    let tx = trim_whitespace_impl(doc, selection);
+    let tx = trim_trailing_whitespace_cmd_impl(doc, selection);
     doc.apply(&tx, view.id);
     doc.append_changes_to_history(view);
     Ok(())
@@ -2895,14 +2895,14 @@ fn trim_whitespace(
 
 /// 1. Strips trailing empty lines per selection, while leaving one line ending alone.
 /// 2. Strips trailing whitespace per-line.
-fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
+fn trim_trailing_whitespace_cmd_impl(doc: &Document, selection: &Selection) -> Transaction {
     /// Find the char index (relative to the line start) just after the last non-whitespace character (the start of trailing whitespace).
     ///
     /// Returns:
     /// - `None` if the line has zero length
     /// - `Some(0)` if the entire (non-empty) line is whitespace
     /// - `Some(n)` where `n` is the first trailing-whitespace char index
-    fn find_trailing(line: RopeSlice) -> Option<usize> {
+    fn find_trailing_whitespace(line: RopeSlice) -> Option<usize> {
         // A doc of `\n` will decompose to `["", "\n"]` via the lines iterator, so we skip these truly empty "lines."
         if line.len_chars() == 0 {
             return None;
@@ -2967,27 +2967,32 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
 
             // CAREFUL: Here be dragons.
             // Slice-relative indices must be correctly mapped to doc-relative indices. This can be very confusing!
-            if trimming_trailing_lines {
-                // While `trailing` is true: skip trailing whitespace-only and empty lines (e.g. zero-width selection/document).
-                // They will be covered by one deletion created later.
-                match find_trailing(*line) {
-                    None | Some(0) => {}
+            //
+            // While `trimming_trailing_lines` is true:
+            // - Skip trailing whitespace-only and empty lines (e.g. zero-width selection/document).
+            //   They will be covered by one deletion created later.
+            match find_trailing_whitespace(*line) {
+                None => {}
 
-                    // Exit when we find a line with actual content -> move on to line-level trailing whitespace deletions.
-                    // Delete all but one trailing WS-only lines.
-                    Some(_) => {
-                        // Preserve one empty line. That way, EOF LE is preserved.
-                        if line_idx + 1 < range_slice.len_lines() {
-                            let start = full_text.line_to_char(line_idx + 1);
-                            push_deletion(&mut pending_changes, start, range_end_char_idx);
-                        }
-                        trimming_trailing_lines = false;
-                        continue;
+                // Skip empty and WS-only trailing lines; they'll get deleted in one block later.
+                Some(0) if trimming_trailing_lines => {}
+
+                // Exit when we find a line with actual content -> move on to line-level trailing whitespace deletions.
+                // Delete all but one trailing WS-only lines.
+                Some(_) if trimming_trailing_lines => {
+                    // Preserve one empty line. That way, EOF LE is preserved.
+                    if line_idx + 1 < range_slice.len_lines() {
+                        let start = full_text.line_to_char(line_idx + 1);
+                        push_deletion(&mut pending_changes, start, range_end_char_idx);
                     }
+                    trimming_trailing_lines = false;
+
+                    // Avoid incrementing the iterator so that the excluded line still gets its trailing whitespace removed.
+                    continue;
                 }
-            } else {
-                // Non-trailing mode: just strip per-line trailing whitespace.
-                if let Some(n) = find_trailing(*line) {
+
+                // After trailing empty lines were removed, remove trailing WS from each line.
+                Some(n) => {
                     let doc_relative_line_start = full_text.line_to_char(line_idx);
                     let start = doc_relative_line_start + n;
 
@@ -2997,7 +3002,7 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
                     // 2. le_len = 1
                     // 3. end = 9 - 1 = 8
                     let doc_relative_next_line_start = full_text.line_to_char(line_idx + 1);
-                    let le_len = line_ending::get_line_ending(&line).map_or(0, |le| le.len_chars());
+                    let le_len = line_ending::get_line_ending(line).map_or(0, |le| le.len_chars());
                     let end = doc_relative_next_line_start - le_len;
                     push_deletion(&mut pending_changes, start, end);
                 }
@@ -4169,7 +4174,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "trim-trailing-whitespace",
         aliases: &["trim"],
         doc: "Delete trailing whitespace from the current selections",
-        fun: trim_whitespace,
+        fun: trim_trailing_whitespace_cmd,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, None),
@@ -4699,7 +4704,7 @@ mod tests {
         let view_id = view.id;
         doc.set_selection(view_id, selection.clone());
 
-        let tx = trim_whitespace_impl(&doc, &selection);
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
         doc.apply(&tx, view_id);
 
         let command_result = doc.text().to_string();
@@ -4722,7 +4727,7 @@ mod tests {
         let view_id = view.id;
         doc.set_selection(view_id, selection.clone());
 
-        let tx = trim_whitespace_impl(&doc, &selection);
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
         doc.apply(&tx, view_id);
 
         let command_result = doc.text().to_string();
@@ -4768,7 +4773,7 @@ mod tests {
         let view_id = view.id;
         doc.set_selection(view_id, selection.clone());
 
-        let tx = trim_whitespace_impl(&doc, &selection);
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
         doc.apply(&tx, view_id);
 
         let command_result = doc.text().to_string();
@@ -4790,7 +4795,7 @@ mod tests {
             let view_id = view.id;
             doc.set_selection(view_id, selection.clone());
 
-            let tx = trim_whitespace_impl(&doc, &selection);
+            let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
             doc.apply(&tx, view_id);
 
             let command_result = doc.text().to_string();
@@ -4845,7 +4850,7 @@ mod tests {
         // Strip trailing empty lines.
         res = res.trim_end().to_string();
 
-        // Add back the final newline (if there was one)
+        // Put back the final newline (if there was one)
         if res.is_empty() {
             if original_ends_with_crlf {
                 "\r\n".to_string()
@@ -4858,7 +4863,7 @@ mod tests {
             if original_ends_with_crlf {
                 res.push_str("\r\n");
             } else if original_ends_with_lf {
-                res.push_str("\n");
+                res.push('\n');
             }
             res
         }
