@@ -540,13 +540,8 @@ trigger-length = 4
 
 ### `[editor.spelling]` Section
 
-Options for spell checking. Spell checking is off until at least one dictionary is configured
-(here, per-language in `languages.toml`, or per buffer with `:set-spelling-language`). Only
-natural-language regions are checked (comments, strings and prose) using tree-sitter, so code is
-left alone. A word is flagged only when every configured dictionary rejects it.
-
-Dictionaries are loaded from `dictionaries/<language>/<language>.{aff,dic}` in the [runtime
-directories](./install.md#configuring-helixs-runtime-files).
+Global options for spell checking. See the [Spell
+checking](./spell-checking.md) chapter for the full feature details.
 
 | Key               | Description                                                                                              | Default |
 | ---               | ---                                                                                                      | ---     |
