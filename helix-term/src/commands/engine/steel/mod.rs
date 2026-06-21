@@ -563,6 +563,7 @@ fn load_keymap_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("keymap?", is_keymap)
         .register_fn("helix-deep-copy-keymap", deep_copy_keymap)
         .register_fn("query-keymap", query_keybindings)
+        .register_fn("flatten-keymap", flatten_keymap)
         .register_fn(
             "#%add-extension-or-labeled-keymap",
             add_extension_or_labeled_keymap,
@@ -1480,7 +1481,11 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
             CTX,
             "editor-document-reload",
             |cx: &mut Context, doc: DocumentId| -> anyhow::Result<()> {
-                let path = cx.editor.documents.get(&doc).and_then(|x| x.path().cloned());
+                let path = cx
+                    .editor
+                    .documents
+                    .get(&doc)
+                    .and_then(|x| x.path().cloned());
                 for (view, _) in cx.editor.tree.views_mut() {
                     if let Some(x) = cx.editor.documents.get_mut(&doc) {
                         x.reload(view, &cx.editor.diff_providers)?;
@@ -2130,6 +2135,41 @@ pub fn query_keybindings(
     } else {
         Ok(SteelVal::BoolV(false))
     }
+}
+
+pub fn flatten_keymap(map: &mut EmbeddedKeyMap, mode: SteelString) -> Vec<Vec<String>> {
+    fn walk(trie: &KeyTrie, path: &mut Vec<String>, out: &mut Vec<Vec<String>>) {
+        match trie {
+            KeyTrie::MappableCommand(cmd) => {
+                let name = cmd.name();
+                let mut entry = path.clone();
+                entry.push(name.to_string());
+                out.push(entry);
+            }
+            KeyTrie::Sequence(_) => {}
+            KeyTrie::Node(node) => {
+                for (key, sub) in node.iter() {
+                    path.push(key.to_string());
+                    walk(sub, path, out);
+                    path.pop();
+                }
+            }
+        }
+    }
+
+    let mode = match mode.as_str() {
+        "normal" => Mode::Normal,
+        "select" => Mode::Select,
+        "insert" => Mode::Insert,
+        _ => return Vec::new(),
+    };
+
+    let mut out = Vec::new();
+    if let Some(trie) = map.0.get(&mode) {
+        let mut path = Vec::new();
+        walk(trie, &mut path, &mut out);
+    }
+    out
 }
 
 pub fn is_keymap(keymap: SteelVal) -> bool {

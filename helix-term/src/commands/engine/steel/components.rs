@@ -893,7 +893,27 @@ impl Component for SteelDynamicComponent {
     }
 
     fn should_update(&self) -> bool {
-        true
+        if !is_current_generation(self.generation) {
+            return true;
+        }
+
+        if let Some(should_update) = &self._should_update {
+            let thunk = |engine: &mut Engine| {
+                engine.call_function_with_args_from_mut_slice(
+                    should_update.clone(),
+                    &mut [self.state.clone()],
+                )
+            };
+
+            match enter_engine(thunk) {
+                // Only an explicit #f skips the render; anything else (including
+                // an erroring hook) renders, to stay safe.
+                Ok(v) => !matches!(v, SteelVal::BoolV(false)),
+                Err(_) => true,
+            }
+        } else {
+            true
+        }
     }
 
     fn cursor(

@@ -500,6 +500,25 @@ pub mod steel_implementations {
             Some(ret)
         }
 
+        pub fn positions(pattern: SteelString, haystack: SteelRopeSlice) -> Vec<usize> {
+            let Ok(regex) = RegexBuilder::new()
+                .syntax(Config::new())
+                .build(pattern.as_str())
+            else {
+                return Vec::new();
+            };
+            let slice = haystack.to_slice();
+            let mut ret: Vec<usize> = vec![];
+            for m in regex.find_iter(slice.regex_input()) {
+                if m.start() == m.end() {
+                    continue;
+                }
+                ret.push(slice.byte_to_char(m.start()));
+                ret.push(slice.byte_to_char(m.end()));
+            }
+            ret
+        }
+
         pub fn split(&self, haystack: SteelRopeSlice) -> Option<Vec<SteelRopeSlice>> {
             let matches = self.0.split(haystack.to_slice().regex_input());
             let mut ret: Vec<SteelRopeSlice> = vec![];
@@ -590,10 +609,12 @@ pub mod steel_implementations {
 
     impl SteelRopeSlice {
         pub fn from_string(string: SteelString) -> Self {
+            let text = crate::Rope::from_str(string.as_str());
+            let end = text.len_chars();
             Self {
-                text: crate::Rope::from_str(string.as_str()),
+                text,
                 start: 0,
-                end: string.len(),
+                end,
                 kind: RangeKind::Char,
             }
         }
@@ -887,6 +908,20 @@ pub mod steel_implementations {
 (rope-regex-find* regex rope) -> '(Rope?)
 ```
 * regex: RopeRegex?
+* rope: Rope?
+            "#
+        );
+        register_value!(
+            "rope-regex-positions",
+            SteelRopeRegex::positions,
+            r#"Compile `pattern` and return the char offsets of every non-empty
+match in `rope` as a flat list: (start0 end0 start1 end1 ...). An invalid
+pattern returns an empty list.
+
+```scheme
+(rope-regex-positions pattern rope) -> (listof int?)
+```
+* pattern: string?
 * rope: Rope?
             "#
         );
