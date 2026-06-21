@@ -11,7 +11,7 @@ use crate::Editor;
 /// same menu without the menu knowing where they came from.
 pub struct Action {
     title: Cow<'static, str>,
-    /// Sort key; higher priority actions are shown first. See [`lsp_code_action_priority`].
+    /// Sort key; higher priority actions are shown first. See `lsp_code_action_priority`.
     pub priority: u8,
     action: Box<dyn Fn(&mut Editor) + Send + Sync + 'static>,
 }
