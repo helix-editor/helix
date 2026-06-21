@@ -322,6 +322,9 @@ args = ["server", "--stdio"]
 [language-server.drools-lsp]
 command = "drools-lsp"
 
+[language-server.millet]
+command = "millet-ls"
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -3104,8 +3107,10 @@ source = { git = "https://github.com/Isopod/tree-sitter-pascal", rev = "042119ec
 name = "sml"
 scope = "source.sml"
 injection-regex = "sml"
-file-types = ["sml"]
+file-types = ["sml", "sig", "fun"]
+roots = ["millet.toml"]
 block-comment-tokens = { start = "(*", end = "*)" }
+language-servers = ["millet"]
 
 [language.auto-pairs]
 '(' = ')'

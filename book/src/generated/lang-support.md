@@ -265,7 +265,7 @@
 | slisp | ✓ |  |  | ✓ |  |  |
 | smali | ✓ |  | ✓ |  |  | `smalisp` |
 | smithy | ✓ |  |  |  |  | `cs` |
-| sml | ✓ |  |  |  |  |  |
+| sml | ✓ |  |  |  |  | `millet-ls` |
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  | ✓ | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
