@@ -264,7 +264,7 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let sym = if breakpoint.verified { "●" } else { "○" };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
