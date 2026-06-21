@@ -1818,7 +1818,6 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                     let cursor_anchor = range.cursor(text);
                     let cursor_head = next_grapheme_boundary(text, cursor_anchor);
 
-                    // Exclusive search skips the next char after cursor to enable repeated application
                     let search_start_pos = match (inclusive, direction) {
                         (true, Direction::Forward) => cursor_head,
                         (true, Direction::Backward) => cursor_anchor,
@@ -1827,23 +1826,26 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                     };
 
                     match direction {
-                        Direction::Forward => search::find_nth_next(text, ch, search_start_pos, count),
-                        Direction::Backward => search::find_nth_prev(text, ch, search_start_pos, count),
+                        Direction::Forward => {
+                            search::find_nth_next(text, ch, search_start_pos, count)
+                        }
+                        Direction::Backward => {
+                            search::find_nth_prev(text, ch, search_start_pos, count)
+                        }
                     }
-                        // Exclusive search should stop on previous character
-                        .map(|pos| match (inclusive, direction) {
-                            (true, Direction::Forward) => pos,
-                            (true, Direction::Backward) => pos,
-                            (false, Direction::Forward) => pos - 1,
-                            (false, Direction::Backward) => pos + 1,
-                        })
-                        .map_or(range, |pos| {
-                            if extend {
-                                range.put_cursor(text, pos, true)
-                            } else {
-                                Range::point(range.cursor(text)).put_cursor(text, pos, true)
-                            }
-                        })
+                    .map(|pos| match (inclusive, direction) {
+                        (true, Direction::Forward) => pos,
+                        (true, Direction::Backward) => pos,
+                        (false, Direction::Forward) => pos - 1,
+                        (false, Direction::Backward) => pos + 1,
+                    })
+                    .map_or(range, |pos| {
+                        if extend {
+                            range.put_cursor(text, pos, true)
+                        } else {
+                            Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                        }
+                    })
                 });
 
                 doc.set_selection(view.id, selection);
@@ -2761,9 +2763,7 @@ fn global_search(cx: &mut Context) {
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
-            config
-                .style
-                .stylize(Some(&path), Some(item.line_num))
+            config.style.stylize(Some(&path), Some(item.line_num))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -3946,10 +3946,7 @@ fn buffer_picker(cx: &mut Context) {
 
             let mut spans = Vec::with_capacity(2);
 
-            if let Some(icon) = icons
-                .mime()
-                .get(path.as_deref(), None)
-            {
+            if let Some(icon) = icons.mime().get(path.as_deref(), None) {
                 if let Some(color) = icon.color() {
                     spans.push(Span::styled(
                         format!("{}  ", icon.glyph()),
@@ -4000,7 +3997,6 @@ fn jumplist_picker(cx: &mut Context) {
         id: DocumentId,
         path: Option<Cow<'a, Path>>,
         selection: Selection,
-        line_start: usize,
         text: String,
         is_current: bool,
     }
@@ -4020,8 +4016,6 @@ fn jumplist_picker(cx: &mut Context) {
             .map(Cow::into_owned)
             .collect::<Vec<_>>()
             .join(" ");
-        let line_start = selection.primary().cursor_line(text);
-
         JumpMeta {
             id: doc_id,
             path: doc
@@ -4029,7 +4023,6 @@ fn jumplist_picker(cx: &mut Context) {
                 .map(ToOwned::to_owned)
                 .map(helix_stdx::path::get_relative_path),
             selection,
-            line_start,
             text: contents,
             is_current: view.doc == doc_id,
         }
@@ -4051,10 +4044,7 @@ fn jumplist_picker(cx: &mut Context) {
 
             let mut spans = Vec::with_capacity(2);
 
-            if let Some(icon) = icons
-                .mime()
-                .get(path.as_deref(), None)
-            {
+            if let Some(icon) = icons.mime().get(path.as_deref(), None) {
                 if let Some(color) = icon.color() {
                     spans.push(Span::styled(
                         format!("{}  ", icon.glyph()),

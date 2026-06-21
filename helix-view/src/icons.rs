@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path, path::PathBuf};
+use std::{collections::HashMap, path::Path};
 
 use crate::theme::Color;
 

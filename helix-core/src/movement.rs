@@ -805,6 +805,7 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
 
 /// Finds the range of the next or previous textobject in the syntax tree.
 /// Returns the range in the forwards direction.
+#[allow(clippy::too_many_arguments)]
 pub fn goto_treesitter_object(
     slice: RopeSlice,
     annotations: &TextAnnotations,

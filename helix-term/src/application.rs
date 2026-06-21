@@ -303,10 +303,7 @@ impl Application {
                     event_type: EventType::OnSelectionChange,
                     data: EventData::Buffer {
                         document_id: event.doc.id(),
-                        path: event
-                            .doc
-                            .path()
-                            .map(|p: &std::path::Path| p.to_path_buf()),
+                        path: event.doc.path().map(|p: &std::path::Path| p.to_path_buf()),
                     },
                 });
             }

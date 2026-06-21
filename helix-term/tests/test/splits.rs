@@ -27,21 +27,21 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 
                     let doc1 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &path::normalize(file1.path()))
+                        .find(|doc| doc.path().unwrap() == path::normalize(file1.path()))
                         .unwrap();
 
                     assert_eq!("hello1", doc1.text().to_string());
 
                     let doc2 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &path::normalize(file2.path()))
+                        .find(|doc| doc.path().unwrap() == path::normalize(file2.path()))
                         .unwrap();
 
                     assert_eq!("hello2", doc2.text().to_string());
 
                     let doc3 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &path::normalize(file3.path()))
+                        .find(|doc| doc.path().unwrap() == path::normalize(file3.path()))
                         .unwrap();
 
                     assert_eq!("hello3", doc3.text().to_string());

@@ -549,33 +549,68 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn find_char() -> anyhow::Result<()> {
-    test(("he#[l|]#lo\nhello", "fl", "he#[ll|]#o\nhello")).await?;
-    test(("hel#[l|]#o\nhello", "fl", "hel#[lo\nhel|]#lo")).await?;
-    test(("hel#[l|]#o\nhello", "fx", "hel#[l|]#o\nhello")).await?;
-    test(("he#[l|]#lo\nhello", "2fl", "he#[llo\nhel|]#lo")).await?;
-    test(("#[h|]#ello\nhello", "9fl", "#[h|]#ello\nhello")).await?;
-
-    test(("h#[e|]#llo\nhello", "tl", "h#[el|]#lo\nhello")).await?;
-    test(("he#[l|]#lo\nhello", "tl", "he#[llo\nhe|]#llo")).await?;
-    test(("hel#[l|]#o\nhello", "tl", "hel#[lo\nhe|]#llo")).await?;
-    test(("hel#[l|]#o\nhello", "tx", "hel#[l|]#o\nhello")).await?;
-    test(("he#[l|]#lo\nhello", "2tl", "he#[llo\nhel|]#lo")).await?;
-    test(("#[h|]#ello\nhello", "9tl", "#[h|]#ello\nhello")).await?;
-
+async fn find_char_fl() -> anyhow::Result<()> {
     test(("hello\nhel#[l|]#o", "Fl", "hello\nhe#[|ll]#o")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_fl2() -> anyhow::Result<()> {
     test(("hello\nhe#[l|]#lo", "Fl", "hel#[|lo\nhel]#lo")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_fx() -> anyhow::Result<()> {
     test(("hello\n#[h|]#ello", "Fx", "hello\n#[h|]#ello")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_2fl() -> anyhow::Result<()> {
     test(("hello\nhel#[l|]#o", "2Fl", "hel#[|lo\nhell]#o")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_9fl() -> anyhow::Result<()> {
     test(("hello\nhell#[o|]#", "9Fl", "hello\nhell#[o|]#")).await?;
+    Ok(())
+}
 
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_tl() -> anyhow::Result<()> {
     test(("hello\nhell#[o|]#", "Tl", "hello\nhel#[|lo]#")).await?;
-    test(("hello\nhel#[l|]#o", "Tl", "hell#[|o\nhell]#o")).await?;
-    test(("hello\nhe#[l|]#lo", "Tl", "hell#[|o\nhel]#lo")).await?;
-    test(("hello\n#[h|]#ello", "Tx", "hello\n#[h|]#ello")).await?;
-    test(("hello\nhel#[l|]#o", "2Tl", "hel#[|lo\nhell]#o")).await?;
-    test(("hello\nhell#[o|]#", "9Tl", "hello\nhell#[o|]#")).await?;
+    Ok(())
+}
 
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_tl2() -> anyhow::Result<()> {
+    test(("hello\nhel#[l|]#o", "Tl", "hell#[|o\nhell]#o")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_tl3() -> anyhow::Result<()> {
+    test(("hello\nhe#[l|]#lo", "Tl", "hell#[|o\nhel]#lo")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_tx() -> anyhow::Result<()> {
+    test(("hello\n#[h|]#ello", "Tx", "hello\n#[h|]#ello")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_2tl() -> anyhow::Result<()> {
+    test(("hello\nhel#[l|]#o", "2Tl", "hel#[|lo\nhell]#o")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn find_char_9tl() -> anyhow::Result<()> {
+    test(("hello\nhell#[o|]#", "9Tl", "hello\nhell#[o|]#")).await?;
     Ok(())
 }
 

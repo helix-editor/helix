@@ -7,8 +7,7 @@ use std::{borrow::Cow, iter, sync::Arc, time::Duration};
 
 use foldhash::HashMap;
 use helix_core::{
-    chars::char_is_word, diff::compare_ropes, fuzzy::fuzzy_match, movement,
-    text_annotations::TextAnnotations, ChangeSet, Range, Rope, RopeSlice,
+    chars::char_is_word, diff::compare_ropes, fuzzy::fuzzy_match, ChangeSet, Rope, RopeSlice,
 };
 use helix_event::{register_hook, AsyncHook, TaskController, TaskHandle};
 use helix_stdx::rope::RopeSliceExt as _;
@@ -372,7 +371,6 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
                     return word;
                 }
             }
-
         }
     })
 }
