@@ -6,7 +6,7 @@ use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
-use crate::{DocumentId, Editor};
+use crate::{DocumentId, Editor, ViewId};
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
 use helix_event::register_hook;
@@ -17,6 +17,16 @@ use super::Handlers;
 
 pub struct DocumentColorsEvent(pub DocumentId);
 pub struct DocumentLinksEvent(pub DocumentId);
+pub enum InlayHintsEvent {
+    RefreshVisibleViews,
+    RefreshDocument {
+        document_id: DocumentId,
+    },
+    RefreshView {
+        document_id: DocumentId,
+        view_id: ViewId,
+    },
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
