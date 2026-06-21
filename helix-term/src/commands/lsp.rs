@@ -873,6 +873,7 @@ fn code_action_on_save_step(
     // Runs with `&mut Editor`, so it sees the document the previous link left.
     let build_request = move |editor: &mut Editor| -> Option<Job> {
         let doc = doc!(editor, &doc_id);
+        let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());
         let Some((request, ls_id)) =
             code_actions_for_range(doc, full_range, Some(vec![kind.clone()]))
@@ -886,7 +887,7 @@ fn code_action_on_save_step(
         let future = async move {
             let actions = request.await?;
             let apply = move |editor: &mut Editor| -> Option<Job> {
-                apply_code_actions_of_kind(editor, ls_id, &kind, actions);
+                apply_code_actions_of_kind(editor, doc_id, version, ls_id, &kind, actions);
                 code_action_on_save_step(doc_id, kinds, tail)
             };
             Ok(Callback::Followup(Box::new(apply)))
@@ -914,9 +915,12 @@ fn code_action_kind_matches(action: &CodeAction, requested: &CodeActionKind) -> 
 
 /// Apply every returned action whose kind matches `kind` (servers may ignore the
 /// `only` filter, and `source.fixAll` legitimately resolves to several actions),
-/// resolving any that need it.
+/// resolving any that need it. Skips entirely if the document changed between the
+/// request and now, so a stale edit can't be applied at positions that moved.
 fn apply_code_actions_of_kind(
     editor: &mut Editor,
+    doc_id: DocumentId,
+    version: i32,
     ls_id: LanguageServerId,
     kind: &CodeActionKind,
     actions: Option<Vec<CodeActionOrCommand>>,
@@ -924,6 +928,10 @@ fn apply_code_actions_of_kind(
     let Some(actions) = actions else {
         return;
     };
+    if doc!(editor, &doc_id).version() != version {
+        log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
+        return;
+    }
     let Some(language_server) = editor.language_server_by_id(ls_id) else {
         return;
     };
