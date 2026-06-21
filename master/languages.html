@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-1e3bba83.js";
+            window.path_to_searchindex_js = "searchindex-f548f819.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c2fa7ea4.js"></script>
@@ -257,6 +257,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local <code>.helix/config.toml</code>;</td></tr>
 <tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
 <tr><td><code>rainbow-brackets</code></td><td>Overrides the <code>editor.rainbow-brackets</code> config key for the language</td></tr>
+<tr><td><code>code-actions-on-save</code></td><td>List of LSP code actions to be run in order on save, for example <code>["source.organizeImports"]</code></td></tr>
 </tbody>
 </table>
 </div>
