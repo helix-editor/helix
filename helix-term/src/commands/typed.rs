@@ -400,40 +400,59 @@ fn write_impl(
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
-    let fmt = if config.auto_format && options.auto_format {
-        let path = path.map(Into::into);
-        let write = Some((path.clone(), options.force));
+    let auto_format = config.auto_format && options.auto_format;
+    let force = options.force;
+    let path: Option<PathBuf> = path.map(Into::into);
+
+    // Does the document configure any code actions to run on save?
+    let run_code_actions = options.code_actions
+        && doc!(cx.editor, &doc_id)
+            .language_config()
+            .and_then(|c| c.code_actions_on_save.as_deref())
+            .is_some_and(|kinds| !kinds.is_empty());
+
+    // The tail of the on-save chain: re-build the auto-format job against the
+    // latest document (so it formats after any code-action edits), or save
+    // directly when there's no formatter. Deferred via `Followup`, and always
+    // saves, so code-actions-on-save works even with auto-format off. Only
+    // built when there is pre-save work. A plain `:w` saves synchronously below.
+    let tail = (auto_format || run_code_actions).then(|| {
+        let path = path.clone();
         let callback = Callback::Followup(Box::new(move |editor| {
-            let (view, doc) = current_ref!(editor);
-            let job = doc.auto_format(editor).map(|fmt| {
-                let call = make_format_callback(doc.id(), doc.version(), view.id, fmt, write);
-                Job::with_callback(call).wait_before_exiting()
-            });
-            if job.is_none() {
-                if let Err(err) = editor.save(doc.id(), path, options.force) {
+            let doc = doc!(editor, &doc_id);
+            let fmt_job = auto_format
+                .then(|| doc.auto_format(editor))
+                .flatten()
+                .map(|fmt| {
+                    let call = make_format_callback(
+                        doc_id,
+                        doc.version(),
+                        view_id,
+                        fmt,
+                        Some((path.clone(), force)),
+                    );
+                    Job::with_callback(call).wait_before_exiting()
+                });
+            if fmt_job.is_none() {
+                if let Err(err) = editor.save(doc_id, path, force) {
                     editor.set_error(format!("Error saving: {}", err));
                 }
-            };
-            job
+            }
+            fmt_job
         }));
+        Job::with_callback(async { Ok(callback) }).wait_before_exiting()
+    });
 
-        Some(Job::with_callback(async { Ok(callback) }).wait_before_exiting())
+    let job = if run_code_actions {
+        code_actions_on_save(cx, doc_id, tail)
     } else {
-        None
-    };
-
-    let job = if options.code_actions {
-        code_actions_on_save(cx, doc_id, fmt)
-    } else {
-        fmt
+        tail
     };
 
     if let Some(job) = job {
         cx.jobs.add(job);
     } else {
-        let (_, doc) = current!(cx.editor);
-        let id = doc.id();
-        cx.editor.save(id, path, options.force)?;
+        cx.editor.save(doc_id, path, force)?;
     }
 
     Ok(())
@@ -882,39 +901,53 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format && options.auto_format {
-            let path = doc.path().map(Into::into);
-            let write = Some((path.clone(), options.force));
+        let auto_format = config.auto_format && options.auto_format;
+        let force = options.force;
+
+        let run_code_actions = options.code_actions
+            && doc!(cx.editor, &doc_id)
+                .language_config()
+                .and_then(|c| c.code_actions_on_save.as_deref())
+                .is_some_and(|kinds| !kinds.is_empty());
+
+        // See `write_impl`: deferred format-or-save tail that always saves, only
+        // built when there is pre-save work; otherwise a synchronous save below.
+        let tail = (auto_format || run_code_actions).then(|| {
             let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
                 let doc = doc!(editor, &doc_id);
-                let view = view!(editor, target_view);
-                let job = doc.auto_format(editor).map(|fmt| {
-                    let call = make_format_callback(doc.id(), doc.version(), view.id, fmt, write);
-                    Job::with_callback(call).wait_before_exiting()
-                });
-                if job.is_none() {
-                    if let Err(err) = editor.save::<PathBuf>(doc.id(), path, options.force) {
+                let fmt_job = auto_format
+                    .then(|| doc.auto_format(editor))
+                    .flatten()
+                    .map(|fmt| {
+                        let call = make_format_callback(
+                            doc_id,
+                            doc.version(),
+                            target_view,
+                            fmt,
+                            Some((None, force)),
+                        );
+                        Job::with_callback(call).wait_before_exiting()
+                    });
+                if fmt_job.is_none() {
+                    if let Err(err) = editor.save::<PathBuf>(doc_id, None, force) {
                         editor.set_error(format!("Error saving: {}", err));
                     }
-                };
-                job
+                }
+                fmt_job
             }));
+            Job::with_callback(async { Ok(callback) }).wait_before_exiting()
+        });
 
-            Some(Job::with_callback(async { Ok(callback) }).wait_before_exiting())
+        let job = if run_code_actions {
+            code_actions_on_save(cx, doc_id, tail)
         } else {
-            None
-        };
-
-        let job = if options.code_actions {
-            code_actions_on_save(cx, doc_id, fmt)
-        } else {
-            fmt
+            tail
         };
 
         if let Some(job) = job {
             cx.jobs.add(job);
         } else {
-            cx.editor.save::<PathBuf>(doc_id, None, options.force)?;
+            cx.editor.save::<PathBuf>(doc_id, None, force)?;
         }
     }
 
