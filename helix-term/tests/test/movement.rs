@@ -636,16 +636,16 @@ async fn find_char_line_ending() -> anyhow::Result<()> {
     test(("one\ntw#[o|]#\nthree\n", "F<ret>", "one#[|\ntwo]#\nthree\n")).await?;
     test(("o#[n|]#e\n", "F<ret>", "o#[n|]#e\n")).await?;
     test(("#[o|]#ne\n", "F<ret>", "#[o|]#ne\n")).await?;
-    test(("one\ntwo\nth#[r|]#ee\n", "2F\n", "one#[|\ntwo\nthr]#ee\n")).await?;
-    test(("one\ntwo\nth#[r|]#ee\n", "9F\n", "one\ntwo\nth#[r|]#ee\n")).await?;
+    test(("one\ntwo\nth#[r|]#ee\n", "2F<ret>", "one#[|\ntwo\nthr]#ee\n")).await?;
+    test(("one\ntwo\nth#[r|]#ee\n", "9F<ret>", "one\ntwo\nth#[r|]#ee\n")).await?;
 
     test(("one\ntwo\nth#[r|]#ee\n", "T<ret>", "one\ntwo\n#[|thr]#ee\n")).await?;
     test(("one\ntwo\n#[t|]#hree\n", "T<ret>", "one\n#[|two\nt]#hree\n")).await?;
     test(("one\ntwo#[\n|]#three\n", "T<ret>", "one\n#[|two\n]#three\n")).await?;
     test(("o#[n|]#e\n", "T<ret>", "o#[n|]#e\n")).await?;
     test(("#[o|]#ne\n", "T<ret>", "#[o|]#ne\n")).await?;
-    test(("one\ntwo\nth#[r|]#ee\n", "2T\n", "one\n#[|two\nthr]#ee\n")).await?;
-    test(("one\ntwo\nth#[r|]#ee\n", "9T\n", "one\ntwo\nth#[r|]#ee\n")).await?;
+    test(("one\ntwo\nth#[r|]#ee\n", "2T<ret>", "one\n#[|two\nthr]#ee\n")).await?;
+    test(("one\ntwo\nth#[r|]#ee\n", "9T<ret>", "one\ntwo\nth#[r|]#ee\n")).await?;
 
     test((
         indoc! {
