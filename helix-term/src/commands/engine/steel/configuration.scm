@@ -8,7 +8,6 @@
 (define set-option! helix.set-option!)
 
 (provide statusline)
-
 ;;@doc
 ;; Configuration of the statusline elements.
 ;; The following status line elements can be configured:
@@ -39,16 +38,15 @@
 ;; register	                    The current selected register
 (define (statusline
          #:left
-         [left
-          (list "mode" "spinner" "file-name" "read-only-indicator" "file-modification-indicator")]
+         [left (list 'mode 'spinner 'file-name 'read-only-indicator 'file-modification-indicator)]
          #:center [center '()]
-         #:right [right (list "diagnostics" "selections" "register" "position" "file-encoding")]
+         #:right [right (list 'diagnostics 'selections 'register 'position 'file-encoding)]
          #:separator [separator "|"]
          #:mode-normal [mode-normal "NOR"]
          #:mode-insert [mode-insert "INS"]
          #:mode-select [mode-select "SEL"]
-         #:diagnostics [diagnostics (list "warning" "error")]
-         #:workspace-diagnostics [workspace-diagnostics (list "warning" "error")])
+         #:diagnostics [diagnostics (list 'warning 'error)]
+         #:workspace-diagnostics [workspace-diagnostics (list 'warning 'error)])
   (helix.statusline (hash 'left
                           left
                           'center

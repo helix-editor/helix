@@ -2,6 +2,72 @@
 ;; More bindings are added at runtime for registering key events.
 
 (require-builtin helix/components as helix.components.)
+
+(provide StatusElement?)
+;;@doc
+;; Check if the provided value is a `StatusElement`
+(define StatusElement? helix.components.StatusElement?)
+
+(provide status-element)
+;;@doc
+;; Create a new status element with a closure that returns an ordered list of styled `Span`s to be added to be rendered by the status bar
+;; ```scm
+;; (status-element fun) -> StatusElement?
+;; ```
+;; * fun: (-> DocumentID? bool?) -> (listof Span?)
+(define status-element helix.components.status-element)
+
+(provide Span?)
+;;@doc
+;; Check if the provided value is a `Span`
+(define Span? helix.components.Span?)
+
+(provide span)
+;;@doc
+;; Create a span with the given contents and style
+;;
+;; ```scm
+;; (span content style) -> Span?
+;; ```
+;; * content: string?
+;; * style: Style?
+(define span helix.components.span)
+
+(provide span-content)
+;;@doc
+;; Create a span with the given contents and style
+;;
+;; ```scm
+;; (span-content span) -> string?
+;; ```
+;; * span: Span?
+(define span-content helix.components.span-content)
+
+(provide span-style)
+;;@doc
+;; Create a span with the given styles and style
+;;
+;; ```scm
+;; (span-style span) -> Style?
+;; ```
+;; * span: Span?
+(define span-style helix.components.span-style)
+
+(provide push-status-element!)
+;;@doc
+;; Push a status element to a given side in the statusbar
+;; `side` can be:
+;;    * 'left
+;;    * 'right
+;;    * 'center
+;; ```scm
+;; (push-status-element! side elem)
+;; ```
+;;
+;; * side: symbol?
+;; * elem: StatusElement?
+(define push-status-element! helix.components.push-status-element!)
+
 (provide async-read-line)
 (define async-read-line helix.components.async-read-line)
 

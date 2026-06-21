@@ -21,6 +21,7 @@ use super::Context;
 #[cfg(feature = "steel")]
 pub mod steel;
 
+#[allow(dead_code)]
 pub enum PluginSystemKind {
     None,
     #[cfg(feature = "steel")]

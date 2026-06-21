@@ -5,10 +5,11 @@ pub fn document_id_to_usize(doc_id: &DocumentId) -> usize {
 }
 
 #[cfg(feature = "steel")]
-mod steel_implementations {
+pub mod steel_implementations {
     use steel::{
         gc::unsafe_erased_pointers::CustomReference,
         rvals::{as_underlying_type, Custom},
+        SteelVal,
     };
 
     use crate::{
@@ -22,6 +23,22 @@ mod steel_implementations {
         input::{Event, KeyEvent},
         Document, DocumentId, Editor, ViewId,
     };
+
+    #[derive(Clone, Eq, PartialEq, Debug)]
+    pub struct CustomStatusElement {
+        pub render: SteelVal,
+    }
+
+    impl Custom for CustomStatusElement {}
+
+    impl CustomStatusElement {
+        pub fn new(render: SteelVal) -> Result<CustomStatusElement, String> {
+            if !render.is_function() {
+                return Err("Bad value!".into());
+            }
+            Ok(Self { render })
+        }
+    }
 
     impl steel::gc::unsafe_erased_pointers::CustomReference for Editor {}
     steel::custom_reference!(Editor);

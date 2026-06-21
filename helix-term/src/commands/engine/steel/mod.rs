@@ -1,4 +1,4 @@
-mod components;
+pub mod components;
 
 use arc_swap::{ArcSwap, ArcSwapAny};
 use helix_core::{
@@ -35,7 +35,7 @@ use helix_view::{
         DocumentDidChange, DocumentDidClose, DocumentDidOpen, DocumentFocusLost, DocumentSaved,
         SelectionDidChange,
     },
-    extension::document_id_to_usize,
+    extension::{document_id_to_usize, steel_implementations::CustomStatusElement},
     graphics::CursorKind,
     input::KeyEvent,
     theme::Color,
@@ -2882,37 +2882,48 @@ impl HelixConfiguration {
         let mut app_config = self.load_config();
 
         fn steel_to_elements(val: &SteelVal) -> anyhow::Result<StatusLineElement> {
-            if let SteelVal::StringV(s) = val {
-                let value = match s.as_str() {
-                    "mode" => StatusLineElement::Mode,
-                    "spinner" => StatusLineElement::Spinner,
-                    "file-base-name" => StatusLineElement::FileBaseName,
-                    "file-name" => StatusLineElement::FileName,
-                    "file-absolute-path" => StatusLineElement::FileAbsolutePath,
-                    "file-modification-indicator" => StatusLineElement::FileModificationIndicator,
-                    "read-only-indicator" => StatusLineElement::ReadOnlyIndicator,
-                    "file-encoding" => StatusLineElement::FileEncoding,
-                    "file-line-ending" => StatusLineElement::FileLineEnding,
-                    "file-indent-style" => StatusLineElement::FileIndentStyle,
-                    "file-type" => StatusLineElement::FileType,
-                    "diagnostics" => StatusLineElement::Diagnostics,
-                    "workspace-diagnostics" => StatusLineElement::WorkspaceDiagnostics,
-                    "selections" => StatusLineElement::Selections,
-                    "primary-selection-length" => StatusLineElement::PrimarySelectionLength,
-                    "position" => StatusLineElement::Position,
-                    "separator" => StatusLineElement::Separator,
-                    "position-percentage" => StatusLineElement::PositionPercentage,
-                    "total-line-numbers" => StatusLineElement::TotalLineNumbers,
-                    "spacer" => StatusLineElement::Spacer,
-                    "version-control" => StatusLineElement::VersionControl,
-                    "register" => StatusLineElement::Register,
-                    "current-working-directory" => StatusLineElement::CurrentWorkingDirectory,
-                    _ => anyhow::bail!("Unknown status line element: {}", s),
-                };
-
-                Ok(value)
-            } else {
-                anyhow::bail!("Cannot convert value to status line element: {}", val)
+            match val {
+                SteelVal::StringV(s) | SteelVal::SymbolV(s) => {
+                    let value = match s.as_str() {
+                        "mode" => StatusLineElement::Mode,
+                        "spinner" => StatusLineElement::Spinner,
+                        "file-base-name" => StatusLineElement::FileBaseName,
+                        "file-name" => StatusLineElement::FileName,
+                        "file-absolute-path" => StatusLineElement::FileAbsolutePath,
+                        "file-modification-indicator" => {
+                            StatusLineElement::FileModificationIndicator
+                        }
+                        "read-only-indicator" => StatusLineElement::ReadOnlyIndicator,
+                        "file-encoding" => StatusLineElement::FileEncoding,
+                        "file-line-ending" => StatusLineElement::FileLineEnding,
+                        "file-indent-style" => StatusLineElement::FileIndentStyle,
+                        "file-type" => StatusLineElement::FileType,
+                        "diagnostics" => StatusLineElement::Diagnostics,
+                        "workspace-diagnostics" => StatusLineElement::WorkspaceDiagnostics,
+                        "selections" => StatusLineElement::Selections,
+                        "primary-selection-length" => StatusLineElement::PrimarySelectionLength,
+                        "position" => StatusLineElement::Position,
+                        "separator" => StatusLineElement::Separator,
+                        "position-percentage" => StatusLineElement::PositionPercentage,
+                        "total-line-numbers" => StatusLineElement::TotalLineNumbers,
+                        "spacer" => StatusLineElement::Spacer,
+                        "version-control" => StatusLineElement::VersionControl,
+                        "register" => StatusLineElement::Register,
+                        "current-working-directory" => StatusLineElement::CurrentWorkingDirectory,
+                        _ => anyhow::bail!("Unknown status line element: {}", s),
+                    };
+                    Ok(value)
+                }
+                SteelVal::Custom(custom) => {
+                    let c = custom.write();
+                    let Some(element) =
+                        steel::rvals::as_underlying_type::<CustomStatusElement>(c.as_ref())
+                    else {
+                        anyhow::bail!("Cannot convert value to status line element: {}", val)
+                    };
+                    Ok(StatusLineElement::Custom(element.clone()))
+                }
+                _ => anyhow::bail!("Cannot convert value to status line element: {}", val),
             }
         }
 
@@ -2928,7 +2939,7 @@ impl HelixConfiguration {
         }
 
         fn steel_to_severity(val: &SteelVal) -> anyhow::Result<Severity> {
-            if let SteelVal::StringV(s) = val {
+            if let SteelVal::StringV(s) | SteelVal::SymbolV(s) = val {
                 let value = match s.as_str() {
                     "hint" => Severity::Hint,
                     "info" => Severity::Info,

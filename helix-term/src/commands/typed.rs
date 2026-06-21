@@ -4129,7 +4129,7 @@ pub(super) fn command_mode(cx: &mut Context) {
     cx.push_layer(Box::new(prompt));
 }
 
-fn command_line_doc(input: &str) -> Option<Cow<str>> {
+fn command_line_doc(input: &str) -> Option<Cow<'_, str>> {
     let (command_name, _, _) = command_line::split(input);
 
     if let Some(doc) = ScriptingEngine::get_doc_for_identifier(command_name).map(|x| x.into()) {

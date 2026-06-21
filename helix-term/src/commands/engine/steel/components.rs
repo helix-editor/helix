@@ -2,27 +2,31 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use helix_core::Position;
 use helix_view::{
+    editor::StatusLineElement,
+    extension::steel_implementations::CustomStatusElement,
     graphics::{Color, CursorKind, Rect, UnderlineStyle},
     input::{Event, KeyEvent, MouseButton, MouseEvent},
     keyboard::{KeyCode, KeyModifiers},
     theme::{Modifier, Style},
-    Editor,
+    Editor, ViewId,
 };
 use steel::{
     rvals::{as_underlying_type, AsRefSteelVal, Custom, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
-    RootedSteelVal, SteelVal,
+    steelerr, RootedSteelVal, SteelErr, SteelVal,
 };
 use tokio::sync::Mutex;
 use tui::{
     buffer::Buffer,
-    text::Text,
+    text::{Span, Text},
     widgets::{self, Block, BorderType, Borders, ListItem, Widget},
 };
 
 use crate::{
     commands::{
-        engine::steel::{configure_lsp_builtins, generate_module, BoxDynComponent},
+        engine::steel::{
+            configure_lsp_builtins, generate_module, BoxDynComponent, HelixConfiguration, CONFIG,
+        },
         Context,
     },
     compositor::{self, Component},
@@ -39,6 +43,92 @@ struct AsyncReader {
     // Take that, and write it back to a terminal session that is
     // getting rendered.
     channel: Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<String>>>,
+}
+
+struct SteelSpan {
+    content: String,
+    style: Style,
+}
+
+impl Custom for SteelSpan {}
+
+impl SteelSpan {
+    pub fn new(content: String, style: Style) -> Self {
+        return Self { content, style };
+    }
+
+    pub fn get_content(&self) -> String {
+        return self.content.to_string();
+    }
+
+    pub fn get_style(&self) -> Style {
+        return self.style;
+    }
+}
+
+pub fn render_custom_status<'a>(
+    elem: &CustomStatusElement,
+    ctx: &mut compositor::Context,
+    view_id: ViewId,
+    focused: bool,
+) -> Vec<Span<'static>> {
+    // Skip rendering if the function is actually false
+    if let SteelVal::BoolV(false) = elem.render {
+        return vec![Span::styled("#f", Style::default())];
+    };
+
+    let thunk = |engine: &mut Engine, view_id: ViewId| {
+        engine.call_function_with_args_from_mut_slice(
+            elem.render.clone(),
+            &mut [view_id.into_steelval().unwrap(), SteelVal::BoolV(focused)],
+        )
+    };
+
+    let mut ctx = with_context_guard(ctx);
+
+    enter_engine(|guard| {
+        match guard
+            .with_mut_reference::<Context, Context>(&mut ctx)
+            .consume(|engine, args| {
+                let mut arg_iter = args.into_iter();
+
+                let context = arg_iter.next().unwrap();
+
+                engine.update_value(crate::commands::engine::steel::CTX, context);
+
+                let spans = match (thunk)(engine, view_id) {
+                    Ok(SteelVal::ListV(l)) => l,
+                    Err(e) => return Err(e),
+                    _ => return steelerr!(TypeMismatch => "Wrong return type for status element!"),
+                };
+
+                fn steel_to_span<'a>(val: SteelVal) -> Result<Span<'a>, SteelErr> {
+                    match val {
+                        SteelVal::Custom(custom) => {
+                            let c = custom.write();
+                            let Some(s) = steel::rvals::as_underlying_type::<SteelSpan>(c.as_ref())
+                            else {
+                                return steelerr!(
+                                    TypeMismatch =>
+                                    "Cannot convert value to Span!"
+                                )
+                                .into();
+                            };
+                            Ok(Span::styled(s.get_content(), s.get_style()))
+                        }
+                        _ => steelerr!(TypeMismatch => "not a custom type!").into(),
+                    }
+                }
+
+                spans.into_iter().map(steel_to_span).collect()
+            }) {
+            Ok(ret) => return ret,
+            Err(e) => {
+                super::present_error_inside_engine_context(&mut ctx, guard, e);
+                return vec![];
+            }
+        }
+    })
 }
 
 impl AsyncReader {
@@ -109,12 +199,55 @@ impl std::io::Write for AsyncWriter {
     }
 }
 
+fn push_status_elem(
+    cfg: &mut HelixConfiguration,
+    side: String,
+    elem: CustomStatusElement,
+) -> Result<(), SteelErr> {
+    let mut app_config = cfg.load_config();
+
+    match side.as_str() {
+        "right" => app_config
+            .editor
+            .statusline
+            .right
+            .insert(0, StatusLineElement::Custom(elem)), // insert at the front to make things nicer
+        "left" => app_config
+            .editor
+            .statusline
+            .left
+            .push(StatusLineElement::Custom(elem)),
+        "center" => app_config
+            .editor
+            .statusline
+            .center
+            .push(StatusLineElement::Custom(elem)),
+        _ => {
+            return Err(SteelErr::new(
+                steel::rerrs::ErrorKind::Generic,
+                format!("Failed to push! Unrecognized status section: {side}"),
+            ))
+        }
+    }
+
+    cfg.store_config(app_config);
+    Ok(())
+}
 pub fn helix_component_module(generate_sources: bool) -> BuiltInModule {
     let mut module = BuiltInModule::new("helix/components");
 
     let mut builtin_components_module = include_str!("components.scm").to_string();
 
     module
+        .register_fn("StatusElement?", |value: SteelVal| {
+            CustomStatusElement::as_ref(&value).is_ok()
+        })
+        .register_fn("status-element", CustomStatusElement::new)
+        .register_fn_with_ctx(CONFIG, "push-status-element!", push_status_elem)
+        .register_fn("Span?", |value: SteelVal| SteelSpan::as_ref(&value).is_ok())
+        .register_fn("span", SteelSpan::new)
+        .register_fn("span-content", SteelSpan::get_content)
+        .register_fn("span-style", SteelSpan::get_style)
         .register_fn("async-read-line", AsyncReader::read_line)
         .register_fn("make-async-reader-writer", || {
             let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();

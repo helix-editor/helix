@@ -658,7 +658,7 @@ impl Default for ModeConfig {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum StatusLineElement {
     /// The editor mode (Normal, Insert, Visual/Selection)
@@ -729,6 +729,10 @@ pub enum StatusLineElement {
 
     /// The base of current working directory
     CurrentWorkingDirectory,
+
+    #[cfg(feature = "steel")]
+    #[serde(skip)]
+    Custom(crate::extension::steel_implementations::CustomStatusElement),
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
