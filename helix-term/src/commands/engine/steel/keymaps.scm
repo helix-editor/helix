@@ -213,7 +213,7 @@
     [(_ (extension name (inherit-from kmap)) (with-map bindings))
      (helix.keymaps.#%add-extension-or-labeled-keymap name (merge-keybindings kmap bindings))]
 
-    [(_ (extension name (inherit-from map)) args ...)
+    [(_ (extension name (inherit-from kmap)) args ...)
      (helix.keymaps.#%add-extension-or-labeled-keymap name
                                                       (merge-keybindings kmap (keymap args ...)))]
 
