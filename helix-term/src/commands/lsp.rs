@@ -28,11 +28,17 @@ use helix_view::{
 
 use crate::{
     compositor::{self, Compositor},
-    job::{self, Callback, Job},
+    job::{Callback, Job},
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{
+    cmp::Ordering,
+    collections::{HashSet, VecDeque},
+    fmt::Display,
+    future::Future,
+    path::Path,
+};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -831,124 +837,103 @@ fn code_actions_for_range(
         .collect::<Vec<_>>()
 }
 
+/// Build the job chain that runs a document's configured `code-actions-on-save`
+/// kinds, in order, each against the latest document state, before running
+/// `tail` (the auto-format / save job). Returns `tail` unchanged when nothing is
+/// configured.
 pub fn code_actions_on_save(
     cx: &compositor::Context,
     doc_id: DocumentId,
-    make_format_job: Option<Job>,
+    tail: Option<Job>,
 ) -> Option<Job> {
-    let doc = doc!(cx.editor, &doc_id);
-
-    let Some(code_actions_on_save_cfg) = doc
+    let kinds = doc!(cx.editor, &doc_id)
         .language_config()
-        .and_then(|c| c.code_actions_on_save.clone())
-    else {
-        return make_format_job;
+        .and_then(|config| config.code_actions_on_save.clone());
+    let Some(kinds) = kinds else {
+        return tail;
+    };
+    let kinds: VecDeque<CodeActionKind> = kinds.into_iter().map(CodeActionKind::from).collect();
+    code_action_on_save_step(doc_id, kinds, tail)
+}
+
+/// One link of the on-save chain: request the next kind's actions on the current
+/// document, apply them, then recurse for the rest. Each link is built lazily (as
+/// a `Followup`) so it reads the document after the previous link's edits, and
+/// runs the configured kinds strictly in order.
+fn code_action_on_save_step(
+    doc_id: DocumentId,
+    mut kinds: VecDeque<CodeActionKind>,
+    tail: Option<Job>,
+) -> Option<Job> {
+    let Some(kind) = kinds.pop_front() else {
+        // All kinds applied. Fall through to auto-format / save.
+        return tail;
     };
 
-    let mut queued_job = make_format_job;
-    for action_kind in code_actions_on_save_cfg
-        .into_iter()
-        // To run the actions in the configured order, build the chain of callbacks in reverse
-        .rev()
-        .map(CodeActionKind::from)
-    {
-        let call: job::Callback = Callback::Followup(Box::new(move |editor| {
-            let doc = doc!(editor, &doc_id);
-            let full_range = helix_core::Range::new(0, doc.text().len_chars());
-            if let Some((actions, ls_id)) =
-                code_actions_for_range(doc, full_range, Some(vec![action_kind]))
-                    .into_iter()
-                    .next()
-            {
-                let call = make_code_action_callback(actions, ls_id, queued_job.take());
-                Some(Job::with_callback(call).wait_before_exiting())
-            } else {
-                queued_job.take()
-            }
-        }));
-        queued_job = Some(Job::with_callback(async { Ok(call) }).wait_before_exiting());
-    }
-    queued_job
-}
-
-async fn make_code_action_callback(
-    actions: impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>
-        + Send
-        + Sync,
-    language_server_id: LanguageServerId,
-    queued: Option<Job>,
-) -> anyhow::Result<job::Callback> {
-    let actions = actions.await?;
-
-    let call: job::Callback = Callback::Followup(Box::new(move |editor| {
-        let Some(actions) = actions else {
-            return queued;
+    // Runs with `&mut Editor`, so it sees the document the previous link left.
+    let build_request = move |editor: &mut Editor| -> Option<Job> {
+        let doc = doc!(editor, &doc_id);
+        let full_range = helix_core::Range::new(0, doc.text().len_chars());
+        let Some((request, ls_id)) =
+            code_actions_for_range(doc, full_range, Some(vec![kind.clone()]))
+                .into_iter()
+                .next()
+        else {
+            // No server offers this kind for the document: skip to the next.
+            return code_action_on_save_step(doc_id, kinds, tail);
         };
 
-        let code_actions: Vec<_> = actions
-            .iter()
-            .filter(|action| {
-                matches!(
-                    action,
-                    CodeActionOrCommand::CodeAction(CodeAction { disabled: None, .. })
-                )
-            })
-            .filter_map(|action| match action {
-                CodeActionOrCommand::CodeAction(code_action) => Some(code_action),
-                CodeActionOrCommand::Command(_) => None,
-            })
-            .collect();
-
-        if let Some(code_action) = code_actions.first() {
-            let Some(resolve) = editor
-                .language_server_by_id(language_server_id)
-                .and_then(|language_server| resolve_code_action(code_action, language_server))
-            else {
-                return queued;
+        let future = async move {
+            let actions = request.await?;
+            let apply = move |editor: &mut Editor| -> Option<Job> {
+                apply_code_actions_of_kind(editor, ls_id, actions);
+                code_action_on_save_step(doc_id, kinds, tail)
             };
-            let callback = make_code_action_resolve_callback(resolve, language_server_id, queued);
-            Some(Job::with_callback(callback).wait_before_exiting())
-        } else {
-            queued
-        }
-    }));
+            Ok(Callback::Followup(Box::new(apply)))
+        };
+        Some(Job::with_callback(future).wait_before_exiting())
+    };
 
-    Ok(call)
+    Some(
+        Job::with_callback(async move { Ok(Callback::Followup(Box::new(build_request))) })
+            .wait_before_exiting(),
+    )
 }
 
-async fn make_code_action_resolve_callback(
-    resolve: impl Future<Output = Result<lsp::CodeAction, helix_lsp::Error>> + Send + Sync,
-    language_server_id: LanguageServerId,
-    queued: Option<Job>,
-) -> anyhow::Result<job::Callback> {
-    let code_action = resolve.await?;
+/// Apply the first returned, non-disabled code action, resolving it if needed.
+fn apply_code_actions_of_kind(
+    editor: &mut Editor,
+    ls_id: LanguageServerId,
+    actions: Option<Vec<CodeActionOrCommand>>,
+) {
+    let Some(actions) = actions else {
+        return;
+    };
+    let Some(language_server) = editor.language_server_by_id(ls_id) else {
+        return;
+    };
+    let offset_encoding = language_server.offset_encoding();
 
-    let call: job::Callback = Callback::Followup(Box::new(move |editor| {
-        let Some(language_server) = editor.language_server_by_id(language_server_id) else {
-            return queued;
-        };
-        let offset_encoding = language_server.offset_encoding();
-
-        if let Some(ref workspace_edit) = code_action.edit {
-            if let Err(e) = editor.apply_workspace_edit(offset_encoding, workspace_edit) {
-                log::error!("failed to apply workspace edit: {:?}", e);
+    let edit = actions
+        .iter()
+        .filter_map(|action| match action {
+            CodeActionOrCommand::CodeAction(code_action) if code_action.disabled.is_none() => {
+                Some(code_action)
             }
-        };
+            _ => None,
+        })
+        .next()
+        .and_then(
+            |code_action| match resolve_code_action_blocking(code_action, language_server) {
+                Some(resolved) => resolved.edit,
+                None => code_action.edit.clone(),
+            },
+        );
 
-        queued
-    }));
-
-    Ok(call)
-}
-
-fn resolve_code_action(
-    code_action: &CodeAction,
-    language_server: &Client,
-) -> Option<impl Future<Output = Result<lsp::CodeAction, helix_lsp::Error>>> {
-    if code_action.edit.is_none() || code_action.command.is_none() {
-        language_server.resolve_code_action(code_action)
-    } else {
-        None
+    if let Some(edit) = edit {
+        if let Err(err) = editor.apply_workspace_edit(offset_encoding, &edit) {
+            log::error!("code-actions-on-save: failed to apply workspace edit: {err:?}");
+        }
     }
 }
 
