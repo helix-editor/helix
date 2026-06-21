@@ -2924,7 +2924,7 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
         debug_assert!(start <= end);
         if replacement
             .as_ref()
-            .is_some_and(|replacement| !replacement.is_empty() && replacement.as_str() != old_text)
+            .is_some_and(|replacement| !replacement.is_empty() && replacement.as_str() == old_text)
             || start == end
         {
             return;
@@ -2953,18 +2953,21 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
         // The slice of the text within the current selection range.
         let range_slice = full_text.slice(range_start_char_idx..range_end_char_idx);
 
-        // Number of lines in this selection's closed range: |[a, b]| = b - a + 1
-        let line_count = line_range.1 - line_range.0 + 1;
         let mut range_lines = range_slice
             .lines_at(range_slice.len_lines())
             .reversed()
-            .take(line_count)
+            .take(range_slice.len_lines())
             .enumerate()
             .peekable();
+        eprintln!("{:?}", range_slice.lines().collect::<Vec<_>>());
+        eprintln!("{:?}", range_slice.len_lines());
+        eprintln!("{line_range:?}");
+        eprintln!("{range_slice:?}");
 
         let mut trimming_trailing_lines = true;
         while let Some((i, line)) = range_lines.peek() {
-            let line_idx = line_range.1 - i;
+            // Can't use range.1 - i since range doesn't map to number of lines within the selection.
+            let line_idx = line_range.0 + range_slice.len_lines() - 1 - i;
 
             // CAREFUL: Here be dragons.
             // Slice-relative indices must be correctly mapped to doc-relative indices. This can be very confusing!
@@ -4686,7 +4689,7 @@ mod tests {
 
     // To check whether a final EOF LE gets preserved!
     #[test]
-    fn test_trailing_whitespace_line() {
+    fn test_trim_command_ends_with_ws() {
         let input = "𢃌\u{fff2}䝏r\n\u{3000}";
         let text = Rope::from(input);
         let mut doc = Document::from(
@@ -4704,12 +4707,58 @@ mod tests {
         doc.apply(&tx, view_id);
 
         let command_result = doc.text().to_string();
-        let simple_result = trim_trailing_whitespace_simple(input);
+        let simple_result = trim_trailing_whitespace_naive_impl(input);
         assert_eq!(command_result, simple_result);
     }
 
     #[test]
-    fn preserves_intermediate_empty_lines() {
+    fn test_trim_command_single_line() {
+        let input = "\n";
+        let text = Rope::from(input);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        let selection = Selection::single(0, doc.text().len_chars());
+        let view = View::new(doc.id(), GutterConfig::default());
+        let view_id = view.id;
+        doc.set_selection(view_id, selection.clone());
+
+        let tx = trim_whitespace_impl(&doc, &selection);
+        doc.apply(&tx, view_id);
+
+        let command_result = doc.text().to_string();
+        let simple_result = trim_trailing_whitespace_naive_impl(input);
+        eprintln!("input   = {:?}", input);
+        eprintln!("command = {:?}", command_result);
+        eprintln!("simple  = {:?}", simple_result);
+        eprintln!("changes = {:?}", tx.changes());
+        let slice = doc.text().slice(..);
+        eprintln!(
+            "len_chars={}, len_lines={}",
+            slice.len_chars(),
+            slice.len_lines()
+        );
+        for i in 0..slice.len_lines() {
+            eprintln!(
+                "  line {}: {:?} (len={})",
+                i,
+                slice.line(i).to_string(),
+                slice.line(i).len_chars()
+            );
+        }
+        eprintln!("lines_at({}).reversed():", slice.len_lines());
+        for line in slice.lines_at(slice.len_lines()).reversed() {
+            eprintln!("  {:?}", line.to_string());
+        }
+
+        assert_eq!(command_result, simple_result);
+    }
+
+    #[test]
+    fn test_trim_command_preserves_intermediate_empty_lines() {
         let input = "foo\n\n\n\nbob";
         let text = Rope::from(input);
         let mut doc = Document::from(
@@ -4732,7 +4781,7 @@ mod tests {
     }
 
     quickcheck::quickcheck! {
-        fn test_trimmer_matches_simple(input: String) -> bool {
+        fn test_trim_command_matches_simple(input: String) -> bool {
             let text = Rope::from(input.clone());
             let mut doc = Document::from(
                 text,
@@ -4749,14 +4798,22 @@ mod tests {
             doc.apply(&tx, view_id);
 
             let command_result = doc.text().to_string();
-            let simple_result = trim_trailing_whitespace_simple(&input);
+            let simple_result = trim_trailing_whitespace_naive_impl(&input);
 
-            command_result == simple_result
+            let passes = command_result == simple_result;
+            if !passes {
+                eprintln!(
+                    "MISMATCH:\n  input   = {:?}\n  command = {:?}\n  simple  = {:?}\n  changes = {:?}",
+                    input, command_result, simple_result, tx.changes()
+                );
+            }
+            passes
+
         }
     }
 
     /// A simple naive reference implementation (only for LF, CRLF).
-    fn trim_trailing_whitespace_simple(input: &str) -> String {
+    fn trim_trailing_whitespace_naive_impl(input: &str) -> String {
         let mut lines = Vec::new();
         let mut current_line = String::new();
 
