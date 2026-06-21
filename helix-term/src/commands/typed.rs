@@ -2959,10 +2959,6 @@ fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
             .take(range_slice.len_lines())
             .enumerate()
             .peekable();
-        eprintln!("{:?}", range_slice.lines().collect::<Vec<_>>());
-        eprintln!("{:?}", range_slice.len_lines());
-        eprintln!("{line_range:?}");
-        eprintln!("{range_slice:?}");
 
         let mut trimming_trailing_lines = true;
         while let Some((i, line)) = range_lines.peek() {
