@@ -411,6 +411,7 @@ file-types = [
   { glob = "policy.conf" },
   { glob = "registries.conf" },
   { glob = "storage.conf" },
+  { glob = "staticcheck.conf" },
 ]
 comment-token = "#"
 language-servers = [ "taplo", "tombi" ]
