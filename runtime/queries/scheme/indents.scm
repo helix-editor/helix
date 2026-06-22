@@ -5,16 +5,16 @@
 ; If a list has 2 elements on the first line, it is aligned to the second element.
 (list . (_) @first . (_) @anchor
   (#same-line? @first @anchor)
-  (#set! "scope" "tail")
+
   (#not-kind-eq? @first "boolean") (#not-kind-eq? @first "character") (#not-kind-eq? @first "string") (#not-kind-eq? @first "number")
   (#not-match? @first "def.*|let.*|set!")) @align
 ; If the first element in a list is also a list and on a line by itself, the outer list is aligned to it
 (list . (list) @anchor .
-  (#set! "scope" "tail")
+
   (#not-kind-eq? @first "boolean") (#not-kind-eq? @first "character") (#not-kind-eq? @first "string") (#not-kind-eq? @first "number")) @align
 (list . (list) @anchor . (_) @second
   (#not-same-line? @anchor @second)
-  (#set! "scope" "tail")
+
   (#not-kind-eq? @first "boolean") (#not-kind-eq? @first "character") (#not-kind-eq? @first "string") (#not-kind-eq? @first "number")
   (#not-match? @first "def.*|let.*|set!")) @align
 ; If the first element in a list is not a list and on a line by itself, the outer list is aligned to
@@ -32,7 +32,7 @@
 
 ; If the first element in a list is a literal, align the list to it
 (list . [(boolean) (character) (string) (number)] @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 
 ; If the first element is among a set of predefined keywords, align the list to this element
 ; plus 1 space (using the same workaround as above for now). This is a simplification since actually

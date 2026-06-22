@@ -9,4 +9,6 @@
 
 book/theme/highlight.js linguist-vendored
 runtime/queries/**/*.scm linguist-language=Tree-sitter-Query
+tests/indent/** linguist-documentation
+tests/query/** linguist-documentation
 Cargo.lock text

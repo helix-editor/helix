@@ -153,6 +153,8 @@
 
 (classProperty (identifier) @variable.other.member)
 (objectProperty (identifier) @variable.other.member)
+; Property access `o.field` (methodCallExpr below handles `o.method()`).
+(propertyCallExpr (identifier) @variable.other.member)
 
 (parameterList (typedIdentifier (identifier) @variable.parameter))
 (objectBodyParameters (typedIdentifier (identifier) @variable.parameter))

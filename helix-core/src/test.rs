@@ -375,6 +375,21 @@ mod test {
     }
 
     #[test]
+    fn debug_print_parse() {
+        let (text, sel) = print("he#[ll|]#o\nhello");
+        eprintln!("DEBUG text={:?} sel={:?}", text, sel);
+        // Simulate Native.apply (on Linux this is a no-op replacement + append \n)
+        let line_end = crate::NATIVE_LINE_ENDING.as_str();
+        let mut output = String::from("he#[ll|]#o\nhello");
+        output = output.replace('\n', line_end);
+        if !output.ends_with(line_end) {
+            output.push_str(line_end);
+        }
+        let (text2, sel2) = print(&output);
+        eprintln!("DEBUG native_applied text={:?} sel={:?}", text2, sel2);
+    }
+
+    #[test]
     fn plain_multi_code_point_grapheme() {
         assert_eq!(
             plain("hello 👨‍👩‍👧‍👦 goodbye", &Selection::single(13, 6)),

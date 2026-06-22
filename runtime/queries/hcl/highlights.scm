@@ -62,6 +62,9 @@
   (variable_expr
       (identifier) @type.builtin (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))))
 
+; Member access: the attribute of a traversal (obj.field). Before the builtin
+; get_attr rule so path.root / path.module stay @variable.builtin.
+(get_attr (identifier) @variable.other.member)
 (get_attr (identifier) @variable.builtin (#match? @variable.builtin  "^(root|cwd|module)$"))
 (variable_expr (identifier) @variable.builtin (#match? @variable.builtin "^(var|local|path)$"))
 ((identifier) @type.builtin (#match? @type.builtin "^(bool|string|number|object|tuple|list|map|set|any)$"))

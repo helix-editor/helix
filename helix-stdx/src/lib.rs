@@ -8,5 +8,7 @@ pub mod range;
 pub mod rope;
 pub mod str;
 pub mod time;
+pub mod uri;
 
 pub use range::Range;
+pub use uri::Url;

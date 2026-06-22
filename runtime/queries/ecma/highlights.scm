@@ -264,8 +264,21 @@
  ] @constant
  (#match? @constant "^[A-Z_][A-Z\\d_]+$"))
 
+; Built-in constructors / types
+((identifier) @type.builtin
+ (#any-of? @type.builtin
+  "Object" "Function" "Boolean" "Symbol" "Number" "BigInt" "String" "RegExp"
+  "Array" "Map" "Set" "WeakMap" "WeakSet" "WeakRef" "Promise" "Proxy" "Date"
+  "ArrayBuffer" "SharedArrayBuffer" "DataView"
+  "Int8Array" "Uint8Array" "Uint8ClampedArray" "Int16Array" "Uint16Array"
+  "Int32Array" "Uint32Array" "Float32Array" "Float64Array"
+  "BigInt64Array" "BigUint64Array"
+  "Error" "EvalError" "RangeError" "ReferenceError" "SyntaxError" "TypeError"
+  "URIError" "AggregateError")
+ (#is-not? local))
+
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(arguments|module|console|window|document)$")
+ (#match? @variable.builtin "^(arguments|module|console|window|document|globalThis|Math|JSON|Reflect|Intl)$")
  (#is-not? local))
 
 (call_expression
@@ -294,3 +307,35 @@
   "clearInterval"
   "queueMicrotask")
  (#is-not? local))
+
+; Shebang
+;--------
+
+(hash_bang_line) @keyword.directive
+
+; Labels
+;-------
+
+(statement_identifier) @label
+
+; Decorators
+;-----------
+
+(decorator "@" @attribute)
+(decorator (identifier) @attribute)
+(decorator
+  (call_expression
+    function: (identifier) @attribute))
+(decorator
+  (member_expression
+    property: (property_identifier) @attribute))
+(decorator
+  (call_expression
+    function: (member_expression
+      property: (property_identifier) @attribute)))
+
+; Namespace imports/exports: `import * as ns` / `export * as ns`
+;----------------------------------------------------------------
+
+(namespace_import (identifier) @namespace)
+(namespace_export (identifier) @namespace)

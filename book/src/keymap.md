@@ -100,6 +100,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-x`    | Decrement object (number) under cursor                               | `decrement`               |
 | `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
 | `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
+| `Ctrl-z`    | Suspend Helix and return to the shell (resume with `fg`)             | `suspend`                 |
 
 #### Shell
 
@@ -227,6 +228,7 @@ Jumps to various locations.
 | `c`   | Go to the middle of the screen                   | `goto_window_center`       |
 | `b`   | Go to the bottom of the screen                   | `goto_window_bottom`       |
 | `d`   | Go to definition (**LSP**)                       | `goto_definition`          |
+| `D`   | Go to declaration (**LSP**)                      | `goto_declaration`         |
 | `y`   | Go to type definition (**LSP**)                  | `goto_type_definition`     |
 | `r`   | Go to references (**LSP**)                       | `goto_reference`           |
 | `i`   | Go to implementation (**LSP**)                   | `goto_implementation`      |
@@ -267,8 +269,9 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
-| `f`                    | Go to files/URLs in selections in horizontal splits  | `goto_file`       |
-| `F`                    | Go to files/URLs in selections in vertical splits    | `goto_file`       |
+| `t`, `Ctrl-t`          | Transpose the two adjacent splits                    | `transpose_view`  |
+| `f`                    | Go to files/URLs in selections in horizontal splits  | `goto_file_hsplit`|
+| `F`                    | Go to files/URLs in selections in vertical splits    | `goto_file_vsplit`|
 | `h`, `Ctrl-h`, `Left`  | Move to left split                                   | `jump_view_left`  |
 | `j`, `Ctrl-j`, `Down`  | Move to split below                                  | `jump_view_down`  |
 | `k`, `Ctrl-k`, `Up`    | Move to split above                                  | `jump_view_up`    |
@@ -279,6 +282,8 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `J`, `Shift-Down`      | Swap window downwards                                | `swap_view_down`  |
 | `K`, `Shift-Up`        | Swap window upwards                                  | `swap_view_up`    |
 | `L`, `Shift-Right`     | Swap window to the right                             | `swap_view_right` |
+| `ns`, `nCtrl-s`        | New horizontal split with a scratch buffer           | `hsplit_new`      |
+| `nv`, `nCtrl-v`        | New vertical split with a scratch buffer             | `vsplit_new`      |
 
 #### Space mode
 
@@ -370,6 +375,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter`   |
 | `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`     |
 | `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`     |
+| `]e`     | Go to next entry (**TS**)                    | `goto_next_entry`       |
+| `[e`     | Go to previous entry (**TS**)                | `goto_prev_entry`       |
 | `]T`     | Go to next test (**TS**)                     | `goto_next_test`        |
 | `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`        |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph`   |
@@ -408,6 +415,10 @@ escaping from insert mode to normal mode.
 | `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
+| `Tab`                                       | [Smart tab] (configurable)  | `smart_tab`              |
+| `Shift-Tab`                                 | Insert tab                  | `insert_tab`             |
+
+[Smart tab]: ./editor.md#editorsmart-tab-section
 
 These keys are not recommended, but are included for new users less familiar
 with modal editors.

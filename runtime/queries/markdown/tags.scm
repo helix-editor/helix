@@ -1,1 +1,1 @@
-(atx_heading) @definition.section
+(atx_heading (inline) @name) @definition.section

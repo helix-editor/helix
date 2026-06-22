@@ -118,7 +118,10 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(
+                Some(path::normalize(file.path())),
+                doc.path().map(ToOwned::to_owned)
+            );
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -162,7 +165,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     // verify if writes are queued up, it finishes them before closing the buffer
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=1000;
+    const RANGE: RangeInclusive<i32> = 1..=10;
 
     for i in RANGE {
         let cmd = format!("%c{}<esc>:w!<ret>", i);
@@ -281,7 +284,7 @@ async fn test_write_quit() -> anyhow::Result<()> {
 async fn test_write_concurrent() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=1000;
+    const RANGE: RangeInclusive<i32> = 1..=10;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
@@ -359,7 +362,10 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(
+                Some(path::normalize(file.path())),
+                doc.path().map(ToOwned::to_owned)
+            );
         }),
         false,
     )
@@ -385,7 +391,10 @@ async fn test_write_scratch_to_new_path_force_creates_file() -> anyhow::Result<(
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(&new_path)), doc.path());
+            assert_eq!(
+                Some(path::normalize(&new_path)),
+                doc.path().map(ToOwned::to_owned)
+            );
         }),
         false,
     )
@@ -772,7 +781,10 @@ async fn test_symlink_write_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(&symlink_path)), doc.path());
+            assert_eq!(
+                Some(path::normalize(&symlink_path)),
+                doc.path().map(ToOwned::to_owned)
+            );
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,

@@ -54,7 +54,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, Motion, ScrolloffConfig},
     expansion,
     icons::ICONS,
     info::Info,
@@ -94,9 +94,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use helix_stdx::Url;
 use once_cell::sync::Lazy;
 use serde::de::{self, Deserialize, Deserializer};
-use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
@@ -1281,7 +1281,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     // - 1 so we have at least one gap in the middle.
     // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
     // as we type
-    let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = config.scrolloff.vertical.min(height.saturating_sub(1) / 2);
 
     let last_visual_line = view.last_visual_line(doc);
 
@@ -1707,14 +1707,14 @@ fn should_open_url_externally(url: &Url) -> bool {
         return true;
     }
 
-    let content_type = std::fs::File::open(url.path()).and_then(|file| {
+    let is_binary = std::fs::File::open(url.path()).and_then(|file| {
         // Read up to 1kb to detect the content type
         let mut read_buffer = Vec::new();
         let n = file.take(1024).read_to_end(&mut read_buffer)?;
-        Ok(content_inspector::inspect(&read_buffer[..n]))
+        Ok(crate::is_binary(&read_buffer[..n]))
     });
 
-    matches!(content_type, Ok(content_inspector::ContentType::BINARY))
+    matches!(is_binary, Ok(true))
 }
 
 fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
@@ -1791,32 +1791,67 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
 
     // need to wait for next key
     cx.on_next_key(move |cx, event| {
-        let motion = move |editor: &mut Editor| {
-            macro_rules! find_char_impl {
-                ($matcher:expr) => {{
-                    let search_fn = match direction {
+        let motion: Motion = if event.code == KeyCode::Enter {
+            Box::new(move |editor: &mut Editor| {
+                find_char_impl(
+                    editor,
+                    &match direction {
                         Direction::Forward => find_next_char_impl,
                         Direction::Backward => find_prev_char_impl,
+                    },
+                    inclusive,
+                    extend,
+                    |g: RopeSlice| rope_is_line_ending(g),
+                    count,
+                );
+            })
+        } else if let Some(ch) = match event.code {
+            KeyCode::Tab => Some('\t'),
+            KeyCode::Char(ch) => Some(ch),
+            _ => None,
+        } {
+            Box::new(move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let cursor_anchor = range.cursor(text);
+                    let cursor_head = next_grapheme_boundary(text, cursor_anchor);
+
+                    let search_start_pos = match (inclusive, direction) {
+                        (true, Direction::Forward) => cursor_head,
+                        (true, Direction::Backward) => cursor_anchor,
+                        (false, Direction::Forward) => cursor_head + 1,
+                        (false, Direction::Backward) => cursor_anchor.saturating_sub(1),
                     };
-                    find_char_impl(editor, &search_fn, inclusive, extend, $matcher, count)
-                }};
-            }
-            match event {
-                KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                } => find_char_impl!(rope_is_line_ending),
 
-                KeyEvent {
-                    code: KeyCode::Tab, ..
-                } => find_char_impl!('\t'),
+                    match direction {
+                        Direction::Forward => {
+                            search::find_nth_next(text, ch, search_start_pos, count)
+                        }
+                        Direction::Backward => {
+                            search::find_nth_prev(text, ch, search_start_pos, count)
+                        }
+                    }
+                    .map(|pos| match (inclusive, direction) {
+                        (true, Direction::Forward) => pos,
+                        (true, Direction::Backward) => pos,
+                        (false, Direction::Forward) => pos - 1,
+                        (false, Direction::Backward) => pos + 1,
+                    })
+                    .map_or(range, |pos| {
+                        if extend {
+                            range.put_cursor(text, pos, true)
+                        } else {
+                            Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                        }
+                    })
+                });
 
-                KeyEvent {
-                    code: KeyCode::Char(ch),
-                    ..
-                } => find_char_impl!(ch),
-                _ => (),
-            }
+                doc.set_selection(view.id, selection);
+            })
+        } else {
+            return;
         };
 
         cx.editor.apply_motion(motion);
@@ -2074,7 +2109,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let cursor = range.cursor(text);
     let height = view.inner_height();
 
-    let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
+    let scrolloff = config.scrolloff.vertical.min(height.saturating_sub(1) / 2);
     let offset = match direction {
         Forward => offset as isize,
         Backward => -(offset as isize),
@@ -2390,7 +2425,7 @@ fn search_impl(
     regex: &rope::Regex,
     movement: Movement,
     direction: Direction,
-    scrolloff: usize,
+    scrolloff: ScrolloffConfig,
     wrap_around: bool,
     show_warnings: bool,
 ) {
@@ -2715,42 +2750,20 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        directory_style: Style,
-        number_style: Style,
-        colon_style: Style,
+        style: PathStyleConfig,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
-        directory_style: cx.editor.theme.get("ui.text.directory"),
-        number_style: cx.editor.theme.get("constant.numeric.integer"),
-        colon_style: cx.editor.theme.get("punctuation"),
+        style: PathStyleConfig::new(&cx.editor.theme),
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
-
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-
-            let filename = item
-                .path
-                .file_name()
-                .expect("global search paths are normalized (can't end in `..`)")
-                .to_string_lossy();
-
-            Cell::from(Spans::from(vec![
-                Span::styled(directories, config.directory_style),
-                Span::raw(filename),
-                Span::styled(":", config.colon_style),
-                Span::styled((item.line_num + 1).to_string(), config.number_style),
-            ]))
+            config.style.stylize(Some(&path), Some(item.line_num))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -2771,7 +2784,7 @@ fn global_search(cx: &mut Context) {
 
         let documents: Vec<_> = editor
             .documents()
-            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+            .map(|doc| (doc.path().map(ToOwned::to_owned), doc.text().to_owned()))
             .collect();
 
         let matcher = match RegexMatcherBuilder::new()
@@ -2994,7 +3007,7 @@ fn local_search_grep(cx: &mut Context) {
 
         // Only read the current document (not other documents opened in the buffer)
         let doc = doc!(editor);
-        let documents = vec![(doc.path().cloned(), doc.text().to_owned())];
+        let documents = vec![(doc.path().map(|p| p.to_path_buf()), doc.text().to_owned())];
 
         let matcher = match RegexMatcherBuilder::new()
             .case_smart(config.smart_case)
@@ -3187,7 +3200,7 @@ fn local_search_fuzzy(cx: &mut Context) {
 
     let file_contents = std::fs::read_to_string(current_document_path).unwrap();
 
-    let current_document_path = std::sync::Arc::new(current_document_path.clone());
+    let current_document_path = std::sync::Arc::new(current_document_path.to_path_buf());
 
     let file_results: Vec<FileResult> = file_contents
         .lines()
@@ -3832,12 +3845,55 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
+struct PathStyleConfig {
+    directory_style: Style,
+    number_style: Style,
+    colon_style: Style,
+}
+
+impl PathStyleConfig {
+    fn new(theme: &helix_view::Theme) -> Self {
+        Self {
+            directory_style: theme.get("ui.text.directory"),
+            number_style: theme.get("constant.numeric.integer"),
+            colon_style: theme.get("punctuation"),
+        }
+    }
+
+    fn stylize<'a>(&self, path: Option<&Path>, line: Option<usize>) -> Cell<'a> {
+        let mut spans = Vec::new();
+        if let Some(path) = path {
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+            spans.push(Span::styled(directories, self.directory_style));
+        }
+        let filename: String = path.as_ref().map_or(SCRATCH_BUFFER_NAME.into(), |path| {
+            path.file_name()
+                .expect("all document names are normalized (can't end in `..`)")
+                .to_string_lossy()
+                .to_string()
+        });
+        spans.push(Span::raw(filename));
+        if let Some(line) = line {
+            spans.extend([
+                Span::styled(":", self.colon_style),
+                Span::styled((line + 1).to_string(), self.number_style),
+            ]);
+        }
+
+        Cell::from(Spans::from(spans))
+    }
+}
+
 fn buffer_picker(cx: &mut Context) {
     let current = view!(cx.editor).doc;
 
-    struct BufferMeta {
+    struct BufferMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3845,7 +3901,10 @@ fn buffer_picker(cx: &mut Context) {
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
-        path: doc.path().cloned(),
+        path: doc
+            .path()
+            .map(ToOwned::to_owned)
+            .map(helix_stdx::path::get_relative_path),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3887,10 +3946,7 @@ fn buffer_picker(cx: &mut Context) {
 
             let mut spans = Vec::with_capacity(2);
 
-            if let Some(icon) = icons
-                .mime()
-                .get(path.as_ref().map(|path| path.to_path_buf()).as_ref(), None)
-            {
+            if let Some(icon) = icons.mime().get(path.as_deref(), None) {
                 if let Some(color) = icon.color() {
                     spans.push(Span::styled(
                         format!("{}  ", icon.glyph()),
@@ -3937,9 +3993,9 @@ fn buffer_picker(cx: &mut Context) {
 }
 
 fn jumplist_picker(cx: &mut Context) {
-    struct JumpMeta {
+    struct JumpMeta<'a> {
         id: DocumentId,
-        path: Option<PathBuf>,
+        path: Option<Cow<'a, Path>>,
         selection: Selection,
         text: String,
         is_current: bool,
@@ -3953,20 +4009,21 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = &cx.editor.documents.get(&doc_id);
-        let text = doc.map_or("".into(), |d| {
-            selection
-                .fragments(d.text().slice(..))
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-                .join(" ")
-        });
-
+        let doc = doc!(cx.editor, &doc_id);
+        let text = doc.text().slice(..);
+        let contents = selection
+            .fragments(text)
+            .map(Cow::into_owned)
+            .collect::<Vec<_>>()
+            .join(" ");
         JumpMeta {
             id: doc_id,
-            path: doc.and_then(|d| d.path().cloned()),
+            path: doc
+                .path()
+                .map(ToOwned::to_owned)
+                .map(helix_stdx::path::get_relative_path),
             selection,
-            text,
+            text: contents,
             is_current: view.doc == doc_id,
         }
     };
@@ -3987,10 +4044,7 @@ fn jumplist_picker(cx: &mut Context) {
 
             let mut spans = Vec::with_capacity(2);
 
-            if let Some(icon) = icons
-                .mime()
-                .get(path.as_ref().map(|path| path.to_path_buf()).as_ref(), None)
-            {
+            if let Some(icon) = icons.mime().get(path.as_deref(), None) {
                 if let Some(color) = icon.color() {
                     spans.push(Span::styled(
                         format!("{}  ", icon.glyph()),
@@ -4029,7 +4083,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        (),
+        PathStyleConfig::new(&cx.editor.theme),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -4147,10 +4201,18 @@ fn changed_file_picker(cx: &mut Context) {
     .with_title("Changed Files");
     let injector = picker.injector();
 
+    let trust_full = cx
+        .editor
+        .workspace_trust
+        .query(
+            &helix_loader::find_workspace_in(&cwd).0,
+            helix_loader::workspace_trust::TrustQuery::Git,
+        )
+        .is_trusted();
     cx.editor
         .diff_providers
         .clone()
-        .for_each_changed_file(cwd, move |change| match change {
+        .for_each_changed_file(cwd, trust_full, move |change| match change {
             Ok(change) => injector.push(change).is_ok(),
             Err(err) => {
                 status::report_blocking(err);
@@ -4334,6 +4396,7 @@ fn insert_at_line_end(cx: &mut Context) {
 // Enter insert mode and auto-indent the current line if it is empty.
 // If the line is not empty, move the cursor to the specified fallback position.
 fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
+    let was_select_mode = cx.editor.mode == Mode::Select;
     enter_insert_mode(cx);
 
     let (view, doc) = current!(cx.editor);
@@ -4387,7 +4450,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
                 IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
             };
 
-            ranges.push(range.put_cursor(text, pos + offs, cx.editor.mode == Mode::Select));
+            ranges.push(range.put_cursor(text, pos + offs, was_select_mode));
 
             (cursor_line_start, cursor_line_start, None)
         }
@@ -4487,14 +4550,6 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let continue_comment_tokens =
-        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-        } else {
-            None
-        };
-
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // if open is Below and next line is folded,
         // move the range to the next visible line, and open Above
@@ -4537,8 +4592,18 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = continue_comment_tokens
-            .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
+        // Continue the comment leader using the comment tokens of the layer at the current line.
+        let continue_comment_token =
+            if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
+                text.line(curr_line_num)
+                    .first_non_whitespace_char()
+                    .map(|c| text.char_to_byte(text.line_to_char(curr_line_num) + c))
+                    .and_then(|byte| doc.language_config_at(&loader, byte))
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+            } else {
+                None
+            };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -4639,7 +4704,7 @@ fn normal_mode(cx: &mut Context) {
 fn push_jump(view: &mut View, doc: &mut Document) {
     doc.append_changes_to_history(view);
     let jump = (doc.id(), doc.selection(view.id).clone());
-    view.jumps.push(jump);
+    view.push_jump(doc, jump);
 }
 
 fn goto_line(cx: &mut Context) {
@@ -5140,13 +5205,6 @@ pub mod insert {
         let mut global_offs = 0;
         let mut new_text = String::new();
 
-        let continue_comment_tokens = if config.continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-        } else {
-            None
-        };
-
         let mut last_pos = 0;
         let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
             // Tracks the number of trailing whitespace characters deleted by this selection.
@@ -5163,8 +5221,20 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            let continue_comment_token = continue_comment_tokens
-                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
+            // Continue the comment leader using the comment tokens of the layer at the comment
+            // leader (i.e. the first non-whitespace char on the line). Looking up at the cursor
+            // would land inside an injected layer (e.g. `comment`, or markdown in a doc comment)
+            // and miss the host language's tokens.
+            let continue_comment_token = if config.continue_comments {
+                text.line(current_line)
+                    .first_non_whitespace_char()
+                    .map(|c| text.char_to_byte(line_start + c))
+                    .and_then(|byte| doc.language_config_at(&loader, byte))
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
+            } else {
+                None
+            };
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
@@ -5970,17 +6040,10 @@ fn format_selections(cx: &mut Context) {
 
 fn join_selections_impl(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
+    let loader = cx.editor.syn_loader.load();
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
     let slice = text.slice(..);
-
-    let comment_tokens = doc
-        .language_config()
-        .and_then(|config| config.comment_tokens.as_deref())
-        .unwrap_or(&[]);
-    // Sort by length to handle Rust's /// vs //
-    let mut comment_tokens: Vec<&str> = comment_tokens.iter().map(|x| x.as_str()).collect();
-    comment_tokens.sort_unstable_by_key(|x| std::cmp::Reverse(x.len()));
 
     let mut changes = Vec::new();
 
@@ -5992,6 +6055,16 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
         let lines = start..end;
 
         changes.reserve(lines.len());
+
+        // Strip the comment leader of joined lines using the comment tokens of the layer at this selection.
+        let byte = slice.char_to_byte(slice.line_to_char(start));
+        let comment_tokens = doc
+            .language_config_at(&loader, byte)
+            .and_then(|config| config.comment_tokens.as_deref())
+            .unwrap_or(&[]);
+        // Sort by length to handle Rust's /// vs //
+        let mut comment_tokens: Vec<&str> = comment_tokens.iter().map(|x| x.as_str()).collect();
+        comment_tokens.sort_unstable_by_key(|x| std::cmp::Reverse(x.len()));
 
         let first_line_idx = slice.line_to_char(start);
         let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
@@ -6152,14 +6225,45 @@ type CommentTransactionFn = fn(
 ) -> Transaction;
 
 fn toggle_comments_impl(cx: &mut Context, comment_transaction: CommentTransactionFn) {
+    let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
     let (view, doc) = current!(cx.editor);
-    let line_token: Option<&str> = doc
-        .language_config()
+    let cursor = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+    let byte_pos = doc.text().char_to_byte(cursor);
+    // Resolve the comment tokens from the enclosing injection layer that owns the comment,
+    // not the innermost layer at the cursor. Prefer the innermost layer that defines
+    // *line* comment tokens, falling back to the innermost layer with block tokens.
+    let mut line_layer = None;
+    let mut block_layer = None;
+    if let Some(syntax) = doc.syntax() {
+        for layer in syntax.layers_for_byte_range(byte_pos as u32, byte_pos as u32) {
+            let language = syntax.layer(layer).language;
+            let config = loader.language(language).config();
+            if config.comment_tokens.is_some() {
+                line_layer = Some(language);
+            }
+            if config.block_comment_tokens.is_some() {
+                block_layer = Some(language);
+            }
+        }
+    }
+    let lang_config = line_layer
+        .or(block_layer)
+        .map(|language| &**loader.language(language).config())
+        .or_else(|| doc.language_config());
+
+    // Pick the token the cursor's line is already commented with (longest match, so `///` wins over `//`).
+    // If the line isn't commented yet, fall back to the primary token for adding a comment.
+    let cursor_line = doc.text().char_to_line(cursor);
+    let line_token: Option<&str> = lang_config
         .and_then(|lc| lc.comment_tokens.as_ref())
-        .and_then(|tc| tc.first())
-        .map(|tc| tc.as_str());
-    let block_tokens: Option<&[BlockCommentToken]> = doc
-        .language_config()
+        .and_then(|tokens| {
+            comment::get_comment_token(doc.text().slice(..), tokens, cursor_line)
+                .or_else(|| tokens.first().map(|token| token.as_str()))
+        });
+    let block_tokens: Option<&[BlockCommentToken]> = lang_config
         .and_then(|lc| lc.block_comment_tokens.as_ref())
         .map(|tc| &tc[..]);
 
@@ -6668,6 +6772,9 @@ fn select_register(cx: &mut Context) {
 }
 
 fn insert_register(cx: &mut Context) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
     cx.editor.autoinfo = Some(Info::from_registers(
         "Insert register",
         &cx.editor.registers,
@@ -6681,7 +6788,7 @@ fn insert_register(cx: &mut Context) {
                 cx.register
                     .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
-                cx.count(),
+                count,
             );
         }
     })
@@ -6784,7 +6891,6 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
         let loader = editor.syn_loader.load();
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
-            let root = syntax.tree().root_node();
             let annotations = view.text_annotations(doc, None);
 
             let selection = doc.selection(view.id).clone().transform(|range| {
@@ -6794,7 +6900,6 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     range,
                     object,
                     direction,
-                    &root,
                     syntax,
                     &loader,
                     count,
@@ -8102,7 +8207,8 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
                 } else {
                     range.with_direction(Direction::Forward)
                 };
-                let (view, doc) = current!(cx.editor);
+                let doc = doc_mut!(cx.editor, &doc);
+                let view = view_mut!(cx.editor, view_id);
                 push_jump(view, doc);
                 doc.set_selection(view_id, range.into());
             }

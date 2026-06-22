@@ -1,10 +1,10 @@
 # Migrating from Vim
 
-- [Delete/Change Commands](#Delete/Change%20Commands)
-- [Navigation](#Navigation)
-- [Line Deletes](#Line%20Deletes)
-- [Comment lines, Completion, Search](#Comment%20lines,%20Completion,%20Search)
-- [File actions](#File%20actions)
+- [Delete/Change Commands](#deletechange-commands)
+- [Navigation](#navigation)
+- [Line Deletes](#line-deletes)
+- [Comment lines, Completion, Search](#comment-lines-completion-search)
+- [File actions](#file-actions)
 
 Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
 difference from Vim (and the most striking similarity to Kakoune) is that Helix

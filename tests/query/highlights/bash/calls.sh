@@ -1,0 +1,2 @@
+invokeit foo
+# ^ @function

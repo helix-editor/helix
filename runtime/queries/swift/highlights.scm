@@ -1,4 +1,12 @@
-; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/57c1c6d6ffa1c44b330182d41717e6fe37430704/queries/highlights.scm
+; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/7b7909f2f6b9414be0958275f4c8e5d69c3bca43/queries/highlights.scm
+
+; Typed throws (SE-0413), `func f() throws(MyError)`: the `throws` keyword is a
+; hidden token inside `throws_clause`, so it has no node of its own to capture.
+; Capturing the whole clause as a base layer up here, before the punctuation and
+; type rules below, leaves only the bare `throws` word coloured: the parens fall
+; back to @punctuation.bracket and the error type to @type via those later, more
+; specific rules.
+(throws_clause) @keyword
 
 (line_string_literal
   ["\\(" ")"] @punctuation.special)
@@ -123,6 +131,10 @@
 
 (enum_entry "case" @keyword)
 
+; Member access
+(navigation_suffix
+  (simple_identifier) @variable.other.member)
+
 ; Function calls
 (call_expression (simple_identifier) @function) ; foo()
 (call_expression ; foo.bar.baz(): highlight the baz()
@@ -133,19 +145,26 @@
    (#match? @type "^[A-Z]"))
 (call_expression (simple_identifier) @keyword (#eq? @keyword "defer")) ; defer { ... }
 
-(navigation_suffix
-  (simple_identifier) @variable.other.member)
-
 (try_operator) @operator
 (try_operator ["try" @keyword])
 
 (directive) @function.macro
 (diagnostic) @function.macro
 
+; Freestanding macro expansion (`#myMacro(…)`): colour the macro name. The `.`
+; anchors to the direct-child name so the call arguments are unaffected.
+(macro_invocation . (simple_identifier) @function.macro)
+; Playground literals: `#colorLiteral(…)`, `#imageLiteral(…)`, `#fileLiteral(…)`.
+(playground_literal
+  ["colorLiteral" "fileLiteral" "imageLiteral"] @function.macro)
+
 ; Statements
 (for_statement "for" @keyword.control.repeat)
 (for_statement "in" @keyword.control.repeat)
-(for_statement item: (simple_identifier) @variable)
+; The loop variable is now an `item: (pattern …)` (was a bare `simple_identifier`
+; pre-0.7). `for x in xs` is caught by the `pattern bound_identifier` rule above
+; and tuple bindings `for (k, v) in …` by the general `(simple_identifier)` rule,
+; so no dedicated rule is needed here.
 (else) @keyword
 (as_operator) @keyword
 
@@ -156,14 +175,14 @@
 (guard_statement "guard" @keyword.control.conditional)
 (if_statement "if" @keyword.control.conditional)
 (switch_statement "switch" @keyword.control.conditional)
-(switch_entry "case" @keyword)
-(switch_entry "fallthrough" @keyword)
-(switch_entry (default_keyword) @keyword)
-"return" @keyword.return
+(switch_entry "case" @keyword.control.conditional)
+(switch_entry "fallthrough" @keyword.control.conditional)
+(switch_entry (default_keyword) @keyword.control.conditional)
+"return" @keyword.control.return
 (ternary_expression
   ["?" ":"] @keyword.control.conditional)
 
-["do" (throw_keyword) (catch_keyword)] @keyword
+["do" (throw_keyword) (catch_keyword)] @keyword.control.exception
 
 (statement_label) @label
 
@@ -193,6 +212,10 @@
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
 "nil" @constant.builtin
+
+; Magic compile-time literals: `#file`, `#fileID`, `#filePath`, `#line`,
+; `#column`, `#function`, `#dsohandle`. Colour the whole node (incl. the `#`).
+(special_literal) @constant.builtin
 
 (value_parameter_pack ["each" @keyword])
 (value_pack_expansion ["repeat" @keyword])

@@ -2,7 +2,7 @@ use crate::{
     align_view,
     annotations::{diagnostics::InlineDiagnostics, plugins::PluginLineAnnotations},
     document::{DocumentColorSwatches, DocumentInlayHints},
-    editor::{GutterConfig, GutterType},
+    editor::{GutterConfig, GutterType, ScrolloffConfig},
     graphics::Rect,
     handlers::diagnostics::DiagnosticsHandler,
     Align, Document, DocumentId, Theme, ViewId,
@@ -57,7 +57,7 @@ impl JumpList {
         num_removed_from_front
     }
 
-    pub fn push(&mut self, jump: Jump) {
+    pub(crate) fn push(&mut self, jump: Jump) {
         self.push_impl(jump);
     }
 
@@ -97,7 +97,22 @@ impl JumpList {
     }
 
     pub fn remove(&mut self, doc_id: &DocumentId) {
+        // Count the entries before the navigation cursor so that, after the
+        // matching entries are dropped, `current` keeps pointing at the same
+        // logical jump. Without this adjustment the cursor drifts onto an
+        // unrelated entry, or is left past the end of the list (when it sat at
+        // the tip), which breaks subsequent `forward`/`backward` navigation.
+        let removed_before_current = self
+            .jumps
+            .iter()
+            .take(self.current)
+            .filter(|(other_id, _)| other_id == doc_id)
+            .count();
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
+        self.current = self
+            .current
+            .saturating_sub(removed_before_current)
+            .min(self.jumps.len());
     }
 
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
@@ -239,7 +254,7 @@ impl View {
     pub fn offset_coords_to_in_view(
         &self,
         doc: &Document,
-        scrolloff: usize,
+        scrolloff: ScrolloffConfig,
     ) -> Option<ViewPosition> {
         self.offset_coords_to_in_view_center::<false>(doc, scrolloff)
     }
@@ -247,7 +262,7 @@ impl View {
     pub fn offset_coords_to_in_view_center<const CENTERING: bool>(
         &self,
         doc: &Document,
-        scrolloff: usize,
+        scrolloff: ScrolloffConfig,
     ) -> Option<ViewPosition> {
         let view_offset = doc.get_view_offset(self.id)?;
         let doc_text = doc.text().slice(..);
@@ -261,8 +276,10 @@ impl View {
         } else {
             (
                 // - 1 from the top so we have at least one gap in the middle.
-                scrolloff.min(viewport.height.saturating_sub(1) as usize / 2),
-                scrolloff.min(viewport.height as usize / 2),
+                scrolloff
+                    .vertical
+                    .min(viewport.height.saturating_sub(1) as usize / 2),
+                scrolloff.vertical.min(viewport.height as usize / 2),
             )
         };
         let (scrolloff_left, scrolloff_right) = if CENTERING {
@@ -270,8 +287,10 @@ impl View {
         } else {
             (
                 // - 1 from the left so we have at least one gap in the middle.
-                scrolloff.min(viewport.width.saturating_sub(1) as usize / 2),
-                scrolloff.min(viewport.width as usize / 2),
+                scrolloff
+                    .horizontal
+                    .min(viewport.width.saturating_sub(1) as usize / 2),
+                scrolloff.horizontal.min(viewport.width as usize / 2),
             )
         };
 
@@ -348,13 +367,13 @@ impl View {
         Some(offset)
     }
 
-    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: ScrolloffConfig) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
             doc.set_view_offset(self.id, offset);
         }
     }
 
-    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: ScrolloffConfig) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff) {
             doc.set_view_offset(self.id, offset);
         } else {
@@ -362,7 +381,7 @@ impl View {
         }
     }
 
-    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
+    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: ScrolloffConfig) -> bool {
         self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
@@ -707,6 +726,16 @@ impl View {
         }
 
         doc.history.get_mut().changes_since(current_revision)
+    }
+
+    pub fn push_jump(&mut self, doc: &mut Document, jump: (DocumentId, Selection)) {
+        // The pushed selection is valid at the document's *current* revision, so the
+        // view must be synced to that revision first. Otherwise the new entry would
+        // be left ahead of `doc_revisions[doc]`, and the next `sync_changes` would
+        // map it through a changeset whose pre-image predates it, panicking in
+        // `ChangeSet::update_positions` when the document has since grown.
+        self.sync_changes(doc);
+        self.jumps.push(jump);
     }
 }
 
@@ -1115,6 +1144,141 @@ mod tests {
                 true
             ),
             Some(7)
+        );
+    }
+
+    /// `JumpList::remove` dropped every entry belonging to a document (e.g. when
+    /// a buffer is closed) but left `current` untouched. Because `current` is an
+    /// index into the entry list, removing entries that sit *before* it leaves
+    /// it pointing at a different entry, or past the end of a now-shorter list.
+    /// The next `forward`/`backward` then navigates from the wrong place (or
+    /// no-ops). `remove` must shift `current` left by the number of removed
+    /// entries that preceded it, and clamp it to the new length.
+    #[test]
+    fn jumplist_remove_adjusts_current() {
+        let doc_a = DocumentId::new(1);
+        let doc_b = DocumentId::new(2);
+
+        let entries =
+            |jumps: &JumpList| -> Vec<DocumentId> { jumps.iter().map(|(id, _)| *id).collect() };
+
+        // Build [A, B, A, B, A] directly. `push`/`push_impl` truncate to
+        // `current` and advance it, so we set the fields explicitly to control
+        // exactly where the navigation cursor sits.
+        let make = |current: usize| -> JumpList {
+            let mut jumps = JumpList::new((doc_a, Selection::point(0)));
+            jumps.jumps = [
+                (doc_a, Selection::point(0)),
+                (doc_b, Selection::point(1)),
+                (doc_a, Selection::point(2)),
+                (doc_b, Selection::point(3)),
+                (doc_a, Selection::point(4)),
+            ]
+            .into_iter()
+            .collect();
+            jumps.current = current;
+            jumps
+        };
+
+        // `current` in the middle: two A entries (indices 0, 2) precede index 3.
+        let mut jumps = make(3);
+        jumps.remove(&doc_a);
+        assert_eq!(entries(&jumps), vec![doc_b, doc_b]);
+        // The B entry that was at index 3 is now at index 1; `current` follows it.
+        assert_eq!(jumps.current, 1);
+        assert_eq!(
+            jumps.iter().nth(jumps.current),
+            Some(&(doc_b, Selection::point(3)))
+        );
+
+        // `current` at the tip (== len): must stay a valid tip (== new len),
+        // not dangle past the end.
+        let mut jumps = make(5);
+        jumps.remove(&doc_a);
+        assert_eq!(jumps.current, jumps.jumps.len());
+        assert_eq!(jumps.current, 2);
+
+        // Removing the *only* remaining document empties the list; `current`
+        // must clamp to 0 rather than point past the end.
+        let mut jumps = make(3);
+        jumps.remove(&doc_a);
+        jumps.remove(&doc_b);
+        assert_eq!(jumps.jumps.len(), 0);
+        assert_eq!(jumps.current, 0);
+
+        // `current` at the front with leading removed entries: clamps to 0.
+        let mut jumps = make(0);
+        jumps.remove(&doc_a);
+        assert_eq!(jumps.current, 0);
+        assert_eq!(entries(&jumps), vec![doc_b, doc_b]);
+    }
+
+    /// `JumpList::push` records a jump using the document's *current* selection
+    /// (i.e. positions valid at the document's current history revision), but it
+    /// never advances the view's `doc_revisions` entry for that document. As a
+    /// result, the next `View::sync_changes` computes `changes_since(old_revision)`
+    /// and maps *every* jump - including the freshly pushed one - through a
+    /// changeset whose pre-image is the *older*, shorter document. A jump that
+    /// points past the end of that older document then runs off the end of the
+    /// changeset and panics in `ChangeSet::update_positions`
+    /// ("Positions ... are out of range for changeset len ...").
+    ///
+    /// To trigger the stale `doc_revisions` window without reaching into private
+    /// fields we use two views over the same document: committing an edit through
+    /// `view2` advances the shared document's history and updates *view2*'s
+    /// `doc_revisions`, while `view1`'s `doc_revisions` is left pointing at the
+    /// pre-edit revision. Pushing a jump into `view1` afterwards reproduces the
+    /// exact situation `push` fails to guard against.
+    #[test]
+    fn jumplist_push_keeps_doc_revisions_in_sync() {
+        let config = Arc::new(ArcSwap::new(Arc::new(Config::default())));
+        let loader = Arc::new(ArcSwap::from_pointee(syntax::Loader::default()));
+
+        // Revision 0: a short document.
+        let mut doc = Document::from(Rope::from_str("ab"), None, config, loader);
+
+        let mut view1 = View::new(doc.id(), GutterConfig::default());
+        let mut view2 = View::new(doc.id(), GutterConfig::default());
+        doc.ensure_view_init(view1.id);
+        doc.ensure_view_init(view2.id);
+
+        // Sync view1 at revision 0 so its `doc_revisions` records the short doc.
+        view1.sync_changes(&mut doc);
+        assert_eq!(doc.get_current_revision(), 0);
+
+        // Commit an insertion *through view2*, growing the document and advancing
+        // its history to revision 1. Only view2's `doc_revisions` is updated here;
+        // view1 still believes the document is at revision 0.
+        let insert = Transaction::change(
+            doc.text(),
+            std::iter::once((2, 2, Some("XXXXXXXXXX".into()))),
+        );
+        assert!(doc.apply(&insert, view2.id));
+        doc.append_changes_to_history(&mut view2);
+        assert_eq!(doc.get_current_revision(), 1);
+        let len = doc.text().len_chars();
+        assert_eq!(len, 12);
+
+        // Push a jump into view1 at the end of the *current* (revision 1) document.
+        // This selection is perfectly valid for the document as it stands now.
+        //
+        // `View::push_jump` syncs view1 to the document's current revision before
+        // appending, so the new entry and `doc_revisions` agree. The raw
+        // `view1.jumps.push(...)` would instead leave the entry ahead of
+        // `doc_revisions` (still revision 0), and the `sync_changes` below would
+        // map position 12 through the revision 0 -> 1 changeset (pre-image only
+        // 2 chars) and panic in `ChangeSet::update_positions`.
+        let jump = (doc.id(), Selection::point(len));
+        view1.push_jump(&mut doc, jump);
+
+        // With the fix in place this is a no-op for the freshly pushed entry and
+        // the jump remains a valid, in-bounds selection.
+        view1.sync_changes(&mut doc);
+
+        let (_, selection) = view1.jumps.iter().next_back().unwrap();
+        assert!(
+            selection.primary().head <= doc.text().len_chars(),
+            "jumplist selection must stay within document bounds after sync",
         );
     }
 }

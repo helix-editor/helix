@@ -461,7 +461,11 @@ mod tests {
 
     #[test]
     fn test_pathbuf_is_absolute() {
-        let abs_path = std::env::current_dir().unwrap().join("file.txt");
+        let abs_path = if cfg!(windows) {
+            PathBuf::from(r"C:\Users\user\file.txt")
+        } else {
+            PathBuf::from("/home/user/file.txt")
+        };
         let rel_path = PathBuf::from("./file.txt");
 
         assert!(abs_path.is_absolute());
