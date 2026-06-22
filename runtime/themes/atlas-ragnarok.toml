@@ -1,0 +1,162 @@
+# atlas-ragnarok — Helix theme
+# Tech-blue thunder above. Crimson fire below. Pure black through the middle.
+# https://github.com/AyoubTadlaoui/atlas-ragnarok
+#
+# Install:
+#   mkdir -p ~/.config/helix/themes
+#   cp atlas-ragnarok.toml ~/.config/helix/themes/
+#   # add `theme = "atlas-ragnarok"` to ~/.config/helix/config.toml
+
+# ─── Syntax ──────────────────────────────────────────────────────────────────
+"attribute"                     = "thunder_bright"
+"comment"                       = { fg = "fg_subtle", modifiers = ["italic"] }
+"comment.line"                  = { fg = "fg_subtle", modifiers = ["italic"] }
+"comment.block"                 = { fg = "fg_subtle", modifiers = ["italic"] }
+"comment.block.documentation"   = { fg = "fg_muted", modifiers = ["italic"] }
+"constant"                      = "thunder_bright"
+"constant.builtin"              = "thunder_bright"
+"constant.builtin.boolean"      = "thunder_deep"
+"constant.character"            = "peppermint"
+"constant.character.escape"     = "peppermint_alt"
+"constant.numeric"              = "thunder_deep"
+"constructor"                   = "thunder"
+"diff.delta"                    = "thunder_bright"
+"diff.minus"                    = "crimson"
+"diff.plus"                     = "peppermint"
+"function"                      = "thunder"
+"function.builtin"              = "thunder"
+"function.macro"                = "thunder_pale"
+"function.method"               = "thunder"
+"function.special"              = "thunder_pale"
+"keyword"                       = "gray"
+"keyword.control"               = "gray"
+"keyword.control.conditional"   = "gray"
+"keyword.control.repeat"        = "gray"
+"keyword.control.import"        = "gray"
+"keyword.control.return"        = "gray"
+"keyword.control.exception"     = "crimson"
+"keyword.directive"             = "thunder_pale"
+"keyword.function"              = "gray"
+"keyword.operator"              = "gray"
+"keyword.storage"               = "gray"
+"keyword.storage.type"          = "gray"
+"keyword.storage.modifier"      = "gray"
+"label"                         = "thunder_bright"
+"namespace"                     = "thunder_pale"
+"operator"                      = "gray"
+"punctuation"                   = "gray"
+"punctuation.bracket"           = "gray"
+"punctuation.delimiter"         = "gray"
+"punctuation.special"           = "thunder"
+"special"                       = "thunder_pale"
+"string"                        = "peppermint"
+"string.regexp"                 = "peppermint"
+"string.special"                = "peppermint_alt"
+"string.special.path"           = "thunder_bright"
+"string.special.symbol"         = "peppermint"
+"string.special.url"            = { fg = "thunder_bright", modifiers = ["underlined"] }
+"tag"                           = "thunder_deep"
+"type"                          = "thunder"
+"type.builtin"                  = "thunder"
+"type.enum.variant"             = "thunder_bright"
+"variable"                      = "fg"
+"variable.builtin"              = "thunder_pale"
+"variable.other.member"         = "fg"
+"variable.parameter"            = "fg"
+
+# Markup
+"markup.bold"                   = { fg = "fg", modifiers = ["bold"] }
+"markup.heading"                = { fg = "thunder", modifiers = ["bold"] }
+"markup.heading.1"              = { fg = "thunder", modifiers = ["bold"] }
+"markup.heading.2"              = { fg = "thunder_bright", modifiers = ["bold"] }
+"markup.heading.3"              = { fg = "thunder_pale", modifiers = ["bold"] }
+"markup.heading.4"              = { fg = "thunder_pale" }
+"markup.heading.5"              = "thunder_pale"
+"markup.heading.6"              = "thunder_pale"
+"markup.italic"                 = { fg = "fg", modifiers = ["italic"] }
+"markup.link.label"             = "peppermint"
+"markup.link.text"              = "peppermint"
+"markup.link.url"               = { fg = "thunder_bright", modifiers = ["underlined"] }
+"markup.list"                   = "thunder"
+"markup.list.checked"           = "peppermint"
+"markup.list.unchecked"         = "fg_muted"
+"markup.quote"                  = { fg = "fg_muted", modifiers = ["italic"] }
+"markup.raw"                    = "peppermint"
+"markup.raw.block"              = "fg"
+"markup.raw.inline"             = "peppermint"
+"markup.strikethrough"          = { fg = "fg_subtle", modifiers = ["crossed_out"] }
+
+# ─── UI ──────────────────────────────────────────────────────────────────────
+"ui.background"                 = { bg = "bg" }
+"ui.background.separator"       = "fg_subtle"
+"ui.bufferline"                 = { fg = "fg_subtle", bg = "bg" }
+"ui.bufferline.active"          = { fg = "fg", bg = "bg", modifiers = ["bold"] }
+"ui.bufferline.background"      = { bg = "bg" }
+"ui.cursor"                     = { fg = "bg", bg = "thunder" }
+"ui.cursor.insert"              = { fg = "bg", bg = "thunder_bright" }
+"ui.cursor.match"               = { fg = "thunder", bg = "bg_selection", modifiers = ["bold"] }
+"ui.cursor.normal"              = { fg = "bg", bg = "thunder" }
+"ui.cursor.primary"             = { fg = "bg", bg = "thunder" }
+"ui.cursor.select"              = { fg = "bg", bg = "thunder_bright" }
+"ui.cursorline.primary"         = { bg = "bg_line" }
+"ui.cursorline.secondary"       = { bg = "bg_line" }
+"ui.debug.active"               = "thunder_bright"
+"ui.debug.breakpoint"           = "crimson"
+"ui.gutter"                     = { bg = "bg" }
+"ui.help"                       = { fg = "fg", bg = "bg_alt" }
+"ui.highlight"                  = { bg = "bg_selection" }
+"ui.linenr"                     = "fg_subtle"
+"ui.linenr.selected"            = { fg = "fg", modifiers = ["bold"] }
+"ui.menu"                       = { fg = "fg", bg = "bg_alt" }
+"ui.menu.scroll"                = { fg = "fg_subtle", bg = "bg_subtle" }
+"ui.menu.selected"              = { fg = "fg", bg = "bg_selection" }
+"ui.popup"                      = { fg = "fg", bg = "bg_alt" }
+"ui.popup.info"                 = { fg = "fg", bg = "bg_alt" }
+"ui.selection"                  = { bg = "bg_selection" }
+"ui.selection.primary"          = { bg = "bg_selection" }
+"ui.statusline"                 = { fg = "thunder_pale", bg = "bg" }
+"ui.statusline.inactive"        = { fg = "fg_subtle", bg = "bg" }
+"ui.statusline.normal"          = { fg = "thunder_pale", bg = "bg" }
+"ui.statusline.insert"          = { fg = "peppermint", bg = "bg" }
+"ui.statusline.select"          = { fg = "thunder_bright", bg = "bg" }
+"ui.text"                       = "fg"
+"ui.text.focus"                 = "fg"
+"ui.text.info"                  = "thunder_pale"
+"ui.virtual.indent-guide"       = "fg_subtle"
+"ui.virtual.inlay-hint"         = { fg = "fg_subtle", modifiers = ["italic"] }
+"ui.virtual.jump-label"         = { fg = "thunder", modifiers = ["bold"] }
+"ui.virtual.ruler"              = { bg = "bg_alt" }
+"ui.virtual.whitespace"         = "fg_subtle"
+"ui.virtual.wrap"               = "fg_subtle"
+"ui.window"                     = "fg_subtle"
+
+"diagnostic"                    = { underline = { color = "thunder_deep", style = "curl" } }
+"diagnostic.error"              = { underline = { color = "crimson", style = "curl" } }
+"diagnostic.warning"            = { underline = { color = "thunder_deep", style = "curl" } }
+"diagnostic.info"               = { underline = { color = "thunder_pale", style = "curl" } }
+"diagnostic.hint"               = { underline = { color = "fg_muted", style = "curl" } }
+
+"error"                         = "crimson"
+"hint"                          = "fg_muted"
+"info"                          = "thunder_pale"
+"warning"                       = "thunder_deep"
+
+# ─── Palette ─────────────────────────────────────────────────────────────────
+[palette]
+bg              = "#000000"
+bg_alt          = "#0a0a0a"
+bg_subtle       = "#101010"
+bg_selection    = "#1e3a5f"
+bg_line         = "#0b1220"
+fg              = "#ffffff"
+fg_muted        = "#a0a0a0"
+fg_subtle       = "#505050"
+thunder         = "#3b82f6"
+thunder_deep    = "#2563eb"
+thunder_bright  = "#60a5fa"
+thunder_pale    = "#93c5fd"
+peppermint      = "#99ffe4"
+peppermint_alt  = "#b3ffe4"
+crimson         = "#ff8080"
+crimson_alt     = "#ff9999"
+gray            = "#a0a0a0"
