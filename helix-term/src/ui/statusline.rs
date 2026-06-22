@@ -183,6 +183,7 @@ where
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
+        helix_view::editor::StatusLineElement::CodeActionHint => render_code_action_hint,
         #[cfg(feature = "steel")]
         _ => unreachable!(),
     }
@@ -621,4 +622,14 @@ where
         .to_string_lossy()
         .to_string();
     write(context, cwd.into())
+}
+
+fn render_code_action_hint<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let doc = get_doc(context);
+    if context.focused && doc.code_action_hints(context.view_id) {
+        write(context, " ⋮ ".into())
+    }
 }
