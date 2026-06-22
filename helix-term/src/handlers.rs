@@ -20,6 +20,7 @@ use self::document_links::DocumentLinksHandler;
 pub(super) mod auto_reload;
 mod auto_save;
 pub mod blame;
+mod code_action_hint;
 pub mod completion;
 pub mod diagnostics;
 mod document_colors;
@@ -42,6 +43,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let auto_reload = AutoReloadHandler::new().spawn();
+    let code_action_hint = code_action_hint::Handler::default().spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
     let blame = BlameHandler::default().spawn();
     let document_links = DocumentLinksHandler::default().spawn();
@@ -60,12 +62,14 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         word_index,
         pull_diagnostics,
         pull_all_documents_diagnostics,
+        code_action_hint,
     };
 
     helix_view::handlers::register_hooks(&handlers);
     completion::register_hooks(&handlers);
     signature_help::register_hooks(&handlers);
     document_highlight::register_hooks(&handlers);
+    code_action_hint::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);
     auto_reload::register_hooks(&handlers);
     diagnostics::register_hooks(&handlers);
