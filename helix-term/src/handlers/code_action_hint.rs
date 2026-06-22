@@ -127,6 +127,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event.doc.config.load().code_action_hint() {
             let doc_id = event.doc.id();
             let view_id = event.view;
+
+            // clear stale hints
+            event.doc.clear_code_action_hints(view_id);
             send_blocking(
                 &tx,
                 CodeActionHintEvent {
@@ -187,6 +190,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         if event.doc.config.load().code_action_hint() && !event.ghost_transaction {
             let doc_id = event.doc.id();
             let view_id = event.view;
+
+            // clear stale hints
+            event.doc.clear_code_action_hints(view_id);
             send_blocking(
                 &tx,
                 CodeActionHintEvent {
