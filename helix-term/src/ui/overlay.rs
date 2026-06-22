@@ -7,7 +7,7 @@ use tui::buffer::Buffer;
 
 use crate::compositor::{Component, Context, Event, EventResult};
 
-pub const FULL_OVERLAID_MAX_WIDTH: u16 = 240;
+pub const FULL_OVERLAID_MAX_WIDTH: u16 = 200;
 
 /// Contains a component placed in the center of the parent component
 pub struct Overlay<T> {
