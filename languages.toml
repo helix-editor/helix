@@ -57,6 +57,7 @@ forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
+ghostty-ls = { command = "ghostty-ls" } # https://github.com/MKindberg/ghostty-ls
 gitlab-ci-ls = { command = "gitlab-ci-ls" }
 gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
@@ -4806,6 +4807,7 @@ scope = "source.ghostty"
 file-types = ["ghostty", { glob = "ghostty/config" }]
 comment-tokens = "#"
 indent = { tab-width = 2, unit = "  " }
+language-servers = ["ghostty-ls"]
 
 [[grammar]]
 name = "ghostty"
