@@ -3831,8 +3831,8 @@ injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
-# auto-format = true
-# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
+auto-format = true
+formatter = { command="just", args=["--fmt", "--justfile", "-"] }
 
 [[grammar]]
 name = "just"
