@@ -148,7 +148,7 @@ pub fn build_trusted_globs(patterns: &[String]) -> GlobSet {
 }
 
 /// Runtime workspace-trust state. Cheap to clone (shared `Arc`).
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct WorkspaceTrust {
     inner: Arc<Mutex<HashMap<PathBuf, CacheEntry>>>,
     config: Config,

@@ -16,6 +16,7 @@ use helix_view::{
     Editor,
 };
 use tempfile::NamedTempFile;
+use termina::event::{Event, KeyEvent};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 #[cfg(windows)]

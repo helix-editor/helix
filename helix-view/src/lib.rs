@@ -19,6 +19,8 @@ pub mod theme;
 pub mod tree;
 pub mod view;
 
+pub mod extension;
+
 use std::num::NonZeroUsize;
 
 // uses NonZeroUsize so Option<DocumentId> use a byte rather than two
