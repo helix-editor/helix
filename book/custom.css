@@ -263,3 +263,64 @@ code.hljs {
 :where(.colibri) .hljs-strong {
   font-weight: 700;
 }
+
+#helix-version-banner {
+  margin: 0 0 1.75rem;
+  padding: .75rem 1.15rem;
+  border-radius: 4px;
+  border-inline-start: 4px solid var(--blockquote-warning-color, #efba5d);
+  background-color: var(--quote-bg);
+  font-size: .95em;
+  line-height: 1.55;
+}
+
+#helix-version-banner.archived {
+  border-inline-start-color: var(--blockquote-note-color, #697C81);
+}
+
+#helix-version-banner a {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.version-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.75rem 0 2rem;
+}
+
+.version-tiles .version-tile,
+.version-tiles .version-tile:hover {
+  text-decoration: none;
+}
+
+.version-tiles .version-tile {
+  --tile-accent: var(--blockquote-tip-color, #a4a0e8);
+  display: block;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--table-border-line, hsla(201, 20%, 92%, .2));
+  border-radius: 8px;
+  background-color: var(--quote-bg, rgba(0, 0, 0, .2));
+  color: inherit;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.version-tiles .version-tile:hover,
+.version-tiles .version-tile.current {
+  border-color: var(--tile-accent);
+  background-color: color-mix(in srgb, var(--tile-accent) 9%, var(--quote-bg, transparent));
+}
+
+.version-tiles .version-tile strong {
+  display: block;
+  margin-bottom: .25rem;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--heading-fg);
+}
+
+.version-tiles .version-tile .version-tile-sub {
+  opacity: .8;
+  font-size: .9em;
+}
