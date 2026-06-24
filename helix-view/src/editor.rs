@@ -294,8 +294,8 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
-    /// Title for the window, supports expansions
-    pub title_format: Option<String>,
+    /// Title for the window, supports expansions. Set to "" to disable
+    pub title_format: String,
     /// Padding to keep between the edge of the screen and the cursor when scrolling. Defaults to 5.
     pub scrolloff: usize,
     /// Number of lines to scroll at once. Defaults to 3
@@ -1177,7 +1177,7 @@ impl Default for WordCompletion {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            title_format: None,
+            title_format: "hx %{buffer_name}:%{cursor_line}:%{cursor_column}".into(),
             scrolloff: 5,
             scroll_lines: 3,
             mouse: true,

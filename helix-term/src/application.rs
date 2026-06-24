@@ -290,7 +290,8 @@ impl Application {
         // reset cursor cache
         self.editor.cursor_cache.reset();
 
-        if let Some(title_format) = &self.editor.config().title_format {
+        let title_format = &self.editor.config().title_format;
+        if !title_format.is_empty() {
             let title_result = match expansion::expand(&self.editor, Token::expand(title_format)) {
                 Ok(title) => self.terminal.set_title(&title),
                 Err(err) => {
