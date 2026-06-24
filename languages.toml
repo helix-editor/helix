@@ -5007,6 +5007,19 @@ name = "clarity"
 source = { git = "https://github.com/xlittlerag/tree-sitter-clarity", rev = "1436da3946359fcd7ac2d81917aaa78ef1e01755" }
 
 [[language]]
+name = "clean"
+scope = "source.clean"
+injection-regex = "clean"
+file-types = ["icl", "dcl"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "clean"
+source = { git = "https://github.com/ishaq2321/tree-sitter-clean", rev = "260af40" }
+
+[[language]]
 name = "alloy"
 scope = "source.alloy"
 injection-regex = "alloy"
