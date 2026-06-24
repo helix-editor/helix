@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-5398f83b.js";
+            window.path_to_searchindex_js = "searchindex-b55beadb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c2fa7ea4.js"></script>
@@ -3995,6 +3995,25 @@ config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>
 of the formatter command. In particular, the <code>%{buffer_name}</code> variable can be passed as
 argument to the formatter:</p>
 <pre><code class="language-toml">formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename", "%{buffer_name}"] }
+</code></pre>
+<h3 id="configuring-code-actions-on-save"><a class="header" href="#configuring-code-actions-on-save">Configuring code actions on save</a></h3>
+<p>The <code>code-actions-on-save</code> key lists LSP code actions to run (in order) when
+the buffer is saved. The available actions depend on available language servers,
+below are common examples and may need adjusting for your setup.</p>
+<pre><code class="language-toml"># Python with ruff
+[[language]]
+name = "python"
+code-actions-on-save = ["source.organizeImports", "source.fixAll"]
+
+# TS/JS with tsserver
+[[language]]
+name = "typescript"
+code-actions-on-save = ["source.addMissingImports.ts"]
+
+# TS/JS with eslint
+[[language]]
+name = "javascript"
+code-actions-on-save = ["source.fixAll.eslint", "source.organizeImports"]
 </code></pre>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
