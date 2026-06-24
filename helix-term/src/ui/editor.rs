@@ -816,12 +816,16 @@ impl EditorView {
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
                 });
-            let text = Text::styled(&diagnostic.message, style);
+
+            let text = Text::styled(&*diagnostic.message, style);
+
             lines.extend(text.lines);
+
             let code = diagnostic.code.as_ref().map(|x| match x {
                 NumberOrString::Number(n) => format!("({n})"),
                 NumberOrString::String(s) => format!("({s})"),
             });
+
             if let Some(code) = code {
                 let span = Span::styled(code, style);
                 lines.push(span.into());
