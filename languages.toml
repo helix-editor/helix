@@ -5510,3 +5510,18 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "concerto"
 source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "920ba23ea93af56b19dfc38fcddf80b3ddc62685" }
+
+[[language]]
+name = "doxygen"
+scope = "source.doxygen"
+injection-regex = "doxygen"
+file-types = [
+  "doxygen",
+  "dox",
+  { glob = "doc.md" },
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "doxygen"
+source = { git = "https://codeberg.org/maribu/tree-sitter-doxygen", rev = "26afdde765b43dc42d2c90172c238a64a93cd53caff9adce795a0e2127f4bfc9" }
