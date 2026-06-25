@@ -875,6 +875,7 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "gopls", "golangci-lint-lsp" ]
 # TODO: gopls needs utf-8 offsets?
+code-actions-on-save = ["source.organizeImports"]
 indent = { tab-width = 4, unit = "\t" }
 
 [language.debugger]

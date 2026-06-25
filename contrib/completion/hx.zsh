@@ -5,6 +5,7 @@ _hx() {
 	_arguments -C \
 		"-h[Prints help information]" \
 		"--help[Prints help information]" \
+		"--strict[Bail on error for commands that can fail]" \
 		"-v[Increase logging verbosity]" \
 		"-vv[Increase logging verbosity]" \
 		"-vvv[Increase logging verbosity]" \
