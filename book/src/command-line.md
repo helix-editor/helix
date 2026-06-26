@@ -50,10 +50,12 @@ The following variables are supported:
 | `line_ending` | A string containing the line ending of the currently focused document. For example on Unix systems this is usually a line-feed character (`\n`) but on Windows systems this may be a carriage-return plus a line-feed (`\r\n`). The line ending kind of the currently focused document can be inspected with the `:line-ending` command. |
 | `current_working_directory` | Current working directory |
 | `workspace_directory` | Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix` |
+| `workspace_path` | The path of the current file, relative to the current workspace directory (see above). If not in the workspace directory, returns the absolute path. |
 | `language` | A string containing the language name of the currently focused document.|
 | `selection` | A string containing the contents of the primary selection of the currently focused document. |
 | `selection_line_start` | The line number of the start of the primary selection in the currently focused document, starting at 1. |
 | `selection_line_end` | The line number of the end of the primary selection in the currently focused document, starting at 1. |
+| `clipboard` | The clipboard content (content of the `+` register) as is, with no escaping. |
 
 Aside from editor variables, the following expansions may be used:
 
