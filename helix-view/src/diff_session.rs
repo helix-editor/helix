@@ -530,10 +530,36 @@ impl InlineChange {
     }
 }
 
+/// Trim leading/trailing whitespace off the char range `[col_start, col_end)`
+/// of `line`, returning the tightened range or `None` if nothing non-whitespace
+/// remains. The whole-hunk word diff can emit spans that begin or end inside a
+/// line's indentation (identical tab tokens get threaded through the Myers LCS);
+/// trimming them keeps only the changed words and removes the scattered "tab
+/// staircase" highlights, while a mixed span like `<tabs>return` keeps `return`.
+fn trim_whitespace_cols(line: &str, col_start: usize, col_end: usize) -> Option<(usize, usize)> {
+    let chars: Vec<char> = line.chars().collect();
+    let mut start = col_start;
+    let mut end = col_end.min(chars.len());
+    while start < end && chars[start].is_whitespace() {
+        start += 1;
+    }
+    while end > start && chars[end - 1].is_whitespace() {
+        end -= 1;
+    }
+    (start < end).then_some((start, end))
+}
+
 /// Compute word-level intra-line diff for a single hunk.
 /// Returns per-line column ranges for each side indicating which words (or
 /// non-word chars) changed. Whole alphanumeric+underscore runs are treated as
 /// one token, so only the changed words are highlighted rather than individual chars.
+///
+/// The Myers diff runs over the whole hunk block (concatenated lines) so that
+/// token alignment survives however `compute_hunks` chopped the line-hunk
+/// boundaries. Each emitted span is split at line boundaries and then trimmed of
+/// leading/trailing whitespace: this strips the indentation-only spans that the
+/// LCS produces when it threads through identical leading tabs (the "tab
+/// staircase"), while keeping the genuine changed words.
 pub fn intra_line_changes(
     rope_a: &Rope,
     rope_b: &Rope,
@@ -573,45 +599,60 @@ pub fn intra_line_changes(
     let mut changes_a = Vec::new();
     let mut changes_b = Vec::new();
 
-    for tok_hunk in diff.hunks() {
-        if !tok_hunk.before.is_empty() {
-            let sc = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.start);
-            let ec = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.end);
-            let (start_line, start_col) = char_to_line_col(a_start, sc, rope_a);
-            let (end_line, end_col) = char_to_line_col(a_start, ec, rope_a);
-            // Split across lines if the change spans multiple lines
-            for line in start_line..=end_line {
-                let cs = if line == start_line { start_col } else { 0 };
-                let ce = if line == end_line {
-                    end_col
-                } else {
-                    rope_a.line(line).len_chars()
-                };
-                changes_a.push(InlineChange {
+    // Push a span split at line boundaries, trimming whitespace off each piece so
+    // indentation never gets highlighted.
+    let push_trimmed = |changes: &mut Vec<InlineChange>,
+                        rope: &Rope,
+                        start_line: usize,
+                        start_col: usize,
+                        end_line: usize,
+                        end_col: usize| {
+        for line in start_line..=end_line {
+            let cs = if line == start_line { start_col } else { 0 };
+            let ce = if line == end_line {
+                end_col
+            } else {
+                rope.line(line).len_chars()
+            };
+            let line_text: String = rope.line(line).into();
+            if let Some((cs, ce)) = trim_whitespace_cols(&line_text, cs, ce) {
+                changes.push(InlineChange {
                     doc_line: line,
                     col_start: cs,
                     col_end: ce,
                 });
             }
         }
+    };
+
+    for tok_hunk in diff.hunks() {
+        if !tok_hunk.before.is_empty() {
+            let sc = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.start);
+            let ec = tok_to_char(&tok_starts_a, total_chars_a, tok_hunk.before.end);
+            let (start_line, start_col) = char_to_line_col(a_start, sc, rope_a);
+            let (end_line, end_col) = char_to_line_col(a_start, ec, rope_a);
+            push_trimmed(
+                &mut changes_a,
+                rope_a,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            );
+        }
         if !tok_hunk.after.is_empty() {
             let sc = tok_to_char(&tok_starts_b, total_chars_b, tok_hunk.after.start);
             let ec = tok_to_char(&tok_starts_b, total_chars_b, tok_hunk.after.end);
             let (start_line, start_col) = char_to_line_col(b_start, sc, rope_b);
             let (end_line, end_col) = char_to_line_col(b_start, ec, rope_b);
-            for line in start_line..=end_line {
-                let cs = if line == start_line { start_col } else { 0 };
-                let ce = if line == end_line {
-                    end_col
-                } else {
-                    rope_b.line(line).len_chars()
-                };
-                changes_b.push(InlineChange {
-                    doc_line: line,
-                    col_start: cs,
-                    col_end: ce,
-                });
-            }
+            push_trimmed(
+                &mut changes_b,
+                rope_b,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            );
         }
     }
 
@@ -1775,6 +1816,223 @@ mod tests {
         assert_eq!(
             changes_b[0].col_end, 11,
             "change should end after 'h' of 'earth'"
+        );
+    }
+
+    #[test]
+    fn intra_line_diff_unbalanced_tab_hunk_emits_no_whitespace_spans() {
+        // 3 tab-indented lines replaced by a larger nested block. The whole-block
+        // word diff threads the Myers LCS through the wall of identical TAB tokens,
+        // which used to emit "changed" spans sitting entirely in the leading
+        // indentation (the gold staircase). Every emitted span must now be trimmed
+        // to non-whitespace content; that is the anti-staircase invariant.
+        let rope_a = Rope::from("\tif err != nil {\n\t\treturn err\n\t}\n");
+        let rope_b = Rope::from(
+            "\tif err != nil {\n\t\tlog.Println(err)\n\t\tif retry {\n\t\t\treturn retryErr\n\t\t}\n\t}\n",
+        );
+        let hunk = helix_vcs::Hunk {
+            before: 0..3,
+            after: 0..6,
+        };
+        let (changes_a, changes_b) = intra_line_changes(&rope_a, &rope_b, &hunk);
+
+        let span_text = |rope: &Rope, c: &InlineChange| -> String {
+            let line: String = rope.line(c.doc_line).into();
+            line.chars()
+                .skip(c.col_start)
+                .take(c.col_end - c.col_start)
+                .collect()
+        };
+        for c in &changes_a {
+            assert!(
+                !span_text(&rope_a, c).trim().is_empty(),
+                "A-side span is whitespace-only: {c:?}"
+            );
+        }
+        for c in &changes_b {
+            assert!(
+                !span_text(&rope_b, c).trim().is_empty(),
+                "B-side span is whitespace-only: {c:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn intra_line_diff_pairs_lines_within_balanced_multiline_hunk() {
+        // A balanced 3-line hunk where only the middle line changes a word.
+        // This exercises per-line pairing for i > 0: the change must land on
+        // doc_line = start + 1 with line-relative columns, not be offset by the
+        // earlier lines of the block.
+        let rope_a = Rope::from("\tfoo()\n\tbar()\n\tbaz()\n");
+        let rope_b = Rope::from("\tfoo()\n\tqux()\n\tbaz()\n");
+        let hunk = helix_vcs::Hunk {
+            before: 0..3,
+            after: 0..3,
+        };
+        let (changes_a, changes_b) = intra_line_changes(&rope_a, &rope_b, &hunk);
+
+        // Only the middle line differs ("bar" vs "qux"), one token each side.
+        assert_eq!(
+            changes_a.len(),
+            1,
+            "expected one A-side change, got {changes_a:?}"
+        );
+        assert_eq!(
+            changes_b.len(),
+            1,
+            "expected one B-side change, got {changes_b:?}"
+        );
+
+        // "\tbar()" -> tab at col 0, "bar" token starts at col 1, ends at col 4.
+        assert_eq!(
+            changes_a[0].doc_line, 1,
+            "change is on the second line of the hunk"
+        );
+        assert_eq!(changes_a[0].col_start, 1, "leading tab is unchanged");
+        assert_eq!(changes_a[0].col_end, 4);
+
+        assert_eq!(changes_b[0].doc_line, 1);
+        assert_eq!(changes_b[0].col_start, 1);
+        assert_eq!(changes_b[0].col_end, 4);
+    }
+
+    #[test]
+    fn intra_line_diff_ignores_indentation_only_change() {
+        // Two single lines differing only by one extra leading tab. An
+        // indentation-only change has matching trimmed content, so the line is
+        // aligned as a match and gets no intra-line highlight at all. The
+        // full-line background still conveys that the line changed; highlighting
+        // the tab itself is exactly the scatter we want to avoid.
+        let rope_a = Rope::from("\t\tif err\n");
+        let rope_b = Rope::from("\t\t\tif err\n");
+        let hunk = helix_vcs::Hunk {
+            before: 0..1,
+            after: 0..1,
+        };
+        let (changes_a, changes_b) = intra_line_changes(&rope_a, &rope_b, &hunk);
+
+        assert!(
+            changes_a.is_empty(),
+            "indentation-only change must not highlight A, got {changes_a:?}"
+        );
+        assert!(
+            changes_b.is_empty(),
+            "indentation-only change must not highlight B, got {changes_b:?}"
+        );
+    }
+
+    #[test]
+    fn intra_line_diff_pairs_lines_when_hunk_sides_start_at_different_lines() {
+        // A balanced hunk whose two sides begin on different document lines, as
+        // happens when an earlier unbalanced hunk has shifted the line numbers.
+        // The pairing must use each side's own start (before.start + i and
+        // after.start + i independently), landing the change on the right line
+        // of each document.
+        let rope_a = Rope::from("a\n\tfoo()\n\tbar()\n");
+        let rope_b = Rope::from("a\nb\n\tfoo()\n\tqux()\n");
+        let hunk = helix_vcs::Hunk {
+            before: 1..3,
+            after: 2..4,
+        };
+        let (changes_a, changes_b) = intra_line_changes(&rope_a, &rope_b, &hunk);
+
+        // Only the second paired line differs ("bar" vs "qux").
+        assert_eq!(changes_a.len(), 1, "got {changes_a:?}");
+        assert_eq!(changes_b.len(), 1, "got {changes_b:?}");
+        assert_eq!(changes_a[0].doc_line, 2, "A side: before.start + 1");
+        assert_eq!(changes_b[0].doc_line, 3, "B side: after.start + 1");
+        assert_eq!((changes_a[0].col_start, changes_a[0].col_end), (1, 4));
+        assert_eq!((changes_b[0].col_start, changes_b[0].col_end), (1, 4));
+    }
+
+    #[test]
+    fn intra_line_diff_highlights_words_when_block_is_reindented() {
+        // Real-world shape: side B wraps the body in `if len(items) > 0 {`, so
+        // every body line gains a tab. The genuine word change on the lines that
+        // correspond ("item" -> "value") must still be highlighted, and no span may
+        // fall on pure indentation (the tab-staircase regression). This is the
+        // end-to-end path (compute_hunks -> cache) that artificial-hunk tests
+        // cannot exercise. (Println/Printf land in separate add/delete hunks, so
+        // they show as full-line backgrounds, not word spans, just as upstream.)
+        let rope_a = Rope::from(concat!(
+            "package main\n",
+            "\n",
+            "import \"fmt\"\n",
+            "\n",
+            "func process(items []int) error {\n",
+            "\tfor _, item := range items {\n",
+            "\t\tif item < 0 {\n",
+            "\t\t\treturn fmt.Errorf(\"negative item: %d\", item)\n",
+            "\t\t}\n",
+            "\t\tfmt.Println(item)\n",
+            "\t}\n",
+            "\treturn nil\n",
+            "}\n",
+        ));
+        let rope_b = Rope::from(concat!(
+            "package main\n",
+            "\n",
+            "import \"fmt\"\n",
+            "\n",
+            "func process(items []int) error {\n",
+            "\tif len(items) > 0 {\n",
+            "\t\tfor _, item := range items {\n",
+            "\t\t\tif item < 0 {\n",
+            "\t\t\t\treturn fmt.Errorf(\"negative value: %d\", item)\n",
+            "\t\t\t}\n",
+            "\t\t\tfmt.Printf(\"got %d\\n\", item)\n",
+            "\t\t}\n",
+            "\t}\n",
+            "\treturn nil\n",
+            "}\n",
+        ));
+
+        let (view_a, view_b) = make_view_ids();
+        let mut session = DiffSession::new(view_a, view_b, make_doc_id(1), make_doc_id(2));
+        session.compute_hunks(&rope_a, &rope_b);
+
+        let mut all_a = Vec::new();
+        let mut all_b = Vec::new();
+        for i in 0..session.hunks().len() {
+            let (ca, cb) = session.intra_line_changes_for(i).unwrap();
+            all_a.extend(ca.iter().cloned());
+            all_b.extend(cb.iter().cloned());
+        }
+
+        let text_at = |rope: &Rope, c: &InlineChange| -> String {
+            let line: String = rope.line(c.doc_line).into();
+            line.chars()
+                .skip(c.col_start)
+                .take(c.col_end - c.col_start)
+                .collect()
+        };
+
+        // No intra-line span may be whitespace-only (that was the tab staircase).
+        for c in &all_a {
+            let t = text_at(&rope_a, c);
+            assert!(
+                !t.trim().is_empty(),
+                "A-side span is whitespace-only: {c:?} = {t:?}"
+            );
+        }
+        for c in &all_b {
+            let t = text_at(&rope_b, c);
+            assert!(
+                !t.trim().is_empty(),
+                "B-side span is whitespace-only: {c:?} = {t:?}"
+            );
+        }
+
+        // The genuine word changes on the corresponding lines are highlighted.
+        let a_texts: Vec<String> = all_a.iter().map(|c| text_at(&rope_a, c)).collect();
+        let b_texts: Vec<String> = all_b.iter().map(|c| text_at(&rope_b, c)).collect();
+        assert!(
+            a_texts.iter().any(|t| t == "item"),
+            "expected 'item' highlighted on A, got {a_texts:?}"
+        );
+        assert!(
+            b_texts.iter().any(|t| t == "value"),
+            "expected 'value' highlighted on B, got {b_texts:?}"
         );
     }
 }
