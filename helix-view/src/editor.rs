@@ -2295,11 +2295,12 @@ impl Editor {
         let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
         doc_mut!(self).mark_as_focused();
 
-        let focus_lost = self.tree.get(prev_id).doc;
-        dispatch(DocumentFocusLost {
-            editor: self,
-            doc: focus_lost,
-        });
+        if let Some(focus_lost_doc) = self.tree.try_get(prev_id).map(|v| v.doc) {
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost_doc,
+            });
+        }
     }
 
     pub fn focus_next(&mut self) {
@@ -2331,9 +2332,10 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get(id);
-        let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        if let Some(view) = self.tree.try_get(id) {
+            let doc = doc_mut!(self, &view.doc);
+            view.ensure_cursor_in_view(doc, config.scrolloff)
+        }
     }
 
     #[inline]

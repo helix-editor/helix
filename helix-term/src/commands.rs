@@ -3409,7 +3409,18 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = doc!(cx.editor, &doc_id);
+        let doc = if let Some(doc) = cx.editor.documents.get(&doc_id) {
+            doc
+        } else {
+            return JumpMeta {
+                id: doc_id,
+                path: None,
+                selection,
+                line_start: 0,
+                text: String::new(),
+                is_current: view.doc == doc_id,
+            };
+        };
         let text = doc.text().slice(..);
         let contents = selection
             .fragments(text)

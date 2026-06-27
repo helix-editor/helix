@@ -406,8 +406,11 @@ fn write_impl(
 
     // Does the document configure any code actions to run on save?
     let run_code_actions = options.code_actions
-        && doc!(cx.editor, &doc_id)
-            .language_config()
+        && cx
+            .editor
+            .documents
+            .get(&doc_id)
+            .and_then(|doc| doc.language_config())
             .and_then(|c| c.code_actions_on_save.as_deref())
             .is_some_and(|kinds| !kinds.is_empty());
 
@@ -419,6 +422,9 @@ fn write_impl(
     let tail = (auto_format || run_code_actions).then(|| {
         let path = path.clone();
         let callback = Callback::Followup(Box::new(move |editor| {
+            if !editor.documents.contains_key(&doc_id) {
+                return None;
+            }
             let doc = doc!(editor, &doc_id);
             let fmt_job = auto_format
                 .then(|| doc.auto_format(editor))
@@ -832,7 +838,7 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
 
         let modified_names: Vec<_> = modified_ids
             .iter()
-            .map(|doc_id| doc!(editor, doc_id).display_name())
+            .filter_map(|doc_id| editor.documents.get(doc_id).map(|doc| doc.display_name()))
             .collect();
 
         bail!(
@@ -905,8 +911,11 @@ pub fn write_all_impl(
         let force = options.force;
 
         let run_code_actions = options.code_actions
-            && doc!(cx.editor, &doc_id)
-                .language_config()
+            && cx
+                .editor
+                .documents
+                .get(&doc_id)
+                .and_then(|doc| doc.language_config())
                 .and_then(|c| c.code_actions_on_save.as_deref())
                 .is_some_and(|kinds| !kinds.is_empty());
 
@@ -914,6 +923,9 @@ pub fn write_all_impl(
         // built when there is pre-save work; otherwise a synchronous save below.
         let tail = (auto_format || run_code_actions).then(|| {
             let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
+                if !editor.documents.contains_key(&doc_id) {
+                    return None;
+                }
                 let doc = doc!(editor, &doc_id);
                 let fmt_job = auto_format
                     .then(|| doc.auto_format(editor))

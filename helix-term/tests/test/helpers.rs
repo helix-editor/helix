@@ -128,10 +128,18 @@ pub async fn test_key_sequences(
     let num_inputs = inputs.len();
 
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
-        let (view, doc) = current_ref!(app.editor);
-        let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+        let state_str = if let Some(view) = app.editor.tree.try_get(app.editor.tree.focus) {
+            if let Some(doc) = app.editor.documents.get(&view.doc) {
+                let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+                format!("\n-----\n\n{}", state)
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
 
-        log::debug!("executing test with document state:\n\n-----\n\n{}", state);
+        log::debug!("executing test with document state: {}", state_str);
 
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
@@ -144,13 +152,15 @@ pub async fn test_key_sequences(
         let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
 
         if !app_exited {
-            let (view, doc) = current_ref!(app.editor);
-            let state = test::plain(doc.text().slice(..), doc.selection(view.id));
-
-            log::debug!(
-                "finished running test with document state:\n\n-----\n\n{}",
-                state
-            );
+            if let Some(view) = app.editor.tree.try_get(app.editor.tree.focus) {
+                if let Some(doc) = app.editor.documents.get(&view.doc) {
+                    let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+                    log::debug!(
+                        "finished running test with document state:\n\n-----\n\n{}",
+                        state
+                    );
+                }
+            }
         }
 
         // the app should not exit from any test until the last one

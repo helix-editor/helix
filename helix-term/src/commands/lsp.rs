@@ -718,8 +718,11 @@ pub fn code_actions_on_save(
     doc_id: DocumentId,
     tail: Option<Job>,
 ) -> Option<Job> {
-    let kinds = doc!(cx.editor, &doc_id)
-        .language_config()
+    let kinds = cx
+        .editor
+        .documents
+        .get(&doc_id)
+        .and_then(|doc| doc.language_config())
         .and_then(|config| config.code_actions_on_save.clone());
     let Some(kinds) = kinds else {
         return tail;
@@ -743,6 +746,9 @@ fn code_action_on_save_step(
     };
 
     let build_request = move |editor: &mut Editor| -> Option<Job> {
+        if !editor.documents.contains_key(&doc_id) {
+            return None;
+        }
         let doc = doc!(editor, &doc_id);
         let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());

@@ -23,6 +23,9 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         let doc_id = event.doc;
 
         let (workspace, servers_to_load) = {
+            if !event.editor.documents.contains_key(&doc_id) {
+                return Ok(());
+            }
             let doc = doc!(event.editor, &doc_id);
             let servers_to_load = doc
                 .language_config()
