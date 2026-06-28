@@ -356,6 +356,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+    use crate::annotations::diagnostics::InlineDiagnosticsConfig;
     use crate::document::Document;
     use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
@@ -365,7 +366,11 @@ mod tests {
 
     #[test]
     fn test_default_gutter_widths() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(
+            DocumentId::default(),
+            GutterConfig::default(),
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -391,7 +396,11 @@ mod tests {
             ..Default::default()
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -410,7 +419,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("abc\n\tdef");
@@ -433,7 +446,11 @@ mod tests {
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
         };
 
-        let mut view = View::new(DocumentId::default(), gutters);
+        let mut view = View::new(
+            DocumentId::default(),
+            gutters,
+            InlineDiagnosticsConfig::default(),
+        );
         view.area = Rect::new(40, 40, 40, 40);
 
         let rope = Rope::from_str("a\nb");
