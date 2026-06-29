@@ -1,0 +1,11 @@
+<root>
+  <child>
+    <grandchild>text</grandchild>
+  </child>
+  <list>
+    <item id="1">a</item>
+    <item id="2">b</item>
+  </list>
+  <self-closing />
+  <empty></empty>
+</root>

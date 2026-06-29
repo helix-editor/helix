@@ -249,7 +249,7 @@
   ","
   "."
   ";"
-] @punctuation.delimiters
+] @punctuation.delimiter
 
 [
   "("

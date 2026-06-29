@@ -9,6 +9,18 @@
   "untrack"
 ] @function.builtin
 
+; Base catch-all for identifiers, as a base layer the specific rules below
+; (functions, calls, params, JSX) override. Kept first — imported from upstream
+; queries with this rule mid-file, where it left every component/call name
+; @variable.
+(identifier) @variable
+
+; Member access (generic): before the method-call rule below so an invoked
+; `obj.method()` reclaims @function.method while a plain `obj.field` stays
+; a member.
+(member_expression
+  property: (identifier) @variable.other.member)
+
 ; Functions
 (component_declaration
   name: (identifier) @function)
@@ -23,14 +35,11 @@
   name: (property_name) @function.method)
 
 (call_expression
-  function: (identifier) @function.call)
+  function: (identifier) @function)
 
 (call_expression
   function: (member_expression
-    property: (identifier) @function.method.call))
-
-; Variables
-(identifier) @variable
+    property: (identifier) @function.method))
 
 ; Parameters
 (required_parameter
@@ -117,7 +126,7 @@
   "${" @punctuation.special
   "}" @punctuation.special)
 
-(number) @number
+(number) @constant.numeric
 (true) @constant.builtin.boolean
 (false) @constant.builtin.boolean
 (null) @constant.builtin
@@ -217,7 +226,7 @@
 [
   "await"
   "async"
-] @keyword.control.flow
+] @keyword.control
 
 [
   "import"
@@ -271,9 +280,6 @@
 
 (pair
   key: (property_name) @variable.other.member)
-
-(member_expression
-  property: (identifier) @variable.other.member)
 
 (shorthand_property_identifier) @variable.other.member
 (shorthand_property_identifier_pattern) @variable.other.member

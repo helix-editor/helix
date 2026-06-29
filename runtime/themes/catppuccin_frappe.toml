@@ -30,5 +30,6 @@ crust = "#232634"
 
 cursorline = "#3b3f52"
 secondary_cursor = "#b8a5a6"
-secondary_cursor_normal = "#9192be"
+secondary_cursor_select = "#9192be"
+secondary_cursor_normal = "#b8a5a6"
 secondary_cursor_insert = "#83a275"

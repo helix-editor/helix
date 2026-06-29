@@ -43,23 +43,22 @@
 (identifier) @local.reference
 
 ; lifetimes / labels
-(lifetime (identifier) @label)
-(label (identifier) @label)
+(lifetime (identifier) @_)
+(label (identifier) @_)
 
 ; == scoped function calls and function defs ==
 ; avoid coloring functions as variables
-; taken from highlights.scm
 (call_expression
   function: (scoped_identifier
-    name: (identifier) @function))
+    name: (identifier) @_))
 (generic_function
   function: (scoped_identifier
-    name: (identifier) @function))
+    name: (identifier) @_))
 
 (function_item
-  name: (identifier) @function)
+  name: (identifier) @_)
 (function_signature_item
-  name: (identifier) @function)
+  name: (identifier) @_)
 
 ; == other ==
-(enum_variant (identifier) @type.enum.variant)
+(enum_variant (identifier) @_)

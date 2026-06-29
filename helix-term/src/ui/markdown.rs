@@ -306,7 +306,7 @@ impl Markdown {
                             &self.config_loader.load(),
                             None,
                         );
-                        lines.extend(tui_text.lines.into_iter());
+                        lines.extend(tui_text.lines);
                     } else {
                         let style = match tags.last() {
                             Some(Tag::Heading { level, .. }) => match level {

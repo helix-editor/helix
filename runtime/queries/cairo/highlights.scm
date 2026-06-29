@@ -5,6 +5,10 @@
 ; overrides are unnecessary.
 ; -------
 
+(type_identifier) @type
+(identifier) @variable
+(field_identifier) @variable.other.member
+
 ; -------
 ; Types
 ; -------
@@ -366,7 +370,3 @@
 ; -------
 
 "?" @special
-
-(type_identifier) @type
-(identifier) @variable
-(field_identifier) @variable.other.member

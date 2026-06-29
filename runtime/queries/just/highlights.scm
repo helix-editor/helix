@@ -46,7 +46,7 @@
   name: (identifier) @function)
 
 (recipe_dependency
-  name: (identifier) @function.call)
+  name: (identifier) @function)
 
 (function_call
   name: (identifier) @function.builtin)
