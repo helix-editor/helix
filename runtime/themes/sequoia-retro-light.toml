@@ -1,0 +1,40 @@
+# Author : Micheal Andreuzza <michael@andreuzza.com>
+# License: MIT
+
+# Retro Light for Helix
+inherit = "default_light"
+
+[ui]
+primary = { background = "#edeef2", foreground = "#282930" }
+cursor = { normal = { background = "#456a82", foreground = "#edeef2" } }
+selection = { primary = { background = "#817c9c38", foreground = "#282930" } }
+highlight = { background = "#817c9c38", foreground = "#282930" }
+
+[syntax]
+comment = { fg = "#565760", modifiers = ["italic"] }
+keyword = { fg = "#4a704e" }
+string = { fg = "#bf5238" }
+function = { fg = "#5f7982", modifiers = ["italic"] }
+variable = { fg = "#8a6539", modifiers = ["italic"] }
+type = { fg = "#456a82" }
+constant = { fg = "#4a704e" }
+attribute = { fg = "#5f7982", modifiers = ["italic"] }
+punctuation = { fg = "#42434e" }
+
+[palette]
+0 = "#d4d5dc"
+1 = "#5f7982"
+2 = "#4a704e"
+3 = "#bf5238"
+4 = "#456a82"
+5 = "#c99730"
+6 = "#8a6539"
+7 = "#282930"
+8 = "#42434e"
+9 = "#c99730"
+10 = "#4a704e"
+11 = "#bf5238"
+12 = "#456a82"
+13 = "#5f7982"
+14 = "#8a6539"
+15 = "#282930"

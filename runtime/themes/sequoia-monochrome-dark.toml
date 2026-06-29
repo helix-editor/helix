@@ -1,0 +1,40 @@
+# Author : Micheal Andreuzza <michael@andreuzza.com>
+# License: MIT
+
+# Monochrome Dark for Helix
+inherit = "default_dark"
+
+[ui]
+primary = { background = "#0f1014", foreground = "#868690" }
+cursor = { normal = { background = "#7c829d", foreground = "#0f1014" } }
+selection = { primary = { background = "#817c9c26", foreground = "#868690" } }
+highlight = { background = "#817c9c26", foreground = "#868690" }
+
+[syntax]
+comment = { fg = "#43444d", modifiers = ["italic"] }
+keyword = { fg = "#626983" }
+string = { fg = "#d3d5de" }
+function = { fg = "#999eb2", modifiers = ["italic"] }
+variable = { fg = "#b6bac8", modifiers = ["italic"] }
+type = { fg = "#7c829d" }
+constant = { fg = "#626983" }
+attribute = { fg = "#999eb2", modifiers = ["italic"] }
+punctuation = { fg = "#575861" }
+
+[palette]
+0 = "#131317"
+1 = "#999eb2"
+2 = "#626983"
+3 = "#d3d5de"
+4 = "#7c829d"
+5 = "#e2e4ed"
+6 = "#b6bac8"
+7 = "#868690"
+8 = "#575861"
+9 = "#999eb2"
+10 = "#626983"
+11 = "#d3d5de"
+12 = "#7c829d"
+13 = "#e2e4ed"
+14 = "#b6bac8"
+15 = "#868690"

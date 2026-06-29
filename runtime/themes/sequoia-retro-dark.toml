@@ -1,0 +1,40 @@
+# Author : Micheal Andreuzza <michael@andreuzza.com>
+# License: MIT
+
+# Retro Dark for Helix
+inherit = "default_dark"
+
+[ui]
+primary = { background = "#0f1014", foreground = "#868690" }
+cursor = { normal = { background = "#5c87a4", foreground = "#0f1014" } }
+selection = { primary = { background = "#817c9c26", foreground = "#868690" } }
+highlight = { background = "#817c9c26", foreground = "#868690" }
+
+[syntax]
+comment = { fg = "#43444d", modifiers = ["italic"] }
+keyword = { fg = "#648f68" }
+string = { fg = "#da674b" }
+function = { fg = "#829fa7", modifiers = ["italic"] }
+variable = { fg = "#a27e57", modifiers = ["italic"] }
+type = { fg = "#5c87a4" }
+constant = { fg = "#648f68" }
+attribute = { fg = "#829fa7", modifiers = ["italic"] }
+punctuation = { fg = "#575861" }
+
+[palette]
+0 = "#131317"
+1 = "#829fa7"
+2 = "#648f68"
+3 = "#da674b"
+4 = "#5c87a4"
+5 = "#e8b246"
+6 = "#a27e57"
+7 = "#868690"
+8 = "#575861"
+9 = "#e8b246"
+10 = "#648f68"
+11 = "#da674b"
+12 = "#5c87a4"
+13 = "#829fa7"
+14 = "#a27e57"
+15 = "#868690"
