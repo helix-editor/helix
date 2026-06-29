@@ -1279,6 +1279,42 @@ impl SymbolKind {
     }
 }
 
+impl SymbolKind {
+    #[inline]
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::FILE => "file",
+            Self::MODULE => "module",
+            Self::NAMESPACE => "namespace",
+            Self::PACKAGE => "package",
+            Self::CLASS => "class",
+            Self::METHOD => "method",
+            Self::PROPERTY => "property",
+            Self::FIELD => "field",
+            Self::CONSTRUCTOR => "construct",
+            Self::ENUM => "enum",
+            Self::INTERFACE => "interface",
+            Self::FUNCTION => "function",
+            Self::VARIABLE => "variable",
+            Self::CONSTANT => "constant",
+            Self::STRING => "string",
+            Self::NUMBER => "number",
+            Self::BOOLEAN => "boolean",
+            Self::ARRAY => "array",
+            Self::OBJECT => "object",
+            Self::KEY => "key",
+            Self::NULL => "null",
+            Self::ENUM_MEMBER => "enum_member",
+            Self::STRUCT => "struct",
+            Self::EVENT => "event",
+            Self::OPERATOR => "operator",
+            Self::TYPE_PARAMETER => "type_param",
+            _ => "",
+        }
+    }
+}
+
 /// Specific capabilities for the `SymbolKind` in the `workspace/symbol` request.
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

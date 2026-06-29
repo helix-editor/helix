@@ -21,7 +21,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
-use helix_view::theme::Style;
+use helix_view::icons::ICONS;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -31,10 +31,13 @@ pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-use helix_view::Editor;
+use helix_view::{Editor, Theme};
 use tui::text::{Span, Spans};
+use tui::widgets::Cell;
 
+use std::borrow::Cow;
 use std::path::Path;
+use std::sync::Arc;
 use std::{error::Error, path::PathBuf};
 
 struct Utf8PathBuf {
@@ -213,10 +216,11 @@ fn get_excluded_types() -> ignore::types::Types {
 #[derive(Debug)]
 pub struct FilePickerData {
     root: PathBuf,
-    directory_style: Style,
+    theme: Arc<Theme>,
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
+#[allow(clippy::too_many_lines)]
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::WalkBuilder;
     use std::time::Instant;
@@ -224,7 +228,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let config = editor.config();
     let data = FilePickerData {
         root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
+        theme: editor.theme.clone(),
     };
 
     let now = Instant::now();
@@ -261,20 +265,37 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let columns = [PickerColumn::new(
         "path",
         |item: &PathBuf, data: &FilePickerData| {
+            let theme = data.theme.as_ref();
+
             let path = item.strip_prefix(&data.root).unwrap_or(item);
-            let mut spans = Vec::with_capacity(3);
+
+            let mut line = Vec::with_capacity(4);
+
+            let icons = ICONS.load();
+
+            if let Some(file) = icons.fs().file() {
+                let icon = file.get_with_style_or_default(item, theme);
+                line.push(Span::from(icon));
+            }
+
             if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
-                spans.extend([
-                    Span::styled(dirs.to_string_lossy(), data.directory_style),
-                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                line.extend([
+                    Span::styled(dirs.to_string_lossy(), theme.get("ui.text.directory")),
+                    Span::styled(
+                        std::path::MAIN_SEPARATOR_STR,
+                        theme.get("ui.text.directory"),
+                    ),
                 ]);
             }
+
             let filename = path
                 .file_name()
                 .expect("normalized paths can't end in `..`")
                 .to_string_lossy();
-            spans.push(Span::raw(filename));
-            Spans::from(spans).into()
+
+            line.push(Span::raw(filename));
+
+            Spans::from(line).into()
         },
     )];
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
@@ -313,28 +334,59 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     picker
 }
 
-type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
+type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Arc<Theme>)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
         "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
-            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+        |(path, is_dir): &(PathBuf, bool), (_root, theme): &(PathBuf, Arc<Theme>)| {
+            let name = path.file_name();
+            // If path is `..` then this will be `None` and signifies being the
+            // previous directory, which said another way, is the currently open
+            // directory we are viewing.
+            let is_open = name.is_none() && *is_dir;
+
+            // Path `..` does not have a name, and so will become `..` as a string.
+            let name = name.map_or_else(|| Cow::Borrowed(".."), |dir| dir.to_string_lossy());
+
+            let icons = ICONS.load();
+
             if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
+                let mut line = vec![];
+
+                let base = theme.get("ui.text.directory");
+
+                if let Some(directory) = icons.fs().directory() {
+                    let icon = directory.get_with_style_or_default(&name, is_open, theme, base);
+                    line.push(Span::from(icon));
+                }
+
+                line.push(Span::styled(format!("{name}/"), base));
+
+                Cell::from(Spans::from(line))
+            } else if let Some(file) = icons.fs().file() {
+                let icon = file.get_with_style_or_default(path, theme);
+
+                Cell::from(Spans::from(vec![
+                    Span::from(icon),
+                    Span::raw({
+                        let name = path.file_name().map(|name| name.display());
+                        name.map(|name| name.to_string()).unwrap_or_default()
+                    }),
+                ]))
             } else {
-                name.into()
+                Cell::from(name)
             }
         },
     )];
+
     let picker = Picker::new(
         columns,
         0,
         directory_content,
-        (root, directory_style),
+        (root, editor.theme.clone()),
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
@@ -349,10 +401,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                 });
                 cx.jobs.callback(callback);
             } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
+                let err = match e.source() {
+                    Some(err) => format!("{}", err),
+                    None => format!("unable to open \"{}\"", path.display()),
                 };
                 cx.editor.set_error(err);
             }

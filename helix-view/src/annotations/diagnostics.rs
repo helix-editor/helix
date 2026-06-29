@@ -2,6 +2,7 @@ use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
 use helix_core::{softwrapped_dimensions, Diagnostic, Position};
+use helix_stdx::string::StackString;
 use serde::{Deserialize, Serialize};
 
 use crate::Document;
@@ -98,7 +99,7 @@ impl InlineDiagnosticsConfig {
             tab_width: 4,
             max_wrap: self.max_wrap.min(width / 4),
             max_indent_retain: 0,
-            wrap_indicator: "".into(),
+            wrap_indicator: StackString::new(),
             wrap_indicator_highlight: None,
             viewport_width: width,
             soft_wrap_at_text_width: true,

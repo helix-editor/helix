@@ -57,7 +57,10 @@ sonic-rs = "0.5"
 globset = "0.4"
 etcetera = "0.11"
 arc-swap = "1.9"
-arrayvec = "0.7"
+arrayvec =  { version =  "0.7", features = ["serde"] }
+hashbrown = { version = "0.17", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
+smartstring = { version = "1", features = ["serde"]}
+serde  = { version = "1", features = ["derive"] }
 
 # dev dependencies
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }

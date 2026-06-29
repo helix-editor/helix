@@ -1,13 +1,16 @@
 use std::{collections::HashSet, time::Duration};
 
 use futures_util::{stream::FuturesUnordered, StreamExt};
-use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};
+use helix_core::{
+    syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation, Tendril,
+};
 use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp;
 use helix_view::{
     document::DocumentColorSwatches,
     events::{DocumentDidChange, DocumentDidOpen, LanguageServerExited, LanguageServerInitialized},
     handlers::{lsp::DocumentColorsEvent, Handlers},
+    icons::ICONS,
     DocumentId, Editor, Theme,
 };
 use tokio::time::Instant;
@@ -124,9 +127,14 @@ fn attach_document_colors(
     let mut color_swatches_padding = Vec::with_capacity(doc_colors.len());
     let mut colors = Vec::with_capacity(doc_colors.len());
 
+    let icons = ICONS.load();
+    let glyph = Tendril::from(icons.kind().color().glyph());
+
     for (pos, color) in doc_colors {
         color_swatches_padding.push(InlineAnnotation::new(pos, " "));
-        color_swatches.push(InlineAnnotation::new(pos, "■"));
+
+        color_swatches.push(InlineAnnotation::new(pos, glyph.clone()));
+
         colors.push(Theme::rgb_highlight(
             (color.red * 255.) as u8,
             (color.green * 255.) as u8,

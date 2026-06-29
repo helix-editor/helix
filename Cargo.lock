@@ -71,6 +71,9 @@ name = "arrayvec"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "autocfg"
@@ -1449,6 +1452,8 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash 0.2.0",
+ "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -1608,6 +1613,7 @@ version = "25.7.1"
 name = "helix-stdx"
 version = "25.7.1"
 dependencies = [
+ "arrayvec",
  "bitflags",
  "dunce",
  "etcetera",
@@ -1619,6 +1625,7 @@ dependencies = [
  "rustix 1.1.4",
  "serde",
  "serde_json",
+ "smartstring",
  "tempfile",
  "unicode-segmentation",
  "which",
@@ -1680,6 +1687,7 @@ dependencies = [
  "cassowary",
  "crossterm",
  "helix-core",
+ "helix-stdx",
  "helix-view",
  "log",
  "once_cell",
@@ -1717,6 +1725,7 @@ dependencies = [
  "crossterm",
  "foldhash 0.2.0",
  "futures-util",
+ "hashbrown 0.17.1",
  "helix-core",
  "helix-dap",
  "helix-event",
@@ -1735,6 +1744,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
+ "smartstring",
  "tempfile",
  "termina",
  "thiserror",
@@ -2641,6 +2651,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
 dependencies = [
  "autocfg",
+ "serde",
  "static_assertions",
  "version_check",
 ]

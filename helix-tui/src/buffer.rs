@@ -6,7 +6,7 @@ use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub const SYMBOL_CAPACITY: usize = 28;
-pub type Symbol = arrayvec::ArrayString<SYMBOL_CAPACITY>;
+pub type Symbol = helix_stdx::string::StackString;
 
 /// One cell of the terminal. Contains one stylized grapheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,7 +123,7 @@ impl Cell {
 impl Default for Cell {
     fn default() -> Cell {
         Cell {
-            symbol: Symbol::from(" ").unwrap(),
+            symbol: Symbol::from(" "),
             width: 1,
             fg: Color::Reset,
             bg: Color::Reset,
@@ -1082,7 +1082,7 @@ mod tests {
         for symbol in test_cases {
             let mut cell = Cell::default();
             cell.set_symbol(symbol);
-            assert_eq!(cell.symbol, *symbol);
+            assert_eq!(cell.symbol, symbol);
         }
     }
 
