@@ -2506,7 +2506,7 @@ language-servers = [ "robotcode", "robotframework_ls" ]
 
 [[grammar]]
 name = "robot"
-source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "0f010f439e7873db42d3aabae8a48a8f61a89910" }
+source = { git = "https://github.com/Hubro/tree-sitter-robot", rev = "93c48ca74274a60688a3beda7f6c8ae3145efce7" }
 
 [[language]]
 name = "r"
