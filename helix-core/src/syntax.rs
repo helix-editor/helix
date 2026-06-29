@@ -44,6 +44,7 @@ pub struct LanguageData {
     textobject_query: OnceCell<Option<TextObjectQuery>>,
     tag_query: OnceCell<Option<TagQuery>>,
     rainbow_query: OnceCell<Option<RainbowQuery>>,
+    spellcheck_query: OnceCell<Option<SpellcheckQuery>>,
 }
 
 impl LanguageData {
@@ -55,6 +56,7 @@ impl LanguageData {
             textobject_query: OnceCell::new(),
             tag_query: OnceCell::new(),
             rainbow_query: OnceCell::new(),
+            spellcheck_query: OnceCell::new(),
         }
     }
 
@@ -222,6 +224,36 @@ impl LanguageData {
             .get_or_init(|| {
                 let grammar = self.syntax_config(loader)?.grammar;
                 Self::compile_rainbow_query(grammar, &self.config)
+                    .map_err(|err| {
+                        log::error!("{err}");
+                    })
+                    .ok()
+                    .flatten()
+            })
+            .as_ref()
+    }
+
+    /// Compiles the spellcheck.scm query for a language.
+    /// This function should only be used by this module or the xtask crate.
+    pub fn compile_spellcheck_query(
+        grammar: Grammar,
+        config: &LanguageConfiguration,
+    ) -> Result<Option<SpellcheckQuery>> {
+        let name = &config.language_id;
+        let text = read_query(name, "spellcheck.scm");
+        if text.is_empty() {
+            return Ok(None);
+        }
+        let spellcheck_query = SpellcheckQuery::new(grammar, &text)
+            .with_context(|| format!("Failed to compile spellcheck.scm query for '{name}'"))?;
+        Ok(Some(spellcheck_query))
+    }
+
+    fn spellcheck_query(&self, loader: &Loader) -> Option<&SpellcheckQuery> {
+        self.spellcheck_query
+            .get_or_init(|| {
+                let grammar = self.syntax_config(loader)?.grammar;
+                Self::compile_spellcheck_query(grammar, &self.config)
                     .map_err(|err| {
                         log::error!("{err}");
                     })
@@ -424,6 +456,10 @@ impl Loader {
         self.language(lang).rainbow_query(self)
     }
 
+    fn spellcheck_query(&self, lang: Language) -> Option<&SpellcheckQuery> {
+        self.language(lang).spellcheck_query(self)
+    }
+
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
         &self.language_server_configs
     }
@@ -510,7 +546,7 @@ impl FileTypeGlobMatcher {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Syntax {
     inner: tree_house::Syntax,
 }
@@ -699,6 +735,91 @@ impl Syntax {
 
         OverlayHighlights::Heterogenous { highlights }
     }
+
+    /// Returns the byte ranges within `byte_range` that should be spell-checked, according to the
+    /// `spellcheck.scm` query of every layer overlapping the range.
+    pub fn spell_regions(
+        &self,
+        source: RopeSlice,
+        loader: &Loader,
+        byte_range: ops::Range<usize>,
+    ) -> Vec<ops::Range<usize>> {
+        let mut spell: Vec<ops::Range<usize>> = Vec::new();
+        let mut nospell: Vec<ops::Range<usize>> = Vec::new();
+        let mut query_iter = self.query_iter::<_, (), _>(
+            source,
+            |lang| loader.spellcheck_query(lang).map(|q| &q.query),
+            byte_range.start as u32..byte_range.end as u32,
+        );
+
+        while let Some(event) = query_iter.next() {
+            let QueryIterEvent::Match(mat) = event else {
+                continue;
+            };
+            let spellcheck_query = loader
+                .spellcheck_query(query_iter.current_language())
+                .expect("language must have a spellcheck query to emit matches");
+
+            let bytes = mat.node.byte_range();
+            let region = bytes.start as usize..bytes.end as usize;
+            let capture = Some(mat.capture);
+            if capture == spellcheck_query.spell_capture {
+                spell.push(region);
+            } else if capture == spellcheck_query.nospell_capture {
+                nospell.push(region);
+            }
+        }
+
+        merge_regions(&mut spell);
+        merge_regions(&mut nospell);
+        subtract_regions(spell, &nospell, byte_range)
+    }
+}
+
+/// Merges `regions` in place into sorted, disjoint ranges.
+fn merge_regions(regions: &mut Vec<ops::Range<usize>>) {
+    regions.sort_unstable_by_key(|region| region.start);
+    let mut merged: Vec<ops::Range<usize>> = Vec::with_capacity(regions.len());
+    for region in regions.drain(..) {
+        match merged.last_mut() {
+            Some(last) if region.start <= last.end => last.end = last.end.max(region.end),
+            _ => merged.push(region),
+        }
+    }
+    *regions = merged;
+}
+
+/// Subtracts the `holes` from `regions` (both sorted, disjoint), clamps the result to `bounds`, and
+/// drops anything empty. Returns the surviving ranges in order.
+fn subtract_regions(
+    regions: Vec<ops::Range<usize>>,
+    holes: &[ops::Range<usize>],
+    bounds: ops::Range<usize>,
+) -> Vec<ops::Range<usize>> {
+    let mut result = Vec::new();
+    for region in regions {
+        let mut start = region.start.max(bounds.start);
+        let end = region.end.min(bounds.end);
+        for hole in holes {
+            if hole.end <= start {
+                continue;
+            }
+            if hole.start >= end {
+                break;
+            }
+            if hole.start > start {
+                result.push(start..hole.start);
+            }
+            start = hole.end;
+            if start >= end {
+                break;
+            }
+        }
+        if start < end {
+            result.push(start..end);
+        }
+    }
+    result
 }
 
 pub type Highlighter<'a> = highlighter::Highlighter<'a, 'a, Loader>;
@@ -1196,6 +1317,26 @@ impl RainbowQuery {
     }
 }
 
+#[derive(Debug)]
+pub struct SpellcheckQuery {
+    query: Query,
+    /// `@spell`
+    spell_capture: Option<Capture>,
+    /// `@nospell`
+    nospell_capture: Option<Capture>,
+}
+
+impl SpellcheckQuery {
+    fn new(grammar: Grammar, source: &str) -> Result<Self, tree_sitter::query::ParseError> {
+        let query = Query::new(grammar, source, |_, _| Ok(()))?;
+        Ok(Self {
+            spell_capture: query.get_capture("spell"),
+            nospell_capture: query.get_capture("nospell"),
+            query,
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use once_cell::sync::Lazy;
@@ -1250,6 +1391,77 @@ mod test {
         // The query used in this test case only captures the first line_comment node.
         // Determine if this behavior is intentional in tree-sitter.
         // test("multiple_nodes_grouped", 1..37);
+    }
+
+    #[test]
+    #[allow(clippy::single_range_in_vec_init)]
+    fn test_merge_regions() {
+        let merge = |regions: &[ops::Range<usize>]| {
+            let mut regions = regions.to_vec();
+            merge_regions(&mut regions);
+            regions
+        };
+        assert!(merge(&[]).is_empty());
+        // Sorted, with a gap preserved.
+        assert_eq!(merge(&[3..5, 0..2]), [0..2, 3..5]);
+        // Overlapping and adjacent ranges coalesce.
+        assert_eq!(merge(&[0..3, 2..5]), [0..5]);
+        assert_eq!(merge(&[0..2, 2..4]), [0..4]);
+        // A range fully contained in another is absorbed.
+        assert_eq!(merge(&[0..10, 3..5]), [0..10]);
+    }
+
+    #[test]
+    #[allow(clippy::single_range_in_vec_init)]
+    fn test_subtract_regions() {
+        // A hole punches a region in two.
+        assert_eq!(subtract_regions(vec![0..10], &[3..5], 0..10), [0..3, 5..10]);
+        // No holes: the region survives, clamped to the bounds.
+        assert_eq!(subtract_regions(vec![0..10], &[], 0..10), [0..10]);
+        assert_eq!(subtract_regions(vec![0..10], &[], 2..8), [2..8]);
+        // Holes at the edges trim the region.
+        assert_eq!(subtract_regions(vec![0..10], &[0..2, 8..10], 0..10), [2..8]);
+        // A hole covering the whole region removes it.
+        assert!(subtract_regions(vec![0..10], &[0..10], 0..10).is_empty());
+    }
+
+    #[test]
+    fn test_spell_regions_markdown() {
+        // Prose around an inline code span, plus a link with prose text but a URL destination.
+        let source = Rope::from_str("Helo `code` [text](http://example.com)\n");
+        let language = LOADER.language_for_name("markdown").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let regions = syntax.spell_regions(source.slice(..), &LOADER, 0..source.len_bytes());
+
+        let covered = |needle: &str| {
+            let at = source.to_string().find(needle).unwrap();
+            regions.iter().any(|region| region.contains(&at))
+        };
+        assert!(covered("Helo"), "prose is checked: {regions:?}");
+        assert!(covered("text"), "visible link text is checked: {regions:?}");
+        assert!(!covered("code"), "inline code is not checked: {regions:?}");
+        assert!(
+            !covered("example"),
+            "link URLs are not checked: {regions:?}"
+        );
+    }
+
+    #[test]
+    fn test_spell_regions_injected_comment() {
+        // The `comment` grammar is injected into Rust comments; its prose is checked while the
+        // surrounding code is not.
+        let source = Rope::from_str("// helo wrld\nfn main() {}\n");
+        let language = LOADER.language_for_name("rust").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let regions = syntax.spell_regions(source.slice(..), &LOADER, 0..source.len_bytes());
+
+        let covered = |needle: &str| {
+            let at = source.to_string().find(needle).unwrap();
+            regions.iter().any(|region| region.contains(&at))
+        };
+        assert!(covered("helo"), "comment prose is checked: {regions:?}");
+        assert!(!covered("fn"), "code is not checked: {regions:?}");
+        assert!(!covered("main"), "code is not checked: {regions:?}");
     }
 
     #[test]

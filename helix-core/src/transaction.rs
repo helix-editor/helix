@@ -103,6 +103,58 @@ impl ChangeSet {
         &self.changes
     }
 
+    /// Returns a window of char indexes around the cluster of changes in the changeset.
+    ///
+    /// Each window is padded by `padding` chars on both sides (clamped to the text bounds), so a
+    /// change in the middle of a token still yields a window covering the whole token plus its
+    /// neighbours. Nearby clusters separated by a retained run no longer than `padding` are merged
+    /// into a single window, so the number of windows is bounded by the number of well-separated
+    /// edits rather than the document size.
+    pub fn changed_ranges(
+        &self,
+        padding: usize,
+    ) -> impl Iterator<Item = (std::ops::Range<usize>, std::ops::Range<usize>)> + '_ {
+        use Operation::*;
+
+        let mut operations = self.changes.iter().peekable();
+        let mut old_pos = 0;
+        let mut new_pos = 0;
+        let old_len = self.len;
+        let new_len = self.len_after;
+        std::iter::from_fn(move || loop {
+            let operation = operations.next()?;
+            let old_start = old_pos;
+            let new_start = new_pos;
+            let len = operation.len_chars();
+            match operation {
+                Retain(_) => {
+                    old_pos += len;
+                    new_pos += len;
+                    continue;
+                }
+                Insert(_) => new_pos += len,
+                Delete(_) => old_pos += len,
+            }
+
+            // Scan ahead until a `Retain` long enough to end the window (more than `padding`).
+            while let Some(o) = operations.next_if(|op| !matches!(op, Retain(n) if *n > padding)) {
+                let len = o.len_chars();
+                match o {
+                    Retain(_) => {
+                        old_pos += len;
+                        new_pos += len;
+                    }
+                    Delete(_) => old_pos += len,
+                    Insert(_) => new_pos += len,
+                }
+            }
+
+            let old_range = old_start.saturating_sub(padding)..(old_pos + padding).min(old_len);
+            let new_range = new_start.saturating_sub(padding)..(new_pos + padding).min(new_len);
+            return Some((old_range, new_range));
+        })
+    }
+
     // Changeset builder operations: delete/insert/retain
     pub(crate) fn delete(&mut self, n: usize) {
         use Operation::*;
@@ -962,6 +1014,57 @@ mod test {
         assert_eq!(composed.len, 8);
         assert!(composed.apply(&mut text));
         assert_eq!(text, "世orld! abc");
+    }
+
+    #[test]
+    fn changed_ranges_windows() {
+        use Operation::*;
+
+        // A single insertion: one window, padded by `padding` and clamped to the text bounds. The
+        // new range is longer than the old by the inserted length.
+        let changes = ChangeSet {
+            changes: vec![Retain(8), Insert("XX".into()), Retain(12)],
+            len: 20,
+            len_after: 22,
+        };
+        assert_eq!(
+            changes.changed_ranges(5).collect::<Vec<_>>(),
+            vec![(3..13, 3..15)]
+        );
+
+        // Two edits separated by a retained run longer than `padding` stay in separate windows.
+        let changes = ChangeSet {
+            changes: vec![
+                Retain(4),
+                Delete(3),
+                Retain(20),
+                Insert("zz".into()),
+                Retain(4),
+            ],
+            len: 31,
+            len_after: 30,
+        };
+        assert_eq!(
+            changes.changed_ranges(2).collect::<Vec<_>>(),
+            vec![(2..9, 2..6), (25..29, 22..28)]
+        );
+
+        // The same edits separated by a short retained run (<= `padding`) merge into one window.
+        let changes = ChangeSet {
+            changes: vec![
+                Retain(4),
+                Delete(3),
+                Retain(2),
+                Insert("zz".into()),
+                Retain(4),
+            ],
+            len: 13,
+            len_after: 12,
+        };
+        assert_eq!(
+            changes.changed_ranges(2).collect::<Vec<_>>(),
+            vec![(2..11, 2..10)]
+        );
     }
 
     #[test]
