@@ -1571,7 +1571,8 @@ fn open_url_in_callback(
 /// only when the target looks like a binary file (a non-textual file that can't
 /// be viewed in helix).
 fn should_open_url_externally(url: &Url) -> bool {
-    if url.scheme() != "file" {
+    // Schemes are case-insensitive (RFC3986 §3.1).
+    if !url.scheme().eq_ignore_ascii_case("file") {
         return true;
     }
 
