@@ -33,6 +33,26 @@ fn exec_git_cmd(args: &str, git_dir: &Path) {
     }
 }
 
+fn exec_git_stdout(args: &str, git_dir: &Path) -> String {
+    let res = Command::new("git")
+        .arg("-C")
+        .arg(git_dir)
+        .args(args.split_whitespace())
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_TERMINAL_PROMPT", "false")
+        .output()
+        .unwrap_or_else(|_| panic!("`git {args}` failed"));
+    if !res.status.success() {
+        println!("{}", String::from_utf8_lossy(&res.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&res.stderr));
+        panic!("`git {args}` failed (see output above)")
+    }
+
+    String::from_utf8(res.stdout).unwrap()
+}
+
 fn create_commit(repo: &Path, add_modified: bool) {
     if add_modified {
         exec_git_cmd("add -A", repo);
@@ -54,7 +74,7 @@ fn missing_file() {
     let file = temp_git.path().join("file.txt");
     File::create(&file).unwrap().write_all(b"foo").unwrap();
 
-    assert!(git::get_diff_base(&file, true).is_err());
+    assert!(git::get_diff_base(git::get_diff_base(&file, None)file, None, true).is_err());
 }
 
 #[test]
@@ -65,7 +85,7 @@ fn unmodified_file() {
     File::create(&file).unwrap().write_all(contents).unwrap();
     create_commit(temp_git.path(), true);
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(git::get_diff_base(&file, None)file, None, true).unwrap(),
         Vec::from(contents)
     );
 }
@@ -80,9 +100,84 @@ fn modified_file() {
     File::create(&file).unwrap().write_all(b"bar").unwrap();
 
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(git::get_diff_base(&file, None)file, None, true).unwrap(),
         Vec::from(contents)
     );
+}
+
+#[test]
+fn diff_base_from_branch() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    let main_contents = b"main".as_slice();
+    let feature_contents = b"feature".as_slice();
+    File::create(&file)
+        .unwrap()
+        .write_all(main_contents)
+        .unwrap();
+    create_commit(temp_git.path(), true);
+
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    File::create(&file)
+        .unwrap()
+        .write_all(feature_contents)
+        .unwrap();
+    create_commit(temp_git.path(), true);
+
+    assert_eq!(
+        git::get_diff_base(&file, Some("main")).unwrap(),
+        Vec::from(main_contents)
+    );
+    assert_eq!(
+        git::get_diff_base(git::get_diff_base(&file, None)file, None, true).unwrap(),
+        Vec::from(feature_contents)
+    );
+}
+
+#[test]
+fn diff_base_from_commit_sha() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    let main_contents = b"main".as_slice();
+    File::create(&file)
+        .unwrap()
+        .write_all(main_contents)
+        .unwrap();
+    create_commit(temp_git.path(), true);
+    let main_commit = exec_git_stdout("rev-parse HEAD", temp_git.path());
+
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    File::create(&file).unwrap().write_all(b"feature").unwrap();
+    create_commit(temp_git.path(), true);
+
+    assert_eq!(
+        git::get_diff_base(&file, Some(main_commit.trim())).unwrap(),
+        Vec::from(main_contents)
+    );
+}
+
+#[test]
+fn file_missing_in_selected_base_is_empty() {
+    let temp_git = empty_git_repo();
+    exec_git_cmd("commit --allow-empty -m root", temp_git.path());
+
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"feature").unwrap();
+    create_commit(temp_git.path(), true);
+
+    assert_eq!(git::get_diff_base(&file, Some("main")).unwrap(), Vec::new());
+}
+
+#[test]
+fn invalid_diff_base_revision() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    File::create(&file).unwrap().write_all(b"main").unwrap();
+    create_commit(temp_git.path(), true);
+
+    assert!(git::get_diff_base(&file, Some("does-not-exist")).is_err());
+    assert!(git::ensure_diff_base(&file, "does-not-exist").is_err());
 }
 
 /// Test that `get_file_head` does not return content for a directory.
@@ -101,7 +196,7 @@ fn directory() {
 
     std::fs::remove_dir_all(&dir).unwrap();
     File::create(&dir).unwrap().write_all(b"bar").unwrap();
-    assert!(git::get_diff_base(&dir, true).is_err());
+    assert!(git::get_diff_base(&dir, None).is_err());
 }
 
 /// Test that `get_diff_base` resolves symlinks so that the same diff base is
@@ -128,8 +223,8 @@ fn symlink() {
     symlink("file.txt", &file_link).unwrap();
     create_commit(temp_git.path(), true);
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(git::get_diff_base(&file_link, None).unwrap(), contents);
+    assert_eq!(git::get_diff_base(git::get_diff_base(&file, None)file, None, true).unwrap(), contents);
 }
 
 /// Test that `get_diff_base` returns content when the file is a symlink to
@@ -153,6 +248,6 @@ fn symlink_to_git_repo() {
     let file_link = temp_dir.path().join("file_link.txt");
     symlink(&file, &file_link).unwrap();
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(git::get_diff_base(&file_link, None).unwrap(), contents);
+    assert_eq!(git::get_diff_base(git::get_diff_base(&file, None)file, None, true).unwrap(), contents);
 }

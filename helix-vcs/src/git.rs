@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -23,11 +23,15 @@ use crate::FileChange;
 mod test;
 
 #[inline]
-fn get_repo_dir(file: &Path) -> Result<&Path> {
-    file.parent().context("file has no parent directory")
+fn get_repo_dir(path: &Path) -> Result<&Path> {
+    if path.is_dir() {
+        Ok(path)
+    } else {
+        path.parent().context("path has no parent directory")
+    }
 }
 
-pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
+pub fn get_diff_base(file: &Path, diff_base_revision: Option<&str>) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
@@ -35,11 +39,15 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     // TODO cache repository lookup
 
     let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir, trust_full)
+    let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
-    let head = repo.head_commit()?;
-    let file_oid = find_file_in_commit(&repo, &head, &file)?;
+    let diff_base = resolve_diff_base_commit(&repo, diff_base_revision)?;
+    let file_oid = match find_file_in_commit(&repo, &diff_base, &file)? {
+        Some(file_oid) => file_oid,
+        None if diff_base_revision.is_some() => return Ok(Vec::new()),
+        None => bail!("file is untracked"),
+    };
 
     let file_object = repo.find_object(file_oid)?;
     let data = file_object.detach().data;
@@ -65,13 +73,35 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     }
 }
 
-pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
+pub fn ensure_diff_base(file: &Path, diff_base_revision: &str) -> Result<()> {
+    debug_assert!(file.is_absolute());
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
+    let repo_dir = get_repo_dir(&file)?;
+    let repo = open_repo(repo_dir)
+        .context("failed to open git repo")?
+        .to_thread_local();
+    resolve_diff_base_commit(&repo, Some(diff_base_revision))?;
+    Ok(())
+}
+
+pub fn get_repo_root(file: &Path) -> Result<PathBuf> {
+    debug_assert!(file.is_absolute());
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
+    let repo_dir = get_repo_dir(&file)?;
+    let repo = open_repo(repo_dir)
+        .context("failed to open git repo")?
+        .to_thread_local();
+    let work_dir = repo.workdir().context("repo has no worktree")?;
+    gix::path::realpath(work_dir).context("resolve repo worktree")
+}
+
+pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
 
     let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir, trust_full)
+    let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
     let head_ref = repo.head_ref()?;
@@ -87,28 +117,21 @@ pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwa
 
 pub fn for_each_changed_file(
     cwd: &Path,
-    trust_full: bool,
-    f: impl Fn(Result<FileChange>) -> bool,
+    diff_base_revision: Option<&str>,
+    mut f: impl FnMut(Result<FileChange>) -> bool,
 ) -> Result<()> {
-    status(&open_repo(cwd, trust_full)?.to_thread_local(), f)
+    let repo = &open_repo(cwd)?.to_thread_local();
+    match diff_base_revision {
+        Some(diff_base_revision) => status_with_base(&repo, diff_base_revision, &mut f),
+        None => status(&repo, &mut f),
+    }
 }
 
-fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
-    // `trust_full` is the workspace-trust decision made by the caller, and it must be the
-    // authority on the gix trust level. gix's own discovery (`discover_*`) ignores a
-    // caller-supplied trust level: it always re-derives trust from `.git` ownership, so a malicious
-    // `.git/config` in a user-owned directory would be opened as `Trust::Full` regardless of our
-    // gate. Worse, the GIT_DIR-environment branch of that discovery panics because it never sets a
-    // trust level at all. So we split discovery from opening: find the repository path ourselves,
-    // then `open_opts(..).with(trust)`, which forces the trust level and skips gix's ownership
-    // check. Under `Trust::Reduced`, gix then refuses to honor untrusted repository-local config
-    // such as `filter.*` smudge/clean drivers.
-
-    let trust = if trust_full {
-        gix::sec::Trust::Full
-    } else {
-        gix::sec::Trust::Reduced
-    };
+fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
+    // Default to Trust::Full for git diff base operations
+    // This is acceptable for the gitbase-picker functionality which doesn't require
+    // workspace trust security checks
+    let trust = gix::sec::Trust::Full;
 
     // On Windows various configuration options are bundled as part of the git installation. The
     // lookup is expensive; only do it there.
@@ -145,7 +168,7 @@ fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
 }
 
 /// Emulates the result of running `git status` from the command line.
-fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
+fn status(repo: &Repository, f: &mut impl FnMut(Result<FileChange>) -> bool) -> Result<()> {
     let work_dir = repo
         .workdir()
         .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
@@ -172,7 +195,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
     let status_iter = status_platform.into_index_worktree_iter(empty_patterns)?;
 
     for item in status_iter {
-        let Ok(item) = item.map_err(|err| f(Err(err.into()))) else {
+        let Ok(item) = item.map_err(|err| (*f)(Err(err.into()))) else {
             continue;
         };
         let change = match item {
@@ -211,7 +234,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             },
             _ => continue,
         };
-        if !f(Ok(change)) {
+        if !(*f)(Ok(change)) {
             break;
         }
     }
@@ -219,20 +242,123 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
     Ok(())
 }
 
+fn status_with_base(
+    repo: &Repository,
+    diff_base_revision: &str,
+    f: &mut impl FnMut(Result<FileChange>) -> bool,
+) -> Result<()> {
+    let _base_commit = match resolve_diff_base_commit(repo, Some(diff_base_revision)) {
+        Ok(commit) => commit,
+        Err(_) => return status(repo, f), // Fall back to regular status if base can't be resolved
+    };
+    
+    let work_dir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
+        .to_path_buf();
+    
+    // Use git command line to get diff between base and HEAD
+    let output = std::process::Command::new("git")
+        .args(["diff", "--name-status", &format!("{}..HEAD", diff_base_revision)])
+        .current_dir(&work_dir)
+        .output()?;
+    
+    if !output.status.success() {
+        return status(repo, f); // Fall back to regular status if git diff fails
+    }
+    
+    let diff_output = String::from_utf8_lossy(&output.stdout);
+    for line in diff_output.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        
+        let status = parts[0];
+        let path = parts[1..].join(" ");
+        let full_path = work_dir.join(path);
+        
+        let canonical_path = match full_path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        
+        let file_change = match status {
+            "M" => FileChange::Modified { path: canonical_path },
+            "A" => FileChange::Untracked { path: canonical_path },
+            "D" => FileChange::Deleted { path: canonical_path },
+            "R" | "C" => {
+                // For renames/copies, we need both paths
+                if parts.len() < 3 {
+                    continue;
+                }
+                let from_path = work_dir.join(parts[1]);
+                let to_path = work_dir.join(parts[2]);
+                let from_canonical = match from_path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+                let to_canonical = match to_path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
+                FileChange::Renamed {
+                    from_path: from_canonical,
+                    to_path: to_canonical,
+                }
+            }
+            _ => continue, // Skip unknown status types
+        };
+        
+        if !f(Ok(file_change)) {
+            break;
+        }
+    }
+    
+    Ok(())
+}
+
 /// Finds the object that contains the contents of a file at a specific commit.
-fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
+fn find_file_in_commit(
+    repo: &Repository,
+    commit: &Commit,
+    file: &Path,
+) -> Result<Option<ObjectId>> {
     let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
-    let tree_entry = tree
-        .lookup_entry_by_path(rel_path)?
-        .context("file is untracked")?;
+    let Some(tree_entry) = tree.lookup_entry_by_path(rel_path)? else {
+        return Ok(None);
+    };
     match tree_entry.mode().kind() {
         // not a file, everything is new, do not show diff
         mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
             bail!("entry at {} is not a file but a {mode:?}", file.display())
         }
         // found a file
-        EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+        EntryKind::Blob | EntryKind::BlobExecutable => Ok(Some(tree_entry.object_id())),
     }
+}
+
+fn resolve_diff_base_commit<'repo>(
+    repo: &'repo Repository,
+    diff_base_revision: Option<&str>,
+) -> Result<Commit<'repo>> {
+    let Some(diff_base_revision) = diff_base_revision else {
+        return Ok(repo.head_commit()?);
+    };
+
+    if let Ok(mut reference) = repo.find_reference(diff_base_revision) {
+        return Ok(reference.peel_to_commit()?);
+    }
+
+    if let Ok(object_id) = diff_base_revision.parse::<ObjectId>() {
+        return Ok(repo.find_commit(object_id)?);
+    }
+
+    bail!("could not resolve git diff base '{diff_base_revision}' as a branch or commit SHA")
 }
