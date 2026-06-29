@@ -15,6 +15,7 @@ pub struct TestBackend {
     height: u16,
     cursor: bool,
     pos: (u16, u16),
+    title: String,
 }
 
 /// Returns a string representation of the given buffer for debugging purpose.
@@ -54,6 +55,7 @@ impl TestBackend {
             buffer: Buffer::empty(Rect::new(0, 0, width, height)),
             cursor: false,
             pos: (0, 0),
+            title: String::new(),
         }
     }
 
@@ -141,6 +143,11 @@ impl Backend for TestBackend {
 
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error> {
         self.pos = (x, y);
+        Ok(())
+    }
+
+    fn set_title(&mut self, title: &str) -> Result<(), io::Error> {
+        self.title = title.into();
         Ok(())
     }
 

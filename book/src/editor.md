@@ -29,6 +29,7 @@
 
 | Key | Description | Default |
 |--|--|---------|
+| `title-format` | Format to use for window title. Supports [expansions](./command-line.md#expansions). Set to `""` to disable / leave the shell in charge | `"hx %{buffer_name}:%{cursor_line}:%{cursor_column}"`|
 | `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
 | `mouse-yank-register` | Which register to use for mouse yanks. | `*` |
