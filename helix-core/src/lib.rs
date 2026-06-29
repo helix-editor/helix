@@ -56,7 +56,7 @@ pub type Tendril = SmartString<smartstring::LazyCompact>;
 pub use {regex, tree_house::tree_sitter};
 
 pub use position::{
-    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, softwrapped_dimensions,
+    char_idx_at_visual_block_offset, char_idx_at_visual_offset, coords_at_pos, pos_at_coords, softwrapped_dimensions,
     visual_offset_from_anchor, visual_offset_from_block, Position, VisualOffsetError,
 };
 #[allow(deprecated)]
