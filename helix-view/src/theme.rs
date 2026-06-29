@@ -51,59 +51,40 @@ impl From<termina::escape::csi::ThemeMode> for Mode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Config {
-    light: String,
-    dark: String,
-    /// A theme to choose when the terminal did not declare either light or dark mode.
-    /// When not specified the dark theme is preferred.
-    fallback: Option<String>,
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+pub enum Config {
+    Constant(String),
+    Adaptive {
+        light: String,
+        dark: String,
+        /// A theme to choose when the terminal did not declare either light or dark mode.
+        /// When not specified the dark theme is preferred.
+        fallback: Option<String>,
+    },
 }
 
 impl Config {
     pub fn choose(&self, preference: Option<Mode>) -> &str {
-        match preference {
-            Some(Mode::Light) => &self.light,
-            Some(Mode::Dark) => &self.dark,
-            None => self.fallback.as_ref().unwrap_or(&self.dark),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Config {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
-        enum InnerConfig {
-            Constant(String),
-            Adaptive {
-                dark: String,
-                light: String,
-                fallback: Option<String>,
-            },
-        }
-
-        let inner = InnerConfig::deserialize(deserializer)?;
-
-        let (light, dark, fallback) = match inner {
-            InnerConfig::Constant(theme) => (theme.clone(), theme.clone(), None),
-            InnerConfig::Adaptive {
+        match self {
+            Config::Constant(theme) => theme,
+            Config::Adaptive {
                 light,
                 dark,
                 fallback,
-            } => (light, dark, fallback),
-        };
+            } => match preference {
+                Some(Mode::Light) => light,
+                Some(Mode::Dark) => dark,
+                None => fallback.as_ref().unwrap_or(dark),
+            },
+        }
+    }
 
-        Ok(Self {
-            light,
-            dark,
-            fallback,
-        })
+    pub fn is_adaptive(&self) -> bool {
+        matches!(self, Self::Adaptive { .. })
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
@@ -296,6 +277,9 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    /// Reverse map from scope string to its `Highlight` index. `find_highlight_exact`
+    /// is called many times per frame, so we optimize lookups.
+    scope_index: HashMap<String, Highlight>,
     rainbow_length: usize,
 }
 
@@ -464,10 +448,7 @@ impl Theme {
     }
 
     pub fn find_highlight_exact(&self, scope: &str) -> Option<Highlight> {
-        self.scopes()
-            .iter()
-            .position(|s| s == scope)
-            .map(|idx| Highlight::new(idx as u32))
+        self.scope_index.get(scope).copied()
     }
 
     pub fn find_highlight(&self, mut scope: &str) -> Option<Highlight> {
@@ -508,10 +489,17 @@ impl Theme {
         let (styles, scopes, highlights, rainbow_length, load_errors) =
             build_theme_values(toml_keys);
 
+        let scope_index = scopes
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.clone(), Highlight::new(i as u32)))
+            .collect();
+
         let theme = Self {
             styles,
             scopes,
             highlights,
+            scope_index,
             rainbow_length,
             ..Default::default()
         };

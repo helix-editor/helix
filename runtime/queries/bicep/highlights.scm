@@ -36,7 +36,13 @@
   ":" @punctuation.delimiter
   (_))
 
-(property_identifier) @function.method
+; Property access `obj.field` is member access; the call rule below restores
+; @function.method for an invoked property like `az.resourceId(...)`.
+(property_identifier) @variable.other.member
+
+(call_expression
+  function: (member_expression
+    property: (property_identifier) @function.method))
 
 ; Attributes
 (decorator
@@ -115,7 +121,7 @@
     (loop_enumerator) @variable))
 
 ; Conditionals
-"if" @keyword.conditional
+"if" @keyword.control.conditional
 
 (ternary_expression
   "?" @keyword.control.conditional
@@ -183,7 +189,7 @@
 
 (escape_sequence) @constant.character
 
-(number) @constant.number
+(number) @constant.numeric
 
 (boolean) @constant.builtin.boolean
 

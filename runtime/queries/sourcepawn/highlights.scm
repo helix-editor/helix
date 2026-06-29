@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ; Assume all-caps names are constants
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]+$'"))
@@ -65,7 +67,7 @@
 (do_while_statement) @keyword.control.repeat
 (switch_statement) @keyword.control.conditional
 (switch_case) @keyword.control.conditional
-(ternary_expression) @conditional.ternary
+(ternary_expression ["?" ":"] @operator)
 
 ; Expressions
 (view_as) @function.builtin
@@ -200,10 +202,8 @@
 (float_literal) @constant.numeric.float
 (string_literal) @string
 (array_literal) @punctuation.bracket
-[
-  (bool_literal)
-  (null)
-] @constant.builtin
+(null) @constant.builtin
+(bool_literal) @constant.builtin.boolean
 ((identifier) @constant
   (#match? @constant "INVALID_HANDLE"))
 
@@ -252,4 +252,3 @@
   "while"
 ] @keyword
 
-(identifier) @variable

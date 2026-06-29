@@ -11,8 +11,8 @@
     (word) @variable.parameter
     (concatenation
       (word) @variable.parameter)
-    (macro_expansion) @function.call
-    (macro_simple_expansion) @function.call
+    (macro_expansion) @function
+    (macro_simple_expansion) @function
   ])
 
 ; Highlight macro options in parametric expansions
@@ -24,7 +24,7 @@
   argument: (_) @variable.parameter)
 
 (macro_expansion
-  (identifier) @function.call
+  (identifier) @function
   argument: [
     (word) @variable.parameter
     (concatenation
@@ -176,7 +176,7 @@
   "%elifos"
   "%else"
   "%endif"
-] @keyword.conditional
+] @keyword.control.conditional
 
 ; Fallback rule for identifiers (commented out due to conflicts with parametric macros)
 ; (identifier) @variable

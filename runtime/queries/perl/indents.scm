@@ -1,10 +1,8 @@
 [
   (block)
-  (conditional_statement)
   (loop_statement)
   (cstyle_for_statement)
   (for_statement)
-  (elsif)
   (array_element_expression)
   (hash_element_expression)
   (coderef_call_expression)

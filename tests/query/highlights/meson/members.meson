@@ -1,0 +1,4 @@
+x = obj.do_thing()
+#       ^ @function
+y = obj.field
+#       ^ @variable.other.member

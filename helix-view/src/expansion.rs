@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 
 use crate::Editor;
 
@@ -128,6 +128,7 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
         }
         TokenKind::Expand => expand_inner(editor, token.content),
         TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content),
+        TokenKind::Expansion(ExpansionKind::Register) => expand_register(editor, token.content),
         // Note: see the docs for this variant.
         TokenKind::ExpansionKind => unreachable!(
             "expansion name tokens cannot be emitted when command line validation is enabled"
@@ -181,6 +182,22 @@ pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a
     }
 
     Ok(Cow::Owned(text))
+}
+
+/// Expand a register's contents
+pub fn expand_register<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, str>> {
+    let mut chars = content.chars();
+    let Some(r) = chars.next() else {
+        bail!("Missing register name");
+    };
+    ensure!(
+        chars.next().is_none(),
+        "Invalid register `{content}`: should only be a single character"
+    );
+    match editor.registers.read(r, editor) {
+        Some(values) => Ok(Cow::Owned(values.collect())),
+        None => Ok(Cow::Borrowed("")),
+    }
 }
 
 /// Expand a token's contents recursively.

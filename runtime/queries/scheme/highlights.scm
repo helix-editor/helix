@@ -124,8 +124,8 @@
 
 (list
   .
-  ((symbol) @keyword.conditional
-   (#any-of? @keyword.conditional "if" "cond" "case" "when" "unless")))
+  ((symbol) @keyword.control.conditional
+   (#any-of? @keyword.control.conditional "if" "cond" "case" "when" "unless")))
 
 (list
   .

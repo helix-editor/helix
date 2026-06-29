@@ -97,3 +97,6 @@
 | `:read`, `:r` | Load a file into buffer |
 | `:echo` | Prints the given arguments to the statusline. |
 | `:noop` | Does nothing. |
+| `:workspace-trust` | Allow language servers and local config for the current workspace. |
+| `:workspace-untrust` | Revoke the current workspace's trust grant or exclusion. |
+| `:workspace-exclude` | Mark the current workspace as never-prompt. Never prompts for trust again. |
