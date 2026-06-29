@@ -1,7 +1,7 @@
 {
   x = map double items;
-//    ^ @function.builtin
+#     ^ @function.builtin
   y = builtins.length items;
-//    ^ @constant.builtin
-//             ^ @function.builtin
+#     ^ @constant.builtin
+#              ^ @function.builtin
 }
