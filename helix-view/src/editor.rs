@@ -1291,6 +1291,9 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
+    pub diff_sessions: Vec<crate::diff_session::DiffSession>,
+    /// Holds the first view that called `:diffthis`, waiting for a second call to complete the pair.
+    pub pending_diff_this: Option<ViewId>,
 
     pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -1441,6 +1444,8 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
+            diff_sessions: Vec::new(),
+            pending_diff_this: None,
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -2151,6 +2156,11 @@ impl Editor {
             doc.remove_view(id);
         }
         self.tree.remove(id);
+        // Prune any diff sessions whose view or pending marker matches the closed view.
+        self.diff_sessions.retain(|s| !s.contains_view(id));
+        if self.pending_diff_this == Some(id) {
+            self.pending_diff_this = None;
+        }
         self._refresh();
     }
 
@@ -2165,6 +2175,8 @@ impl Editor {
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
+        // Prune any diff sessions that reference the document being closed.
+        self.diff_sessions.retain(|s| !s.contains_doc(doc_id));
 
         enum Action {
             Close(ViewId),
@@ -2281,10 +2293,19 @@ impl Editor {
             return;
         }
 
+        let prev_id = self.tree.focus;
+
         // Reset mode to normal and ensure any pending changes are committed in the old document.
         self.enter_normal_mode();
         let (view, doc) = current!(self);
         doc.append_changes_to_history(view);
+
+        // If the source and destination are paired in a diff session, move the
+        // destination's cursor to the corresponding partner line before scroll
+        // sync so ensure_cursor_in_view scrolls to the new position rather than
+        // the partner view's last-known cursor.
+        self.sync_diff_cursor(prev_id, view_id);
+
         self.ensure_cursor_in_view(view_id);
         // Update jumplist selections with new document changes.
         for (view, _focused) in self.tree.views_mut() {
@@ -2292,7 +2313,7 @@ impl Editor {
             view.sync_changes(doc);
         }
 
-        let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
+        self.tree.focus = view_id;
         doc_mut!(self).mark_as_focused();
 
         let focus_lost = self.tree.get(prev_id).doc;
@@ -2300,6 +2321,57 @@ impl Editor {
             editor: self,
             doc: focus_lost,
         });
+    }
+
+    /// Place `dest_view_id`'s primary cursor at the line on its document that
+    /// corresponds to `source_view_id`'s primary cursor, mapped through the
+    /// diff session's hunks. No-op when the two views aren't paired in the
+    /// same `DiffSession`.
+    fn sync_diff_cursor(&mut self, source_view_id: ViewId, dest_view_id: ViewId) {
+        // Only sync when source and dest are actual partners in the same
+        // session. If either view was closed or they belong to different
+        // sessions, skip - we must not write to a foreign view's selection.
+        let Some(source_side) =
+            crate::diff_session::paired_side(&self.diff_sessions, source_view_id, dest_view_id)
+        else {
+            return;
+        };
+
+        let Some(source_doc_id) = self.tree.try_get(source_view_id).map(|v| v.doc) else {
+            return;
+        };
+        let source_doc = &self.documents[&source_doc_id];
+        let source_text = source_doc.text().slice(..);
+        let source_cursor = source_doc
+            .selection(source_view_id)
+            .primary()
+            .cursor(source_text);
+        let source_line = source_text.char_to_line(source_cursor) as u32;
+
+        let Some(dest_doc_id) = self.tree.try_get(dest_view_id).map(|v| v.doc) else {
+            return;
+        };
+
+        let dest_char = {
+            let dest_text = self.documents[&dest_doc_id].text().slice(..);
+            let dest_line_count = dest_text.len_lines() as u32;
+            let Some(mapped_line) = self
+                .diff_sessions
+                .iter()
+                .find(|s| s.contains_view(source_view_id))
+                .map(|s| s.map_to_real_line(source_side, source_line, dest_line_count))
+            else {
+                return;
+            };
+            let safe_line = (mapped_line as usize).min(dest_line_count.saturating_sub(1) as usize);
+            dest_text.line_to_char(safe_line)
+        };
+
+        let new_selection = helix_core::Selection::point(dest_char);
+        self.documents
+            .get_mut(&dest_doc_id)
+            .unwrap()
+            .set_selection(dest_view_id, new_selection);
     }
 
     pub fn focus_next(&mut self) {
@@ -2333,7 +2405,8 @@ impl Editor {
         let config = self.config();
         let view = self.tree.get(id);
         let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff);
+        self.sync_diff_scroll(id);
     }
 
     #[inline]
@@ -2364,6 +2437,83 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
+    }
+
+    /// Returns the DiffSession containing the given view, if one exists.
+    pub fn diff_session_for(&self, view_id: ViewId) -> Option<&crate::diff_session::DiffSession> {
+        self.diff_sessions.iter().find(|s| s.contains_view(view_id))
+    }
+
+    /// Returns a mutable reference to the DiffSession containing the given view.
+    pub fn diff_session_for_mut(
+        &mut self,
+        view_id: ViewId,
+    ) -> Option<&mut crate::diff_session::DiffSession> {
+        self.diff_sessions
+            .iter_mut()
+            .find(|s| s.contains_view(view_id))
+    }
+
+    /// Synchronize the partner view's scroll position to match the source view.
+    /// Copies the source view's anchor line to the partner view's document.
+    pub fn sync_diff_scroll(&mut self, source_view_id: ViewId) {
+        let session_info = self
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(source_view_id))
+            .and_then(|s| {
+                let partner = s.partner_view(source_view_id)?;
+                let side = s.side_for_view(source_view_id)?;
+                Some((partner, side))
+            });
+        let Some((partner_id, source_side)) = session_info else {
+            return;
+        };
+
+        let Some(source_doc_id) = self.tree.try_get(source_view_id).map(|v| v.doc) else {
+            return;
+        };
+        let source_offset = self.documents[&source_doc_id].view_offset(source_view_id);
+        let source_text = self.documents[&source_doc_id].text().slice(..);
+        let source_line = source_text.char_to_line(source_offset.anchor) as u32;
+
+        let Some(partner_doc_id) = self.tree.try_get(partner_id).map(|v| v.doc) else {
+            return;
+        };
+        let partner_text = self.documents[&partner_doc_id].text().slice(..);
+        let partner_line_count = partner_text.len_lines() as u32;
+
+        // Map through the hunks so the partner anchor lands on the matching
+        // logical line, not just the same line index. Without this, asymmetric
+        // hunks above the anchor would scroll the panes out of sync. The
+        // session lookup must succeed - the early-return at the top already
+        // proved it exists, and we have not mutated diff_sessions since.
+        let partner_line = self
+            .diff_sessions
+            .iter()
+            .find(|s| s.contains_view(source_view_id))
+            .expect("session was just resolved above")
+            .map_to_real_line(source_side, source_line, partner_line_count)
+            as usize;
+        let partner_anchor = partner_text.line_to_char(partner_line);
+
+        let mut partner_offset = self.documents[&partner_doc_id].view_offset(partner_id);
+        if partner_offset.anchor == partner_anchor
+            && partner_offset.vertical_offset == source_offset.vertical_offset
+            && partner_offset.horizontal_offset == source_offset.horizontal_offset
+        {
+            return;
+        }
+        partner_offset.anchor = partner_anchor;
+        partner_offset.vertical_offset = source_offset.vertical_offset;
+        // Mirror the source's horizontal scroll. Without this the panes drift
+        // sideways the moment the user scrolls right past wrap width on one
+        // side; with soft-wrap off, that's any line longer than the viewport.
+        partner_offset.horizontal_offset = source_offset.horizontal_offset;
+        self.documents
+            .get_mut(&partner_doc_id)
+            .unwrap()
+            .set_view_offset(partner_id, partner_offset);
     }
 
     /// Returns all supported diagnostics for the document
