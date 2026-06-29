@@ -242,9 +242,10 @@ pub fn breakpoints<'doc>(
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
-    let breakpoints = match breakpoints {
-        Some(breakpoints) => breakpoints,
-        None => return Box::new(move |_, _, _, _| None),
+    let breadcrumbs_enabled = editor.config().breadcrumb.enable;
+
+    let Some(breakpoints) = breakpoints else {
+        return Box::new(move |_, _, _, _| None);
     };
 
     Box::new(
@@ -254,7 +255,7 @@ pub fn breakpoints<'doc>(
             }
             let breakpoint = breakpoints
                 .iter()
-                .find(|breakpoint| breakpoint.line == line)?;
+                .find(|breakpoint| breakpoint.line == line + usize::from(breadcrumbs_enabled))?;
 
             let style = if breakpoint.condition.is_some() && breakpoint.log_message.is_some() {
                 error.underline_style(UnderlineStyle::Line)
