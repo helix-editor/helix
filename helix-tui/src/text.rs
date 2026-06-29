@@ -249,6 +249,12 @@ impl<'a> From<Cow<'a, str>> for Spans<'a> {
     }
 }
 
+impl<'a> FromIterator<Span<'a>> for Spans<'a> {
+    fn from_iter<T: IntoIterator<Item = Span<'a>>>(iter: T) -> Self {
+        Spans(iter.into_iter().collect())
+    }
+}
+
 impl<'a> From<Vec<Span<'a>>> for Spans<'a> {
     fn from(spans: Vec<Span<'a>>) -> Spans<'a> {
         Spans(spans)

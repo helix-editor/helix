@@ -230,6 +230,8 @@ pub struct Document {
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
 
+    /// Whether to render the welcome screen when opening the document
+    pub is_welcome: bool,
     // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
@@ -770,6 +772,7 @@ impl Document {
             color_swatches: None,
             document_links: Vec::new(),
             color_swatch_controller: TaskController::new(),
+            is_welcome: false,
             document_highlight_controllers: HashMap::new(),
             code_action_controllers: HashMap::new(),
             syn_loader,
@@ -786,6 +789,11 @@ impl Document {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config, syn_loader)
+    }
+
+    pub fn with_welcome(mut self) -> Self {
+        self.is_welcome = true;
+        self
     }
 
     // TODO: async fn?
