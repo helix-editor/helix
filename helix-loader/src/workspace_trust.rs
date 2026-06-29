@@ -458,13 +458,13 @@ fn read_entry(workspace: &Path) -> Option<DiskEntry> {
 
     // Sanity check that we didn't hit a path collision: the path inside the file should match the
     // workspace we looked up.
-    if let Some(stored) = stored_path {
-        if Path::new(&stored) != workspace {
-            log::error!(
-                "workspace trust file {path:?} contains path {stored:?}, expected {workspace:?}"
-            );
-            return None;
-        }
+    if let Some(stored) = stored_path
+        && Path::new(&stored) != workspace
+    {
+        log::error!(
+            "workspace trust file {path:?} contains path {stored:?}, expected {workspace:?}"
+        );
+        return None;
     }
 
     Some(DiskEntry { hash, excluded })
@@ -558,10 +558,10 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
             // Symlinks to files (extremely common: dotfiles managers symlink `.helix/config.toml`
             // to an external location). Follow once via `fs::metadata` which traverses links, then
             // include the file in the hash so mutations to the *target* are still detected.
-            if let Ok(target) = fs::metadata(&path) {
-                if target.is_file() {
-                    out.push(path);
-                }
+            if let Ok(target) = fs::metadata(&path)
+                && target.is_file()
+            {
+                out.push(path);
             }
         }
     }
