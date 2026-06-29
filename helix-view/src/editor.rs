@@ -434,6 +434,8 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// Whether the terminal cursor follows the selected row in pickers.
+    pub picker_cursor_follows_selection: bool,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -1240,6 +1242,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            picker_cursor_follows_selection: false,
         }
     }
 }
