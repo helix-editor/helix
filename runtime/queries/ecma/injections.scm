@@ -101,3 +101,25 @@
   arguments: (arguments
                (string (string_fragment) @injection.content))
   (#set! injection.language "css"))
+
+; styled-components / emotion: inject CSS into styled template literals.
+; `createGlobalStyle``, `keyframes``, `injectGlobal``
+(call_expression
+  function: (identifier) @_name
+    (#any-of? @_name "createGlobalStyle" "keyframes" "injectGlobal")
+  arguments: (template_string (string_fragment) @injection.content)
+  (#set! injection.language "css"))
+
+; `styled.div``, `styled.button``, ...
+(call_expression
+  function: (member_expression
+    object: (identifier) @_styled (#eq? @_styled "styled"))
+  arguments: (template_string (string_fragment) @injection.content)
+  (#set! injection.language "css"))
+
+; `styled(Component)``
+(call_expression
+  function: (call_expression
+    function: (identifier) @_styled (#eq? @_styled "styled"))
+  arguments: (template_string (string_fragment) @injection.content)
+  (#set! injection.language "css"))

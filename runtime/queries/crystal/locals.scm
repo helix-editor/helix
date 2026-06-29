@@ -12,3 +12,9 @@
   lhs: (identifier) @local.definition.variable)
 
 (identifier) @local.reference
+
+; Call/keyword-argument names look like identifiers but aren't variable refs.
+(call
+  method: (identifier) @_)
+(named_expr
+  name: (identifier) @_)

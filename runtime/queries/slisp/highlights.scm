@@ -29,7 +29,7 @@
 (external_definition return_type: (external_type) @type.builtin)
 
 ;; Function definitions
-[ "def" ] @keyword
+[ "def" ] @keyword.function
 
 (function_definition name: (symbol) @function)
 (function_definition parameters: (parameters (symbol) @variable.parameter))

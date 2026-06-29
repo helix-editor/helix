@@ -101,6 +101,12 @@
 
 (identifier) @variable
 
+; Member access. The last segment of a dotted access is the member; placed
+; before the @constant and function_call rules below so `o.CONST` stays a
+; constant and `o.method()` reclaims @function.
+(dotted_identifier
+  (identifier) @variable.other.member .)
+
 ((identifier) @constant
   (#match? @constant "^[A-Z][A-Z_]+"))
 

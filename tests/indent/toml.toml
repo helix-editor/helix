@@ -1,0 +1,38 @@
+title = "example"
+version = 2
+
+[package]
+name = "helix"
+edition = "2021"
+
+[dependencies]
+serde = "1.0"
+features = [
+  "derive",
+  "rc",
+]
+matrix = [
+  [
+    1,
+    2,
+  ],
+  [
+    3,
+    4,
+  ],
+]
+
+[nested.table]
+enabled = true
+point = { x = 1, y = 2 }
+servers = [
+  { name = "a", port = 1 },
+  { name = "b", port = 2 },
+]
+
+[[bin]]
+name = "hx"
+path = "src/main.rs"
+
+[[bin]]
+name = "xtask"

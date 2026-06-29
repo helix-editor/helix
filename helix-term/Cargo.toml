@@ -64,9 +64,7 @@ termini = "1"
 indexmap = { version = "2.14", features = ["serde"] }
 
 # Logging
-fern = "0.7"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 
 # File picker
 nucleo.workspace = true
@@ -76,13 +74,10 @@ grep-searcher = "0.1"
 grep-matcher = "0.1"
 # markdown doc rendering
 pulldown-cmark = { version = "0.13", default-features = false }
-# file type detection
-content_inspector = "0.2.4"
 thiserror.workspace = true
 
 # opening URLs
-open = "5.3.4"
-url = "2.5.4"
+open = "5.3.5"
 
 # config
 toml.workspace = true
@@ -90,7 +85,7 @@ toml.workspace = true
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
-dashmap = "6.0"
+dashmap = "6.2"
 
 parking_lot.workspace = true
 
