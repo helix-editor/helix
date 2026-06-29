@@ -20,8 +20,8 @@ use helix_stdx::path;
 use slotmap::SlotMap;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use hashbrown::HashMap;
 use std::{
-    collections::HashMap,
     fs,
     path::{Path, PathBuf},
     sync::Arc,

@@ -2,7 +2,7 @@
 //! this module provides the functionality to insert the paired closing character.
 
 use crate::{graphemes, movement::Direction, Change, Deletion, Range, Rope, Tendril};
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 // Heavily based on https://github.com/codemirror/closebrackets/
 pub const DEFAULT_PAIRS: &[(char, char)] = &[

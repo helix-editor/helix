@@ -1,11 +1,10 @@
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     DocumentSelector, DynamicRegistrationClientCapabilities, Range, TextDocumentIdentifier,
     TextDocumentPositionParams, WorkDoneProgressParams,
 };
-
-use std::collections::HashMap;
 
 pub type DocumentFormattingClientCapabilities = DynamicRegistrationClientCapabilities;
 pub type DocumentRangeFormattingClientCapabilities = DynamicRegistrationClientCapabilities;

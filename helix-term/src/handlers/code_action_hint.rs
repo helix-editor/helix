@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 
 use futures_util::stream::FuturesUnordered;
 use helix_event::{cancelable_future, register_hook, send_blocking, AsyncHook};
@@ -13,6 +13,8 @@ use helix_view::{
 };
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
+
+use hashbrown::HashSet;
 
 use crate::{commands::code_actions_for_range, job};
 

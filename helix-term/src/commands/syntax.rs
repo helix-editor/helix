@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     iter,
     path::{Path, PathBuf},
     sync::Arc,
@@ -9,6 +8,7 @@ use dashmap::DashMap;
 use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
+use hashbrown::HashSet;
 use helix_core::{
     syntax::{Loader, QueryMatchIterEvent},
     Rope, RopeSlice, Selection, Syntax, Uri,

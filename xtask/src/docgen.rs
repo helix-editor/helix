@@ -7,7 +7,7 @@ use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
 use helix_view::document::Mode;
 
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";

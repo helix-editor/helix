@@ -1,9 +1,9 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
+use hashbrown::HashMap;
 use helix_loader::merge_toml_values;
 use helix_view::{document::Mode, theme};
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;

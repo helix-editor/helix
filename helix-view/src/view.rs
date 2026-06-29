@@ -17,10 +17,9 @@ use helix_core::{
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
 };
 
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
+use std::{collections::VecDeque, fmt};
+
+use hashbrown::HashMap;
 
 const JUMP_LIST_CAPACITY: usize = 30;
 

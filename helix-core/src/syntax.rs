@@ -2,7 +2,6 @@ pub mod config;
 
 use std::{
     borrow::Cow,
-    collections::HashMap,
     fmt, iter,
     ops::{self, RangeBounds},
     path::Path,
@@ -13,7 +12,7 @@ use std::{
 use anyhow::{Context, Result};
 use arc_swap::{ArcSwap, Guard};
 use config::{Configuration, FileType, LanguageConfiguration, LanguageServerConfiguration};
-use foldhash::HashSet;
+use hashbrown::{HashMap, HashSet};
 use helix_loader::grammar::get_language;
 use helix_stdx::rope::RopeSliceExt as _;
 use once_cell::sync::OnceCell;

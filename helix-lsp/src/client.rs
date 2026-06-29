@@ -11,6 +11,7 @@ use crate::lsp::{
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
+use hashbrown::HashMap;
 use helix_core::{
     find_workspace,
     syntax::config::{LanguageServerFeature, RootMarkers},
@@ -21,7 +22,7 @@ use helix_stdx::path;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 use std::{
     ffi::OsStr,
     sync::{

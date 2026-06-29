@@ -1,7 +1,8 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{borrow::Cow, iter};
 
 use anyhow::Result;
 use arc_swap::access::DynAccess;
+use hashbrown::HashMap;
 use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{

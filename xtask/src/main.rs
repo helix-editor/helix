@@ -8,7 +8,7 @@ type DynError = Box<dyn Error>;
 
 pub mod tasks {
     use crate::DynError;
-    use std::collections::HashSet;
+    use hashbrown::HashSet;
 
     pub fn docgen() -> Result<(), DynError> {
         use crate::docgen::*;

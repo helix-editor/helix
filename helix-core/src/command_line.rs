@@ -25,7 +25,8 @@
 //! This module also defines structs for configuring the parsing of the command line for a
 //! command. See `Flag` and `Signature`.
 
-use std::{borrow::Cow, collections::HashMap, error::Error, fmt, ops, slice, vec};
+use hashbrown::HashMap;
+use std::{borrow::Cow, error::Error, fmt, ops, slice, vec};
 
 /// Splits a command line into the command and arguments parts.
 ///
