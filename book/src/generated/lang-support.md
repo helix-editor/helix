@@ -88,7 +88,7 @@
 | gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
-| ghostty | ✓ |  |  |  |  |  |
+| ghostty | ✓ |  |  |  |  | `ghostty-ls` |
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
