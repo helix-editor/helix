@@ -89,3 +89,10 @@ first line
     indented in string
 back"""
     return text
+
+
+def last_line_bug():
+    x = 1
+    return x
+def immediate_follower():
+    pass
