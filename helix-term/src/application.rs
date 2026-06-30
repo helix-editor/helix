@@ -206,6 +206,10 @@ impl Application {
                         doc.set_selection(view_id, selection);
                     }
                 }
+                let first_view = editor.tree.views().map(|(view, _)| view.id).next();
+                if let Some(first_view) = first_view {
+                    editor.focus(first_view);
+                }
 
                 // if all files were invalid, replace with empty buffer
                 if nr_of_files == 0 {
