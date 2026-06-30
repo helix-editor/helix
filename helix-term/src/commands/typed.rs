@@ -2457,15 +2457,7 @@ fn set_diff_base(
         .ok_or_else(|| anyhow::anyhow!("expected a git revision (branch name, commit SHA, HEAD~, etc.)"))?
         .to_string();
 
-    let (path, uses_cwd) = if let Some(doc_path) = doc!(cx.editor).path() {
-        (doc_path.to_path_buf(), false)
-    } else {
-        let cwd = helix_stdx::env::current_working_dir();
-        if !cwd.exists() {
-            bail!("current buffer has no path and current working directory does not exist");
-        }
-        (cwd, true)
-    };
+    let (path, uses_cwd) = diff_base_target_path(cx.editor)?;
 
     cx.editor.set_diff_base_override(&path, revision.clone())?;
     cx.editor.set_status(if uses_cwd {
@@ -2485,18 +2477,39 @@ fn reset_diff_base(
         return Ok(());
     }
 
-    let path = doc!(cx.editor)
-        .path()
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| anyhow::anyhow!("current buffer has no path"))?;
+    let (path, uses_cwd) = diff_base_target_path(cx.editor)?;
 
     let removed = cx.editor.clear_diff_base_override(&path)?;
     cx.editor.set_status(if removed {
-        "Diff base reset to HEAD"
+        if uses_cwd {
+            "Diff base for current working directory reset to HEAD"
+        } else {
+            "Diff base reset to HEAD"
+        }
     } else {
-        "Diff base already uses HEAD"
+        if uses_cwd {
+            "Diff base for current working directory already uses HEAD"
+        } else {
+            "Diff base already uses HEAD"
+        }
     });
     Ok(())
+}
+
+/// Get the target path for diff base operations.
+/// Returns the document path if available, otherwise the current working directory.
+/// The bool indicates whether the cwd was used (true) or a document path (false).
+fn diff_base_target_path(editor: &mut Editor) -> anyhow::Result<(PathBuf, bool)> {
+    if let Some(path) = doc!(editor).path() {
+        return Ok((path.to_path_buf(), false));
+    }
+
+    let cwd = helix_stdx::env::current_working_dir();
+    if !cwd.exists() {
+        bail!("current buffer has no path and current working directory does not exist");
+    }
+
+    Ok((cwd, true))
 }
 
 fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {

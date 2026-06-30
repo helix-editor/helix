@@ -43,6 +43,8 @@ impl DiffProviderRegistry {
         })
     }
 
+    /// Get the absolute path to the repository root (working tree) for a given file.
+    /// Tries each provider in order until one succeeds.
     pub fn get_repo_root(&self, file: &Path) -> Result<PathBuf> {
         let mut last_err = None;
         for provider in &self.providers {
@@ -55,9 +57,11 @@ impl DiffProviderRegistry {
                 }
             }
         }
-        Err(last_err.unwrap_or_else(|| anyhow!("no diff provider returns success")))
+        Err(last_err.unwrap_or_else(|| anyhow!("no diff provider gives the root")))
     }
 
+    /// Validates that a given diff base revision exists and is accessible.
+    /// Tries each provider in order until one succeeds.
     pub fn ensure_diff_base(&self, file: &Path, diff_base_revision: &str) -> Result<()> {
         let mut last_err = None;
         for provider in &self.providers {
@@ -79,16 +83,16 @@ impl DiffProviderRegistry {
 
     /// Get the current name of the current [HEAD](https://stackoverflow.com/questions/2304087/what-is-head-in-git).
     pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
-        self.providers.iter().find_map(|provider| {
-            match provider.get_current_head_name(file) {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.get_current_head_name(file) {
                 Ok(res) => Some(res),
                 Err(err) => {
                     log::debug!("{err:#?}");
                     log::debug!("failed to obtain current head name for {}", file.display());
                     None
                 }
-            }
-        })
+            })
     }
 
     /// Fire-and-forget changed file iteration. Runs everything in a background task. Keeps
@@ -97,7 +101,7 @@ impl DiffProviderRegistry {
         self,
         cwd: PathBuf,
         diff_base_revision: Option<String>,
-        mut f: impl FnMut(Result<FileChange>) -> bool + Send + 'static,
+        f: impl Fn(Result<FileChange>) -> bool + Send + 'static,
     ) {
         tokio::task::spawn_blocking(move || {
             if self
@@ -105,7 +109,7 @@ impl DiffProviderRegistry {
                 .iter()
                 .find_map(|provider| {
                     provider
-                        .for_each_changed_file(&cwd, diff_base_revision.as_deref(), &mut f)
+                        .for_each_changed_file(&cwd, diff_base_revision.as_deref(), &f)
                         .ok()
                 })
                 .is_none()
@@ -149,26 +153,23 @@ impl DiffProvider {
         }
     }
 
-    fn get_repo_root(&self, _file: &Path) -> Result<PathBuf> {
+    fn get_repo_root(&self, file: &Path) -> Result<PathBuf> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::get_repo_root(_file),
+            Self::Git => git::get_repo_root(file),
             Self::None => bail!("No diff support compiled in"),
         }
     }
 
-    fn ensure_diff_base(&self, _file: &Path, _diff_base_revision: &str) -> Result<()> {
+    fn ensure_diff_base(&self, file: &Path, diff_base_revision: &str) -> Result<()> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::ensure_diff_base(_file, _diff_base_revision),
+            Self::Git => git::ensure_diff_base(file, diff_base_revision),
             Self::None => bail!("No diff support compiled in"),
         }
     }
 
-    fn get_current_head_name(
-        &self,
-        file: &Path,
-    ) -> Result<Arc<ArcSwap<Box<str>>>> {
+    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::get_current_head_name(file),
@@ -180,7 +181,7 @@ impl DiffProvider {
         &self,
         cwd: &Path,
         diff_base_revision: Option<&str>,
-        f: impl FnMut(Result<FileChange>) -> bool,
+        f: impl Fn(Result<FileChange>) -> bool,
     ) -> Result<()> {
         match self {
             #[cfg(feature = "git")]
