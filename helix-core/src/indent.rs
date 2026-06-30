@@ -550,8 +550,12 @@ fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u
 }
 fn get_node_end_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
     let mut node_line = text.byte_to_line(node.end_byte() as usize);
-    // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
-    if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
+    // When inserting a new line, bump the scope end if the node's exclusive end
+    // byte is at or after the newline position. The `>=` (rather than `>`) is
+    // intentional: in Python (and similar languages) the last token of a block
+    // ends exactly at the newline byte (exclusive end == newline byte), and we
+    // still want the scope to cover the newly inserted line.
+    if new_line_byte_pos.is_some_and(|pos| node.end_byte() >= pos) {
         node_line += 1;
     }
     node_line
@@ -829,6 +833,27 @@ fn init_indent_query<'a, 'b>(
             }
             prec
         });
+
+        // When typing a newline, byte_pos is the newline character itself.
+        // Tree-sitter's exclusive byte ranges place the newline byte outside
+        // all statement nodes (e.g. `function_definition.end_byte()` equals
+        // the newline byte, not one past it), so `descendant_for_byte_range`
+        // bubbles up to the parent (often the module root). Descend into the
+        // last preceding child so that extend-walks and containment-walks
+        // start inside the enclosing scope rather than at the root.
+        if new_line_byte_pos.is_some() {
+            if let Some(ref dp) = deepest_preceding {
+                let mut ancestor = dp.clone();
+                while let Some(parent) = ancestor.parent() {
+                    if parent.id() == node.id() {
+                        node = ancestor;
+                        break;
+                    }
+                    ancestor = parent;
+                }
+            }
+        }
+
         // When typing a newline, the body the new line opens is a sibling past
         // the cursor — extend the query range to cover it so its capture (and
         // in particular its `(#set! "scope" "header")` annotation) is present
