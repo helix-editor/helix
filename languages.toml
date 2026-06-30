@@ -158,6 +158,7 @@ ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
 vale-ls = { command = "vale-ls" }
+varlink-language-server = { command = "varlink-language-server" }
 verible-verilog-ls = { command = "verible-verilog-ls" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v-analyzer" }
@@ -5510,3 +5511,16 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "concerto"
 source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "920ba23ea93af56b19dfc38fcddf80b3ddc62685" }
+
+[[language]]
+name = "varlink"
+scope = "source.varlink"
+file-types = ["varlink"]
+injection-regex = "varlink"
+indent = { tab-width = 2, unit = "  " }
+comment-token = "#"
+language-servers = ["varlink-language-server"]
+
+[[grammar]]
+name = "varlink"
+source = { git = "https://github.com/bachorp/tree-sitter-varlink", rev = "a80ecffda60b28612cbda652e38d97c1d8b90568" }

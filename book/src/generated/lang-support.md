@@ -311,6 +311,7 @@
 | uxntal | ✓ |  |  |  |  |  |
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
+| varlink | ✓ |  |  |  |  | `varlink-language-server` |
 | vento | ✓ |  |  |  |  |  |
 | verilog | ✓ | ✓ |  |  |  | `verible-verilog-ls` |
 | vhdl | ✓ |  |  |  |  | `vhdl_ls` |
