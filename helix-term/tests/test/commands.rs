@@ -1,4 +1,6 @@
 use helix_term::application::Application;
+use helix_view::current_ref;
+use std::{fs::File, io::Write, path::Path, process::Command};
 
 use super::*;
 
@@ -7,6 +9,50 @@ mod movement;
 mod reverse_selection_contents;
 mod rotate_selection_contents;
 mod write;
+
+fn exec_git_cmd(args: &[&str], git_dir: &Path) {
+    let res = Command::new("git")
+        .arg("-C")
+        .arg(git_dir)
+        .args(args)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_TERMINAL_PROMPT", "false")
+        .env("GIT_AUTHOR_DATE", "2000-01-01 00:00:00 +0000")
+        .env("GIT_AUTHOR_EMAIL", "author@example.com")
+        .env("GIT_AUTHOR_NAME", "author")
+        .env("GIT_COMMITTER_DATE", "2000-01-02 00:00:00 +0000")
+        .env("GIT_COMMITTER_EMAIL", "committer@example.com")
+        .env("GIT_COMMITTER_NAME", "committer")
+        .env("GIT_CONFIG_COUNT", "2")
+        .env("GIT_CONFIG_KEY_0", "commit.gpgsign")
+        .env("GIT_CONFIG_VALUE_0", "false")
+        .env("GIT_CONFIG_KEY_1", "init.defaultBranch")
+        .env("GIT_CONFIG_VALUE_1", "main")
+        .output()
+        .unwrap();
+    if !res.status.success() {
+        println!("{}", String::from_utf8_lossy(&res.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&res.stderr));
+        panic!("git command failed: {:?}", args);
+    }
+}
+
+fn create_git_commit(repo: &Path, message: &str) {
+    exec_git_cmd(&["add", "-A"], repo);
+    exec_git_cmd(&["commit", "-m", message], repo);
+}
+
+fn current_diff_base_text(app: &Application) -> String {
+    let (_, doc) = current_ref!(app.editor);
+    doc.diff_handle()
+        .expect("document should have a diff handle")
+        .load()
+        .diff_base()
+        .slice(..)
+        .to_string()
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn search_selection_detect_word_boundaries_at_eof() -> anyhow::Result<()> {
@@ -801,6 +847,49 @@ async fn test_read_file() -> anyhow::Result<()> {
 
     let expected_contents = LineFeedHandling::Native.apply(contents_to_read);
     helpers::assert_file_has_content(&mut file, &expected_contents)?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn set_diff_base_updates_open_document() -> anyhow::Result<()> {
+    let repo = tempfile::tempdir()?;
+    exec_git_cmd(&["init"], repo.path());
+    exec_git_cmd(&["config", "user.email", "test@helix.org"], repo.path());
+    exec_git_cmd(&["config", "user.name", "helix-test"], repo.path());
+
+    let file = repo.path().join("file.txt");
+    File::create(&file)?.write_all(b"main")?;
+    create_git_commit(repo.path(), "main");
+
+    exec_git_cmd(&["checkout", "-b", "feature"], repo.path());
+    File::create(&file)?.write_all(b"feature")?;
+    create_git_commit(repo.path(), "feature");
+
+    let mut app = helpers::AppBuilder::new().with_file(&file, None).build()?;
+    assert_eq!(current_diff_base_text(&app), "feature");
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                Some(":set-diff-base main<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+                    assert_eq!(current_diff_base_text(app), "main");
+                }),
+            ),
+            (
+                Some(":reset-diff-base<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+                    assert_eq!(current_diff_base_text(app), "feature");
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
 
     Ok(())
 }

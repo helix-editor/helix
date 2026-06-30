@@ -796,6 +796,9 @@ pub enum StatusLineElement {
     /// Current version control information
     VersionControl,
 
+    /// The active diff base used for comparison
+    DiffBase,
+
     /// Indicator for selected register
     Register,
 
@@ -1291,6 +1294,7 @@ pub struct Editor {
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
+    pub diff_base_overrides: HashMap<PathBuf, String>,
 
     pub debug_adapters: dap::registry::Registry,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
@@ -1441,6 +1445,7 @@ impl Editor {
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
+            diff_base_overrides: HashMap::new(),
             debug_adapters: dap::registry::Registry::new(),
             breakpoints: HashMap::new(),
             syn_loader,
@@ -2098,6 +2103,81 @@ impl Editor {
         self.document_by_path(path).map(|doc| doc.id)
     }
 
+    pub fn diff_base_override(&self, path: &Path) -> Option<&str> {
+        self.diff_providers
+            .get_repo_root(path)
+            .ok()
+            .and_then(|repo_root| self.diff_base_overrides.get(&repo_root))
+            .map(String::as_str)
+    }
+
+    /// Get the diff base override (custom revision) for the repository containing the given directory.
+    pub fn diff_base_override_for_dir(&self, dir: &Path) -> Option<&str> {
+        self.diff_providers
+            .get_repo_root(dir)
+            .ok()
+            .and_then(|repo_root| self.diff_base_overrides.get(&repo_root))
+            .map(String::as_str)
+    }
+
+    /// Get the diff base override for a path, with trust parameter (for gitbase-picker feature)
+    pub fn diff_base_override_with_trust(&self, path: &Path, _trust: bool) -> Option<&str> {
+        self.diff_base_override(path)
+    }
+
+    /// Get the diff base override for a directory, with trust parameter (for gitbase-picker feature)
+    pub fn diff_base_override_for_dir_with_trust(&self, dir: &Path, _trust: bool) -> Option<&str> {
+        self.diff_base_override_for_dir(dir)
+    }
+
+    pub fn set_diff_base_override(
+        &mut self,
+        path: &Path,
+        diff_base_revision: String,
+    ) -> Result<(), Error> {
+        let repo_root = self.diff_providers.get_repo_root(path)?;
+        self.diff_providers
+            .ensure_diff_base(path, &diff_base_revision)?;
+        self.diff_base_overrides
+            .insert(repo_root.clone(), diff_base_revision);
+        self.refresh_diff_base_for_repo(&repo_root);
+        Ok(())
+    }
+
+    pub fn clear_diff_base_override(&mut self, path: &Path) -> Result<bool, Error> {
+        let repo_root = self.diff_providers.get_repo_root(path)?;
+        let removed = self.diff_base_overrides.remove(&repo_root).is_some();
+        self.refresh_diff_base_for_repo(&repo_root);
+        Ok(removed)
+    }
+
+    fn refresh_diff_base_for_repo(&mut self, repo_root: &Path) {
+        let docs: Vec<_> = self
+            .documents()
+            .filter_map(|doc| {
+                let path = doc.path()?.to_path_buf();
+                (self.diff_providers.get_repo_root(&path).ok().as_deref() == Some(repo_root))
+                    .then_some((doc.id(), path))
+            })
+            .collect();
+
+        for (doc_id, path) in docs {
+            let diff_base_revision = self.diff_base_override(&path).map(ToOwned::to_owned);
+            let diff_base = self
+                .diff_providers
+                .get_diff_base(&path, diff_base_revision.as_deref());
+            let version_control_head = self.diff_providers.get_current_head_name(&path);
+
+            if let Some(doc) = self.document_mut(doc_id) {
+                match diff_base {
+                    Some(diff_base) => doc.set_diff_base(diff_base),
+                    None => doc.clear_diff_base(),
+                }
+                doc.set_version_control_head(version_control_head);
+            }
+        }
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
@@ -2118,15 +2198,15 @@ impl Editor {
                 Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
             doc.replace_diagnostics(diagnostics, &[], None);
 
-            let trust_full = self
-                .workspace_trust
-                .query(doc.workspace_root(), TrustQuery::Git)
-                .is_trusted();
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path, trust_full) {
+            let diff_base_revision = self.diff_base_override(&path).map(ToOwned::to_owned);
+            if let Some(diff_base) = self
+                .diff_providers
+                .get_diff_base(&path, diff_base_revision.as_deref())
+            {
                 doc.set_diff_base(diff_base);
             }
             doc.set_version_control_head(
-                self.diff_providers.get_current_head_name(&path, trust_full),
+                self.diff_providers.get_current_head_name(&path),
             );
 
             let id = self.new_document(doc);
