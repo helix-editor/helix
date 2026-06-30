@@ -331,9 +331,10 @@ pub struct DocumentInlayHintsId {
 /// A GitHub Copilot inline suggestion held by a [`Document`].
 ///
 /// The full multi-line [`text`](Self::text) is what gets inserted (over
-/// [`range`](Self::range)) when the suggestion is accepted, while
-/// [`display`](Self::display) holds the inline annotation(s) used to render the
-/// ghost text after the cursor.
+/// [`range`](Self::range)) when the suggestion is accepted. The preview is split
+/// across [`display`](Self::display), which renders the first line inline after
+/// the cursor, and [`ghost_lines`](Self::ghost_lines), which renders every
+/// subsequent line on its own virtual line below the cursor's document line.
 #[derive(Debug, Clone)]
 pub struct CopilotCompletion {
     /// The view the suggestion was requested for.
@@ -346,8 +347,13 @@ pub struct CopilotCompletion {
     pub version: i32,
     /// The full suggestion text inserted on accept.
     pub text: String,
-    /// Inline annotations used to render the ghost text preview.
+    /// Inline annotations used to render the ghost text preview. This holds the
+    /// first line of the suggestion, shown inline after the cursor.
     pub display: Vec<InlineAnnotation>,
+    /// The remaining ghost lines (everything after the first line), each shown
+    /// on its own virtual line below the cursor's document line. Each entry
+    /// already contains its own leading whitespace/indentation.
+    pub ghost_lines: Vec<String>,
     /// Opaque identifier used for accept/shown telemetry, if provided.
     pub item_id: Option<String>,
 }

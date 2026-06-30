@@ -391,12 +391,16 @@ fn store_suggestion(
         // ghost text after the cursor.
         let already_typed = cursor.saturating_sub(range.start);
         let ghost: String = item.insert_text.chars().skip(already_typed).collect();
-        let first_line = ghost.split('\n').next().unwrap_or("").to_string();
+        // The first line is rendered inline after the cursor; every subsequent
+        // line is rendered on its own virtual line below the cursor's line.
+        let mut lines = ghost.split('\n');
+        let first_line = lines.next().unwrap_or("").to_string();
         let display = if first_line.is_empty() {
             Vec::new()
         } else {
             vec![InlineAnnotation::new(cursor, first_line)]
         };
+        let ghost_lines: Vec<String> = lines.map(|line| line.to_string()).collect();
 
         let item_id = item_id(&item);
         doc.set_copilot_completion(CopilotCompletion {
@@ -406,6 +410,7 @@ fn store_suggestion(
             version: requested_version,
             text: item.insert_text,
             display,
+            ghost_lines,
             item_id,
         });
         true

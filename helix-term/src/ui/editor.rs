@@ -205,6 +205,11 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+        if is_focused {
+            if let Some(copilot) = text_decorations::InlineCopilot::new(doc, theme, view.id) {
+                decorations.add_decoration(copilot);
+            }
+        }
         render_document(
             surface,
             inner,

@@ -1,5 +1,6 @@
 use crate::{
     align_view,
+    annotations::copilot::CopilotGhostText,
     annotations::diagnostics::InlineDiagnostics,
     document::{DocumentColorSwatches, DocumentInlayHints},
     editor::{GutterConfig, GutterType},
@@ -501,6 +502,15 @@ impl View {
             let style =
                 style.or_else(|| theme.and_then(|t| t.find_highlight("ui.virtual.inlay-hint")));
             text_annotations.add_inline_annotations(&copilot.display, style);
+
+            // Reserve the virtual lines below the cursor line for the remaining
+            // suggestion lines; the matching decoration draws their contents.
+            if !copilot.ghost_lines.is_empty() {
+                text_annotations.add_line_annotation(CopilotGhostText::new(
+                    copilot.anchor,
+                    copilot.ghost_lines.len(),
+                ));
+            }
         }
 
         let config = doc.config.load();
