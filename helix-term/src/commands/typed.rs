@@ -2454,7 +2454,7 @@ fn set_diff_base(
 
     let revision = args
         .first()
-        .ok_or_else(|| anyhow::anyhow!("expected a branch name or commit SHA"))?
+        .ok_or_else(|| anyhow::anyhow!("expected a git revision (branch name, commit SHA, HEAD~, etc.)"))?
         .to_string();
 
     let (path, uses_cwd) = if let Some(doc_path) = doc!(cx.editor).path() {
@@ -3876,7 +3876,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-diff-base",
         aliases: &[],
-        doc: "Set the git diff base for the current repository to a branch name or commit SHA.",
+        doc: "Set the git diff base for the current repository to a branch name, commit SHA, or any git revision (HEAD~, main^2, etc.).",
         fun: set_diff_base,
         completer: CommandCompleter::none(),
         signature: Signature {

@@ -352,13 +352,10 @@ fn resolve_diff_base_commit<'repo>(
         return Ok(repo.head_commit()?);
     };
 
-    if let Ok(mut reference) = repo.find_reference(diff_base_revision) {
-        return Ok(reference.peel_to_commit()?);
-    }
-
-    if let Ok(object_id) = diff_base_revision.parse::<ObjectId>() {
+    // Try to use rev_parse which handles all kinds of references including HEAD~, master~2, etc.
+    if let Ok(object_id) = repo.rev_parse_single(diff_base_revision) {
         return Ok(repo.find_commit(object_id)?);
     }
 
-    bail!("could not resolve git diff base '{diff_base_revision}' as a branch or commit SHA")
+    bail!("could not resolve git diff base '{diff_base_revision}'")
 }
