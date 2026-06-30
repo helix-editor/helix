@@ -3411,12 +3411,22 @@ fn jumplist_picker(cx: &mut Context) {
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
         let doc = doc!(cx.editor, &doc_id);
         let text = doc.text().slice(..);
-        let contents = selection
-            .fragments(text)
-            .map(Cow::into_owned)
-            .collect::<Vec<_>>()
-            .join(" ");
         let line_start = selection.primary().cursor_line(text);
+        let contents = {
+            let fragments = selection
+                .fragments(text)
+                .map(Cow::into_owned)
+                .collect::<Vec<_>>()
+                .join(" ");
+            if fragments.trim().is_empty() {
+                // The selection covers only whitespace (e.g. a bare cursor on a tab or
+                // on indentation), which renders as an empty cell. Fall back to the
+                // line's text so the contents column still shows something meaningful.
+                text.line(line_start).to_string().trim().to_string()
+            } else {
+                fragments
+            }
+        };
 
         JumpMeta {
             id: doc_id,
