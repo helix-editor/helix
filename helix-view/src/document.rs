@@ -159,6 +159,9 @@ pub struct Document {
     /// update from the LSP
     pub inlay_hints_oudated: bool,
 
+    /// The active GitHub Copilot inline suggestion (ghost text), if any.
+    pub(crate) copilot: Option<CopilotCompletion>,
+
     path: Option<PathBuf>,
     relative_path: OnceCell<Option<PathBuf>>,
     /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
@@ -323,6 +326,36 @@ pub struct DocumentInlayHintsId {
     pub first_line: usize,
     /// Last line for which the inlay hints were requested.
     pub last_line: usize,
+}
+
+/// A GitHub Copilot inline suggestion held by a [`Document`].
+///
+/// The full multi-line [`text`](Self::text) is what gets inserted (over
+/// [`range`](Self::range)) when the suggestion is accepted. The preview is split
+/// across [`display`](Self::display), which renders the first line inline after
+/// the cursor, and [`ghost_lines`](Self::ghost_lines), which renders every
+/// subsequent line on its own virtual line below the cursor's document line.
+#[derive(Debug, Clone)]
+pub struct CopilotCompletion {
+    /// The view the suggestion was requested for.
+    pub view_id: ViewId,
+    /// The char index of the cursor at request time (where the ghost text is anchored).
+    pub anchor: usize,
+    /// The char range that is replaced when the suggestion is accepted.
+    pub range: std::ops::Range<usize>,
+    /// The document version the suggestion was requested against.
+    pub version: i32,
+    /// The full suggestion text inserted on accept.
+    pub text: String,
+    /// Inline annotations used to render the ghost text preview. This holds the
+    /// first line of the suggestion, shown inline after the cursor.
+    pub display: Vec<InlineAnnotation>,
+    /// The remaining ghost lines (everything after the first line), each shown
+    /// on its own virtual line below the cursor's document line. Each entry
+    /// already contains its own leading whitespace/indentation.
+    pub ghost_lines: Vec<String>,
+    /// Opaque identifier used for accept/shown telemetry, if provided.
+    pub item_id: Option<String>,
 }
 
 use std::{fmt, mem};
@@ -742,6 +775,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            copilot: None,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             editor_config: EditorConfig::default(),
@@ -1580,6 +1614,8 @@ impl Document {
         };
 
         self.inlay_hints_oudated = true;
+        // Any edit invalidates the current Copilot suggestion.
+        self.copilot = None;
         for text_annotation in self.inlay_hints.values_mut() {
             let DocumentInlayHints {
                 id: _,
@@ -2486,6 +2522,21 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    /// The active Copilot inline suggestion, if any.
+    pub fn copilot_completion(&self) -> Option<&CopilotCompletion> {
+        self.copilot.as_ref()
+    }
+
+    /// Store a Copilot inline suggestion to be rendered as ghost text.
+    pub fn set_copilot_completion(&mut self, completion: CopilotCompletion) {
+        self.copilot = Some(completion);
+    }
+
+    /// Clear any active Copilot inline suggestion. Returns the removed suggestion.
+    pub fn clear_copilot_completion(&mut self) -> Option<CopilotCompletion> {
+        self.copilot.take()
     }
 
     pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {

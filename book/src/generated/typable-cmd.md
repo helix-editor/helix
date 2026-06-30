@@ -100,3 +100,7 @@
 | `:workspace-trust` | Allow language servers and local config for the current workspace. |
 | `:workspace-untrust` | Revoke the current workspace's trust grant or exclusion. |
 | `:workspace-exclude` | Mark the current workspace as never-prompt. Never prompts for trust again. |
+| `:copilot-signin` | Sign in to GitHub Copilot, showing the device code to enter in the browser. |
+| `:copilot-signout` | Sign out of GitHub Copilot. |
+| `:copilot-status` | Show the GitHub Copilot sign-in and enabled status. |
+| `:copilot-toggle` | Toggle GitHub Copilot inline suggestions on or off. |
