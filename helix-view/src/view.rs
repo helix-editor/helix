@@ -491,6 +491,18 @@ impl View {
                 .add_inline_annotations(other_inlay_hints, other_style)
                 .add_inline_annotations(padding_after_inlay_hints, None);
         };
+
+        // Copilot inline suggestion (ghost text) rendered after the cursor.
+        if let Some(copilot) = doc
+            .copilot_completion()
+            .filter(|copilot| copilot.view_id == self.id)
+        {
+            let style = theme.and_then(|t| t.find_highlight("ui.virtual.copilot"));
+            let style =
+                style.or_else(|| theme.and_then(|t| t.find_highlight("ui.virtual.inlay-hint")));
+            text_annotations.add_inline_annotations(&copilot.display, style);
+        }
+
         let config = doc.config.load();
 
         if config.lsp.display_color_swatches {

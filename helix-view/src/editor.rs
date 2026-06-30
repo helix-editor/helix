@@ -434,6 +434,8 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// GitHub Copilot configuration.
+    pub copilot: CopilotConfig,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -456,6 +458,33 @@ impl Default for WorkspaceTrustConfig {
             level: ImplicitTrustLevelConfig::default(),
             prompt: true,
             trusted: Vec::new(),
+        }
+    }
+}
+
+/// User-facing configuration for `[editor.copilot]`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct CopilotConfig {
+    /// Whether the Copilot integration is enabled. Defaults to `false`.
+    pub enable: bool,
+    /// Command used to launch the Copilot language server. Defaults to
+    /// `copilot-language-server` (resolved on `PATH`).
+    pub command: String,
+    /// Arguments passed to the Copilot language server. Defaults to `["--stdio"]`.
+    pub args: Vec<String>,
+    /// Automatically request a suggestion a short while after typing stops.
+    /// Defaults to `true`.
+    pub auto: bool,
+}
+
+impl Default for CopilotConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            command: "copilot-language-server".to_string(),
+            args: vec!["--stdio".to_string()],
+            auto: true,
         }
     }
 }
@@ -1240,6 +1269,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            copilot: CopilotConfig::default(),
         }
     }
 }
@@ -1343,6 +1373,8 @@ pub struct Editor {
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
     pub workspace_trust: WorkspaceTrust,
+    /// GitHub Copilot session state (the running client and toggle).
+    pub copilot: crate::copilot::Copilot,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1421,6 +1453,7 @@ impl Editor {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let copilot = crate::copilot::Copilot::new(conf.copilot.enable);
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -1468,6 +1501,7 @@ impl Editor {
             cursor_cache: CursorCache::default(),
             dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
             workspace_trust,
+            copilot,
         }
     }
 

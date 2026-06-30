@@ -4108,6 +4108,38 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "copilot-signin",
+        aliases: &[],
+        doc: "Sign in to GitHub Copilot, showing the device code to enter in the browser.",
+        fun: copilot_signin,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "copilot-signout",
+        aliases: &[],
+        doc: "Sign out of GitHub Copilot.",
+        fun: copilot_signout,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "copilot-status",
+        aliases: &[],
+        doc: "Show the GitHub Copilot sign-in and enabled status.",
+        fun: copilot_status,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "copilot-toggle",
+        aliases: &[],
+        doc: "Toggle GitHub Copilot inline suggestions on or off.",
+        fun: copilot_toggle,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
     }
 ];
 

@@ -566,3 +566,35 @@ level = "servers"
 # under a matching path. `~` and environment variables are expanded.
 trusted = ["~/src/github.com/me/*"]
 ```
+
+### `[editor.copilot]` Section
+
+Configures the GitHub Copilot inline-suggestion integration. Copilot is driven
+by an external [`copilot-language-server`](https://www.npmjs.com/package/@github/copilot-language-server)
+process, which must be installed separately and reachable on your `PATH` (or
+given an absolute path with `command`).
+
+| Key       | Description                                                                 | Default                      |
+| ---       | ---                                                                         | ---                          |
+| `enable`  | Whether the Copilot integration is enabled.                                 | `false`                      |
+| `command` | The Copilot language server executable.                                     | `"copilot-language-server"`  |
+| `args`    | Arguments passed to the language server.                                    | `["--stdio"]`                |
+| `auto`    | Reserved for automatically requesting suggestions while typing.             | `true`                       |
+
+Example:
+
+```toml
+[editor.copilot]
+enable = true
+command = "copilot-language-server"
+args = ["--stdio"]
+```
+
+Sign in once with `:copilot-signin` (this prints a device code to enter at
+`https://github.com/login/device`), check the connection with `:copilot-status`,
+and toggle suggestions at runtime with `:copilot-toggle`. In insert mode the
+default keys are `Alt-c` to request a suggestion, `Alt-l` to accept it, and
+`Alt-x` to dismiss it; these map to the `copilot_request_completion`,
+`copilot_apply_completion` and `copilot_dismiss_completion` commands and can be
+remapped like any other command.
+

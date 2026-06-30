@@ -313,3 +313,6 @@
 | `goto_prev_tabstop` | Goto next snippet placeholder |  |
 | `rotate_selections_first` | Make the first selection your primary one |  |
 | `rotate_selections_last` | Make the last selection your primary one |  |
+| `copilot_request_completion` | Request a GitHub Copilot inline suggestion | insert: `` <A-c> `` |
+| `copilot_apply_completion` | Accept the active GitHub Copilot suggestion | insert: `` <A-l> `` |
+| `copilot_dismiss_completion` | Dismiss the active GitHub Copilot suggestion | insert: `` <A-x> `` |
