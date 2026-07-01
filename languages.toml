@@ -4869,12 +4869,12 @@ file-types = ["ink"]
 injection-regex = "ink"
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/"}
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 2, unit = "  " }
 soft-wrap = { enable = true }
 
 [[grammar]]
 name = "ink"
-source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }
+source = { git = "https://github.com/wldmr/tree-sitter-ink.git", rev = "632072bab485ab4c705c39cb9aae9eaeac6893ba"}
 
 [[language]]
 name = "sourcepawn"
