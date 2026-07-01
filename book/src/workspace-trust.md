@@ -30,7 +30,7 @@ modal trust prompt asks:
 the prompt doesn't re-fire for every file you open in the workspace. The
 next time you start Helix in that workspace, it'll prompt again.
 
-A small `[⚠]` indicator appears in the bottom-right of the editor (next
+A small `[!]` indicator appears in the bottom-right of the editor (next
 to the macro-recording `[@]`) whenever the workspace is in restricted mode
 *and* running `:workspace-trust` would change observable behavior — i.e.
 when there's a local config to load or an LSP that would start.
@@ -85,7 +85,7 @@ Settings live under `[editor.workspace-trust]`:
 | Key       | Values                              | Default     | Effect                                                                       |
 | ---       | ---                                 | ---         | ---                                                                          |
 | `level`   | `"none"`, `"servers"`, `"insecure"` | `"servers"` | What is auto-trusted in every workspace. See below.                          |
-| `prompt`  | `true`, `false`                     | `true`      | Whether to surface the modal popup. The `[⚠]` indicator is shown regardless. |
+| `prompt`  | `true`, `false`                     | `true`      | Whether to surface the modal popup. The `[!]` indicator is shown regardless. |
 | `trusted` | list of glob patterns               | `[]`        | Workspaces matching a pattern are trusted without a grant. Discouraged; see below. |
 
 ### Recommended setups
@@ -115,7 +115,7 @@ prompt = false
 
 Nothing trusts implicitly: language servers, debug adapters, local
 config, and git `Trust::Full` are all off until you run
-`:workspace-trust`. The popup never appears; the `[⚠]` indicator in the
+`:workspace-trust`. The popup never appears; the `[!]` indicator in the
 bottom-right is your only signal that the current workspace is
 restricted. Suited to users who would rather grant trust as a
 deliberate action than dismiss a dialog.

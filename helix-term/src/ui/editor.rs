@@ -1711,7 +1711,7 @@ impl Component for EditorView {
                     area.x
                         .saturating_add(area.width.saturating_sub(3 + macro_width)),
                     area.y + area.height.saturating_sub(1),
-                    "[⚠]",
+                    "[!]",
                     style,
                 );
             }

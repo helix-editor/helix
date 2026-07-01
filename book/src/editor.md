@@ -553,7 +553,7 @@ Example:
 
 ```toml
 [editor.workspace-trust]
-# Even if `false`, the statusline `[⚠]` indicator is still shown.
+# Even if `false`, the statusline `[!]` indicator is still shown.
 prompt = false
 
 # "none":     prompt for every workspace.
