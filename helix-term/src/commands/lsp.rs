@@ -830,6 +830,10 @@ fn code_action_on_save_step(
     };
 
     let build_request = move |editor: &mut Editor| -> Option<Job> {
+        // The document could have been closed mid-chain
+        if !editor.documents.contains_key(&doc_id) {
+            return None;
+        }
         let doc = doc!(editor, &doc_id);
         let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());

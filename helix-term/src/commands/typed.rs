@@ -423,6 +423,10 @@ fn write_impl(
     let tail = (auto_format || run_code_actions).then(|| {
         let path = path.clone();
         let callback = Callback::Followup(Box::new(move |editor| {
+            // The document could have been closed mid-chain
+            if !editor.documents.contains_key(&doc_id) {
+                return None;
+            }
             let doc = doc!(editor, &doc_id);
             let fmt_job = auto_format
                 .then(|| doc.auto_format(editor))
@@ -923,6 +927,10 @@ pub fn write_all_impl(
         // built when there is pre-save work; otherwise a synchronous save below.
         let tail = (auto_format || run_code_actions).then(|| {
             let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
+                // The document could have been closed mid-chain
+                if !editor.documents.contains_key(&doc_id) {
+                    return None;
+                }
                 let doc = doc!(editor, &doc_id);
                 let fmt_job = auto_format
                     .then(|| doc.auto_format(editor))

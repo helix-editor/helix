@@ -2136,6 +2136,12 @@ impl Document {
         self.language_servers().any(|l| l.id() == id)
     }
 
+    pub fn servers_to_load(&self) -> bool {
+        self.language_config()
+            .map(|lang| !lang.language_servers.is_empty() || lang.debugger.is_some())
+            .unwrap_or(false)
+    }
+
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
         self.diff_handle.as_ref()
     }
