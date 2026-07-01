@@ -1,0 +1,54 @@
+inherits = "wolf-alabaster-dark-mono"
+"ui.popup" = { bg = "#1E2230", fg = "#C8D3F5" }
+"ui.popup.border" = { fg = "#00CED1" }
+"ui.text.focus" = { fg = "#E5E9F0", modifiers = ["bold"] }
+"ui.menu" = { fg = "menu_normal_text_color", bg = "menu_background_color" }
+
+
+"ui.background" = "transparent"
+"ui.bufferline.background" = { "bg" = "transparent" }
+"ui.bufferline" = { fg = "inactive_tab_colors" }
+"ui.bufferline.active" = { fg = "active_tab_foreground", bg = "active_tab_background" }
+"variable.other.member" = "teal"
+# this is actually the default but Helix master hasn't synced the catppuccin changes yet
+"function.macro" = "rosewater"
+"ui.linenr" = { fg = "line_numbers" }                                       # Subtle gray for normal line numbers
+"ui.linenr.selected" = { fg = "selected_line_color", modifiers = ["bold"] }
+
+
+"ui.cursor.match" = { "bg" = "#6C6999", "fg" = "#212121" }
+"ui.menu.selected" = { fg = "dark", bg = "yellow" }
+"ui.cursor.primary.normal" = { fg = "base", bg = "mauve" }
+
+"ui.cursor.primary.insert" = { "bg" = "cursor_insert_bg_color", "fg" = "dark" }
+
+rainbow = ["#FFD700", "#DA70D6", "#179FFF"]
+"ui.virtual.ruler" = { fg = "ruler_color", "bg"="cursorline"}
+
+
+[palette]
+dark = "#111111"
+line_heightlight_col_higlight = "#1e2030"
+line_numbers = "#9399b2"
+window_color = "#484a4d"
+inactive_tab_colors = "#ccd0da"
+active_tab_foreground = "#f6c177"
+active_tab_background = "#26233a"
+cursor_normal_bg = "#d7827e"
+selected_line_color = "#f5c2e7"
+cursor_insert_bg_color = "#eed49f"
+mauve = "#cba6f7"
+menu_background_color = "#1e1e2e"
+menu_selected_foreground = "#f9e2af"
+ruler_color = "#404040"
+cursorline = "#2a2b3c"
+# Dark monochromatic palette
+fg = "#feffff"           # Main text - light grey
+
+comment-grey = "#999999"          # Grey - comments
+punctuation-dark = "#F0DC82"      # Dark grey - punctuation
+string-bg = "#2A2A2A"             # Dark grey - strings/constants background
+string-bg-dark = "#555555"        # Slightly lighter grey - escape sequences
+inlay-hint = "#777777"            # Dimmed grey - virtual text (type hints)
+# Note: error-red, diff-green, diff-red, diff-orange inherited from parent (identical values)
+
