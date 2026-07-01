@@ -425,7 +425,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 Err(err) => log::error!("Error requesting document symbols: {err}"),
             }
         }
-        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             let columns = [
                 ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
                     let icons = ICONS.load();
@@ -473,7 +473,10 @@ pub fn symbol_picker(cx: &mut Context) {
             .truncate_start(false)
             .with_title("Document Symbols");
 
-            compositor.push(Box::new(overlaid(picker)))
+            compositor.push(Box::new(overlaid(
+                picker,
+                editor.config().fullscreen_overlay,
+            )))
         };
 
         Ok(Callback::EditorCompositor(Box::new(call)))
@@ -616,7 +619,10 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     .truncate_start(false)
     .with_title("Workspace Symbols");
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 pub fn diagnostics_picker(cx: &mut Context) {
@@ -625,7 +631,10 @@ pub fn diagnostics_picker(cx: &mut Context) {
         let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
         let picker = diag_picker(cx, [(uri, diagnostics)], DiagnosticsFormat::HideSourcePath)
             .with_title("Diagnostics");
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     }
 }
 
@@ -634,7 +643,10 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     let diagnostics = cx.editor.diagnostics.clone();
     let picker = diag_picker(cx, diagnostics, DiagnosticsFormat::ShowSourcePath)
         .with_title("Workspace Diagnostics");
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 impl ui::menu::Item for CodeActionItem {
@@ -751,7 +763,10 @@ fn code_action_inner_picker(actions: Vec<CodeActionItem>) -> Result<Callback, an
             },
         )
         .with_title("Code Actions");
-        compositor.push(Box::new(overlaid(picker)));
+        compositor.push(Box::new(overlaid(
+            picker,
+            editor.config().fullscreen_overlay,
+        )));
     };
     Ok(Callback::EditorCompositor(Box::new(call)))
 }
@@ -1031,7 +1046,10 @@ fn goto_impl(
             })
             .with_preview(|_editor, location| location_to_file_location(location))
             .with_title(title);
-            compositor.push(Box::new(overlaid(picker)));
+            compositor.push(Box::new(overlaid(
+                picker,
+                editor.config().fullscreen_overlay,
+            )));
         }
     }
 }

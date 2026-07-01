@@ -217,7 +217,10 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     .truncate_start(false)
     .with_title("Document Symbols");
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
@@ -464,7 +467,10 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
     .with_history_register(Some(reg))
     .truncate_start(false)
     .with_title("Workspace Symbols");
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 /// Create a Rope and language config for a given existing path without creating a full Document.

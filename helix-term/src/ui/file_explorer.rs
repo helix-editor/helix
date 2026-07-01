@@ -128,7 +128,10 @@ fn refresh_file_explorer(cursor: u32, cx: &mut Context, root: PathBuf) {
             // replace the old file explorer with the new one
             compositor.pop();
             if let Ok(picker) = file_explorer(Some(cursor), root, editor) {
-                compositor.push(Box::new(overlay::overlaid(picker)));
+                compositor.push(Box::new(overlay::overlaid(
+                    picker,
+                    editor.config().fullscreen_overlay,
+                )));
             }
         }));
         Ok(call)
@@ -392,7 +395,10 @@ pub fn file_explorer(
                     let call: Callback =
                         Callback::EditorCompositor(Box::new(move |editor, compositor| {
                             if let Ok(picker) = file_explorer(None, new_root, editor) {
-                                compositor.push(Box::new(overlay::overlaid(picker)));
+                                compositor.push(Box::new(overlay::overlaid(
+                                    picker,
+                                    editor.config().fullscreen_overlay,
+                                )));
                             }
                         }));
                     Ok(call)
