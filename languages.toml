@@ -4700,7 +4700,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = { git = "https://codeberg.org/spade-lang/tree-sitter-spade", rev = "996aaabea9a9fbe498ae0876356028a78e6ef8db" }
+source = { git = "https://codeberg.org/spade-lang/tree-sitter-spade", rev = "4eb2fc0173e48564421721f8e4f25a0fde89ac70" }
 
 [[language]]
 name = "amber"
