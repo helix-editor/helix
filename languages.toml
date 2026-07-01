@@ -5510,3 +5510,21 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "concerto"
 source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "920ba23ea93af56b19dfc38fcddf80b3ddc62685" }
+
+[[language]]
+name = "angular"
+scope = "source.angular"
+injection-regex = "html"
+file-types = ["component.html", "html"] # Angular 21+ updated the naming format
+block-comment-tokens = { start = "<!--", end = "-->" }
+language-servers = ["angular"]
+roots = ["angular.json"]
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "angular"
+source = { git = "https://github.com/dlvandenberg/tree-sitter-angular", rev = "38a8014ed5452cd6b7cf1399c00177a1f5374256" }
