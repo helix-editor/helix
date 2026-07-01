@@ -1,3 +1,4 @@
+pub(crate) mod args;
 pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
@@ -22,7 +23,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    command_line::{self, Args},
+    command_line::{self},
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
@@ -63,6 +64,7 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
+    commands::args::Args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
