@@ -112,6 +112,12 @@ fn test_treesitter_indent_rust_helix() {
 }
 
 #[test]
+fn test_treesitter_indent_qml() {
+    let doc = Rope::from_str(include_str!("data/indent/indent.qml"));
+    test_treesitter_indent("indent.qml", doc, "source.qml", Vec::new());
+}
+
+#[test]
 fn test_indent_level_for_line_with_spaces() {
     let tab_width: usize = 4;
     let indent_width: usize = 4;
