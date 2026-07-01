@@ -24,3 +24,17 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "cpp"
 source = { git = "https://github.com/tree-sitter/tree-sitter-cpp", rev = "2d2c4aee8672af4c7c8edff68e7dd4c07e88d2b1" }
+
+[[language]]
+name = "qml"
+scope = "source.qml"
+injection-regex = "qml"
+file-types = ["qml"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+grammar = "qmljs"
+
+[[grammar]]
+name = "qmljs"
+source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7d4925d5f0dda16f6a99c588a437f1" }
