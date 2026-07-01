@@ -2,23 +2,23 @@ inherits = "wolf-alabaster-dark-mono"
 "ui.popup" = { bg = "#1E2230", fg = "#C8D3F5" }
 "ui.popup.border" = { fg = "#00CED1" }
 "ui.text.focus" = { fg = "#E5E9F0", modifiers = ["bold"] }
-"ui.menu" = { fg = "menu_normal_text_color", bg = "menu_background_color" }
+"ui.menu" = { fg = "fg", bg = "menu_background_color" }
 
 
-"ui.background" = "transparent"
-"ui.bufferline.background" = { "bg" = "transparent" }
+"ui.background" = { }
+"ui.bufferline.background" = { }
 "ui.bufferline" = { fg = "inactive_tab_colors" }
 "ui.bufferline.active" = { fg = "active_tab_foreground", bg = "active_tab_background" }
-"variable.other.member" = "teal"
+"variable.other.member" = "fg"
 # this is actually the default but Helix master hasn't synced the catppuccin changes yet
-"function.macro" = "rosewater"
+"function.macro" = "fg"
 "ui.linenr" = { fg = "line_numbers" }                                       # Subtle gray for normal line numbers
 "ui.linenr.selected" = { fg = "selected_line_color", modifiers = ["bold"] }
 
 
 "ui.cursor.match" = { "bg" = "#6C6999", "fg" = "#212121" }
 "ui.menu.selected" = { fg = "dark", bg = "yellow" }
-"ui.cursor.primary.normal" = { fg = "base", bg = "mauve" }
+"ui.cursor.primary.normal" = { fg = "dark", bg = "mauve" }
 
 "ui.cursor.primary.insert" = { "bg" = "cursor_insert_bg_color", "fg" = "dark" }
 
