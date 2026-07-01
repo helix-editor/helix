@@ -292,6 +292,7 @@ pub fn dap_launch(cx: &mut Context) {
             }
         })
         .with_title("Debug Templates"),
+        cx.editor.config().fullscreen_overlay,
     )));
 }
 

@@ -1637,7 +1637,10 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let path = &rel_path.join(path);
         if path.is_dir() {
             let picker = ui::file_picker(cx.editor, path.into());
-            cx.push_layer(Box::new(overlaid(picker)));
+            cx.push_layer(Box::new(overlaid(
+                picker,
+                cx.editor.config().fullscreen_overlay,
+            )));
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
@@ -1660,7 +1663,10 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
     let path = &rel_path.join(url.path());
     if path.is_dir() {
         let picker = ui::file_picker(cx.editor, path.into());
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     } else if let Err(e) = cx.editor.open(path, action) {
         cx.editor.set_error(format!("Open file failed: {:?}", e));
     }
@@ -1691,7 +1697,10 @@ fn open_url_in_callback(
     let path = &rel_path.join(url.path());
     if path.is_dir() {
         let picker = ui::file_picker(editor, path.into());
-        compositor.push(Box::new(overlaid(picker)));
+        compositor.push(Box::new(overlaid(
+            picker,
+            editor.config().fullscreen_overlay,
+        )));
     } else if let Err(e) = editor.open(path, action) {
         editor.set_error(format!("Open file failed: {:?}", e));
     }
@@ -2934,7 +2943,10 @@ fn global_search(cx: &mut Context) {
     .with_dynamic_query(get_files, Some(275))
     .with_title("Global Search");
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 /// Local grep search in buffer
@@ -3175,7 +3187,10 @@ fn local_search_grep(cx: &mut Context) {
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275))
     .with_title("Buffer Search");
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 fn local_search_fuzzy(cx: &mut Context) {
@@ -3324,7 +3339,10 @@ fn local_search_fuzzy(cx: &mut Context) {
         }
     }
 
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 enum Extend {
@@ -3752,7 +3770,10 @@ fn file_picker(cx: &mut Context) {
         };
         cx.push_layer(Box::new(overlay));
     } else {
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     }
 }
 
@@ -3779,7 +3800,10 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
     };
 
     let picker = ui::file_picker(cx.editor, path);
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 fn file_picker_in_current_directory(cx: &mut Context) {
@@ -3790,7 +3814,10 @@ fn file_picker_in_current_directory(cx: &mut Context) {
         return;
     }
     let picker = ui::file_picker(cx.editor, cwd);
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 fn file_explorer(cx: &mut Context) {
@@ -3801,7 +3828,10 @@ fn file_explorer(cx: &mut Context) {
     }
 
     if let Ok(picker) = ui::file_explorer(None, root, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     }
 }
 
@@ -3828,7 +3858,10 @@ fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
     };
 
     if let Ok(picker) = ui::file_explorer(None, path, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     }
 }
 
@@ -3841,7 +3874,10 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 
     if let Ok(picker) = ui::file_explorer(None, cwd, cx.editor) {
-        cx.push_layer(Box::new(overlaid(picker)));
+        cx.push_layer(Box::new(overlaid(
+            picker,
+            cx.editor.config().fullscreen_overlay,
+        )));
     }
 }
 
@@ -3989,7 +4025,10 @@ fn buffer_picker(cx: &mut Context) {
         Some((meta.id.into(), lines))
     })
     .with_title("Buffers");
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 fn jumplist_picker(cx: &mut Context) {
@@ -4100,7 +4139,10 @@ fn jumplist_picker(cx: &mut Context) {
         Some((meta.id.into(), Some((line, line))))
     })
     .with_title("Jumplist");
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 fn changed_file_picker(cx: &mut Context) {
@@ -4219,7 +4261,10 @@ fn changed_file_picker(cx: &mut Context) {
                 true
             }
         });
-    cx.push_layer(Box::new(overlaid(picker)));
+    cx.push_layer(Box::new(overlaid(
+        picker,
+        cx.editor.config().fullscreen_overlay,
+    )));
 }
 
 pub fn command_palette(cx: &mut Context) {
@@ -4310,7 +4355,10 @@ pub fn command_palette(cx: &mut Context) {
                 }
             })
             .with_title("Command Palette");
-            compositor.push(Box::new(overlaid(picker)));
+            compositor.push(Box::new(overlaid(
+                picker,
+                cx.editor.config().fullscreen_overlay,
+            )));
         },
     ));
 }

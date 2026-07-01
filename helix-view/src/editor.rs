@@ -538,6 +538,9 @@ pub struct Config {
     /// Picker gradient border configuration
     #[serde(default)]
     pub gradient_borders: GradientBorderConfig,
+    /// Whether to show pickers in fullscreen mode. When true, pickers expand to
+    /// full screen width on terminals narrower than 200 columns. Defaults to false.
+    pub fullscreen_overlay: bool,
     /// Notification system configuration
     #[serde(default)]
     pub notifications: NotificationConfig,
@@ -1783,6 +1786,7 @@ impl Default for Config {
             gradient_borders: GradientBorderConfig::default(),
             notifications: NotificationConfig::default(),
             completion_highlight: CompletionHighlight::default(),
+            fullscreen_overlay: false,
             buffer_picker: BufferPickerConfig::default(),
             fold_textobjects: Vec::new(),
             insecure: false,
