@@ -443,7 +443,7 @@ pub struct WorkspaceTrustConfig {
     /// What to trust implicitly without an explicit grant. See [`ImplicitTrustLevelConfig`].
     pub level: ImplicitTrustLevelConfig,
     /// Whether opening a file in an untrusted workspace surfaces the trust modal. The statusline
-    /// `[⚠]` indicator is always shown either way; disabling the prompt is for users who would
+    /// `[!]` indicator is always shown either way; disabling the prompt is for users who would
     /// rather act explicitly via `:workspace-trust` than be interrupted. Defaults to `true`.
     pub prompt: bool,
     /// Glob patterns whose matching workspaces are implicitly trusted.
