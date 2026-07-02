@@ -3288,6 +3288,7 @@ file-types = [
   "osm",
   "plist",
   "policy",
+  "pproj",
   "pt",
   "publishsettings",
   "pubxml",
@@ -5534,3 +5535,15 @@ language-servers = ["puppet-languageserver"]
 [[grammar]]
 name = "puppet"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-puppet", rev = "15f192929b7d317f5914de2b4accd37b349182a6" }
+
+[[language]]
+name = "p"
+scope = "source.p"
+injection-regex = "p"
+file-types = ["p"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "p"
+source = { git = "https://github.com/battesonb/tree-sitter-p", rev = "701dcc1c72f425f78bc128d2b8031686a60ae058" }
