@@ -46,7 +46,7 @@ cursorline = "#2a2b3c"
 fg = "#feffff"           # Main text - light grey
 
 comment-grey = "#999999"          # Grey - comments
-punctuation-dark = "#F0DC82"      # Dark grey - punctuation
+punctuation-dark = "#b0c9e4"      # Dark grey - punctuation - overrides the wolf-alabaster-dark mono
 string-bg = "#2A2A2A"             # Dark grey - strings/constants background
 string-bg-dark = "#555555"        # Slightly lighter grey - escape sequences
 inlay-hint = "#777777"            # Dimmed grey - virtual text (type hints)
