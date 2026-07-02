@@ -5547,3 +5547,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "p"
 source = { git = "https://github.com/battesonb/tree-sitter-p", rev = "701dcc1c72f425f78bc128d2b8031686a60ae058" }
+
+[[language]]
+name = "xwiki"
+scope = "source.xwiki"
+injection-regex = "xwiki"
+file-types = ["xwiki"]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "xwiki"
+source = { git = "https://github.com/battesonb/tree-sitter-xwiki", rev = "58010c62c63fabbf5a94762bfa8849d4733d1f6c" }
