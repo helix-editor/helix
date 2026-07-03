@@ -624,6 +624,8 @@ file-types = [
   { glob = "devbox.lock" }, # https://www.jetify.com/docs/devbox/
   { glob = "manifest.lock" }, # https://flox.dev/docs/
   { glob = "deno.lock" }, # https://deno.com/
+  "tfstate", # e.g. terraform.tfstate
+  { glob = "*.tfstate.backup" }, # e.g. terraform.tfstate.backup
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
