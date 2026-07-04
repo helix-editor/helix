@@ -91,6 +91,8 @@ metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inl
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["tool", "ls"] }
 mojo-lsp-server = { command = "pixi", args = ["run", "mojo-lsp-server"] }
+mm0-rs = { command = "mm0-rs", args = [ "server" ] }
+mm-lsp-server = { command = "mm-lsp-server" }
 neocmakelsp = { command = "neocmakelsp", args = ["stdio"] }
 nginx-language-server = { command = "nginx-language-server" }
 nil = { command = "nil" }
@@ -172,6 +174,7 @@ vuels = { command = "vue-language-server", args = ["--stdio"], config = { typesc
 wgsl-analyzer = { command = "wgsl-analyzer" }
 wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+yamma-server = { command = "yamma-server" }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 zuban = { command = "zuban", args = ["server"] }
@@ -326,6 +329,9 @@ args = ["server", "--stdio"]
 
 [language-server.drools-lsp]
 command = "drools-lsp"
+
+[language-server.moonbit-lsp]
+command = "moonbit-lsp"
 
 [language-server.millet]
 command = "millet-ls"
@@ -4888,12 +4894,12 @@ file-types = ["ink"]
 injection-regex = "ink"
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/"}
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 2, unit = "  " }
 soft-wrap = { enable = true }
 
 [[grammar]]
 name = "ink"
-source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }
+source = { git = "https://github.com/wldmr/tree-sitter-ink.git", rev = "632072bab485ab4c705c39cb9aae9eaeac6893ba"}
 
 [[language]]
 name = "sourcepawn"
@@ -5076,7 +5082,7 @@ auto-format = true
 
 [[grammar]]
 name = "caddyfile"
-source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "683332a6430675abfd9867201ef47b2b99bdb266" }
+source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "15437433b7deec0f0431fb4a5bedb64ecae01513" }
 
 [[language]]
 name = "properties"
@@ -5529,6 +5535,22 @@ name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "477e8ba230867b9135deb7af88ea96f160900173" }
 
 [[language]]
+name = "moonbit"
+scope = "source.moonbit"
+injection-regex = "moonbit|mbt"
+file-types = ["mbt", "mbti"]
+roots = ["moon.mod.json"]
+comment-tokens = ["//", "///"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["moonbit-lsp"]
+auto-format = true
+
+[[grammar]]
+name = "moonbit"
+source = { git = "https://github.com/moonbitlang/tree-sitter-moonbit", rev = "36191d7fe4ec4298c8c1f251af6a82939f8e9a67" }
+
+[[language]]
 name = "concerto"
 scope = "source.concerto"
 injection-regex = "concerto"
@@ -5590,3 +5612,54 @@ language-servers = ["varlink-language-server"]
 [[grammar]]
 name = "varlink"
 source = { git = "https://github.com/bachorp/tree-sitter-varlink", rev = "a80ecffda60b28612cbda652e38d97c1d8b90568" }
+
+[[language]]
+name = "metamath"
+scope = "source.metamath"
+file-types = [ "mm" ]
+injection-regex = "mm|metamath"
+roots = [ "set.mm" ]
+block-comment-tokens = { start = "$(", end = "$)" }
+indent = { tab-width = 2, unit = "  " }
+text-width = 80
+language-servers = [ "mm-lsp-server" ]
+
+[language.auto-pairs]
+"$" = "$"
+"(" = ")"
+"[" = "]"
+"{" = "}"
+"<" = ">"
+'"' = '"'
+"`" = "`"
+
+[[grammar]]
+name = "metamath"
+source = { git = "https://git.sr.ht/~m4dh0rs3/tree-sitter-metamath", rev = "d6a57b0ddb4feba4a88f8cbb2f497b718e0c5c1d" }
+
+[[language]]
+name = "batch"
+scope = "source.batch"
+injection-regex = "(cmd|bat(ch)?)"
+file-types = ["bat", "cmd", "btm"]
+indent = { tab-width = 2, unit = "  " }
+comment-tokens = ["REM", "::"]
+
+[[grammar]]
+name = "batch"
+source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "doxygen"
+scope = "source.doxygen"
+injection-regex = "doxygen"
+file-types = [
+  "doxygen",
+  "dox",
+  { glob = "doc.md" },
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "doxygen"
+source = { git = "https://codeberg.org/maribu/tree-sitter-doxygen", rev = "26afdde765b43dc42d2c90172c238a64a93cd53caff9adce795a0e2127f4bfc9" }

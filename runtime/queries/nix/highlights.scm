@@ -88,6 +88,24 @@
       attrpath: (attrpath
         attr: (identifier) @function .))])
 
+; Pipe operators evaluate the side pointed to by the operator as a function:
+; `value |> lib.foo` and `lib.foo <| value`.
+(binary_expression
+  operator: "|>"
+  right: [
+    (variable_expression (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))])
+
+(binary_expression
+  left: [
+    (variable_expression (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))]
+  operator: "<|")
+
 (binding
   attrpath: (attrpath
     attr: (identifier) @function)
