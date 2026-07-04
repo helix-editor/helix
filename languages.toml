@@ -327,6 +327,9 @@ args = ["server", "--stdio"]
 [language-server.drools-lsp]
 command = "drools-lsp"
 
+[language-server.moonbit-lsp]
+command = "moonbit-lsp"
+
 [language-server.millet]
 command = "millet-ls"
 
@@ -5526,6 +5529,22 @@ comment-token = "//"
 [[grammar]]
 name = "tql"
 source = { git = "https://github.com/tenzir/tree-sitter-tql", rev = "477e8ba230867b9135deb7af88ea96f160900173" }
+
+[[language]]
+name = "moonbit"
+scope = "source.moonbit"
+injection-regex = "moonbit|mbt"
+file-types = ["mbt", "mbti"]
+roots = ["moon.mod.json"]
+comment-tokens = ["//", "///"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["moonbit-lsp"]
+auto-format = true
+
+[[grammar]]
+name = "moonbit"
+source = { git = "https://github.com/moonbitlang/tree-sitter-moonbit", rev = "36191d7fe4ec4298c8c1f251af6a82939f8e9a67" }
 
 [[language]]
 name = "concerto"
