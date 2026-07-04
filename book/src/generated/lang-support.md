@@ -194,7 +194,7 @@
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
 | nearley | ✓ |  |  |  | ✓ |  |
 | nestedtext | ✓ | ✓ | ✓ |  |  |  |
-| nginx | ✓ |  |  |  |  |  |
+| nginx | ✓ |  |  |  |  | `nginx-language-server` |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
