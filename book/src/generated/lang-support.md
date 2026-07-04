@@ -207,6 +207,7 @@
 | opencl | ✓ | ✓ | ✓ |  |  | `clangd` |
 | openscad | ✓ |  |  |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |  |  |
+| p | ✓ |  |  |  |  |  |
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
@@ -331,6 +332,7 @@
 | xit | ✓ |  |  |  |  |  |
 | xml | ✓ | ✓ | ✓ |  | ✓ |  |
 | xtc | ✓ |  |  |  |  |  |
+| xwiki | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
 | yuck | ✓ |  | ✓ |  | ✓ |  |
