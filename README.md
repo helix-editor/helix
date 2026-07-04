@@ -51,6 +51,7 @@ This fork of Helix implements the following pull requests. Future pull requests 
 25. https://github.com/helix-editor/helix/pull/14825 (soft-wrap indicators in gutter)
 26. https://github.com/helix-editor/helix/pull/11695 (Add ability to match in next and previous char pairs)
 27. https://github.com/helix-editor/helix/pull/14593 (code folding)
+28. https://github.com/helix-editor/helix/pull/12043 (6 new case conversion commands: PascalCase, camelCase, snake_case, Title Case, kebab-case, Sentence case)
 
 ## Setup
 
