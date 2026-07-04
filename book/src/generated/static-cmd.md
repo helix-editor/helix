@@ -53,9 +53,15 @@
 | `extend_prev_char` | Extend to previous occurrence of char | select: `` F `` |
 | `repeat_last_motion` | Repeat last motion | normal: `` <A-.> ``, select: `` <A-.> `` |
 | `replace` | Replace with new char | normal: `` r ``, select: `` r `` |
-| `switch_case` | Switch (toggle) case | normal: `` ~ ``, select: `` ~ `` |
-| `switch_to_uppercase` | Switch to uppercase | normal: `` <A-`> ``, select: `` <A-`> `` |
-| `switch_to_lowercase` | Switch to lowercase | normal: `` ` ``, select: `` ` `` |
+| `switch_to_alternate_case` | Switch to aLTERNATE cASE | normal: `` ~ ``, `` `a ``, select: `` ~ ``, `` `a `` |
+| `switch_to_uppercase` | Switch to UPPERCASE | normal: `` `u ``, select: `` `u `` |
+| `switch_to_lowercase` | Switch to lowercase | normal: `` `l ``, select: `` `l `` |
+| `switch_to_pascal_case` | Switch to PascalCase | normal: `` `p ``, select: `` `p `` |
+| `switch_to_camel_case` | Switch to camelCase | normal: `` `c ``, select: `` `c `` |
+| `switch_to_title_case` | Switch to Title Case | normal: `` `t ``, select: `` `t `` |
+| `switch_to_sentence_case` | Switch to Sentence case | normal: `` `S ``, select: `` `S `` |
+| `switch_to_snake_case` | Switch to snake_case | normal: `` `s ``, select: `` `s `` |
+| `switch_to_kebab_case` | Switch to kebab-case | normal: `` `k ``, select: `` `k `` |
 | `page_up` | Move page up | normal: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, select: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, insert: `` <pageup> `` |
 | `page_down` | Move page down | normal: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, select: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, insert: `` <pagedown> `` |
 | `half_page_up` | Move half page up |  |
