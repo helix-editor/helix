@@ -5635,3 +5635,16 @@ language-servers = [ "mm-lsp-server" ]
 [[grammar]]
 name = "metamath"
 source = { git = "https://git.sr.ht/~m4dh0rs3/tree-sitter-metamath", rev = "d6a57b0ddb4feba4a88f8cbb2f497b718e0c5c1d" }
+
+[[language]]
+name = "batch"
+scope = "source.batch"
+injection-regex = "(cmd|bat(ch)?)"
+file-types = ["bat", "cmd", "btm"]
+indent = { tab-width = 2, unit = "  " }
+comment-tokens = ["REM", "::"]
+
+[[grammar]]
+name = "batch"
+source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+

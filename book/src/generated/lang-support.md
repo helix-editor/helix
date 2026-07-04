@@ -10,6 +10,7 @@
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
 | basic | ✓ | ✓ | ✓ | ✓ |  |  |
 | bass | ✓ |  |  |  |  | `bass` |
+| batch | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
 | bicep | ✓ |  |  |  |  | `bicep-langserver` |
