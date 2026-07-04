@@ -421,7 +421,15 @@ fn path_filename(workspace: &Path) -> String {
     // from CWD walking and that's already lossy on the FS side — accepting parity.
     hasher.update(workspace.as_os_str().to_string_lossy().as_bytes());
     let digest = hasher.finalize();
-    format!("{digest:x}")
+    hex_encode(&digest)
+}
+
+fn hex_encode(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
 }
 
 fn read_entry(workspace: &Path) -> Option<DiskEntry> {
@@ -530,7 +538,7 @@ pub fn compute_workspace_hash(workspace: &Path) -> Option<String> {
         }
     }
     let digest = hasher.finalize();
-    Some(format!("sha256:{digest:x}"))
+    Some(format!("sha256:{}", hex_encode(&digest)))
 }
 
 /// Length-prefix a field before feeding it to the hasher.
@@ -613,7 +621,7 @@ mod test {
         let mut h = Sha256::new();
         h.update(b"abc");
         assert_eq!(
-            format!("{:x}", h.finalize()),
+            hex_encode(&h.finalize()),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         );
     }
