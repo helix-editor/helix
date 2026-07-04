@@ -3847,7 +3847,7 @@ injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
-formatter = { command = "just", args = ["--fmt", "--unstable", "--justfile", "-"] }
+formatter = { command = "just", args = ["--fmt", "--justfile", "-"] }
 
 [[grammar]]
 name = "just"
