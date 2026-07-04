@@ -3,6 +3,19 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[derive(Debug, Default, PartialEq, Eq, Clone, Serialize)]
+pub struct IgnoreResult;
+
+impl<'de> serde::Deserialize<'de> for IgnoreResult {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let _ = serde::de::IgnoredAny::deserialize(deserializer)?;
+        Ok(IgnoreResult)
+    }
+}
+
 #[derive(
     Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize,
 )]
@@ -458,7 +471,7 @@ pub mod requests {
 
     impl Request for ConfigurationDone {
         type Arguments = Option<ConfigurationDoneArguments>;
-        type Result = ();
+        type Result = IgnoreResult;
         const COMMAND: &'static str = "configurationDone";
     }
 
@@ -1104,4 +1117,13 @@ fn test_deserialize_module_id_from_string() {
     let raw = r#"{"id": "0", "name": "Name"}"#;
     let module: Module = serde_json::from_str(raw).expect("Error!");
     assert_eq!(module.id, "0");
+}
+
+#[test]
+fn test_deserialize_ignore_result() {
+    let _: IgnoreResult = serde_json::from_str("null").unwrap();
+    let _: IgnoreResult = serde_json::from_str("{}").unwrap();
+    let _: IgnoreResult = serde_json::from_str("{\"foo\": \"bar\"}").unwrap();
+    let _: IgnoreResult = serde_json::from_str("[]").unwrap();
+    let _: IgnoreResult = serde_json::from_str("42").unwrap();
 }
