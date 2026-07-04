@@ -3694,7 +3694,7 @@ language-servers = ["asm-lsp"]
 
 [[grammar]]
 name = "gas"
-source = { git = "https://github.com/sirius94/tree-sitter-gas", rev = "60f443646b20edee3b7bf18f3a4fb91dc214259a" }
+source = { git = "https://github.com/sirius94/tree-sitter-gas", rev = "5d6c0a0b4d7b6f35913906ba922fe38064a9bede" }
 
 [[language]]
 name = "rst"
