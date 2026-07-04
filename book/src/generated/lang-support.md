@@ -27,7 +27,7 @@
 | cel | ✓ |  |  |  |  |  |
 | chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
-| clarity | ✓ |  |  |  |  | `clarinet` |
+| clarity | ✓ | ✓ | ✓ | ✓ | ✓ | `clarinet` |
 | clojure | ✓ | ✓ | ✓ | ✓ | ✓ | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ |  | ✓ | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
@@ -85,7 +85,7 @@
 | freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  | ✓ | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
-| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ | `ncat` |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
@@ -194,7 +194,7 @@
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
 | nearley | ✓ |  |  |  | ✓ |  |
 | nestedtext | ✓ | ✓ | ✓ |  |  |  |
-| nginx | ✓ |  |  |  |  |  |
+| nginx | ✓ |  |  |  |  | `nginx-language-server` |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
@@ -207,6 +207,7 @@
 | opencl | ✓ | ✓ | ✓ |  |  | `clangd` |
 | openscad | ✓ |  |  |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |  |  |
+| p | ✓ |  |  |  |  |  |
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
@@ -231,6 +232,7 @@
 | prql | ✓ |  |  |  |  |  |
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
+| puppet | ✓ |  | ✓ |  |  | `puppet-languageserver` |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
@@ -265,7 +267,7 @@
 | slisp | ✓ |  |  | ✓ |  |  |
 | smali | ✓ |  | ✓ |  |  | `smalisp` |
 | smithy | ✓ |  |  |  |  | `cs` |
-| sml | ✓ |  |  |  |  |  |
+| sml | ✓ |  |  |  |  | `millet-ls` |
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  | ✓ | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
@@ -289,7 +291,7 @@
 | task | ✓ |  |  |  |  |  |
 | tcl | ✓ |  | ✓ |  |  |  |
 | teal | ✓ |  |  |  |  | `teal-language-server` |
-| templ | ✓ |  |  |  |  | `templ` |
+| templ | ✓ | ✓ |  | ✓ | ✓ | `templ` |
 | tera | ✓ |  |  |  |  |  |
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
@@ -331,6 +333,7 @@
 | xit | ✓ |  |  |  |  |  |
 | xml | ✓ | ✓ | ✓ |  | ✓ |  |
 | xtc | ✓ |  |  |  |  |  |
+| xwiki | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
 | yuck | ✓ |  | ✓ |  | ✓ |  |

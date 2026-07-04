@@ -75,6 +75,7 @@ These configuration keys are available:
 | `workspace-lsp-roots`     | Directories (relative to the workspace root) that stop the upward root search early. Meant for project-specific hard overrides in a local `.helix/config.toml`; |
 | `persistent-diagnostic-sources` | An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.
 | `rainbow-brackets` | Overrides the `editor.rainbow-brackets` config key for the language |
+| `code-actions-on-save`    | List of LSP code actions to be run in order on save, for example `["source.organizeImports"]` |
 
 ## Project and LSP root selection
 
@@ -137,6 +138,29 @@ argument to the formatter:
 
 ```toml
 formatter = { command = "mylang-formatter" , args = ["--stdin", "--stdin-filename", "%{buffer_name}"] }
+```
+
+### Configuring code actions on save
+
+The `code-actions-on-save` key lists LSP code actions to run (in order) when
+the buffer is saved. The available actions depend on available language servers,
+below are common examples and may need adjusting for your setup.
+
+```toml
+# Python with ruff
+[[language]]
+name = "python"
+code-actions-on-save = ["source.organizeImports", "source.fixAll"]
+
+# TS/JS with tsserver
+[[language]]
+name = "typescript"
+code-actions-on-save = ["source.addMissingImports.ts"]
+
+# TS/JS with eslint
+[[language]]
+name = "javascript"
+code-actions-on-save = ["source.fixAll.eslint", "source.organizeImports"]
 ```
 
 ## Language Server configuration

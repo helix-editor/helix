@@ -11,7 +11,7 @@ use crossterm::{
         Attribute as CAttribute, Color as CColor, Colors, Print, SetAttribute, SetBackgroundColor,
         SetColors, SetForegroundColor,
     },
-    terminal::{self, Clear, ClearType},
+    terminal::{self, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate},
     Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
@@ -291,7 +291,7 @@ where
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
-        execute!(self.buffer, Hide)
+        queue!(self.buffer, Hide)
     }
 
     fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
@@ -301,15 +301,23 @@ where
             CursorKind::Underline => SetCursorStyle::SteadyUnderScore,
             CursorKind::Hidden => unreachable!(),
         };
-        execute!(self.buffer, Show, shape)
+        queue!(self.buffer, Show, shape)
     }
 
     fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
-        execute!(self.buffer, MoveTo(x, y))
+        queue!(self.buffer, MoveTo(x, y))
     }
 
     fn clear(&mut self) -> io::Result<()> {
-        execute!(self.buffer, Clear(ClearType::All))
+        queue!(self.buffer, Clear(ClearType::All))
+    }
+
+    fn start_sync(&mut self) -> io::Result<()> {
+        queue!(self.buffer, BeginSynchronizedUpdate)
+    }
+
+    fn end_sync(&mut self) -> io::Result<()> {
+        queue!(self.buffer, EndSynchronizedUpdate)
     }
 
     fn size(&self) -> io::Result<Rect> {
