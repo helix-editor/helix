@@ -5330,6 +5330,17 @@ name = "scfg"
 source = { git = "https://github.com/rockorager/tree-sitter-scfg", rev = "d850fd470445d73de318a21d734d1e09e29b773c" }
 
 [[language]]
+name = "sgf"
+scope = "source.sgf"
+injection-regex = "sgf"
+file-types = ["sgf"]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "sgf"
+source = { git = "https://github.com/lykahb/tree-sitter-sgf", rev = "b7e0fb713b29495722e056fdc3dc4f889f6d6ed2" }
+
+[[language]]
 name = "ripple"
 scope = "source.ripple"
 file-types = [ "ripple" ]
