@@ -201,6 +201,36 @@ async fn insert_newline_continue_line_comment() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // Continuation should use the enclosing layer's comment tokens if an injected layer
+    // doesn't define comment token.
+    test((
+        indoc! {"\
+            // Hello world!#[|
+            ]#
+            "},
+        ":lang go<ret>i<ret>",
+        indoc! {"\
+            // Hello world!
+            // #[|
+            ]#
+            "},
+    ))
+    .await?;
+
+    test((
+        indoc! {"\
+            //go:generate echo hello#[|
+            ]#
+            "},
+        ":lang go<ret>i<ret>",
+        indoc! {"\
+            //go:generate echo hello
+            // #[|
+            ]#
+            "},
+    ))
+    .await?;
+
     // The comment is not continued if the cursor is before the comment token. (Note that we
     // are entering insert-mode with `I`.)
     test((
@@ -458,6 +488,26 @@ async fn test_open_below_with_multiple_cursors() -> anyhow::Result<()> {
                 let yes = false;
                 #(\n|)#
             }"},
+    ))
+    .await?;
+
+    // Open below should continue comment even if language has `comment` grammar
+    // injection.
+    test((
+        indoc! {"\
+            package main
+
+            // VIP#[|]# comment
+            func main() {}
+        "},
+        ":lang go<ret>o",
+        indoc! {"\
+            package main
+
+            // VIP comment
+            // #[\n|]#
+            func main() {}
+        "},
     ))
     .await?;
 

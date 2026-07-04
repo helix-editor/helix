@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
         with:
           toolchain: stable
 
@@ -110,7 +110,7 @@ jobs:
         run: rm rust-toolchain.toml
 
       - name: Install ${{ matrix.rust }} toolchain
-        uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
@@ -172,9 +172,7 @@ jobs:
 
       - name: Install cargo-deb
         if: matrix.build == 'x86_64-linux'
-        uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9 # v2.82.2
-        with:
-          tool: cargo-deb
+        run: cargo install cargo-deb
 
       - name: Build Deb
         shell: bash

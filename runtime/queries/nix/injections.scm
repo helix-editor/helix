@@ -144,17 +144,23 @@
  (#set! injection.language "c")
  (#set! injection.combined))
 
-; pkgs.writers.write{Bash,Dash}[Bin] name content
+; pkgs.writers.write{Bash,Dash}[Bin] name [attrs] content
 ((apply_expression
-   function: (apply_expression function: (_) @_func)
+   function: (apply_expression function: [
+     ((_) @_func)
+     (apply_expression function: (_) @_func)
+   ])
    argument: (indented_string_expression (string_fragment) @injection.content))
  (#match? @_func "(^|\\.)write[BD]ash(Bin)?$")
  (#set! injection.language "bash")
  (#set! injection.combined))
 
-; pkgs.writers.writeFish[Bin] name content
+; pkgs.writers.writeFish[Bin] name [attrs] content
 ((apply_expression
-   function: (apply_expression function: (_) @_func)
+   function: (apply_expression function: [
+     ((_) @_func)
+     (apply_expression function: (_) @_func)
+   ])
    argument: (indented_string_expression (string_fragment) @injection.content))
  (#match? @_func "(^|\\.)writeFish(Bin)?$")
  (#set! injection.language "fish")
@@ -222,15 +228,16 @@
   (#set! injection.language "python")
   (#set! injection.combined))
 
-; pkgs.writers.writeNu[Bin] name attrs content
-(apply_expression
-  (apply_expression
-    function: (apply_expression
-      function: ((_) @_func)))
-    argument: (indented_string_expression (string_fragment) @injection.content)
-  (#match? @_func "(^|\\.)writeNu(Bin)?$")
-  (#set! injection.language "nu")
-  (#set! injection.combined))
+; pkgs.writers.writeNu[Bin] name [attrs] content
+((apply_expression
+   function: (apply_expression function: [
+     ((_) @_func)
+     (apply_expression function: (_) @_func)
+   ])
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)writeNu(Bin)?$")
+ (#set! injection.language "nu")
+ (#set! injection.combined))
 
 ; pkgs.writers.writeRuby[Bin] name attrs content
 (apply_expression
