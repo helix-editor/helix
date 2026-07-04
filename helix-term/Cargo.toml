@@ -96,6 +96,9 @@ crossterm = { version = "0.28", features = ["event-stream"] }
 signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
 libc = "0.2.186"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4.5"
+
 [build-dependencies]
 helix-loader = { path = "../helix-loader" }
 

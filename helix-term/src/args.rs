@@ -20,6 +20,7 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
+    pub sandbox: Option<bool>,
 }
 
 impl Args {
@@ -48,6 +49,8 @@ impl Args {
                 "--" => break, // stop parsing at this point treat the remaining as files
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
+                "--sandbox" => args.sandbox = Some(true),
+                "--no-sandbox" => args.sandbox = Some(false),
                 "--strict" => args.strict = true,
                 "--tutor" => args.load_tutor = true,
                 "--vsplit" => match args.split {

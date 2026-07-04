@@ -434,6 +434,9 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    #[cfg(target_os = "linux")]
+    /// Sandbox configuration.
+    pub sandbox: SandboxConfig,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -615,6 +618,27 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     }
 
     None
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SandboxConfig {
+    /// Enables sandboxing
+    pub enable: bool,
+    /// Add additional readonly paths
+    pub extra_readonly_paths: Vec<PathBuf>,
+    /// Add additional writable paths
+    pub extra_writable_paths: Vec<PathBuf>,
+}
+
+impl Default for SandboxConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            extra_readonly_paths: vec![PathBuf::from("/usr/bin"), PathBuf::from("/nix/store")],
+            extra_writable_paths: vec![],
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1240,6 +1264,8 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            #[cfg(target_os = "linux")]
+            sandbox: SandboxConfig::default(),
         }
     }
 }

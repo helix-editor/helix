@@ -13,6 +13,9 @@ pub mod keymap;
 pub mod logging;
 pub mod ui;
 
+#[cfg(target_os = "linux")]
+pub mod sandbox;
+
 #[cfg(not(windows))]
 use std::env::var_os;
 

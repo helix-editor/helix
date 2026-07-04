@@ -22,8 +22,7 @@ fn main() -> Result<()> {
     std::process::exit(exit_code);
 }
 
-#[tokio::main]
-async fn main_impl() -> Result<i32> {
+fn main_impl() -> Result<i32> {
     let args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
@@ -63,6 +62,7 @@ FLAGS:
     -w, --working-dir <path>       Specify an initial working directory
     +[N]                           Open the first given file at line number N, or the last line, if
                                    N is not specified.
+    --[no-]sandbox                 Hide most of the filesystem from helix. Flag overrides toml config.
 ",
             env!("CARGO_PKG_NAME"),
             VERSION_AND_GIT_HASH,
@@ -130,6 +130,15 @@ FLAGS:
         }
     };
 
+    #[cfg(target_os = "linux")]
+    if args.sandbox.unwrap_or(config.editor.sandbox.enable) {
+        if let Err(err) = helix_term::sandbox::landlock(&config.editor.sandbox) {
+            eprintln!("Sandboxing error: {}", err);
+            eprintln!("Sandboxing can be temporarily disabled using the --no-sandbox flag.");
+            return Ok(1);
+        }
+    }
+
     let workspace_trust =
         helix_loader::workspace_trust::WorkspaceTrust::new((&config.editor.workspace_trust).into());
 
@@ -143,6 +152,18 @@ FLAGS:
             helix_core::config::default_lang_loader()
         });
 
+    let exit_code = main_tokio(args, config, lang_loader, workspace_trust)?;
+
+    Ok(exit_code)
+}
+
+#[tokio::main]
+async fn main_tokio(
+    args: Args,
+    config: Config,
+    lang_loader: helix_core::syntax::Loader,
+    workspace_trust: helix_loader::workspace_trust::WorkspaceTrust,
+) -> Result<i32> {
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app = Application::new(args, config, lang_loader, workspace_trust)
         .context("unable to start Helix")?;
