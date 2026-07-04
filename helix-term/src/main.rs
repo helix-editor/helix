@@ -5,29 +5,14 @@ use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
 
 fn setup_logging(verbosity: u64) -> Result<()> {
-    let mut base_config = fern::Dispatch::new();
-
-    base_config = match verbosity {
-        0 => base_config.level(log::LevelFilter::Warn),
-        1 => base_config.level(log::LevelFilter::Info),
-        2 => base_config.level(log::LevelFilter::Debug),
-        _3_or_more => base_config.level(log::LevelFilter::Trace),
+    let level = match verbosity {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _3_or_more => log::LevelFilter::Trace,
     };
 
-    // Separate file config so we can include year, month and day in file logs
-    let file_config = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(helix_loader::log_file())?);
-
-    base_config.chain(file_config).apply()?;
+    helix_term::logging::init_file(level, &helix_loader::log_file())?;
 
     Ok(())
 }
@@ -145,8 +130,11 @@ FLAGS:
         }
     };
 
+    let workspace_trust =
+        helix_loader::workspace_trust::WorkspaceTrust::new((&config.editor.workspace_trust).into());
+
     let lang_loader =
-        helix_core::config::user_lang_loader(config.editor.insecure).unwrap_or_else(|err| {
+        helix_core::config::user_lang_loader(&workspace_trust).unwrap_or_else(|err| {
             eprintln!("{}", err);
             eprintln!("Press <ENTER> to continue with default language config");
             use std::io::Read;
@@ -156,7 +144,8 @@ FLAGS:
         });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, lang_loader).context("unable to start Helix")?;
+    let mut app = Application::new(args, config, lang_loader, workspace_trust)
+        .context("unable to start Helix")?;
     let mut events = app.event_stream();
 
     let exit_code = app.run(&mut events).await?;

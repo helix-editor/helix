@@ -149,6 +149,14 @@ impl Backend for TestBackend {
         Ok(())
     }
 
+    fn start_sync(&mut self) -> Result<(), io::Error> {
+        Ok(())
+    }
+
+    fn end_sync(&mut self) -> Result<(), io::Error> {
+        Ok(())
+    }
+
     fn size(&self) -> Result<Rect, io::Error> {
         Ok(Rect::new(0, 0, self.width, self.height))
     }

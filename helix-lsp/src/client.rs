@@ -43,8 +43,9 @@ use tokio::{
 fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     lsp::WorkspaceFolder {
         name: uri
-            .path_segments()
-            .and_then(|mut segments| segments.next_back())
+            .path()
+            .rsplit('/')
+            .find(|segment| !segment.is_empty())
             .map(|basename| basename.to_string())
             .unwrap_or_default(),
         uri,
@@ -65,6 +66,8 @@ pub struct Client {
     root_uri: Option<lsp::Url>,
     workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
     initialize_notify: Arc<Notify>,
+    /// Notified by the transport once `exit` has been flushed to the server's stdin.
+    shutdown_flushed: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
 }
@@ -242,7 +245,7 @@ impl Client {
         let reader = BufReader::new(process.stdout.take().expect("Failed to open stdout"));
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
-        let (server_rx, server_tx, initialize_notify) =
+        let (server_rx, server_tx, initialize_notify, shutdown_flushed) =
             Transport::start(reader, writer, stderr, id, name.clone());
 
         let workspace_folders = root_uri
@@ -264,6 +267,7 @@ impl Client {
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
             initialize_notify: initialize_notify.clone(),
+            shutdown_flushed,
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -787,13 +791,37 @@ impl Client {
         Ok(())
     }
 
-    /// Forcefully shuts down the language server ignoring any errors.
-    pub async fn force_shutdown(&self) -> Result<()> {
-        if let Err(e) = self.shutdown().await {
-            log::warn!("language server failed to terminate gracefully - {}", e);
-        }
+    /// Sends the LSP shutdown request followed immediately by the exit
+    /// notification, without waiting for the shutdown response (fire-and-forget).
+    /// The server receives both in order and exits on its own; any late shutdown
+    /// response is discarded. Quitting therefore never blocks on a slow server
+    /// (e.g. gopls flushing ~1k log messages before it would answer `shutdown`).
+    ///
+    /// The child process is not waited on here: it is killed by `kill_on_drop`
+    /// when this `Client` is dropped. `close_language_servers` first gives a short
+    /// grace window so the `exit` reaches stdin and well-behaved servers can begin
+    /// exiting before the kill.
+    pub fn force_shutdown(&self) {
+        let request = jsonrpc::MethodCall {
+            jsonrpc: Some(jsonrpc::Version::V2),
+            id: self.next_request_id(),
+            method: <lsp::request::Shutdown as lsp::request::Request>::METHOD.to_string(),
+            params: jsonrpc::Params::None,
+        };
+        // The response receiver is dropped immediately; we do not wait for a reply.
+        let (chan, _) = tokio::sync::mpsc::channel(1);
+        let _ = self.server_tx.send(Payload::Request {
+            chan,
+            value: request,
+        });
         self.exit();
-        Ok(())
+    }
+
+    /// Resolves once the `exit` notification has been written to the server's stdin
+    /// (i.e. helix's *outbound* write completed — independent of how slow the server
+    /// is, since it doesn't wait for any server response).
+    pub async fn wait_shutdown_flushed(&self) {
+        self.shutdown_flushed.notified().await;
     }
 
     // -------------------------------------------------------------------------------------------

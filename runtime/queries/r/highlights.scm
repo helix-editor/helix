@@ -2,6 +2,9 @@
 
 (identifier) @variable
 
+; Member access: the name after `$`/`@` (`obj$field`, `s4@slot`).
+(extract_operator rhs: (identifier) @variable.other.member)
+
 ; Literals
 
 [

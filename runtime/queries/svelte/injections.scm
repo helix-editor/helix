@@ -1,72 +1,18 @@
-; Script elements with TypeScript aliases
-((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (quoted_attribute_value
-        (attribute_value) @_value)))
-  (raw_text) @injection.content)
-  (#match? @_tag "^[Ss][Cc][Rr][Ii][Pp][Tt]$")
-  (#any-of? @_value "ts" "typescript" "text/typescript")
-  (#set! injection.language "typescript"))
-
-; Script elements with explicit language
-((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (attribute_name) @_lang
-      (quoted_attribute_value
-        (attribute_value) @injection.language)))
-  (raw_text) @injection.content)
-  (#eq? @_tag "script")
-  (#eq? @_lang "lang")
-  (#not-any-of? @injection.language "ts" "typescript" "text/typescript"))
-
-; Script content defaults to JavaScript
+; <script> content defaults to JavaScript
 ((element
   (start_tag (tag_name) @_tag)
   (raw_text) @injection.content)
   (#eq? @_tag "script")
   (#set! injection.language "javascript"))
 
-; Style with lang="scss"
+; <style> content defaults to CSS
 ((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (quoted_attribute_value
-        (attribute_value) @_scss)))
+  (start_tag (tag_name) @_tag)
   (raw_text) @injection.content)
   (#eq? @_tag "style")
-  (#eq? @_scss "scss")
-  (#set! injection.language "scss"))
+  (#set! injection.language "css"))
 
-; Style with lang="sass"
-((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (quoted_attribute_value
-        (attribute_value) @_sass)))
-  (raw_text) @injection.content)
-  (#eq? @_tag "style")
-  (#eq? @_sass "sass")
-  (#set! injection.language "sass"))
-
-; Style with lang="less"
-((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (quoted_attribute_value
-        (attribute_value) @_less)))
-  (raw_text) @injection.content)
-  (#eq? @_tag "style")
-  (#eq? @_less "less")
-  (#set! injection.language "less"))
-
-; Style with explicit language
+; <script> or <style> with "lang" attribute
 ((element
   (start_tag
     (tag_name) @_tag
@@ -75,20 +21,8 @@
       (quoted_attribute_value
         (attribute_value) @injection.language)))
   (raw_text) @injection.content)
-  (#eq? @_tag "style")
-  (#eq? @_lang "lang")
-  (#not-any-of? @injection.language "scss" "sass" "less"))
-
-; Style content defaults to CSS when no lang attribute is present
-((element
-  (start_tag
-    (tag_name) @_tag
-    (attribute
-      (attribute_name) @_style_attr)*)
-  (raw_text) @injection.content)
-  (#eq? @_tag "style")
-  (#not-any-of? @_style_attr "lang")
-  (#set! injection.language "css"))
+  (#any-of? @_tag "style" "script")
+  (#eq? @_lang "lang"))
 
 ; Inline style attribute
 ((attribute

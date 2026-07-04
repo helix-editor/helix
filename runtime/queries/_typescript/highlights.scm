@@ -33,6 +33,19 @@
     (pair_pattern
       value: (identifier) @variable.parameter)))
 
+; ({ p = default }: { p: t = default })
+(required_parameter
+  (object_pattern
+    (object_assignment_pattern
+      left: (shorthand_property_identifier_pattern) @variable.parameter)))
+
+; ({ a: p = default }: { a: t = default })
+(required_parameter
+  (object_pattern
+    (pair_pattern
+      value: (assignment_pattern
+        left: (identifier) @variable.parameter))))
+
 ; ([ p ]: t[])
 (required_parameter
   (array_pattern
@@ -58,6 +71,19 @@
   (object_pattern
     (pair_pattern
       value: (identifier) @variable.parameter)))
+
+; ({ p = default }: { p?: t = default })
+(optional_parameter
+  (object_pattern
+    (object_assignment_pattern
+      left: (shorthand_property_identifier_pattern) @variable.parameter)))
+
+; ({ a: p = default }: { a?: t = default })
+(optional_parameter
+  (object_pattern
+    (pair_pattern
+      value: (assignment_pattern
+        left: (identifier) @variable.parameter))))
 
 ; ([ p ]?: t[]) // Invalid but still possible to highlight.
 (optional_parameter
@@ -86,6 +112,7 @@
 
 [
   "abstract"
+  "accessor"
   "declare"
   "module"
   "infer"
@@ -94,7 +121,11 @@
   "namespace"
   "override"
   "satisfies"
+  "using"
 ] @keyword
+
+; `asserts` in a return-type type predicate, e.g. `function f(x): asserts x is T`
+"asserts" @keyword.operator
 
 [
   "export"
@@ -150,3 +181,17 @@
 (import_require_clause
   (identifier) "="
   ("require") @keyword)
+
+; Method signatures in interfaces / type literals, and function-typed
+; property signatures (`foo(): void`, `bar: () => void`).
+(method_signature
+  name: (property_identifier) @function.method)
+(abstract_method_signature
+  name: (property_identifier) @function.method)
+(property_signature
+  name: (property_identifier) @function.method
+  type: (type_annotation
+    [
+      (function_type)
+      (union_type (parenthesized_type (function_type)))
+    ]))

@@ -277,6 +277,9 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    /// Reverse map from scope string to its `Highlight` index. `find_highlight_exact`
+    /// is called many times per frame, so we optimize lookups.
+    scope_index: HashMap<String, Highlight>,
     rainbow_length: usize,
 }
 
@@ -445,10 +448,7 @@ impl Theme {
     }
 
     pub fn find_highlight_exact(&self, scope: &str) -> Option<Highlight> {
-        self.scopes()
-            .iter()
-            .position(|s| s == scope)
-            .map(|idx| Highlight::new(idx as u32))
+        self.scope_index.get(scope).copied()
     }
 
     pub fn find_highlight(&self, mut scope: &str) -> Option<Highlight> {
@@ -489,10 +489,17 @@ impl Theme {
         let (styles, scopes, highlights, rainbow_length, load_errors) =
             build_theme_values(toml_keys);
 
+        let scope_index = scopes
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.clone(), Highlight::new(i as u32)))
+            .collect();
+
         let theme = Self {
             styles,
             scopes,
             highlights,
+            scope_index,
             rainbow_length,
             ..Default::default()
         };

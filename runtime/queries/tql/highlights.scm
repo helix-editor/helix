@@ -77,16 +77,16 @@
 (format_expr) @string
 (ip) @constant
 (subnet) @constant
-(time) @number
+(time) @constant.numeric
 (duration) @constant.numeric
 (frontmatter_open) @comment
 (frontmatter_close) @comment
 (comment) @comment
 
 (invocation
-  operator: (entity) @function.call)
+  operator: (entity) @function)
 (call_expression
-  (entity) @function.call)
+  (entity) @function)
 (call_expression
   method: (entity) @function.method)
 (identifier) @variable

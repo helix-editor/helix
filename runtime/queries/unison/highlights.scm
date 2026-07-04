@@ -43,7 +43,7 @@
 
 (pattern) @variable
 
-(use_clause) @keyword.import
+(use_clause) @keyword.control.import
 
 ;; Types
 (record_field

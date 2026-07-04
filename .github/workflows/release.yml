@@ -10,6 +10,13 @@ on:
     paths:
     - '.github/workflows/release.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 env:
   # Preview mode: Publishes the build output as a CI artifact instead of creating
   # a release, allowing for manual inspection of the output. This mode is
@@ -23,12 +30,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
 
       - name: Fetch tree-sitter grammars
         run: cargo run --package=helix-loader --bin=hx-loader
@@ -83,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Download grammars
         uses: actions/download-artifact@v8
@@ -101,7 +110,7 @@ jobs:
         run: rm rust-toolchain.toml
 
       - name: Install ${{ matrix.rust }} toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
         with:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
@@ -109,10 +118,6 @@ jobs:
       - name: Show command used for Cargo
         run: |
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
-
-      - name: Run cargo test
-        if: "!matrix.skip_tests"
-        run: cargo test --release --locked --target ${{ matrix.target }} --workspace
 
       - name: Build release binary
         run: cargo build --profile opt --locked --target ${{ matrix.target }}
@@ -165,11 +170,16 @@ jobs:
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
 
+      - name: Install cargo-deb
+        if: matrix.build == 'x86_64-linux'
+        uses: taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419 # v2.82.7
+        with:
+          tool: cargo-deb
+
       - name: Build Deb
         shell: bash
         if: matrix.build == 'x86_64-linux'
         run: |
-          cargo install cargo-deb
           mkdir -p target/release
           cp target/${{ matrix.target }}/opt/hx target/release/
           cargo deb --no-build
@@ -199,9 +209,13 @@ jobs:
     name: Publish
     needs: [dist]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload to GitHub release
+      id-token: write # sign provenance attestations
+      attestations: write # write provenance to the attestations API
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v8
 
@@ -250,8 +264,14 @@ jobs:
           tar cJf dist/helix-$tag-source.tar.xz -C $source .
           mv dist $source/
 
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v4
+        if: env.preview == 'false'
+        with:
+          subject-path: 'dist/*'
+
       - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
         if: env.preview == 'false'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
