@@ -10,6 +10,7 @@
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
 | basic | ✓ | ✓ | ✓ | ✓ |  |  |
 | bass | ✓ |  |  |  |  | `bass` |
+| batch | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
 | bicep | ✓ |  |  |  |  | `bicep-langserver` |
@@ -56,6 +57,7 @@
 | dockerfile | ✓ | ✓ |  |  |  | `docker-langserver`, `docker-language-server` |
 | dot | ✓ |  |  |  |  | `dot-language-server` |
 | doxyfile | ✓ | ✓ | ✓ | ✓ |  |  |
+| doxygen | ✓ |  |  |  |  |  |
 | drools |  |  |  |  |  | `drools-lsp` |
 | dtd | ✓ |  |  |  |  |  |
 | dune | ✓ |  |  |  |  |  |
@@ -135,7 +137,7 @@
 | idris |  |  |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |  |  |
 | ini | ✓ |  |  | ✓ |  |  |
-| ink | ✓ |  |  |  |  |  |
+| ink | ✓ | ✓ | ✓ |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
 | janet | ✓ |  | ✓ |  | ✓ |  |
 | java | ✓ | ✓ | ✓ | ✓ | ✓ | `jdtls` |
@@ -186,9 +188,11 @@
 | matlab | ✓ | ✓ | ✓ |  |  |  |
 | mermaid | ✓ |  |  |  |  |  |
 | meson | ✓ |  | ✓ |  |  | `mesonlsp` |
+| metamath | ✓ |  |  | ✓ |  | `mm-lsp-server` |
 | mint |  |  |  |  |  | `mint` |
 | miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
+| moonbit | ✓ | ✓ | ✓ | ✓ |  | `moonbit-lsp` |
 | move | ✓ |  | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
