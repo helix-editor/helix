@@ -85,7 +85,7 @@
 | freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  | ✓ | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
-| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ | `ncat` |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
 | ghostty | ✓ |  |  |  |  |  |
