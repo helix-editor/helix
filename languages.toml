@@ -5649,17 +5649,3 @@ comment-tokens = ["REM", "::"]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
 
-[[language]]
-name = "doxygen"
-scope = "source.doxygen"
-injection-regex = "doxygen"
-file-types = [
-  "doxygen",
-  "dox",
-  { glob = "doc.md" },
-]
-indent = { tab-width = 4, unit = "    " }
-
-[[grammar]]
-name = "doxygen"
-source = { git = "https://codeberg.org/maribu/tree-sitter-doxygen", rev = "26afdde765b43dc42d2c90172c238a64a93cd53caff9adce795a0e2127f4bfc9" }
