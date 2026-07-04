@@ -1,6 +1,4 @@
 (choice_block
-  (choice (choice_marks) . _ @anchor)
-  (#set! "scope" "tail")) @align
+  (choice (choice_marks) . _ @anchor)) @align
 (gather_block
-  (gather (gather_marks) . _ @anchor)
-  (#set! "scope" "tail")) @align
+  (gather (gather_marks) . _ @anchor)) @align
