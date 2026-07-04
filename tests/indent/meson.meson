@@ -1,0 +1,14 @@
+project('demo', 'c')
+
+executable(
+  'prog',
+  sources,
+)
+
+if host_machine.system() == 'linux'
+  message('linux')
+endif
+
+foreach name : names
+  message(name)
+endforeach

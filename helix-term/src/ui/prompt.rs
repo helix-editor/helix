@@ -527,7 +527,7 @@ impl Prompt {
                 surface.set_string(
                     self.line_area.x,
                     self.line_area.y,
-                    suggestion,
+                    &suggestion,
                     suggestion_color,
                 );
             }
@@ -612,6 +612,9 @@ impl Component for Prompt {
             }
             Event::Key(event) => *event,
             Event::Resize(..) => return EventResult::Consumed(None),
+            // Prompt is a modal and should consume mouse events so clicks don't fall
+            // through to the editor underneath
+            Event::Mouse(_) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 

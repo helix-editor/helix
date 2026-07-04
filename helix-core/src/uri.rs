@@ -16,11 +16,11 @@ pub enum Uri {
 }
 
 impl Uri {
-    // This clippy allow mirrors url::Url::from_file_path
+    // This clippy allow mirrors helix_stdx::Url::from_file_path
     #[allow(clippy::result_unit_err)]
-    pub fn to_url(&self) -> Result<url::Url, ()> {
+    pub fn to_url(&self) -> Result<helix_stdx::Url, ()> {
         match self {
-            Uri::File(path) => url::Url::from_file_path(path),
+            Uri::File(path) => helix_stdx::Url::from_file_path(path),
         }
     }
 
@@ -37,6 +37,12 @@ impl From<PathBuf> for Uri {
     }
 }
 
+impl From<&Path> for Uri {
+    fn from(path: &Path) -> Self {
+        Self::File(path.into())
+    }
+}
+
 impl fmt::Display for Uri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -47,7 +53,7 @@ impl fmt::Display for Uri {
 
 #[derive(Debug)]
 pub struct UrlConversionError {
-    source: url::Url,
+    source: helix_stdx::Url,
     kind: UrlConversionErrorKind,
 }
 
@@ -77,7 +83,7 @@ impl fmt::Display for UrlConversionError {
 
 impl std::error::Error for UrlConversionError {}
 
-fn convert_url_to_uri(url: &url::Url) -> Result<Uri, UrlConversionErrorKind> {
+fn convert_url_to_uri(url: &helix_stdx::Url) -> Result<Uri, UrlConversionErrorKind> {
     if url.scheme() == "file" {
         url.to_file_path()
             .map(|path| Uri::File(helix_stdx::path::normalize(path).into()))
@@ -87,18 +93,18 @@ fn convert_url_to_uri(url: &url::Url) -> Result<Uri, UrlConversionErrorKind> {
     }
 }
 
-impl TryFrom<url::Url> for Uri {
+impl TryFrom<helix_stdx::Url> for Uri {
     type Error = UrlConversionError;
 
-    fn try_from(url: url::Url) -> Result<Self, Self::Error> {
+    fn try_from(url: helix_stdx::Url) -> Result<Self, Self::Error> {
         convert_url_to_uri(&url).map_err(|kind| Self::Error { source: url, kind })
     }
 }
 
-impl TryFrom<&url::Url> for Uri {
+impl TryFrom<&helix_stdx::Url> for Uri {
     type Error = UrlConversionError;
 
-    fn try_from(url: &url::Url) -> Result<Self, Self::Error> {
+    fn try_from(url: &helix_stdx::Url) -> Result<Self, Self::Error> {
         convert_url_to_uri(url).map_err(|kind| Self::Error {
             source: url.clone(),
             kind,
@@ -109,7 +115,7 @@ impl TryFrom<&url::Url> for Uri {
 #[cfg(test)]
 mod test {
     use super::*;
-    use url::Url;
+    use helix_stdx::Url;
 
     #[test]
     fn unknown_scheme() {

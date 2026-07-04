@@ -52,7 +52,7 @@
 (argument) @variable.parameter
 
 (function_call
-  name: (_) @function.call)
+  name: (_) @function)
 
 ; definitions
 (callback
@@ -62,7 +62,7 @@
   name: (_) @function)
 
 (callback_event
-  name: (simple_identifier) @function.call)
+  name: (simple_identifier) @function)
 
 (enum_definition
   name: (_) @type.enum)

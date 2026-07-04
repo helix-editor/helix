@@ -81,7 +81,7 @@ fn document_highlight_ranges(
         })
         .collect();
 
-    ranges.sort_by(|a, b| (a.start, a.end).cmp(&(b.start, b.end)));
+    ranges.sort_by_key(|a| (a.start, a.end));
 
     let mut merged: Vec<std::ops::Range<usize>> = Vec::with_capacity(ranges.len());
     for range in ranges {

@@ -723,6 +723,65 @@ async fn test_join_selections_comment() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_toggle_comments_inside_comment_injection() -> anyhow::Result<()> {
+    // A `//` line comment's text is injected as the `comment` language, which has no
+    // comment-tokens of its own. With the cursor inside the comment, toggling must
+    // resolve tokens from the enclosing language and un-comment the line,
+    // not fall back to the hardcoded default `#`.
+    test((
+        indoc! {"\
+            // #[a|]#bc
+        "},
+        ":lang rust<ret><C-c>",
+        indoc! {"\
+            #[a|]#bc
+        "},
+    ))
+    .await?;
+
+    // A `///` doc comment's text is injected as markdown (no line comment token of
+    // its own). Toggling must strip the whole `///` marker via Rust's tokens rather
+    // than insert a markdown `<!-- -->` inside or leave a stray `/`.
+    test((
+        indoc! {"\
+            /// #[a|]#bc
+        "},
+        ":lang rust<ret><C-c>",
+        indoc! {"\
+            #[a|]#bc
+        "},
+    ))
+    .await?;
+
+    // Likewise for the `//!` inner doc comment marker.
+    test((
+        indoc! {"\
+            //! #[a|]#bc
+        "},
+        ":lang rust<ret><C-c>",
+        indoc! {"\
+            #[a|]#bc
+        "},
+    ))
+    .await?;
+
+    // Commenting a normal code line still uses the top-level language's token
+    // (no injection layer at the cursor), no regression for the common case.
+    test((
+        indoc! {"\
+            #[l|]#et x = 5;
+        "},
+        ":lang rust<ret><C-c>",
+        indoc! {"\
+            // #[l|]#et x = 5;
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let contents_to_read = "some contents";

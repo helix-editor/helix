@@ -1,3 +1,7 @@
+; Member access
+(object_reference
+  name: (identifier) @variable.other.member)
+
 (invocation
   (object_reference
     name: (identifier) @function.method))
@@ -11,9 +15,6 @@
   (keyword_brin)
   (keyword_array)
 ] @function.builtin
-
-(object_reference
-  name: (identifier) @variable.other.member)
 
 (relation
   alias: (identifier) @variable.parameter)
@@ -181,7 +182,9 @@
   (keyword_transaction)
   (keyword_only)
   (keyword_like)
+  (keyword_rlike)
   (keyword_similar)
+  (keyword_refresh)
   (keyword_over)
   (keyword_change)
   (keyword_modify)

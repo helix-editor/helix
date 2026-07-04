@@ -37,3 +37,8 @@
 ;; References
 
 (identifier) @local.reference
+
+; A call's function name is not a variable reference; keep its class
+; even when a same-named local is in scope.
+(call_expression
+  function: (identifier) @_)
