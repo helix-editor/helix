@@ -231,6 +231,7 @@
 | prql | ✓ |  |  |  |  |  |
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
+| puppet | ✓ |  | ✓ |  |  | `puppet-languageserver` |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
