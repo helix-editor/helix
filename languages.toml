@@ -1697,6 +1697,7 @@ file-types = [
   "bu",
   { glob = ".stylelintrc" },  # https://stylelint.io/user-guide/configure/
   { glob = ".puppeteerrc" },  # https://pptr.dev/guides/configuration
+  { glob = ".bundle/config" },  # https://bundler.io/v4.0/man/bundle-config.1.html
 ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
