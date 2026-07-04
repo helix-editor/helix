@@ -10,21 +10,27 @@
 
 ; Definitions
 
-(function_definition (function_identifier) @local.definition)
-(struct_constructor_declaration (lowercase_identifier) @local.definition)
+(value_definition (lowercase_identifier) @local.definition.variable)
+(let_expression (lowercase_identifier) @local.definition.variable)
+(letrec_expression (lowercase_identifier) @local.definition.variable)
+(and_expression (lowercase_identifier) @local.definition.variable)
+(guard_let_expression (lowercase_identifier) @local.definition.variable)
+(let_mut_expression (lowercase_identifier) @local.definition.variable.mutable)
 
-(value_definition (lowercase_identifier) @local.definition)
-(positional_parameter (lowercase_identifier) @local.definition)
-(labelled_parameter (label (lowercase_identifier)) @local.definition)
-(optional_parameter (optional_label (lowercase_identifier)) @local.definition)
-(optional_parameter_with_default (label (lowercase_identifier)) @local.definition)
-(let_mut_expression (lowercase_identifier) @local.definition)
+(positional_parameter (lowercase_identifier) @local.definition.variable.parameter)
+(labelled_parameter (label (lowercase_identifier)) @local.definition.variable.parameter)
+(optional_parameter (optional_label (lowercase_identifier)) @local.definition.variable.parameter)
+(optional_parameter_with_default (label (lowercase_identifier)) @local.definition.variable.parameter)
 
-(struct_definition (identifier) @local.definition)
-(enum_definition (identifier) @local.definition)
-(type_definition (identifier) @local.definition)
+((positional_parameter (lowercase_identifier) @local.definition.variable.builtin)
+ (#eq? @local.definition.variable.builtin "self"))
+((labelled_parameter (label (lowercase_identifier)) @local.definition.variable.builtin)
+ (#eq? @local.definition.variable.builtin "self"))
+((optional_parameter (optional_label (lowercase_identifier)) @local.definition.variable.builtin)
+ (#eq? @local.definition.variable.builtin "self"))
+((optional_parameter_with_default (label (lowercase_identifier)) @local.definition.variable.builtin)
+ (#eq? @local.definition.variable.builtin "self"))
 
 ; References
 
 (qualified_identifier) @local.reference
-(qualified_type_identifier) @local.reference

@@ -1,26 +1,29 @@
 (function_definition
-  (function_identifier) @definition.function)
+  (function_identifier (lowercase_identifier) @name)) @definition.function
 
 (struct_constructor_declaration
-  (lowercase_identifier) @definition.function)
+  (lowercase_identifier) @name) @definition.function
 
 (trait_method_declaration
-  (function_identifier) @definition.function)
+  (function_identifier (lowercase_identifier) @name)) @definition.function
 
 (struct_definition
-  (identifier) @definition.struct)
+  (identifier) @name) @definition.struct
+
+(tuple_struct_definition
+  (identifier) @name) @definition.struct
 
 (enum_definition
-  (identifier) @definition.enum)
+  (identifier) @name) @definition.enum
 
 (type_definition
-  (identifier) @definition.type)
+  (identifier) @name) @definition.type
 
 (error_type_definition
-  (identifier) @definition.type)
+  (identifier) @name) @definition.type
 
 (trait_definition
-  (identifier) @definition.interface)
+  (identifier) @name) @definition.interface
 
 (const_definition
-  (uppercase_identifier) @definition.constant)
+  (uppercase_identifier) @name) @definition.constant
