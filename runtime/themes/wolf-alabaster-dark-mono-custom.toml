@@ -13,7 +13,7 @@ inherits = "wolf-alabaster-dark-mono"
 # this is actually the default but Helix master hasn't synced the catppuccin changes yet
 "function.macro" = "fg"
 "ui.linenr" = { fg = "line_numbers" }                                       # Subtle gray for normal line numbers
-"ui.statusline" = { fg = "none", bg = "none" }
+"ui.statusline" = { }
 "ui.linenr.selected" = { fg = "selected_line_color", modifiers = ["bold"] }
 
 
