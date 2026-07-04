@@ -87,24 +87,16 @@ fn setup_integration_logging() {
         .map(|lvl| lvl.parse().unwrap())
         .unwrap_or(log::LevelFilter::Info);
 
-    // Separate file config so we can include year, month and day in file logs
-    let _ = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{} {} [{}] {}",
-                chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(level)
-        .chain(std::io::stdout())
-        .apply();
+    crate::logging::init_stdout(level);
 }
 
 impl Application {
-    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
+    pub fn new(
+        args: Args,
+        config: Config,
+        lang_loader: syntax::Loader,
+        workspace_trust: helix_loader::workspace_trust::WorkspaceTrust,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -124,7 +116,7 @@ impl Application {
         let backend = TestBackend::new(120, 150);
 
         let theme_mode = backend.get_theme_mode();
-        let terminal = Terminal::new(backend)?;
+        let mut terminal = Terminal::new(backend)?;
         let area = terminal.size();
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
@@ -137,13 +129,9 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            workspace_trust,
         );
-        Self::load_configured_theme(
-            &mut editor,
-            &config.load(),
-            terminal.backend().supports_true_color(),
-            theme_mode,
-        );
+        Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -339,7 +327,9 @@ impl Application {
                     self.handle_terminal_events(event).await;
                 }
                 Some(callback) = self.jobs.callbacks.recv() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
+                    if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback))) {
+                        self.jobs.add(job);
+                    }
                     self.render().await;
                 }
                 Some(msg) = self.jobs.status_messages.recv() => {
@@ -354,7 +344,9 @@ impl Application {
                     helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                    if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback) {
+                        self.jobs.add(job);
+                    }
                     self.render().await;
                 }
                 event = self.editor.wait_event() => {
@@ -362,7 +354,11 @@ impl Application {
 
                     #[cfg(feature = "integration")]
                     {
-                        if _idle_handled {
+                        // Don't report idle while a save is still in flight, or an assertion on the post-save document state (e.g. its path,
+                        // set in `handle_document_write`) can run before the `DocumentSavedEvent` is processed. Slow file I/O on Windows
+                        // (atomic_save's rename/fsync dance over the still-open temp file) makes this race observable.
+                        // Errors produce an event too, so it cannot hang.
+                        if _idle_handled && self.editor.write_count == 0 {
                             return true;
                         }
                     }
@@ -395,6 +391,15 @@ impl Application {
                 };
                 self.config.store(Arc::new(app_config));
             }
+            ConfigEvent::ThemeChanged => {
+                let _ = self.terminal.backend_mut().set_background_color(
+                    self.editor
+                        .theme
+                        .try_get_exact("ui.background")
+                        .and_then(|style| style.bg),
+                );
+                return;
+            }
         }
 
         // Update all the relevant members in the editor after updating
@@ -414,15 +419,20 @@ impl Application {
             let default_config = Config::load_default()
                 .map_err(|err| anyhow::anyhow!("Failed to load config: {}", err))?;
 
+            // Apply any change to editor.workspace_trust before reading local language config.
+            self.editor
+                .workspace_trust
+                .set_config((&default_config.editor.workspace_trust).into());
+
             // Update the syntax language loader before setting the theme. Setting the theme will
             // call `Loader::set_scopes` which must be done before the documents are re-parsed for
             // the sake of locals highlighting.
-            let lang_loader = helix_core::config::user_lang_loader()?;
+            let lang_loader = helix_core::config::user_lang_loader(&self.editor.workspace_trust)?;
             self.editor.syn_loader.store(Arc::new(lang_loader));
             Self::load_configured_theme(
                 &mut self.editor,
                 &default_config,
-                self.terminal.backend().supports_true_color(),
+                &mut self.terminal,
                 self.theme_mode,
             );
 
@@ -460,10 +470,12 @@ impl Application {
     fn load_configured_theme(
         editor: &mut Editor,
         config: &Config,
-        terminal_true_color: bool,
+        terminal: &mut Terminal,
         mode: Option<theme::Mode>,
     ) {
-        let true_color = terminal_true_color || config.editor.true_color || crate::true_color();
+        let true_color = terminal.backend().supports_true_color()
+            || config.editor.true_color
+            || crate::true_color();
         let theme = config
             .theme
             .as_ref()
@@ -490,7 +502,7 @@ impl Application {
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
-        editor.set_theme(theme);
+        let _ = editor.set_theme(theme);
     }
 
     #[cfg(windows)]
@@ -717,13 +729,21 @@ impl Application {
             }) => false,
             #[cfg(not(windows))]
             termina::Event::Csi(csi::Csi::Mode(csi::Mode::ReportTheme(mode))) => {
-                Self::load_configured_theme(
-                    &mut self.editor,
-                    &self.config.load(),
-                    self.terminal.backend().supports_true_color(),
-                    Some(mode.into()),
-                );
-                true
+                let config = self.config.load();
+                let mode = mode.into();
+                let mode_changed = self.theme_mode.as_ref().is_none_or(|m| m != &mode);
+                if mode_changed && config.theme.as_ref().is_some_and(|t| t.is_adaptive()) {
+                    self.theme_mode = Some(mode);
+                    Self::load_configured_theme(
+                        &mut self.editor,
+                        &config,
+                        &mut self.terminal,
+                        self.theme_mode,
+                    );
+                    true
+                } else {
+                    false
+                }
             }
             #[cfg(windows)]
             TerminalEvent::Resize(width, height) => {
@@ -744,6 +764,8 @@ impl Application {
                 kind: crossterm::event::KeyEventKind::Release,
                 ..
             }) => false,
+            #[cfg(not(windows))]
+            event if event.is_escape() => false,
             event => self.compositor.handle_event(&event.into(), &mut cx),
         };
 
@@ -1209,9 +1231,17 @@ impl Application {
         // If `Uri` gets another variant other than `Path` this may not be valid.
         let path = uri.as_path().expect("URIs are valid paths");
 
-        let action = match take_focus {
-            Some(true) => helix_view::editor::Action::Replace,
-            _ => helix_view::editor::Action::VerticalSplit,
+        // Determine the focus strategy based on the current UI state and LSP request:
+        // 1. If there is no pop-up overlay, jump directly (Replace).
+        // 2. If there is a pop-up overlay, unless the LSP forces take_focus, only load in the background (Load) to prevent interruption of input.
+        // Note: We assume layer_count() == 1 means only the EditorView is present (no popups/overlays).
+        let action = if self.compositor.layer_count() == 1 {
+            helix_view::editor::Action::Replace
+        } else {
+            match take_focus {
+                Some(true) => helix_view::editor::Action::Replace,
+                _ => helix_view::editor::Action::Load,
+            }
         };
 
         let doc_id = match self.editor.open(path, action) {
@@ -1330,12 +1360,7 @@ impl Application {
             errs.push(err);
         }
 
-        if self.editor.close_language_servers(None).await.is_err() {
-            log::error!("Timed out waiting for language servers to shutdown");
-            errs.push(anyhow::format_err!(
-                "Timed out waiting for language servers to shutdown"
-            ));
-        }
+        self.editor.close_language_servers(None).await;
 
         errs
     }

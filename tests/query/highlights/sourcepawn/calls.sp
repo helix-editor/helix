@@ -1,0 +1,2 @@
+void f() { foo(); }
+//         ^ @function

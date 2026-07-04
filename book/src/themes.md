@@ -33,14 +33,20 @@ Where `key` represents what you want to style, `fg` specifies the foreground col
 To specify only the foreground color:
 
 ```toml
+# Valid hex-color format is `#RGB` or `#RRGGBB`
+# (each letter is a nibble)
 key = "#ffffff"
 ```
 
 If the key contains a dot `'.'`, it must be quoted to prevent it being parsed as a [dotted key](https://toml.io/en/v1.0.0#keys).
 
 ```toml
-"key.key" = "#ffffff"
+"key.key" = "#fff"
 ```
+
+Color values must be either a [CSS hex RGB string](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/hex-color) or a name declared in the [`palette`](#color-palettes).
+
+> 💡 Note that Helix doesn't support transparency (alpha channel).
 
 For inspiration, you can find the default `theme.toml`
 [here](https://github.com/helix-editor/helix/blob/master/theme.toml) and
@@ -162,6 +168,8 @@ These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/
 
 When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
+This list is also the reference for the capture names used in `highlights.scm` queries (`@function`, `@type`, …) — see [Adding languages](./guides/adding_languages.md). When several captures cover the same text the **last** matching pattern in the file wins; when they sit on nested nodes the **innermost** node wins regardless of order, so capture the leaf you mean (put `@function` on the called identifier, not a node wrapping it). A method call is `@function.method`; a field access with no call is `@variable.other.member`.
+
 We use a similar set of scopes as
 [Sublime Text](https://www.sublimetext.com/docs/scope_naming.html). See also
 [TextMate](https://macromates.com/manual/en/language_grammars) scopes.
@@ -172,8 +180,8 @@ We use a similar set of scopes as
   - `builtin` - Primitive types provided by the language (`int`, `usize`)
   - `parameter` - Generic type parameters (`T`)
   - `enum`
-    - `variant`
-- `constructor`
+    - `variant` - Enum variants
+- `constructor` - Constructors, struct/record literals, type names in value position
 
 - `constant` (TODO: constant.other.placeholder for `%v`)
   - `builtin` Special constants provided by the language (`true`, `false`, `nil` etc)
@@ -199,8 +207,11 @@ We use a similar set of scopes as
   - `unused` - Unused variables and patterns, e.g. `_` and `_foo`
 
 - `variable` - Variables
+  - `mutable` - Mutable variables (e.g. marked with `mut` in Rust)
   - `builtin` - Reserved language variables (`self`, `this`, `super`, etc.)
+    - `mutable` - Mutable language variables (e.g. `mut self` in Rust)
   - `parameter` - Function parameters
+    - `mutable` - Mutable function parameters (e.g. marked with `mut` in Rust)
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
       - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
@@ -228,17 +239,17 @@ We use a similar set of scopes as
 
 - `operator` - `||`, `+=`, `>`
 
-- `function`
-  - `builtin`
-  - `method`
+- `function` - Function definitions and calls
+  - `builtin` - Language built-in functions
+  - `method` - Method definitions and calls (`obj.method()`)
     - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
-  - `macro`
+  - `macro` - Macro invocations (e.g. `println!` in Rust)
   - `special` (preprocessor in C)
 
 - `tag` - Tags (e.g. `<body>` in HTML)
   - `builtin`
 
-- `namespace`
+- `namespace` - Modules and namespaces (e.g. `std::collections`, package names)
 
 - `special` - `derive` in Rust, bolded query-match in pickers (includes file explorer), etc.
 See also [#2380]
@@ -273,6 +284,8 @@ See also [#2380]
     - `moved` - renamed or moved files/changes
     - `conflict` - merge conflicts
     - `gutter` - gutter indicator
+
+- `embedded` - Interpolated expressions embedded in a string template (`${…}`)
 
 #### Interface
 
@@ -352,9 +365,13 @@ These scopes are used for theming the editor interface:
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
 | `ui.cursorcolumn.secondary`       | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
 | `warning`                         | Diagnostics warning (gutter)                                                                   |
+| `warning.diagnostic.inline`       | The inline diagnostic for the warning severity                                                 |
 | `error`                           | Diagnostics error (gutter)                                                                     |
+| `error.diagnostic.inline`         | The inline diagnostic for the error severity                                                   |
 | `info`                            | Diagnostics info (gutter)                                                                      |
+| `info.diagnostic.inline`          | The inline diagnostic for the warning severity                                                 |
 | `hint`                            | Diagnostics hint (gutter)                                                                      |
+| `hint.diagnostic.inline`          | The inline diagnostic for the hint severity                                                    |
 | `diagnostic`                      | Diagnostics fallback style (editing area)                                                      |
 | `diagnostic.hint`                 | Diagnostics hint (editing area)                                                                |
 | `diagnostic.info`                 | Diagnostics info (editing area)                                                                |

@@ -86,6 +86,10 @@
 
 ; method invocation
 
+; Member access
+(field_expression field: (identifier) @variable.other.member)
+(field_expression value: (identifier) @type
+ (#match? @type "^[A-Z]"))
 
 (call_expression
   function: (identifier) @function)
@@ -133,10 +137,6 @@
 ; expressions
 
 
-(field_expression field: (identifier) @variable.other.member)
-(field_expression value: (identifier) @type
- (#match? @type "^[A-Z]"))
-
 (infix_expression operator: (identifier) @operator)
 (infix_expression operator: (operator_identifier) @operator)
 (infix_type operator: (operator_identifier) @operator)
@@ -146,9 +146,6 @@
 (boolean_literal) @constant.builtin.boolean
 (integer_literal) @constant.numeric.integer
 (floating_point_literal) @constant.numeric.float
-
-
-(symbol_literal) @string.special.symbol
 
 [
 (string)
@@ -170,6 +167,8 @@
   (infix_modifier)
   (transparent_modifier)
   (open_modifier)
+  (tracked_modifier)
+  (into_modifier)
   "abstract"
   "final"
   "implicit"

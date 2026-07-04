@@ -7,6 +7,7 @@ pub use helix_dap_types::*;
 pub use transport::{Payload, Response, Transport};
 
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 use thiserror::Error;
 #[derive(Error, Debug)]
@@ -75,9 +76,9 @@ pub enum Event {
     LoadedSource(<events::LoadedSource as events::Event>::Body),
     Process(<events::Process as events::Event>::Body),
     Capabilities(<events::Capabilities as events::Event>::Body),
-    // ProgressStart(),
-    // ProgressUpdate(),
-    // ProgressEnd(),
+    ProgressStart(<events::ProgressStart as events::Event>::Body),
+    ProgressUpdate(<events::ProgressUpdate as events::Event>::Body),
+    ProgressEnd(<events::ProgressEnd as events::Event>::Body),
     // Invalidated(),
     Memory(<events::Memory as events::Event>::Body),
 }
@@ -100,6 +101,9 @@ impl Event {
             events::LoadedSource::EVENT => Self::LoadedSource(parse_value(body)?),
             events::Process::EVENT => Self::Process(parse_value(body)?),
             events::Capabilities::EVENT => Self::Capabilities(parse_value(body)?),
+            events::ProgressStart::EVENT => Self::ProgressStart(parse_value(body)?),
+            events::ProgressUpdate::EVENT => Self::ProgressUpdate(parse_value(body)?),
+            events::ProgressEnd::EVENT => Self::ProgressEnd(parse_value(body)?),
             events::Memory::EVENT => Self::Memory(parse_value(body)?),
             _ => return Err(Error::Unhandled),
         };
@@ -114,3 +118,54 @@ where
 {
     serde_json::from_value(value).map_err(|err| err.into())
 }
+
+#[derive(Debug, Clone)]
+pub struct ProgressState {
+    title: String,
+    message: Option<String>,
+    percentage: Option<u8>,
+}
+
+impl ProgressState {
+    pub fn new(title: String, message: Option<String>, percentage: Option<u8>) -> Self {
+        Self {
+            title,
+            message,
+            percentage,
+        }
+    }
+
+    pub fn update(&mut self, message: Option<String>, percentage: Option<u8>) {
+        if let Some(message) = message {
+            self.message = Some(message);
+        }
+        if let Some(percentage) = percentage {
+            self.percentage = Some(percentage);
+        }
+    }
+
+    pub fn status_line(&self) -> String {
+        let mut status = format!("Debug: {}", self.title);
+        if let Some(message) = self.message.as_deref() {
+            status.push_str(" - ");
+            status.push_str(message);
+        }
+        if let Some(percentage) = self.percentage {
+            status.push_str(&format!(" ({}%)", percentage));
+        }
+        status
+    }
+
+    pub fn end_status_line(&self, message: Option<&str>) -> String {
+        let mut status = format!("Debug: {}", self.title);
+        if let Some(message) = message.or(self.message.as_deref()) {
+            status.push_str(" - ");
+            status.push_str(message);
+        } else {
+            status.push_str(" finished");
+        }
+        status
+    }
+}
+
+pub type ProgressMap = HashMap<String, ProgressState>;

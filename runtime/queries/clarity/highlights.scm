@@ -7,8 +7,8 @@
   (uint_lit)
 ] @constant.numeric.integer
 
-(bool_lit) @constant.builtin.boolean
 (none_lit) @constant.builtin
+(bool_lit) @constant.builtin.boolean
 
 [
   (ascii_string_lit)

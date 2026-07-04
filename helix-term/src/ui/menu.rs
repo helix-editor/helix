@@ -235,6 +235,9 @@ impl<T: Item + 'static> Component for Menu<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event = match event {
             Event::Key(event) => *event,
+            // Menu is a modal and should consume mouse events so clicks don't fall
+            // through to the editor underneath
+            Event::Mouse(_) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 
@@ -311,7 +314,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             // if we run out of options the menu closes itself
             _ if self.auto_close => {
                 (self.callback_fn)(cx.editor, self.selection(), MenuEvent::Abort);
-                return EventResult::Consumed(close_fn);
+                return EventResult::Ignored(close_fn);
             }
             _ => (),
         }

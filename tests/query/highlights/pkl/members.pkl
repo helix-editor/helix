@@ -1,0 +1,4 @@
+x = o.field
+//    ^ @variable.other.member
+y = o.run(2)
+//    ^ @function.method

@@ -480,17 +480,21 @@ impl Prompt {
             let mut text = ui::Text::new(doc.to_string());
 
             let max_width = BASE_WIDTH * 3;
-            let padding = 1;
+            let horizontal_padding = 2; // border + margin
+            let vertical_padding = 1; // border only
+            let text_width = max_width - horizontal_padding * 2;
 
             let viewport = area;
 
-            let (_width, height) = ui::text::required_size(&text.contents, max_width);
+            let (_width, height) = ui::text::required_size(&text.contents, text_width);
 
             let area = viewport.intersection(Rect::new(
                 completion_area.x,
-                completion_area.y.saturating_sub(height + padding * 2),
+                completion_area
+                    .y
+                    .saturating_sub(height + vertical_padding * 2),
                 max_width,
-                height + padding * 2,
+                height + vertical_padding * 2,
             ));
 
             let background = theme.get("ui.help");
@@ -523,7 +527,7 @@ impl Prompt {
                 surface.set_string(
                     self.line_area.x,
                     self.line_area.y,
-                    suggestion,
+                    &suggestion,
                     suggestion_color,
                 );
             }
@@ -608,6 +612,9 @@ impl Component for Prompt {
             }
             Event::Key(event) => *event,
             Event::Resize(..) => return EventResult::Consumed(None),
+            // Prompt is a modal and should consume mouse events so clicks don't fall
+            // through to the editor underneath
+            Event::Mouse(_) => return EventResult::Consumed(None),
             _ => return EventResult::Ignored(None),
         };
 

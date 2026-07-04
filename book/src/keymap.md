@@ -100,6 +100,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-x`    | Decrement object (number) under cursor                               | `decrement`               |
 | `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
 | `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
+| `Ctrl-z`    | Suspend Helix and return to the shell (resume with `fg`)             | `suspend`                 |
 
 #### Shell
 
@@ -219,7 +220,7 @@ Jumps to various locations.
 | <code>&lt;n&gt;&#124;</code>  | Go to column number `<n>`      | `goto_column`              |
 | <code>&#124;</code>     | Go to the start of line        | `goto_column`              |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
-| `f`   | Go to files in the selections                    | `goto_file`                |
+| `f`   | Go to files/URLs in selections                   | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
 | `l`   | Go to the end of the line                        | `goto_line_end`            |
 | `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |
@@ -227,6 +228,7 @@ Jumps to various locations.
 | `c`   | Go to the middle of the screen                   | `goto_window_center`       |
 | `b`   | Go to the bottom of the screen                   | `goto_window_bottom`       |
 | `d`   | Go to definition (**LSP**)                       | `goto_definition`          |
+| `D`   | Go to declaration (**LSP**)                      | `goto_declaration`         |
 | `y`   | Go to type definition (**LSP**)                  | `goto_type_definition`     |
 | `r`   | Go to references (**LSP**)                       | `goto_reference`           |
 | `i`   | Go to implementation (**LSP**)                   | `goto_implementation`      |
@@ -267,8 +269,9 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
-| `f`                    | Go to files in the selections in horizontal splits   | `goto_file`       |
-| `F`                    | Go to files in the selections in vertical splits     | `goto_file`       |
+| `t`, `Ctrl-t`          | Transpose the two adjacent splits                    | `transpose_view`  |
+| `f`                    | Go to files/URLs in selections in horizontal splits  | `goto_file_hsplit`|
+| `F`                    | Go to files/URLs in selections in vertical splits    | `goto_file_vsplit`|
 | `h`, `Ctrl-h`, `Left`  | Move to left split                                   | `jump_view_left`  |
 | `j`, `Ctrl-j`, `Down`  | Move to split below                                  | `jump_view_down`  |
 | `k`, `Ctrl-k`, `Up`    | Move to split above                                  | `jump_view_up`    |
@@ -279,6 +282,8 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `J`                    | Swap window downwards                                | `swap_view_down`  |
 | `K`                    | Swap window upwards                                  | `swap_view_up`    |
 | `L`                    | Swap window to the right                             | `swap_view_right` |
+| `ns`, `nCtrl-s`        | New horizontal split with a scratch buffer           | `hsplit_new`      |
+| `nv`, `nCtrl-v`        | New vertical split with a scratch buffer             | `vsplit_new`      |
 
 #### Space mode
 
@@ -290,6 +295,8 @@ This layer is a kludge of mappings, mostly pickers.
 | -----   | -----------                                                             | -------                                    |
 | `f`     | Open file picker at LSP workspace root                                  | `file_picker`                              |
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
+| `e`     | Open file explorer at workspace root                                     | `file_explorer`                            |
+| `.`     | Open file explorer at current buffer's directory                        | `file_explorer_in_current_buffer_directory`|
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |
@@ -366,6 +373,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[a`     | Go to previous argument/parameter (**TS**)   | `goto_prev_parameter`   |
 | `]c`     | Go to next comment (**TS**)                  | `goto_next_comment`     |
 | `[c`     | Go to previous comment (**TS**)              | `goto_prev_comment`     |
+| `]e`     | Go to next entry (**TS**)                    | `goto_next_entry`       |
+| `[e`     | Go to previous entry (**TS**)                | `goto_prev_entry`       |
 | `]T`     | Go to next test (**TS**)                     | `goto_next_test`        |
 | `[T`     | Go to previous test (**TS**)                 | `goto_prev_test`        |
 | `]p`     | Go to next paragraph                         | `goto_next_paragraph`   |
@@ -404,6 +413,10 @@ escaping from insert mode to normal mode.
 | `Ctrl-h`, `Backspace`, `Shift-Backspace`    | Delete previous char        | `delete_char_backward`   |
 | `Ctrl-d`, `Delete`                          | Delete next char            | `delete_char_forward`    |
 | `Ctrl-j`, `Enter`                           | Insert new line             | `insert_newline`         |
+| `Tab`                                       | [Smart tab] (configurable)  | `smart_tab`              |
+| `Shift-Tab`                                 | Insert tab                  | `insert_tab`             |
+
+[Smart tab]: ./editor.md#editorsmart-tab-section
 
 These keys are not recommended, but are included for new users less familiar
 with modal editors.

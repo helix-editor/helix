@@ -37,13 +37,11 @@
   "then"
   "where"
 
-  (false)
   (predicate)
   (result)
   (specialId)
   (super)
   (this)
-  (true)
 ] @keyword
 
 [
@@ -91,6 +89,11 @@
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
+
+[
+  (false)
+  (true)
+] @constant.builtin.boolean
 
 (string) @string
 

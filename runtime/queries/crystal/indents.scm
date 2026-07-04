@@ -12,7 +12,6 @@
   (method_def)
   (case)
   (select)
-  (elsif)
   (if)
   (unless)
   (hash)
@@ -26,4 +25,6 @@
   "end"
   "when"
   "in"
+  "else"
+  "elsif"
 ] @outdent

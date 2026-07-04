@@ -102,7 +102,7 @@
 (escape_sequence) @constant.character.escape
 ((escape_sequence) @warning
  (#eq? @warning "\\e")) ; deprecated escape sequence
-(bit_string_segment_option) @function.builtin
+(bit_array_segment_option) @function.builtin
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
 
