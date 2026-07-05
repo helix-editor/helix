@@ -463,8 +463,10 @@ impl Client {
             return Ok(());
         }
 
-        self.request::<requests::ConfigurationDone>(Some(requests::ConfigurationDoneArguments {}))
-            .await
+        self.call::<requests::ConfigurationDone>(Some(requests::ConfigurationDoneArguments {}))
+            .await?;
+
+        Ok(())
     }
 
     pub fn continue_thread(&self, thread_id: ThreadId) -> impl Future<Output = Result<Value>> {
