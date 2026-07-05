@@ -2,6 +2,9 @@
 (iden_type
   name: (identifier) @variable)
 
+(fun_param
+  name: (identifier) @variable.parameter)
+
 [
  "this"
  ] @variable.builtin
