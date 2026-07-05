@@ -9,7 +9,7 @@ use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::Uri;
 use helix_event::{cancelable_future, register_hook, send_blocking};
-use helix_lsp::{lsp, LanguageServerId};
+use helix_lsp::{lsp, Client, LanguageServerId};
 use helix_view::document::Mode;
 use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
@@ -21,6 +21,7 @@ use helix_view::{DocumentId, Editor};
 
 use crate::events::OnModeSwitch;
 use crate::job;
+use std::sync::Arc;
 
 pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DiagnosticsDidChange<'_>| {
@@ -94,6 +95,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         for doc_id in doc_ids {
             request_document_diagnostics(event.editor, doc_id);
         }
+        request_workspace_diagnostics_for_language_server(event.editor, event.server_id);
 
         Ok(())
     });
@@ -146,17 +148,62 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
     fn finish_debounce(&mut self) {
         let language_servers = mem::take(&mut self.language_servers);
         job::dispatch_blocking(move |editor, _| {
-            let documents: Vec<_> = editor.documents.keys().copied().collect();
+            let (workspace_language_servers, document_language_servers): (HashSet<_>, HashSet<_>) =
+                language_servers.into_iter().partition(|server_id| {
+                    editor
+                        .language_servers
+                        .get_by_id(*server_id)
+                        .is_some_and(|language_server| {
+                            supports_workspace_diagnostics(language_server)
+                        })
+                });
 
+            for language_server in workspace_language_servers {
+                request_workspace_diagnostics_for_language_server(editor, language_server);
+            }
+
+            // Servers with workspace diagnostics can refresh unopened files in one request.
+            // Servers without that capability still need every open document refreshed.
+            if document_language_servers.is_empty() {
+                return;
+            }
+
+            let documents: Vec<_> = editor.documents.keys().copied().collect();
             for document in documents {
                 request_document_diagnostics_for_language_severs(
                     editor,
                     document,
-                    language_servers.clone(),
+                    document_language_servers.clone(),
                 );
             }
         })
     }
+}
+
+fn supports_workspace_diagnostics(language_server: &Client) -> bool {
+    language_server
+        .capabilities()
+        .diagnostic_provider
+        .as_ref()
+        .is_some_and(|diagnostic_provider| match diagnostic_provider {
+            lsp::DiagnosticServerCapabilities::Options(options) => options.workspace_diagnostics,
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                options.diagnostic_options.workspace_diagnostics
+            }
+        })
+}
+
+fn diagnostic_identifier(language_server: &Client) -> Option<Arc<str>> {
+    language_server
+        .capabilities()
+        .diagnostic_provider
+        .as_ref()
+        .and_then(|diagnostic_provider| match diagnostic_provider {
+            lsp::DiagnosticServerCapabilities::Options(options) => options.identifier.clone(),
+            lsp::DiagnosticServerCapabilities::RegistrationOptions(options) => {
+                options.diagnostic_options.identifier.clone()
+            }
+        })
 }
 
 fn request_document_diagnostics_for_language_severs(
@@ -273,6 +320,75 @@ pub fn request_all_document_diagnostics_for_language_server(
     }
 }
 
+pub fn request_workspace_diagnostics_for_language_server(
+    editor: &mut Editor,
+    server_id: LanguageServerId,
+) {
+    let Some(language_server) = editor.language_servers.get_by_id(server_id).cloned() else {
+        return;
+    };
+
+    if !supports_workspace_diagnostics(&language_server) {
+        return;
+    }
+
+    let previous_result_ids = editor
+        .workspace_diagnostic_ids
+        .iter()
+        .filter_map(|((diagnostic_server_id, uri), value)| {
+            if *diagnostic_server_id == server_id {
+                let uri = match uri.to_url() {
+                    Ok(uri) => uri,
+                    Err(()) => return None,
+                };
+                Some(lsp::PreviousResultId {
+                    uri,
+                    value: value.clone(),
+                })
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let Some(future) = language_server.workspace_diagnostic(previous_result_ids) else {
+        return;
+    };
+    let provider = DiagnosticProvider::Lsp {
+        server_id,
+        identifier: diagnostic_identifier(&language_server),
+    };
+
+    tokio::spawn(async move {
+        match future.await {
+            Ok(result) => {
+                job::dispatch(move |editor, _| {
+                    handle_workspace_diagnostics_response(editor, result, provider);
+                })
+                .await;
+            }
+            Err(err) => {
+                let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
+                    error.data.and_then(|data| {
+                        serde_json::from_value::<lsp::DiagnosticServerCancellationData>(data).ok()
+                    })
+                } else {
+                    log::error!("Workspace diagnostic request failed: {err}");
+                    return;
+                };
+
+                if parsed_cancellation_data.is_some_and(|data| data.retrigger_request) {
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                    job::dispatch(move |editor, _| {
+                        request_workspace_diagnostics_for_language_server(editor, server_id);
+                    })
+                    .await;
+                }
+            }
+        }
+    });
+}
+
 pub fn request_document_diagnostics(editor: &mut Editor, doc_id: DocumentId) {
     let Some(doc) = editor.document(doc_id) else {
         return;
@@ -327,4 +443,70 @@ fn handle_pull_diagnostics_response(
         }
         lsp::DocumentDiagnosticReportResult::Partial(_) => {}
     };
+}
+
+fn handle_workspace_diagnostics_response(
+    editor: &mut Editor,
+    result: lsp::WorkspaceDiagnosticReportResult,
+    provider: DiagnosticProvider,
+) {
+    let server_id = provider
+        .language_server_id()
+        .expect("workspace diagnostics always originate from an LSP");
+    let reports = match result {
+        lsp::WorkspaceDiagnosticReportResult::Report(report) => report.items,
+        lsp::WorkspaceDiagnosticReportResult::Partial(report) => report.items,
+    };
+
+    for report in reports {
+        let (uri, version, result_id, diagnostics) = match report {
+            lsp::WorkspaceDocumentDiagnosticReport::Full(report) => (
+                report.uri,
+                report.version,
+                report.full_document_diagnostic_report.result_id,
+                Some(report.full_document_diagnostic_report.items),
+            ),
+            lsp::WorkspaceDocumentDiagnosticReport::Unchanged(report) => (
+                report.uri,
+                report.version,
+                Some(report.unchanged_document_diagnostic_report.result_id),
+                None,
+            ),
+        };
+
+        let uri = match Uri::try_from(uri) {
+            Ok(uri) => uri,
+            Err(err) => {
+                log::error!("{err}");
+                continue;
+            }
+        };
+
+        match result_id {
+            Some(result_id) => {
+                editor
+                    .workspace_diagnostic_ids
+                    .insert((server_id, uri.clone()), result_id);
+            }
+            None => {
+                editor
+                    .workspace_diagnostic_ids
+                    .remove(&(server_id, uri.clone()));
+            }
+        }
+
+        let Some(diagnostics) = diagnostics else {
+            continue;
+        };
+
+        let version = version.and_then(|version| match i32::try_from(version) {
+            Ok(version) => Some(version),
+            Err(_) => {
+                log::warn!("Workspace diagnostic version {version} is out of range for {uri:?}");
+                None
+            }
+        });
+
+        editor.handle_lsp_diagnostics(&provider, uri, version, diagnostics);
+    }
 }
