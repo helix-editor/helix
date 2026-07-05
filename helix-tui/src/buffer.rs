@@ -537,7 +537,9 @@ impl Buffer {
             }
         } else {
             let mut start_index = self.index_of(x, y);
-            let mut index = self.index_of(max_offset as u16, y);
+            let last_col = ((self.area.right() as usize).saturating_sub(1))
+                .min(width.saturating_add(x as usize).saturating_sub(1));
+            let mut index = self.index_of(last_col as u16, y) + 1;
 
             let content_width = string.width();
             let truncated = content_width > width;
@@ -578,9 +580,12 @@ impl Buffer {
         }
 
         let mut x_offset = x as usize;
-        let max_offset = min(self.area.right(), width.saturating_add(x));
+        let last_col = x
+            .saturating_add(width)
+            .saturating_sub(1)
+            .min(self.area.right().saturating_sub(1));
         let mut start_index = self.index_of(x, y);
-        let mut index = self.index_of(max_offset, y);
+        let mut index = self.index_of(last_col, y) + 1;
 
         let content_width = spans.width();
         let truncated = content_width > width as usize;
