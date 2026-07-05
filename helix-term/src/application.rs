@@ -1244,7 +1244,9 @@ impl Application {
                         // do nothing
                     }
                     Notification::Exit => {
-                        self.editor.set_status("Language server exited");
+                        let status =
+                            format!("Language server exited: {}", language_server!().name());
+                        self.editor.set_status(status);
 
                         // LSPs may produce diagnostics for files that haven't been opened in helix,
                         // we need to clear those and remove the entries from the list if this leads to
