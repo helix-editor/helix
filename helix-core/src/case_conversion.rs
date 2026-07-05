@@ -103,8 +103,6 @@ fn case_converter_with_capitalization_and_separator(
 
     let add_separator_if_needed = |prev: Option<char>, buf: &mut Tendril| {
         if let Some(separator) = separator {
-            // We do not want to add a separator when the previous char is not a separator
-            // For example, snake__case is invalid
             if prev.is_some_and(|ch| ch != separator) {
                 buf.push(separator);
             }
@@ -377,3 +375,4 @@ mod tests {
             "MixEdCaseString" -> "mixedcasestring"
     }
 }
+
