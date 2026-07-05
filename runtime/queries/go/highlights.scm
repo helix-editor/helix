@@ -27,18 +27,9 @@
 (call_expression
   function: (identifier) @function)
 
-((call_expression
-  function: (identifier) @function.public)
-  (#match? @function.public "^[A-Z]"))
-
 (call_expression
   function: (selector_expression
     field: (field_identifier) @function.method))
-
-((call_expression
-  function: (selector_expression
-    field: (field_identifier) @function.method.public))
-  (#match? @function.method.public "^[A-Z]"))
 
 (call_expression
   function: (identifier) @function.builtin
