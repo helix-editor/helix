@@ -2,11 +2,11 @@
 "attribute" = { fg = "light-aqua" }
 "comment" = { fg = "comments" }
 "constant" = { fg = "light-purple" }
-"constant.numeric" = { fg = "red", modifier=["bold"] }
-"constant.builtin" = { fg = "red", modifier=["bold"] }
+"constant.numeric" = { fg = "red", modifiers=["bold"] }
+"constant.builtin" = { fg = "red", modifiers=["bold"] }
 "constant.character.escape" = { fg = "light-yellow" }
 "constructor" = { fg = "red" }
-"function" = { fg = "green", modifier=["bold"] }
+"function" = { fg = "green", modifiers=["bold"] }
 "function.builtin" = { fg = "light-yellow" }
 "function.macro" = { fg = "light-yellow" }
 "keyword" = { fg = "aqua" }

@@ -2,7 +2,7 @@
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "whitespace" }
 "constant" = { fg = "light-yellow" }
-"constant.numeric" = { fg = "yellow", modifier=["bold"] }
+"constant.numeric" = { fg = "yellow", modifiers=["bold"] }
 "constant.builtin" = { fg = "light-green" }
 "constant.character.escape" = { fg = "light-yellow" }
 "constructor" = { fg = "yellow" }
@@ -83,7 +83,7 @@
 "ui.linenr" = { fg = "light-green", bg = "light-black" }
 "ui.linenr.selected" = { fg = "light-white", bg="caramel" }
 
-"ui.statusline" = { fg = "black", bg="caramel", modifier = ["bold"] }
+"ui.statusline" = { fg = "black", bg="caramel", modifiers = ["bold"] }
 "ui.statusline.normal" = { fg = "red", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "red", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "red", modifiers = ["bold"] }
@@ -111,7 +111,7 @@
 black="#1A1313"
 light-black="#30231E"
 red="#B34750"
-light-red="#D94B43B"
+light-red="#D94B43"
 green="#6B997B"
 light-green="#77D989"
 yellow="#EBA123"
