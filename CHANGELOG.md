@@ -2712,7 +2712,7 @@ Grammars:
 - Git (commit, rebase, diff) ([#1338](https://github.com/helix-editor/helix/pull/1338)) ([#1402](https://github.com/helix-editor/helix/pull/1402)) ([#1373](https://github.com/helix-editor/helix/pull/1373))
 - tree-sitter-comment ([#1300](https://github.com/helix-editor/helix/pull/1300))
 - Highlight comments in c, cpp, cmake and llvm ([#1309](https://github.com/helix-editor/helix/pull/1309))
-- Improve yaml syntax highlighting highlighting ([#1294](https://github.com/helix-editor/helix/pull/1294))
+- Improve yaml syntax highlighting ([#1294](https://github.com/helix-editor/helix/pull/1294))
 - Improve rust syntax highlighting ([#1295](https://github.com/helix-editor/helix/pull/1295))
 - Add textobjects and indents to cmake ([#1307](https://github.com/helix-editor/helix/pull/1307))
 - Add textobjects and indents to c and cpp ([#1293](https://github.com/helix-editor/helix/pull/1293))
