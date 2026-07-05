@@ -580,7 +580,10 @@ impl Buffer {
         }
 
         let mut x_offset = x as usize;
-        let last_col = x.saturating_add(width).saturating_sub(1).min(self.area.right().saturating_sub(1));
+        let last_col = x
+            .saturating_add(width)
+            .saturating_sub(1)
+            .min(self.area.right().saturating_sub(1));
         let mut start_index = self.index_of(x, y);
         let mut index = self.index_of(last_col, y) + 1;
 
