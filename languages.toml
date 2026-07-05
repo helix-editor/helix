@@ -4898,7 +4898,7 @@ soft-wrap = { enable = true }
 
 [[grammar]]
 name = "ink"
-source = { git = "https://github.com/wldmr/tree-sitter-ink.git", rev = "632072bab485ab4c705c39cb9aae9eaeac6893ba"}
+source = { git = "https://github.com/wldmr/tree-sitter-ink", rev = "632072bab485ab4c705c39cb9aae9eaeac6893ba"}
 
 [[language]]
 name = "sourcepawn"
