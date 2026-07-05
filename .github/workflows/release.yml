@@ -6,6 +6,7 @@ on:
     - '[0-9]+.[0-9]+.[0-9]+'
     branches:
     - 'patch/ci-release-*'
+    - 'master'
   pull_request:
     paths:
     - '.github/workflows/release.yml'
@@ -20,11 +21,47 @@ permissions:
 env:
   # Preview mode: Publishes the build output as a CI artifact instead of creating
   # a release, allowing for manual inspection of the output. This mode is
-  # activated if the CI run was triggered by events other than pushed tags, or
-  # if the repository is a fork.
-  preview: ${{ !startsWith(github.ref, 'refs/tags/') || github.repository != 'helix-editor/helix' }}
+  # activated for pull requests and other branch pushes (not tags or master).
+  preview: ${{ !(startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master') }}
 
 jobs:
+  version:
+    name: Compute Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compute version
+        id: compute
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/master ]]; then
+            YY=$(date +%y)
+            MM=$(date +%m)
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            for attempt in {1..20}; do
+              LAST=$(git tag -l "${YY}.${MM}.*" | sed 's/.*\.//' | sort -n | tail -1)
+              LAST=${LAST:-0}
+              BUILD=$(printf "%02d" $((10#$LAST + 1)))
+              VERSION="${YY}.${MM}.${BUILD}"
+              git tag "$VERSION" 2>/dev/null || continue
+              git push origin "$VERSION" 2>/dev/null && break
+            done
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=dev" >> $GITHUB_OUTPUT
+          fi
+
   fetch-grammars:
     name: Fetch Grammars
     runs-on: ubuntu-latest
@@ -52,7 +89,7 @@ jobs:
 
   dist:
     name: Dist
-    needs: [fetch-grammars]
+    needs: [fetch-grammars, version]
     env:
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
@@ -132,10 +169,7 @@ jobs:
 
           mkdir dist
 
-          name=dev
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            name=${GITHUB_REF:10}
-          fi
+          name=${{ needs.version.outputs.version }}
 
           build="${{ matrix.build }}"
 
@@ -205,7 +239,7 @@ jobs:
 
   publish:
     name: Publish
-    needs: [dist]
+    needs: [dist, version]
     runs-on: ubuntu-latest
     permissions:
       contents: write # upload to GitHub release
@@ -223,7 +257,7 @@ jobs:
           set -ex
 
           source="$(pwd)"
-          tag=${GITHUB_REF_NAME//\//}
+          tag=${{ needs.version.outputs.version }}
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
           rm -rf grammars
@@ -275,7 +309,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: dist/*
           file_glob: true
-          tag: ${{ github.ref_name }}
+          tag: ${{ needs.version.outputs.version }}
           overwrite: true
 
       - name: Upload binaries as artifact
