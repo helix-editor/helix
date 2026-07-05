@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: write # peaceiris/actions-gh-pages pushes to the gh-pages branch
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@ee69d230fe19748b7abf22df32acaa93833fad08 # v2.0.0

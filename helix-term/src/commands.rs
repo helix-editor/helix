@@ -3560,10 +3560,18 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
+    let trust_full = cx
+        .editor
+        .workspace_trust
+        .query(
+            &helix_loader::find_workspace_in(&cwd).0,
+            helix_loader::workspace_trust::TrustQuery::Git,
+        )
+        .is_trusted();
     cx.editor
         .diff_providers
         .clone()
-        .for_each_changed_file(cwd, move |change| match change {
+        .for_each_changed_file(cwd, trust_full, move |change| match change {
             Ok(change) => injector.push(change).is_ok(),
             Err(err) => {
                 status::report_blocking(err);
@@ -3817,6 +3825,29 @@ pub enum CommentContinuation {
     Disabled,
 }
 
+fn continued_line_comment_token<'a>(
+    doc: &'a Document,
+    loader: &'a helix_core::syntax::Loader,
+    text: RopeSlice,
+    line_num: usize,
+    byte_pos: usize,
+) -> Option<&'a str> {
+    if let Some(syntax) = doc.syntax() {
+        let mut token = None;
+        for layer in syntax.layers_for_byte_range(byte_pos as u32, byte_pos as u32) {
+            let config = loader.language(syntax.layer(layer).language).config();
+            if let Some(tokens) = config.comment_tokens.as_ref() {
+                token = comment::get_comment_token(text, tokens, line_num).or(token);
+            }
+        }
+        token
+    } else {
+        doc.language_config()
+            .and_then(|config| config.comment_tokens.as_ref())
+            .and_then(|tokens| comment::get_comment_token(text, tokens, line_num))
+    }
+}
+
 fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation) {
     let count = cx.count();
     enter_insert_mode(cx);
@@ -3852,9 +3883,9 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
                 text.line(curr_line_num)
                     .first_non_whitespace_char()
                     .map(|c| text.char_to_byte(text.line_to_char(curr_line_num) + c))
-                    .and_then(|byte| doc.language_config_at(&loader, byte))
-                    .and_then(|config| config.comment_tokens.as_ref())
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+                    .and_then(|byte| {
+                        continued_line_comment_token(doc, &loader, text, curr_line_num, byte)
+                    })
             } else {
                 None
             };
@@ -4481,9 +4512,9 @@ pub mod insert {
                 text.line(current_line)
                     .first_non_whitespace_char()
                     .map(|c| text.char_to_byte(line_start + c))
-                    .and_then(|byte| doc.language_config_at(&loader, byte))
-                    .and_then(|config| config.comment_tokens.as_ref())
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
+                    .and_then(|byte| {
+                        continued_line_comment_token(doc, &loader, text, current_line, byte)
+                    })
             } else {
                 None
             };

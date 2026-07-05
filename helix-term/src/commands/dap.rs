@@ -119,6 +119,17 @@ pub fn dap_start_impl(
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
+    // Refuse to spawn a debug adapter in workspace trust restricted mode.
+    let workspace = doc!(cx.editor).workspace_root().to_path_buf();
+    if !cx
+        .editor
+        .workspace_trust
+        .query(&workspace, helix_loader::workspace_trust::TrustQuery::Dap)
+        .is_trusted()
+    {
+        bail!("Workspace is not trusted. Run `:workspace-trust` to enable the debug adapter.");
+    }
+
     let doc = doc!(cx.editor);
     let config = doc
         .language_config()

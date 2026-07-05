@@ -23,3 +23,4 @@
  (#not-match? @local.definition.variable.parameter "^_"))
 
 (variable) @local.reference
+(macro (variable)) @_

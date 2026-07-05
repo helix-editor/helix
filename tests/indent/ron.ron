@@ -1,7 +1,18 @@
 Config(
-    name: "test",
+    name: "helix",
     values: [
         1,
         2,
     ],
+    nested: Inner(
+        enabled: true,
+        map: {
+            "a": 1,
+            "b": 2,
+        },
+    ),
+    pair: (
+        1,
+        "two",
+    ),
 )
