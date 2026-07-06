@@ -144,6 +144,42 @@ fn test_indent_level_for_line_with_spaces_and_tabs() {
     assert_eq!(indent_level, 2)
 }
 
+#[test]
+fn test_python_indent_after_definition_header() {
+    for source in ["def foo():", "class Foo:"] {
+        let loader = Loader::new(indent_tests_config()).unwrap();
+        let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        runtime.push("../runtime");
+        std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+
+        let language = loader.language_for_scope("source.python").unwrap();
+        let language_config = loader.language(language).config();
+        let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
+        let text = Rope::from_str(source);
+        let text = text.slice(..);
+        let syntax = Syntax::new(text, language, &loader).unwrap();
+        let indent_query = loader.indent_query(language).unwrap();
+        let tab_width = 4;
+        let pos = source.len();
+
+        let suggested_indent = treesitter_indent_for_pos(
+            indent_query,
+            &syntax,
+            &loader,
+            tab_width,
+            indent_style.indent_width(tab_width),
+            text,
+            0,
+            pos,
+            true,
+        )
+        .unwrap()
+        .to_string(&indent_style, tab_width);
+
+        assert_eq!(suggested_indent, " ");
+    }
+}
+
 fn indent_tests_dir() -> PathBuf {
     let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     test_dir.push("tests/data/indent");
