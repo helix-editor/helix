@@ -158,6 +158,7 @@ templ = { command = "templ", args = ["lsp"] }
 terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
 tilt = { command = "tilt", args = ["lsp", "start"] }
+tofu-ls = { command = "tofu-ls", args = ["serve"] }
 tombi = { command = "tombi", args = ["lsp"] }
 ty = { command = "ty", args = ["server"] }
 typespec = { command = "tsp-server", args = ["--stdio"] }
@@ -2422,13 +2423,18 @@ source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "f66d290854
 [[language]]
 name = "hcl"
 scope = "source.hcl"
-injection-regex = "(hcl|tf|nomad)"
+injection-regex = "(hcl|tf|tofu|nomad)"
 language-id = "terraform"
-file-types = ["hcl", "tf", "nomad"]
+file-types = [
+  "hcl",
+  "tf",
+  "tofu",
+  "nomad",
+]
 comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = [ "terraform-ls" ]
+language-servers = [ "terraform-ls", "tofu-ls" ]
 auto-format = true
 
 [[grammar]]
