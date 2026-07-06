@@ -458,6 +458,7 @@ impl MappableCommand {
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
         goto_last_change, "Goto last change",
+        restore_hunk, "Restore hunk under cursor",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
         goto_column, "Goto column",
@@ -4306,6 +4307,55 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
         doc.set_selection(view.id, selection)
     };
     cx.editor.apply_motion(motion);
+}
+
+fn restore_hunk(cx: &mut Context) {
+    let editor = &mut cx.editor;
+    let scrolloff = editor.config().scrolloff;
+
+    let (view, doc) = current!(editor);
+    let Some(handle) = doc.diff_handle() else {
+        editor.set_status("Diff is not available in current buffer");
+        return;
+    };
+
+    let (transaction, changes) = {
+        let diff = handle.load();
+        let doc_text = doc.text().slice(..);
+        let diff_base = diff.diff_base();
+        let mut changes = 0;
+
+        let transaction = Transaction::change(
+            doc.text(),
+            diff.hunks_intersecting_line_ranges(doc.selection(view.id).line_ranges(doc_text))
+                .map(|hunk| {
+                    changes += 1;
+                    let start = diff_base.line_to_char(hunk.before.start as usize);
+                    let end = diff_base.line_to_char(hunk.before.end as usize);
+                    let text: Tendril = diff_base.slice(start..end).chunks().collect();
+                    (
+                        doc_text.line_to_char(hunk.after.start as usize),
+                        doc_text.line_to_char(hunk.after.end as usize),
+                        (!text.is_empty()).then_some(text),
+                    )
+                }),
+        );
+
+        (transaction, changes)
+    };
+
+    if changes == 0 {
+        editor.set_status("There are no hunks under any selection");
+        return;
+    }
+
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+    editor.set_status(format!(
+        "Restored {changes} hunk{}",
+        if changes == 1 { "" } else { "s" }
+    ));
 }
 
 /// Returns the [Range] for a [Hunk] in the given text.
