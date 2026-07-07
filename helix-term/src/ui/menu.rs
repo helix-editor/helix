@@ -418,4 +418,8 @@ impl<T: Item + 'static> Component for Menu<T> {
             }
         }
     }
+
+    fn is_menu(&self) -> bool {
+        true
+    }
 }
