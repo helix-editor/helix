@@ -167,6 +167,46 @@ pub struct Buffer {
     pub content: Vec<Cell>,
 }
 
+/// Iterator over the cells that changed between two buffers.
+pub struct Diff<'a, 'b> {
+    previous_buffer: &'a [Cell],
+    next_buffer: &'b [Cell],
+    width: u16,
+    len: usize,
+    index: usize,
+    invalidated: usize,
+    to_skip: usize,
+}
+
+impl<'a, 'b> Iterator for Diff<'a, 'b> {
+    type Item = (u16, u16, &'b Cell);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.index < self.len {
+            let i = self.index;
+            self.index += 1;
+
+            let current = &self.next_buffer[i];
+            let previous = &self.previous_buffer[i];
+            let changed = (current != previous || self.invalidated > 0) && self.to_skip == 0;
+
+            let current_width = current.width();
+            self.to_skip = current_width.saturating_sub(1);
+
+            let affected_width = std::cmp::max(current_width, previous.width());
+            self.invalidated = std::cmp::max(affected_width, self.invalidated).saturating_sub(1);
+
+            if changed {
+                let x = (i % self.width as usize) as u16;
+                let y = (i / self.width as usize) as u16;
+                return Some((x, y, current));
+            }
+        }
+
+        None
+    }
+}
+
 impl Buffer {
     /// Returns a Buffer with all cells set to the default one
     #[must_use]
@@ -745,31 +785,16 @@ impl Buffer {
     /// Next:    `aコ`
     /// Updates: `0: a, 1: コ` (double width symbol at index 1 - skip index 2)
     /// ```
-    pub fn diff<'a>(&self, other: &'a Buffer) -> Vec<(u16, u16, &'a Cell)> {
-        let previous_buffer = &self.content;
-        let next_buffer = &other.content;
-        let width = self.area.width;
-
-        let mut updates: Vec<(u16, u16, &Cell)> = vec![];
-        // Cells invalidated by drawing/replacing preceding multi-width characters:
-        let mut invalidated: usize = 0;
-        // Cells from the current buffer to skip due to preceding multi-width characters taking their
-        // place (the skipped cells should be blank anyway):
-        let mut to_skip: usize = 0;
-        for (i, (current, previous)) in next_buffer.iter().zip(previous_buffer.iter()).enumerate() {
-            if (current != previous || invalidated > 0) && to_skip == 0 {
-                let x = (i % width as usize) as u16;
-                let y = (i / width as usize) as u16;
-                updates.push((x, y, &next_buffer[i]));
-            }
-
-            let current_width = current.width();
-            to_skip = current_width.saturating_sub(1);
-
-            let affected_width = std::cmp::max(current_width, previous.width());
-            invalidated = std::cmp::max(affected_width, invalidated).saturating_sub(1);
+    pub fn diff<'a, 'b>(&'a self, other: &'b Buffer) -> Diff<'a, 'b> {
+        Diff {
+            previous_buffer: &self.content,
+            next_buffer: &other.content,
+            width: self.area.width,
+            len: self.content.len().min(other.content.len()),
+            index: 0,
+            invalidated: 0,
+            to_skip: 0,
         }
-        updates
     }
 }
 
@@ -905,7 +930,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::empty(area);
         let next = Buffer::empty(area);
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(diff, vec![]);
     }
 
@@ -914,7 +939,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::empty(area);
         let next = Buffer::filled(area, Cell::default().set_symbol("a"));
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(diff.len(), 40 * 40);
     }
 
@@ -923,7 +948,7 @@ mod tests {
         let area = Rect::new(0, 0, 40, 40);
         let prev = Buffer::filled(area, Cell::default().set_symbol("a"));
         let next = Buffer::filled(area, Cell::default().set_symbol("a"));
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(diff, vec![]);
     }
 
@@ -943,7 +968,7 @@ mod tests {
             "│      │  ",
             "└──────┘  ",
         ]);
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(
             diff,
             vec![
@@ -966,7 +991,7 @@ mod tests {
             "┌称号──┐  ",
             "└──────┘  ",
         ]);
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(
             diff,
             vec![
@@ -984,7 +1009,7 @@ mod tests {
         let prev = Buffer::with_lines(vec!["┌称号──┐"]);
         let next = Buffer::with_lines(vec!["┌─称号─┐"]);
 
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
         assert_eq!(
             diff,
             vec![(1, 0, &cell("─")), (2, 0, &cell("称")), (4, 0, &cell("号")),]
@@ -1121,7 +1146,7 @@ mod tests {
         let prev = Buffer::with_lines(vec!["🔥test"]);
         let next = Buffer::with_lines(vec!["xxtest"]);
 
-        let diff = prev.diff(&next);
+        let diff = prev.diff(&next).collect::<Vec<_>>();
 
         // Should update positions where the emoji was
         assert!(diff.iter().any(|(x, _, c)| *x == 0 && &*c.symbol == "x"));
