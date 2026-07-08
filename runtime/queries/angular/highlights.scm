@@ -32,6 +32,11 @@
 (for_declaration
   name: (identifier) @variable.parameter)
 
+; @for let-alias variable names: the "i", "last" in let i = $index, last = $last
+(for_reference
+  alias: (assignment_expression
+    name: (identifier) @variable.parameter))
+
 ; Single-param arrow function parameter: the "x" in x => x * 2
 (arrow_function
   parameters: (identifier) @variable.parameter)
@@ -143,31 +148,96 @@
     (#eq? @variable.builtin "$implicit")))
 
 ; --- Control Flow Keywords ---
+; Scoped to valid parent nodes — prevents false matches on common words
+; ("for", "as", "of", etc.) appearing in plain HTML text content.
 
-; All control flow keywords not matched below: @let, @defer, @placeholder, @loading
-(control_keyword) @keyword.control
+; @for loop keyword
+(for_statement
+  (control_keyword) @keyword.control.repeat)
 
-; Special keywords inside control flow: "of" in @for, "as" in @if, "track" etc.
-(special_keyword) @keyword.control
+; @empty fallback block keyword
+(empty_statement
+  (control_keyword) @keyword.control.repeat)
+
+; @if keyword
+(if_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @else if keywords
+(else_if_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @else keyword
+(else_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @switch keyword
+(switch_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @case keyword
+(case_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @default keyword
+(default_statement
+  (control_keyword) @keyword.control.conditional)
+
+; @defer keyword
+(defer_statement
+  (control_keyword) @keyword.control)
+
+; @placeholder keyword
+(placeholder_statement
+  (control_keyword) @keyword.control)
+
+; @loading keyword
+(loading_statement
+  (control_keyword) @keyword.control)
+
+; @error keyword inside @defer
+(error_statement
+  (control_keyword) @keyword.control.exception)
+
+; @let block-scoped variable declaration keyword
+(let_statement
+  (control_keyword) @keyword.control)
+
+; "of", "track" inside @for (...) declaration
+(for_declaration
+  (special_keyword) @keyword.control)
+
+; "let" before aliases in @for (...; let i = $index, ...)
+(for_reference
+  (special_keyword) @keyword.control)
+
+; "as" in @if (expr; as alias)
+(if_reference
+  (special_keyword) @keyword.control)
+
+; "as", "else", "context" in *ngIf / *ngFor structural expressions
+(structural_expression
+  (special_keyword) @keyword.control)
+
+; "let" at start of *ngFor structural declaration
+(structural_declaration
+  (special_keyword) @keyword.control)
+
+; "let" (optional) inside individual structural assignment
+(structural_assignment
+  (special_keyword) @keyword.control)
+
+; "when", "on" in @defer trigger conditions
+(defer_trigger_condition
+  (special_keyword) @keyword.control)
+
+; "after", "minimum" in timed expressions (on timer(500ms), minimum 200ms)
+(timed_expression
+  (special_keyword) @keyword.control)
 
 ; "prefetch" modifier in @defer (prefetch on interaction)
-(prefetch_keyword) @keyword.control
-
-; Loop keywords: @for, @empty
-((control_keyword) @keyword.control.repeat
-  (#any-of? @keyword.control.repeat "for" "empty"))
-
-; Conditional keywords: @if, @else if, @else, @switch, @case, @default
-((control_keyword) @keyword.control.conditional
-  (#any-of? @keyword.control.conditional "if" "else" "switch" "case" "default"))
-
-; Deferred loading keywords: @defer, @placeholder, @loading
-((control_keyword) @keyword.control
-  (#any-of? @keyword.control "defer" "placeholder" "loading"))
-
-; Error block keyword: @error inside @defer
-((control_keyword) @keyword.control.exception
-  (#eq? @keyword.control.exception "error"))
+(defer_trigger_condition
+  (prefetch_keyword) @keyword.control)
 
 ; --- Built-in Constants & Variables ---
 
@@ -176,8 +246,11 @@
   (#any-of? @constant.builtin.boolean "true" "false"))
 
 ; Built-in template variables: this, $event
+; Built-in @for loop context variables: $index, $first, $last, $even, $odd, $count
 ((identifier) @variable.builtin
-  (#any-of? @variable.builtin "this" "$event"))
+  (#any-of? @variable.builtin
+    "this" "$event"
+    "$index" "$first" "$last" "$even" "$odd" "$count"))
 
 ; Null literal: null
 ((identifier) @constant.builtin
