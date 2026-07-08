@@ -5514,7 +5514,12 @@ source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = 
 name = "angular"
 scope = "source.angular"
 injection-regex = "html"
-file-types = ["component.html", "html"] # Angular 21+ updated the naming format
+# Leave file-types empty so Angular file association stays opt-in in user config.
+# Opt in via ~/.config/helix/languages.toml; match both old and new Angular template names.
+# [language]
+# name = "angular"
+# file-types = [{ glob = "src/**/*.component.html" }, { glob = "src/**/*.html" }]
+file-types = []
 block-comment-tokens = { start = "<!--", end = "-->" }
 language-servers = ["angular"]
 roots = ["angular.json"]
