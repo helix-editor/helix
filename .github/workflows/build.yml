@@ -27,7 +27,7 @@ jobs:
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: ./.github/actions/rust-setup
         with:
@@ -47,7 +47,7 @@ jobs:
       HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: ./.github/actions/rust-setup
         with:
@@ -72,7 +72,7 @@ jobs:
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: ./.github/actions/rust-setup
         with:
@@ -92,12 +92,12 @@ jobs:
           RUSTDOCFLAGS: -D warnings
 
   docs:
-    name: Docs
+    name: Grammar Lint
     runs-on: ubuntu-latest
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: ./.github/actions/rust-setup
         with:
@@ -107,15 +107,27 @@ jobs:
           grammar-cache-version: ${{ env.GRAMMAR_CACHE_VERSION }}
 
       - name: Validate queries
+        if: always()
         run: cargo xtask query-check
 
+      - name: Validate indents
+        if: always()
+        run: cargo xtask indent-check
+
+      - name: Validate highlights
+        if: always()
+        run: cargo xtask highlight-check
+
       - name: Validate themes
+        if: always()
         run: cargo xtask theme-check
 
       - name: Generate docs
+        if: always()
         run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
+        if: always()
         run: |
           git diff
           git diff-files --quiet \

@@ -258,6 +258,21 @@ fn request_document_diagnostics_for_language_severs(
     });
 }
 
+pub fn request_all_document_diagnostics_for_language_server(
+    editor: &mut Editor,
+    server_id: LanguageServerId,
+) {
+    let doc_ids: Vec<_> = editor
+        .documents
+        .values()
+        .filter(|doc| doc.supports_language_server(server_id))
+        .map(|doc| doc.id())
+        .collect();
+    for doc_id in doc_ids {
+        request_document_diagnostics(editor, doc_id);
+    }
+}
+
 pub fn request_document_diagnostics(editor: &mut Editor, doc_id: DocumentId) {
     let Some(doc) = editor.document(doc_id) else {
         return;

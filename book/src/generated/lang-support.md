@@ -11,6 +11,7 @@
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
 | basic | ✓ | ✓ | ✓ | ✓ |  |  |
 | bass | ✓ |  |  |  |  | `bass` |
+| batch | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  |  |  | `texlab` |
 | bicep | ✓ |  |  |  |  | `bicep-langserver` |
@@ -28,7 +29,7 @@
 | cel | ✓ |  |  |  |  |  |
 | chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
-| clarity | ✓ |  |  |  |  | `clarinet` |
+| clarity | ✓ | ✓ | ✓ | ✓ | ✓ | `clarinet` |
 | clojure | ✓ | ✓ | ✓ | ✓ | ✓ | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ |  | ✓ | `neocmakelsp`, `cmake-language-server` |
 | codeql | ✓ | ✓ |  |  |  | `codeql` |
@@ -86,10 +87,10 @@
 | freebasic | ✓ | ✓ | ✓ | ✓ |  |  |
 | fsharp | ✓ |  |  |  | ✓ | `fsautocomplete` |
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
-| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| gdscript | ✓ | ✓ | ✓ | ✓ | ✓ | `ncat` |
 | gemini | ✓ |  |  |  |  |  |
 | gherkin | ✓ |  |  |  |  |  |
-| ghostty | ✓ |  |  |  |  |  |
+| ghostty | ✓ |  |  |  |  | `ghostty-ls` |
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
 | git-commit | ✓ | ✓ |  |  |  | `commit-lsp` |
@@ -136,7 +137,7 @@
 | idris |  |  |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |  |  |
 | ini | ✓ |  |  | ✓ |  |  |
-| ink | ✓ |  |  |  |  |  |
+| ink | ✓ | ✓ | ✓ |  |  |  |
 | inko | ✓ | ✓ | ✓ | ✓ |  |  |
 | janet | ✓ |  | ✓ |  | ✓ |  |
 | java | ✓ | ✓ | ✓ | ✓ | ✓ | `jdtls` |
@@ -187,15 +188,17 @@
 | matlab | ✓ | ✓ | ✓ |  |  |  |
 | mermaid | ✓ |  |  |  |  |  |
 | meson | ✓ |  | ✓ |  |  | `mesonlsp` |
+| metamath | ✓ |  |  | ✓ |  | `mm-lsp-server` |
 | mint |  |  |  |  |  | `mint` |
 | miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
+| moonbit | ✓ | ✓ | ✓ | ✓ |  | `moonbit-lsp` |
 | move | ✓ |  | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |  |  |
 | nasm | ✓ | ✓ |  |  |  | `asm-lsp` |
 | nearley | ✓ |  |  |  | ✓ |  |
 | nestedtext | ✓ | ✓ | ✓ |  |  |  |
-| nginx | ✓ |  |  |  |  |  |
+| nginx | ✓ |  |  |  |  | `nginx-language-server` |
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
@@ -208,6 +211,7 @@
 | opencl | ✓ | ✓ | ✓ |  |  | `clangd` |
 | openscad | ✓ |  |  |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |  |  |
+| p | ✓ |  |  |  |  |  |
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
@@ -232,6 +236,7 @@
 | prql | ✓ |  |  |  |  |  |
 | ptx | ✓ |  | ✓ |  |  |  |
 | pug | ✓ |  |  |  |  |  |
+| puppet | ✓ |  | ✓ |  |  | `puppet-languageserver` |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
@@ -260,13 +265,14 @@
 | scfg | ✓ |  |  |  |  |  |
 | scheme | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | scss | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
+| sgf | ✓ | ✓ | ✓ |  |  |  |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | slisp | ✓ |  |  | ✓ |  |  |
 | smali | ✓ |  | ✓ |  |  | `smalisp` |
 | smithy | ✓ |  |  |  |  | `cs` |
-| sml | ✓ |  |  |  |  |  |
+| sml | ✓ |  |  |  |  | `millet-ls` |
 | snakemake | ✓ |  | ✓ |  |  | `pylsp` |
 | solidity | ✓ | ✓ |  |  | ✓ | `solc` |
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
@@ -290,7 +296,7 @@
 | task | ✓ |  |  |  |  |  |
 | tcl | ✓ |  | ✓ |  |  |  |
 | teal | ✓ |  |  |  |  | `teal-language-server` |
-| templ | ✓ |  |  |  |  | `templ` |
+| templ | ✓ | ✓ |  | ✓ | ✓ | `templ` |
 | tera | ✓ |  |  |  |  |  |
 | textproto | ✓ | ✓ | ✓ |  |  |  |
 | tfvars | ✓ |  | ✓ |  |  | `terraform-ls` |
@@ -299,7 +305,7 @@
 | tlaplus | ✓ |  |  |  |  |  |
 | todotxt | ✓ |  |  |  |  |  |
 | tolk | ✓ |  | ✓ |  |  |  |
-| toml | ✓ | ✓ |  | ✓ | ✓ | `taplo`, `tombi` |
+| toml | ✓ | ✓ | ✓ | ✓ | ✓ | `taplo`, `tombi` |
 | tql | ✓ |  | ✓ |  |  |  |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
@@ -312,6 +318,7 @@
 | uxntal | ✓ |  |  |  |  |  |
 | v | ✓ | ✓ | ✓ |  |  | `v-analyzer` |
 | vala | ✓ | ✓ |  |  |  | `vala-language-server` |
+| varlink | ✓ |  |  |  |  | `varlink-language-server` |
 | vento | ✓ |  |  |  |  |  |
 | verilog | ✓ | ✓ |  |  |  | `verible-verilog-ls` |
 | vhdl | ✓ |  |  |  |  | `vhdl_ls` |
@@ -331,6 +338,7 @@
 | xit | ✓ |  |  |  |  |  |
 | xml | ✓ | ✓ | ✓ |  | ✓ |  |
 | xtc | ✓ |  |  |  |  |  |
+| xwiki | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
 | yuck | ✓ |  | ✓ |  | ✓ |  |

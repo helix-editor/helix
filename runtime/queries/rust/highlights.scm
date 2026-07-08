@@ -357,9 +357,15 @@
 
 (function_item
   name: (identifier) @function)
-
 (function_signature_item
   name: (identifier) @function)
+
+(function_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
+(function_signature_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
 
 ; -------
 ; Guess Other Types
@@ -436,8 +442,31 @@
 
 (match_pattern
   (scoped_identifier
-    name: ((identifier) @type.enum.variant
+    path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+    name: (identifier) @type.enum.variant
+    (#match? @type "^[A-Z]")
+    (#match? @type.enum.variant "^[A-Z]")))
+
+(match_pattern
+  (struct_pattern
+    type: (scoped_type_identifier
+      path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+      name: (type_identifier) @type.enum.variant
+      (#match? @type "^[A-Z]")
       (#match? @type.enum.variant "^[A-Z]"))))
+
+(match_pattern
+  (tuple_struct_pattern
+    type: (scoped_identifier
+      path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+      name: (identifier) @type.enum.variant
+      (#match? @type "^[A-Z]")
+      (#match? @type.enum.variant "^[A-Z]"))))
+
+(match_pattern
+  (scoped_identifier
+    name: (identifier) @constant
+    (#match? @constant "^[A-Z_]+$")))
 
 ; ---
 ; Macros

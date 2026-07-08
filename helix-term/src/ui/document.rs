@@ -426,6 +426,7 @@ impl<'a> TextRenderer<'a> {
         if (y as usize) < self.offset.row {
             return;
         }
+        let y = y - self.offset.row as u16;
         self.surface
             .set_string(x, y + self.viewport.y, string, style)
     }
@@ -434,6 +435,7 @@ impl<'a> TextRenderer<'a> {
         if (y as usize) < self.offset.row {
             return;
         }
+        let y = y - self.offset.row as u16;
         self.surface
             .set_stringn(x, y + self.viewport.y, string, width, style);
     }
@@ -441,8 +443,12 @@ impl<'a> TextRenderer<'a> {
     /// Sets the style of an area **within the text viewport* this accounts
     /// both for the renderers vertical offset and its viewport
     pub fn set_style(&mut self, mut area: Rect, style: Style) {
-        area = area.clip_top(self.offset.row as u16);
-        area.y += self.viewport.y;
+        let offset = self.offset.row as u16;
+        if area.y < offset {
+            area.height = area.height.saturating_sub(offset - area.y);
+            area.y = offset;
+        }
+        area.y = area.y - offset + self.viewport.y;
         self.surface.set_style(area, style);
     }
 
@@ -460,6 +466,7 @@ impl<'a> TextRenderer<'a> {
         if (y as usize) < self.offset.row {
             return (x, y);
         }
+        let y = y - self.offset.row as u16;
         self.surface.set_string_truncated(
             x,
             y + self.viewport.y,
