@@ -1,16 +1,15 @@
 ; inherits: html
 
-[
- (statement_block)
- (switch_statement)
-] @indent.begin
+; --- Control Flow Blocks ---
 
-(statement_block
- "{" @indent.branch)
+; All Angular control flow statement bodies: @if { } @else { } @for { }
+; @empty { } @switch { } @case { } @default { } @defer { }
+; @placeholder { } @loading { } @error { }
+(statement_block) @indent
+; Closing brace of any statement block — dedents back to block opener level
+(statement_block "}" @outdent)
 
-(statement_block
- "}" @indent.end)
-
-"}" @indent.branch
-
-"}" @indent.end
+; @switch (expr) { ... } — indents case/default children one level
+(switch_statement) @indent
+; Closing brace of the switch body — dedents back to @switch level
+(switch_body "}" @outdent)
