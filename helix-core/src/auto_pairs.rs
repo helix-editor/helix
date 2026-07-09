@@ -365,7 +365,7 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     let next_range = get_next_range(doc, range, len_inserted);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }
@@ -384,7 +384,7 @@ fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change
     let next_range = get_next_range(doc, range, 0);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }
@@ -411,7 +411,7 @@ fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     let next_range = get_next_range(doc, range, len_inserted);
     let result = (change, next_range);
 
-    log::debug!("auto pair change: {:#?}", &result);
+    log::debug!("auto pair change: {:#?}", result);
 
     Some(result)
 }
