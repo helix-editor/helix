@@ -456,10 +456,9 @@ impl Theme {
             if let Some(highlight) = self.find_highlight_exact(scope) {
                 return Some(highlight);
             }
-            if let Some(new_end) = scope.rfind('.') {
+            {
+                let new_end = scope.rfind('.')?;
                 scope = &scope[..new_end];
-            } else {
-                return None;
             }
         }
     }
