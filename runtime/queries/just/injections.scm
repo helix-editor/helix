@@ -10,6 +10,13 @@
   (_) @injection.content)
   (#set! injection.language "regex"))
 
+; Highlight the value of attribute `[arg(pattern = "...")]` as regex
+(attribute_named_parameter
+  name: (identifier) @_name
+  value: (expression (value (string) @injection.content
+    (#set! injection.language "regex")))
+  (#match? @_name "^pattern$"))
+
 ; ================ Global defaults ================
 
 ; Default recipe lines to be bash, but exclude interpolation nodes

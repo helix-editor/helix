@@ -6,6 +6,9 @@
 (assignment
   name: (identifier) @definition.constant)
 
+(function
+  name: (identifier) @definition.function)
+
 (import
   (path) @definition.module)
 
