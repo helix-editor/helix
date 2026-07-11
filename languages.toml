@@ -3641,6 +3641,11 @@ file-types = ["tal"]
 auto-format = false
 block-comment-tokens = { start = "(", end = ")" }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+
 [[grammar]]
 name = "uxntal"
 source = { git = "https://github.com/Jummit/tree-sitter-uxntal", rev = "1a44f8d31053096b79c52f10a39da12479edbf64" }
