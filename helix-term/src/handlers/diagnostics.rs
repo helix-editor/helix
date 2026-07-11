@@ -337,10 +337,7 @@ pub fn request_workspace_diagnostics_for_language_server(
         .iter()
         .filter_map(|((diagnostic_server_id, uri), value)| {
             if *diagnostic_server_id == server_id {
-                let uri = match uri.to_url() {
-                    Ok(uri) => uri,
-                    Err(()) => return None,
-                };
+                let uri = uri.to_url().ok()?;
                 Some(lsp::PreviousResultId {
                     uri,
                     value: value.clone(),
