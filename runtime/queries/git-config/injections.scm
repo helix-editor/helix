@@ -18,17 +18,14 @@
  (#eq? @markup.heading "alias")
  (variable (name)
   value: (string) @injection.content
-   ; ASK: some way to not highlight the bang as `sh`?
-   ; ASK: add `(?s)` (dot-all) flag?
-   (#match? @injection.content "(^\"!.*\"$)|(^!)")
+   (#match? @injection.content "(?s)(^\"!.*\"$)|(^!)")
   (#set! injection.language "bash"))
 )
 
 (variable
- ; ASK: is this overly general?
  (name) @_var (#eq? @_var "helper")
  value: (string) @injection.content
-  (#match? @injection.content "(^\"!.*\"$)|(^!)")
+  (#match? @injection.content "(?s)(^\"!.*\"$)|(^!)")
  (#set! injection.language "bash"))
 
 ; TODO: missing `*.cmd` sections
