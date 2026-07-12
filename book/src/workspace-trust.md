@@ -156,7 +156,9 @@ are expanded.
 > genuinely disruptive to your workflow. An explicit `:workspace-exclude`
 > still overrides a matching pattern.
 
-## Git trust
+## VCS trust
+
+### Git
 
 Workspace trust also gates how Helix opens git repositories. Untrusted
 workspaces are opened in [gix](https://github.com/Byron/gitoxide)'s
@@ -173,3 +175,20 @@ Helix forces this trust level explicitly rather than letting gix infer it
 from `.git` directory ownership — a malicious `.git/config` in a directory
 you happen to own is still treated as untrusted until you run
 `:workspace-trust`.
+
+### Jujutsu
+
+Jujutsu repositories are only supported when the workspace is fully trusted
+because Jujutsu itself does not expose a trust setting (yet).
+
+Jujutsu itself is fairly secure in that it does not allow bringing a
+configuration on clone (JJ repository and workspace configuration live
+outside of their relevant directory) but there is no way to transmit the
+`Trust::Reduced` setting to underlying Git operations so we choose to not
+allow any JJ operation unless the workspace is fully trusted.
+
+> [!NOTE]
+> If you use `level = "servers"`, you will not get a prompt to enable full
+> workspace trust by default, which means (for JJ repositories) that you
+> will not get diff markers, branch name or a populated changed files
+> picker until you run `:workspace-trust` manually.
