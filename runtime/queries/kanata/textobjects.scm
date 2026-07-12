@@ -1,28 +1,51 @@
-; Top-level definition blocks as classes (deflayer, defalias, defcfg, ...)
+; CLASS  top-level definition blocks
+(defcfg)      @class.around @class.outer
+(defsrc)      @class.around @class.outer
+(deflayer)    @class.around @class.outer
+(deflayermap) @class.around @class.outer
+(defalias)    @class.around @class.outer
+(defvar)      @class.around @class.outer
+(deflocalkeys) @class.around @class.outer
+
+; Inner part of a class: everything except the opening keyword
+(defcfg
+  key: (_) @class.inside @class.inner)
+(defsrc
+  keys: (_) @class.inside @class.inner)
+(deflayer
+  keys: (_) @class.inside @class.inner)
+(deflayermap
+  input: (_) @class.inside @class.inner)
+(defalias
+  name: (_) @class.inside @class.inner)
+(defvar
+  name: (_) @class.inside @class.inner)
+
+; FUNCTION any parenthesised action list
+(list) @function.around @function.outer
+
+; Inner: the arguments, excluding the head
 (list
-  . (identifier) @_def
-  (#any-of? @_def
-    "defcfg" "defsrc" "deflayer" "deflayer-mapped" "deflayermap"
-    "defalias" "defaliasenvcond" "defvar" "deftemplate"
-    "deffakekeys" "defvirtualkeys" "defchords" "defchordsv2"
-    "defchordsv2-experimental" "defzippy" "defzippy-experimental"
-    "defseq" "defhands" "definputdevices" "defoverrides" "defoverridesv2"
-    "deflocalkeys-macos" "deflocalkeys-linux" "deflocalkeys-win"
-    "deflocalkeys-winiov2" "deflocalkeys-wintercept"
-    "platform" "environment")
-  (_)* @class.inside) @class.around
+  body: (_) @function.inside @function.inner)
 
-; Any list form as a function-like block
 (list
-  (_)* @function.inside) @function.around
+  body: (_) @parameter.inside @parameter.inner
+             @parameter.around @parameter.outer)
 
-; Elements within a list as parameters
 (list
-  (_) @parameter.inside @parameter.around)
+  head: (identifier) @_cond
+  (#any-of? @_cond
+    "switch" "fork"
+    "if-equal" "if-not-equal" "if-in-list" "if-not-in-list")) @conditional.outer @conditional.around
 
-; Comments
-(line_comment) @comment.inside
-(block_comment) @comment.inside
-(line_comment)+ @comment.around
-(block_comment) @comment.around
+(list
+  head: (identifier) @_cond
+  (#any-of? @_cond
+    "switch" "fork"
+    "if-equal" "if-not-equal" "if-in-list" "if-not-in-list")
+  body: (_) @conditional.inner @conditional.inside)
 
+(line_comment)  @comment.inside @comment.inner
+(block_comment) @comment.inside @comment.inner
+(line_comment)+  @comment.around @comment.outer
+(block_comment)  @comment.around @comment.outer
