@@ -5663,4 +5663,4 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "kanata"
-source = { git = "https://tangled.org/philocalyst.bsky.social/KanataGrammar", rev = "9bbf91d872449ffba1f3f9108ff80464bcad58c2" }
+source = { git = "https://codeberg.org/philocalyst/KanataGrammar", rev = "1af8a2fe598d7236df243e47edb0856b13ab2883" }

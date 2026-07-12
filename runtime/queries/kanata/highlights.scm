@@ -3,7 +3,8 @@
 
 (string) @string
 (raw_string) @string
-(number) @constant.numeric
+
+(number) @number @constant.numeric
 
 (variable_reference) @variable
 (alias_reference) @label
@@ -30,8 +31,9 @@
     "rpt" "repeat" "rpt-key" "rpt-any"
     "sldr" "scnl" "use-defsrc" "reverse-release-order"))
 
+;; List-action builtins  (head of a parenthesised form)
 (list
-  . (identifier) @function.builtin
+  head: (identifier) @function.builtin
   (#any-of? @function.builtin
     "layer-switch" "layer-toggle" "layer-while-held"
     "tap-hold" "tap-hold-press" "tap-hold-release"
@@ -73,16 +75,16 @@
     "live-reload-num" "live-reload-file"))
 
 (list
-  . (identifier) @function.macro
+  head: (identifier) @function.macro
   (#any-of? @function.macro "template-expand" "t!" "concat"))
 
 (list
-  . (identifier) @keyword.control.conditional
+  head: (identifier) @keyword.control.conditional
   (#any-of? @keyword.control.conditional
     "if-equal" "if-not-equal" "if-in-list" "if-not-in-list"))
 
 (list
-  . (identifier) @keyword
+  head: (identifier) @keyword
   (#any-of? @keyword
     "defcfg" "defsrc" "deflayer" "deflayer-mapped" "deflayermap"
     "defalias" "defaliasenvcond" "defvar" "deftemplate"
@@ -95,30 +97,53 @@
     "platform" "environment"))
 
 (list
-  . (identifier) @keyword.control.import
+  head: (identifier) @keyword.control.import
   (#eq? @keyword.control.import "include"))
 
 (list
-  . (identifier) @_include
+  head: (identifier) @_include
   (#eq? @_include "include")
-  . [(string) (identifier)] @string.special.path)
+  body: [(string) (identifier)] @string.special.path)
 
+[
+  "defcfg"
+  "defalias"
+  "defvar"
+  "defsrc"
+  "deflayer"
+  "deflayermap"
+  "include"
+  "deflocalkeys-win"
+  "deflocalkeys-winiov2"
+  "deflocalkeys-wintercept"
+  "deflocalkeys-linux"
+  "deflocalkeys-macos"
+] @keyword
+
+;; Config keys and typed definition-site names
+(defcfg key: (identifier) @property)
+(defalias name: (identifier) @variable.parameter)
+(defvar name: (identifier) @variable)
+(defsrc keys: (identifier) @type)
+
+;; Layer names are modules/namespaces
+(deflayer name: (identifier) @module)
+(deflayermap name: (identifier) @module)
+(deflayermap input: (identifier) @type)
+
+;; Include path
+(include file: [(string) (identifier)] @string.special.path)
+
+;; Layer names inside generic-list deflayer / deflayer-mapped / defchords / deftemplate
 (list
-  . (identifier) @_def
+  head: (identifier) @_def
   (#any-of? @_def "deflayer" "deflayer-mapped" "defchords" "deftemplate")
-  . (identifier) @namespace)
+  body: (identifier) @module)
 
 (list
-  . (identifier) @_def
+  head: (identifier) @_def
   (#eq? @_def "deflayermap")
-  . (list (identifier) @namespace))
+  body: (list (identifier) @module))
 
-(list
-  . (identifier) @_def
-  (#any-of? @_def "deflayer" "deflayer-mapped" "defchords" "deftemplate")
-  . (identifier) @module)
-
-(list
-  . (identifier) @_def
-  (#eq? @_def "deflayermap")
-  . (list (identifier) @module))
+;; Catch-all fallback: any bare identifier that isn't captured above
+(identifier) @variable.other

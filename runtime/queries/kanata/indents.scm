@@ -1,5 +1,14 @@
-(list) @indent
-(list) @indent.begin
+; Opening a parenthesis always starts an indented block.
+[
+  (defcfg)
+  (defsrc)
+  (deflayer)
+  (deflayermap)
+  (defalias)
+  (defvar)
+  (deflocalkeys)
+  (list)
+] @indent @indent.begin
 
-")" @outdent
-")" @indent.branch
+; The closing ")" reduces indentation by one level.
+")" @outdent @indent.branch
