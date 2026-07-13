@@ -254,21 +254,23 @@ watcher = "server"
 command = "tsc"
 args = ["--lsp", "--stdio"]
 
-[language-server.typescript-language-server-official.config.typescript.inlayHints]
-enumMemberValues.enabled = true
-functionLikeReturnTypes.enabled = true
-parameterTypes.enabled = true
-parameterNames.enabled = "all"
-propertyDeclarationTypes.enabled = true
-variableTypes.enabled = true
+[language-server.typescript-language-server-official.config.typescript]
+format.enabled = false
+inlayHints.enumMemberValues.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.parameterTypes.enabled = true
+inlayHints.parameterNames.enabled = "all"
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.variableTypes.enabled = true
 
-[language-server.typescript-language-server-official.config.javascript.inlayHints]
-enumMemberValues.enabled = true
-functionLikeReturnTypes.enabled = true
-parameterTypes.enabled = true
-parameterNames.enabled = "all"
-propertyDeclarationTypes.enabled = true
-variableTypes.enabled = true
+[language-server.typescript-language-server-official.config.javascript]
+format.enabled = false
+inlayHints.enumMemberValues.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.parameterTypes.enabled = true
+inlayHints.parameterNames.enabled = "all"
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.variableTypes.enabled = true
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
