@@ -116,6 +116,7 @@ pony-lsp = { command = "pony-lsp", args = ["--stdio"], config = {defines = [], p
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 puppet-languageserver = { command = "puppet-languageserver", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
+pyfun = { command = "pyfun", args = ["lsp"] }
 pylsp = { command = "pylsp" }
 pyrefly = { command = "pyrefly", args = ["lsp"] }
 pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
@@ -1181,6 +1182,19 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "python"
 source = { git = "https://github.com/tree-sitter/tree-sitter-python", rev = "293fdc02038ee2bf0e2e206711b69c90ac0d413f" }
+
+[[language]]
+name = "pyfun"
+scope = "source.pyfun"
+injection-regex = "pyfun"
+file-types = ["pyfun"]
+comment-token = "#"
+language-servers = ["pyfun"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "pyfun"
+source = { git = "https://github.com/simontreanor/Pyfun", rev = "90502f1857052920b8f3e80f959fa81522fc535a", subpath = "editors/tree-sitter-pyfun" }
 
 [[language]]
 name = "nickel"

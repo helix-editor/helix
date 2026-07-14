@@ -237,6 +237,7 @@
 | pug | ✓ |  |  |  |  |  |
 | puppet | ✓ |  | ✓ |  |  | `puppet-languageserver` |
 | purescript | ✓ | ✓ |  |  |  | `purescript-language-server` |
+| pyfun | ✓ |  |  |  |  | `pyfun` |
 | python | ✓ | ✓ | ✓ | ✓ | ✓ | `ty`, `ruff`, `jedi-language-server`, `pylsp`, `zuban` |
 | qml | ✓ | ✓ | ✓ |  |  | `qmlls` |
 | qmv |  |  |  |  |  |  |
