@@ -20,7 +20,7 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Install nix
-      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+      uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31.10.7
 
     - name: Authenticate with Cachix
       uses: cachix/cachix-action@5f2d7c5294214f71b873db4b969586b980625e71 # v17
