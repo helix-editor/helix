@@ -46,6 +46,11 @@ fn term_program() -> Option<String> {
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
+fn is_ghostty() -> bool {
+    // Ghostty sets $TERM to "xterm-ghostty" and doesn't always set $TERM_PROGRAM.
+    std::env::var("TERM_PROGRAM").is_ok_and(|program| program == "ghostty")
+        || std::env::var("TERM").is_ok_and(|term| term.contains("ghostty"))
+}
 
 #[derive(Debug, Default, Clone, Copy)]
 struct Capabilities {
@@ -102,7 +107,16 @@ impl TerminaBackend {
         let start = Instant::now();
 
         // HACK: emitting OSC11 / OSC111 seems to break SGR and cause flickering in tmux.
-        capabilities.dynamic_background_color = std::env::var_os("TMUX").is_none();
+        //
+        // HACK: in Ghostty, any OSC11 permanently detaches the surface's background from its
+        // configured theme, so a `theme = light:...,dark:...` setup stops following the system's
+        // dark/light mode for the rest of that surface's life. OSC111 doesn't release it either:
+        // Ghostty's reset copies the current default into the override slot rather than clearing
+        // it, and the renderer prefers the override, so the background freezes at whichever theme
+        // was active when we reset. Leave the background alone there and let Ghostty manage it.
+        // <https://github.com/ghostty-org/ghostty/discussions/10398>
+        // <https://github.com/ghostty-org/ghostty/discussions/12708>
+        capabilities.dynamic_background_color = std::env::var_os("TMUX").is_none() && !is_ghostty();
 
         capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
             KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
