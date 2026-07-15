@@ -19,13 +19,18 @@ pub fn current_working_dir() -> PathBuf {
         return path.clone();
     }
 
-    // implementation of crossplatform pwd -L
-    // we want pwd -L so that symlinked directories are handled correctly
-    let mut cwd = std::env::current_dir().expect("Couldn't determine current working directory");
-
     let pwd = std::env::var_os("PWD");
     #[cfg(windows)]
     let pwd = pwd.or_else(|| std::env::var_os("CD"));
+
+    // implementation of crossplatform pwd -L
+    // we want pwd -L so that symlinked directories are handled correctly
+    let mut cwd = match std::env::current_dir() {
+        Ok(cwd) => cwd,
+        // The cwd can disappear out from under a running shell.
+        // There is no obvious directory to return, so hand back a best guess.
+        Err(_) => return fallback_working_dir(pwd),
+    };
 
     if let Some(pwd) = pwd.map(PathBuf::from) {
         if pwd.canonicalize().ok().as_ref() == Some(&cwd) {
@@ -36,6 +41,17 @@ pub fn current_working_dir() -> PathBuf {
     *dst = Some(cwd.clone());
 
     cwd
+}
+
+/// Best-effort working directory for when getting the CWD fails because
+/// the real cwd is gone.
+fn fallback_working_dir(pwd: Option<OsString>) -> PathBuf {
+    if let Some(pwd) = pwd.map(PathBuf::from) {
+        if pwd.is_absolute() {
+            return pwd;
+        }
+    }
+    PathBuf::from(std::path::MAIN_SEPARATOR_STR)
 }
 
 /// Update the current working directory.
@@ -177,9 +193,42 @@ impl std::error::Error for ExecutableNotFoundError {}
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::{OsStr, OsString};
+    use std::{
+        ffi::{OsStr, OsString},
+        path::PathBuf,
+    };
 
-    use super::{current_working_dir, expand_impl, set_current_working_dir};
+    use super::{current_working_dir, expand_impl, fallback_working_dir, set_current_working_dir};
+
+    #[test]
+    fn fallback_working_dir_prefers_absolute_pwd() {
+        let pwd = PathBuf::from(if cfg!(windows) {
+            r"C:\some\path"
+        } else {
+            "/some/path"
+        });
+        assert_eq!(
+            fallback_working_dir(Some(pwd.clone().into_os_string())),
+            pwd
+        );
+    }
+
+    #[test]
+    fn fallback_working_dir_ignores_relative_pwd() {
+        // A relative PWD is useless as a working directory, so we drop to the root.
+        assert_eq!(
+            fallback_working_dir(Some(OsString::from("relative/path"))),
+            PathBuf::from(std::path::MAIN_SEPARATOR_STR)
+        );
+    }
+
+    #[test]
+    fn fallback_working_dir_without_pwd_uses_root() {
+        assert_eq!(
+            fallback_working_dir(None),
+            PathBuf::from(std::path::MAIN_SEPARATOR_STR)
+        );
+    }
 
     #[test]
     fn current_dir_is_set() {
