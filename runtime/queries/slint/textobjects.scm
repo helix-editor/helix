@@ -22,7 +22,7 @@
 (component_definition
   (block) @class.inside) @class.around
 
-(comment) @comment.around
+[(line_comment) (block_comment)] @comment.around
 
 (typed_identifier
   name: (_) @parameter.inside) @parameter.around

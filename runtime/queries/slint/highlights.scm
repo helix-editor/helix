@@ -1,4 +1,4 @@
-(comment) @comment
+[(line_comment) (block_comment)] @comment
 
 ; Different types:
 (string_value) @string
@@ -129,19 +129,16 @@
 (binding_alias
   name: (simple_identifier) @variable)
 
-(binding
-  name: (simple_identifier) @variable)
+(struct_field_definition
+  name: (simple_identifier) @variable.other.member)
 
-(struct_block
-  (simple_identifier) @variable.other.member)
-
-(anon_struct_block
-  (simple_identifier) @variable.other.member)
+(anon_struct_assignment
+  member: (simple_identifier) @variable.other.member)
 
 (property_assignment
   property: (simple_identifier) @variable)
 
-(states_definition
+(state_definition
   name: (simple_identifier) @variable)
 
 (callback
@@ -172,7 +169,11 @@
 ; Keywords
 (animate_option_identifier) @keyword
 
-(export) @keyword.control.import
+(export_statement
+  "export" @keyword.control.import)
+
+(exported_definition
+  "export" @keyword.control.import)
 
 (if_statement
   "if" @keyword.control.conditional)
@@ -216,7 +217,7 @@
 (global_definition
   "global" @keyword.storage.type)
 
-(imperative_block
+(return_statement
   "return" @keyword.control.return)
 
 (import_statement
