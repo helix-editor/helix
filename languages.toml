@@ -5648,3 +5648,18 @@ comment-tokens = ["REM", "::"]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
 
+[[language]]
+name = "linkerscript"
+scope = "source.linkerscript"
+file-types = ["ld", "x"]
+injection-regex = "ld|x"
+indent = { tab-width = 2, unit = "  " }
+block-comment-tokens = { start = "/*", end = "*/" }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+
+[[grammar]]
+name = "linkerscript"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-linkerscript.git", rev = "f99011a3554213b654985a4b0a65b3b032ec4621" }
