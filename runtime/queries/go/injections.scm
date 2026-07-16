@@ -40,9 +40,9 @@
   (argument_list
     .
     [
-      (raw_string_literal)
-      (interpreted_string_literal)
-    ] @injection.content
+      (raw_string_literal (raw_string_literal_content) @injection.content)
+      (interpreted_string_literal (interpreted_string_literal_content) @injection.content)
+    ]
     (#set! injection.language "regex")))
 
 ; https://pkg.go.dev/fmt#Printf
