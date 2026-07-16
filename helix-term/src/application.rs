@@ -892,6 +892,10 @@ impl Application {
                                             &mut self.editor,
                                             server_id,
                                         );
+                                        handlers::diagnostics::request_workspace_diagnostics_for_language_server(
+                                            &mut self.editor,
+                                            server_id,
+                                        );
                                     }
                                     self.editor.clear_status();
 
@@ -940,6 +944,10 @@ impl Application {
                                         &mut self.editor,
                                         server_id,
                                     );
+                                    handlers::diagnostics::request_workspace_diagnostics_for_language_server(
+                                        &mut self.editor,
+                                        server_id,
+                                    );
                                 };
                             }
                         }
@@ -962,6 +970,9 @@ impl Application {
                         }
 
                         self.editor.diagnostics.retain(|_, diags| !diags.is_empty());
+                        self.editor.workspace_diagnostic_ids.retain(
+                            |(diagnostic_server_id, _), _| *diagnostic_server_id != server_id,
+                        );
 
                         // Clear any diagnostics for documents with this server open.
                         for doc in self.editor.documents_mut() {
@@ -1132,6 +1143,10 @@ impl Application {
                     Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
                         let server_id = language_server!().id();
                         handlers::diagnostics::request_all_document_diagnostics_for_language_server(
+                            &mut self.editor,
+                            server_id,
+                        );
+                        handlers::diagnostics::request_workspace_diagnostics_for_language_server(
                             &mut self.editor,
                             server_id,
                         );
