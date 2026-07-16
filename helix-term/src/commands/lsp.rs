@@ -449,25 +449,32 @@ pub fn symbol_picker(cx: &mut Context) {
     });
 }
 
+/// Every language server that can answer a workspace symbol request, across all open
+/// documents rather than only the focused one, deduplicated by server id.
+///
+/// Workspace symbols are project-wide, so the focused document's servers are not the
+/// right scope. Collecting through each document's configured servers keeps the
+/// per-language `only-features` / `except-features` gates applied, and skips servers
+/// that have not finished initializing — `supports_feature` panics on those.
+pub fn workspace_symbol_servers(editor: &Editor) -> impl Iterator<Item = &helix_lsp::Client> {
+    let mut seen_language_servers = HashSet::new();
+    editor
+        .documents()
+        .flat_map(|doc| doc.language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols))
+        .filter(move |ls| seen_language_servers.insert(ls.id()))
+}
+
 pub fn workspace_symbol_picker(cx: &mut Context) {
     use crate::ui::picker::Injector;
 
-    if !cx
-        .editor
-        .language_servers
-        .iter_clients()
-        .any(|ls| ls.supports_feature(LanguageServerFeature::WorkspaceSymbols))
-    {
+    if workspace_symbol_servers(cx.editor).next().is_none() {
         cx.editor
             .set_error("No configured language server supports workspace symbols");
         return;
     }
 
     let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
-        let mut futures: FuturesUnordered<_> = editor
-            .language_servers
-            .iter_clients()
-            .filter(|ls| ls.supports_feature(LanguageServerFeature::WorkspaceSymbols))
+        let mut futures: FuturesUnordered<_> = workspace_symbol_servers(editor)
             .map(|language_server| {
                 let request = language_server
                     .workspace_symbols(pattern.to_string())
