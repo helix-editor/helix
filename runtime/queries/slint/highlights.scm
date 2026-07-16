@@ -70,6 +70,9 @@
 (function_definition
   name: (_) @function)
 
+(function_declaration
+  name: (_) @function)
+
 (struct_definition
   name: (_) @type)
 
@@ -139,7 +142,8 @@
   property: (simple_identifier) @variable)
 
 (state_definition
-  name: (simple_identifier) @variable)
+  name: (simple_identifier) @variable
+  "when" @keyword)
 
 (callback
   name: (simple_identifier) @variable)
@@ -158,6 +162,7 @@
   (linear_gradient_identifier)
   (radial_gradient_identifier)
   (radial_gradient_kind)
+  (conic_gradient_identifier)
 ] @attribute
 
 (image_call
@@ -165,6 +170,21 @@
 
 (tr
   "@tr" @attribute)
+
+(rust_attr
+  "@rust-attr" @attribute)
+
+(keys
+  "@keys" @attribute)
+
+(markdown
+  "@markdown" @attribute)
+
+(keys
+  (simple_identifier) @constant)
+
+(keys
+  "+" @operator)
 
 ; Keywords
 (animate_option_identifier) @keyword
@@ -197,10 +217,29 @@
   "callback" @keyword.function)
 
 (component_definition
+  "component" @keyword.storage.type)
+
+(component_modifier
+  "inherits" @keyword.storage.type)
+
+(uses_clause
+  "uses" @keyword.storage.type)
+
+(implements_clause
+  "implements" @keyword.storage.type)
+
+(used_interface
+  "from" @keyword.control.import
+  source: (_) @variable)
+
+(changed_event
+  "changed" @keyword)
+
+(gradient_call
   [
-    "component"
-    "inherits"
-  ] @keyword.storage.type)
+    "at"
+    "from"
+  ] @keyword)
 
 (enum_definition
   "enum" @keyword.storage.type)
@@ -213,6 +252,14 @@
 
 (function_definition
   "function" @keyword.function)
+
+(function_declaration
+  "function" @keyword.function)
+
+(let_statement
+  "let" @keyword.storage.type
+  name: (_) @variable
+  "=" @operator)
 
 (global_definition
   "global" @keyword.storage.type)
@@ -233,10 +280,7 @@
   "property" @keyword.storage.type)
 
 (states_definition
-  [
-    "states"
-    "when"
-  ] @keyword)
+  "states" @keyword)
 
 (struct_definition
   "struct" @keyword.storage.type)
