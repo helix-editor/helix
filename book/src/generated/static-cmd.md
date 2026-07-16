@@ -53,6 +53,7 @@
 | `extend_prev_char` | Extend to previous occurrence of char | select: `` F `` |
 | `repeat_last_motion` | Repeat last motion | normal: `` <A-.> ``, select: `` <A-.> `` |
 | `replace` | Replace with new char | normal: `` r ``, select: `` r `` |
+| `enter_overtype_mode` | Enter overtype mode | normal: `` <C-r> ``, select: `` <C-r> `` |
 | `switch_case` | Switch (toggle) case | normal: `` ~ ``, select: `` ~ `` |
 | `switch_to_uppercase` | Switch to uppercase | normal: `` <A-`> ``, select: `` <A-`> `` |
 | `switch_to_lowercase` | Switch to lowercase | normal: `` ` ``, select: `` ` `` |
