@@ -5648,3 +5648,19 @@ comment-tokens = ["REM", "::"]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
 
+[[language]]
+name = "kanata"
+scope = "source.kanata"
+injection-regex = "kanata"
+file-types = ["kbd"]
+comment-token = ";;"
+block-comment-tokens = { start = "#|", end = "|#" }
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+
+[[grammar]]
+name = "kanata"
+source = { git = "https://codeberg.org/philocalyst/KanataGrammar", rev = "1af8a2fe598d7236df243e47edb0856b13ab2883" }

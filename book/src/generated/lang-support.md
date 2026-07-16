@@ -156,6 +156,7 @@
 | jsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
+| kanata | ✓ | ✓ | ✓ |  |  |  |
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
 | kdl | ✓ | ✓ | ✓ | ✓ | ✓ |  |
