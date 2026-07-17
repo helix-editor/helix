@@ -1,0 +1,183 @@
+# Author: Franky Theme <https://github.com/gravures/franky>
+# License: GPL-3.0
+# Franky - A GitHub-Dark-inspired coding palette fused with the UI flavor of Catppuccin-Mocha
+
+# LANGUAGE
+attribute = { fg = "#c9c9c9" }
+keyword = { fg = "#d85651" }
+'keyword.control' = { fg = "#d85651" }
+'keyword.control.conditional' = { fg = "#d85651" }
+'keyword.control.repeat' = { fg = "#d85651" }
+'keyword.control.import' = { fg = "#d85651" }
+'keyword.control.retun' = { fg = "#d85651" }
+'keyword.control.exception' = { fg = "#d85651" }
+'keyword.directive' = { fg = "#ff938a" }  # -- preprocessor comments (#if in C)
+'keyword.operator' = { fg = "#d85651" }
+'keyword.function' = { fg = "#d85651" }
+'keyword.storage.type' = { fg = "#d85651" }
+'keyword.storage.modifier' = { fg = "#d85651" }
+
+'namespace' = { fg = "#c9c9c9" }
+
+'punctuation' = { fg = "#6f6b58" }
+'punctuation.bracket' = { fg = "#6f6b58" }
+'punctuation.delimiter' = { fg = "#6f6b58" }
+'punctuation.special' = { fg = "#6f6b58" }
+
+'operator' = { fg = "#d85651" }
+'special' = { fg = "#daaa3f" }  # fuzzy highlight
+
+'variable' = { fg = "#c9c9c9" }
+'variable.builtin' = { fg = "#749fd4" }
+'variable.parameter' = { fg = "#a6a596", modifiers = ["italic"] }
+'variable.other.member' = { fg = "#c9c9c9" }
+'variable.other.member.private' = { fg = "#c9c9c9" }
+# TODO: mutable
+
+'type' = { fg = "#a6a596", modifiers = ["italic"] }
+'type.builtin' = { fg = "#749fd4" }
+'type.enum.variant' = { fg = "#749fd4" }
+
+'constructor' = { fg = "#977ebc" }
+
+'function' = { fg = "#977ebc" }
+'function.method' = { fg = "#977ebc" }
+'function.method.private' = { fg = "#977ebc" }
+'function.macro' = { fg = "#977ebc" }
+'function.builtin' = { fg = "#749fd4" }
+'function.special' = { fg = "#977ebc" }
+
+'comment' = { fg = "#54595f", modifiers = ["italic"] }
+'comment.line' = { fg = "#54595f", modifiers = ["italic"] }
+'comment.block' = { fg = "#54595f", modifiers = ["italic"] }
+'comment.unused' = { modifiers = ["italic"] }
+
+'string' = { fg = "#749fd4" }
+'string.regexp' = { fg = "#749fd4" }
+'string.special.path' = { fg = "#749fd4" }
+'string.special.url' = { fg = "#749fd4" }
+'string.special.symbol' = { fg = "#749fd4" }
+
+'constant' = { fg = "#749fd4" }
+'constant.builtin' = { fg = "#749fd4" }
+'constant.builtin.boolean' = { fg = "#749fd4" }
+'constant.numeric.integer' = { fg = "#ff938a" }
+'constant.numeric.float' = { fg = "#ff938a" }
+'constant.character.escape' = { fg = "#ff938a" }
+
+'label' = { fg = "#daaa3f" }  # used for lifetimes, .class, #id in CSS, etc.
+'tag' = { fg = "#daaa3f" }
+'tag.builtin' = { fg = "#daaa3f" }
+
+
+# MARKUP
+'markup' = { fg = "#b1b1b1" }
+'markup.heading.marker' = { fg = "#521f9c", bg = "#521f9c" }
+'markup.heading.1' = { fg = "#fc8dc7", bg = "#340c6f", modifiers = ["bold"] }
+'markup.heading.2' = { bg = "#521f9c", modifiers = ["bold"] }
+'markup.heading.3' = { fg = "#a6a596", bg = "#340c6f", modifiers = ["bold"] }
+'markup.heading.4' = { fg = "#b1b1b1", bg = "#340c6f" }
+'markup.heading.5' = { fg = "#b1b1b1", bg = "#340c6f" }
+'markup.heading.6' = { fg = "#b1b1b1", bg = "#340c6f" }
+
+'markup.list.unnumbered' = { fg = "#f2cdcd", modifiers = ["bold"] }
+'markup.list.numbered' = { fg = "#f2cdcd", modifiers = ["bold"] }
+'markup.list.unchecked' = { fg = "#54595f" }
+'markup.list.checked' = { fg = "#57ab5a" }
+
+'markup.bold' = { modifiers = ["bold"] }
+'markup.italic' = { modifiers = ["italic"] }
+'markup.strikethrough' = { modifiers = ["crossed_out"] }
+
+'markup.link.url' = { fg = "#151524", bg = "#54595f", modifiers = ["reversed"] }
+'markup.link.label' = { fg = "#94e2d5", modifiers = ["bold"] }
+'markup.link.text' = { fg = "#539bf5", underline = { style = "line" } }
+
+'markup.quote' = { bg = "#2a2a3c", modifiers = ["italic"] }
+
+'markup.raw' = { fg = "#daaa3f" }
+'markup.raw.inline' = { fg = "#daaa3f", bg = "#373e47" }
+'markup.raw.block' = { fg = "#c9c9c9", bg = "#09070D" }
+
+
+# UI CANVAS
+'ui.background' = { fg = "#b1b1b1", bg = "#151524" }
+'ui.background.separator' = { fg = "#b1b1b1", bg = "#151524" }
+
+'ui.cursor.normal' = { fg = "#151524", bg = "#909dab" }
+'ui.cursor.insert' = { fg = "#151524", bg = "#2a2a3c" }
+'ui.cursor.select' = { fg = "#151524", bg = "#909dab" }
+'ui.cursor.match' = { fg = "#ffdeaa", bg = "#151524" }
+'ui.cursor.primary.normal' = { fg = "#151524", bg = "#909dab" }
+'ui.cursor.primary.insert' = { fg = "#151524", bg = "#c9c9c9" }
+'ui.cursor.primary.select' = { fg = "#151524", bg = "#c9c9c9" }
+
+'ui.cursorline.primary' = { fg = "#151524", bg = "#2a2a3c" }
+
+'ui.selection' = { fg = "#ba8d45", bg = "#09070D" }
+'ui.selection.primary' = { fg = "#ba8d45", bg = "#09070D" }
+
+'ui.virtual.ruler' = { bg = "#110E17" }
+'ui.virtual.indent-guide' = { fg = "#373e47" }
+'ui.virtual.inlay-hint' = { fg = "#54595f", modifiers = ["italic"] }
+'ui.virtual.wrap' = { fg = "#54595f" }
+'ui.virtual.jump-label' = { fg = "#daaa3f", bg = "#521f9c" }
+
+'diagnostic.hint' = { underline = { color = "#151524", style = "dotted" } }
+'diagnostic.info' = { underline = { color = "#151524", style = "dotted" } }
+'diagnostic.warning' = { underline = { color = "#151524", style = "dotted" } }
+'diagnostic.error' = { underline = { color = "#bb3831", style = "dotted" } }
+'diagnostic.unnecessary' = { modifiers = ["dim"] }
+
+
+# GUTTERS
+'ui.linenr' = { fg = "#373e47" }
+'ui.linenr.selected' = { fg = "#909dab" }
+
+hint = { fg = "#2764b1", bg = "#151524" }
+info = { fg = "#539bf5", bg = "#151524" }
+warning = { fg = "#ba8d45", bg = "#151524" }
+error = { fg = "#bb3831", bg = "#151524" }
+
+'diff.plus' = { fg = "#57ab5a" }
+'diff.minus' = { fg = "#bb3831" }
+'diff.delta' = { fg = "#ffdeaa" }
+'diff.delta.moved' = { fg = "#539bf5" }
+
+'ui.debug.breakpoint' = "text"
+'ui.debug.active' = "sky"
+
+'ui.gutter' = { bg = "#151524" }
+'ui.gutter.selected' = { bg = "#340c6f" }
+
+
+# STATUS LINE
+'ui.statusline' = { fg = "#909dab", bg = "#110E17" }
+'ui.statusline.inactive' = { fg = "#54595f", bg = "#110E17" }
+'ui.statusline.normal' = { fg = "#09070D", bg = "#94e2d5", modifiers = ["bold"] }
+'ui.statusline.insert' = { fg = "#09070D", bg = "#ffdeaa", modifiers = ["bold"] }
+'ui.statusline.select' = { fg = "#09070D", bg = "#cba6f7", modifiers = ["bold"] }
+
+
+## BUFFER LINE
+'ui.bufferline' = { fg = "#6f6b58" }
+'ui.bufferline.active' = { fg = "#cba6f7" }
+'ui.bufferline.background' = { fg = "#a6a596", bg = "#09070D" }
+
+
+# WIDGETS
+'ui.window' = { fg = "#373e47", bg = "#151524" }  # window == split
+'ui.popup' = { bg = "#373e47" }
+'ui.popup.info' = { fg = "#cba6f7" }  # popup border & title
+'ui.text.info' = { fg = "#a6a596" }
+'ui.help' = { fg = "#a6a596", bg = "#0B090F" }
+'ui.text' = { fg = "#b1b1b1" }  # markdown text also (very annoying !!!)
+'ui.text.focus' = { fg = "#94e2d5" }
+'ui.text.inactive' = { fg = "#6f6b58" }
+'ui.text.directory' = { fg = "#539bf5" }
+# Highlighted lines in picker preview and lsp symbol
+'ui.highlight' = { fg = "#f5e0dc", bg = "#2a2a3c" }
+# TODO: ui.highlight.frameline  # debugger active line
+'ui.menu' = { fg = "#b1b1b1", bg = "#09070D" }
+'ui.menu.selected' = { fg = "#f5e0dc", bg = "#521f9c" }
+'ui.menu.scroll' = { fg = "#57ab5a", bg = "#09070D" }
