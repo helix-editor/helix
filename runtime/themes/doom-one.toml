@@ -33,7 +33,8 @@
 "comment" = { fg = "grey" }
 "comment.line" = { fg = "grey" }
 "comment.block" = { fg = "grey" }
-"comment.documentation" = { fg = "blue" }
+"comment.line.documentation" = { fg = "blue" }
+"comment.block.documentation" = { fg = "blue" }
 
 "keyword" = "blue"
 "keyword.control" = "blue"

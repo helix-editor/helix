@@ -11,6 +11,7 @@
 "attribute"                     = "thunder_bright"
 "comment"                       = { fg = "fg_subtle", modifiers = ["italic"] }
 "comment.line"                  = { fg = "fg_subtle", modifiers = ["italic"] }
+"comment.line.documentation"    = { fg = "fg_muted", modifiers = ["italic"] }
 "comment.block"                 = { fg = "fg_subtle", modifiers = ["italic"] }
 "comment.block.documentation"   = { fg = "fg_muted", modifiers = ["italic"] }
 "constant"                      = "thunder_bright"
