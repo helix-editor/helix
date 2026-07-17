@@ -43,15 +43,20 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
-/// Best-effort working directory for when getting the CWD fails because
-/// the real cwd is gone.
+/// Working directory to use when getting the CWD fails because the real cwd
+/// is gone. When shell's `PWD` still points at a valid absolute path use that.
+///
+/// Panic when PWD is not absolute or available.
 fn fallback_working_dir(pwd: Option<OsString>) -> PathBuf {
     if let Some(pwd) = pwd.map(PathBuf::from) {
         if pwd.is_absolute() {
             return pwd;
         }
     }
-    PathBuf::from(std::path::MAIN_SEPARATOR_STR)
+    panic!(
+        "Couldn't determine the current working directory: the cwd is gone and \
+         PWD is unset or relative. Pass an initial directory with `--working-dir`."
+    )
 }
 
 /// Update the current working directory.
@@ -214,20 +219,17 @@ mod tests {
     }
 
     #[test]
-    fn fallback_working_dir_ignores_relative_pwd() {
-        // A relative PWD is useless as a working directory, so we drop to the root.
-        assert_eq!(
-            fallback_working_dir(Some(OsString::from("relative/path"))),
-            PathBuf::from(std::path::MAIN_SEPARATOR_STR)
-        );
+    #[should_panic]
+    fn fallback_working_dir_panics_on_relative_pwd() {
+        // A relative PWD is useless as a working directory. There is nothing
+        // sensible to return, so we panic instead of inventing a directory.
+        fallback_working_dir(Some(OsString::from("relative/path")));
     }
 
     #[test]
-    fn fallback_working_dir_without_pwd_uses_root() {
-        assert_eq!(
-            fallback_working_dir(None),
-            PathBuf::from(std::path::MAIN_SEPARATOR_STR)
-        );
+    #[should_panic]
+    fn fallback_working_dir_panics_without_pwd() {
+        fallback_working_dir(None);
     }
 
     #[test]
