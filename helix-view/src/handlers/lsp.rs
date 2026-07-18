@@ -6,7 +6,7 @@ use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
 };
-use crate::{DocumentId, Editor};
+use crate::{DocumentId, Editor, ViewId};
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::Uri;
 use helix_event::register_hook;
@@ -38,6 +38,11 @@ pub struct PullDiagnosticsEvent {
 
 pub struct PullAllDocumentsDiagnosticsEvent {
     pub language_servers: HashSet<LanguageServerId>,
+}
+
+pub struct CodeActionHintEvent {
+    pub document_id: DocumentId,
+    pub view_id: ViewId,
 }
 
 #[derive(Debug)]

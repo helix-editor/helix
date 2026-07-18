@@ -1,0 +1,161 @@
+# Author: Flynt Theme <https://flynt-theme.github.io/flynt>
+# Warm tones. Zero visual noise.
+
+# ── Syntax ────────────────────────────────────────────────────────────────────
+
+"attribute"                       = "clay"
+"comment"                         = { fg = "tx5", modifiers = ["italic"] }
+"constant"                        = "tx2"
+"constant.builtin"                = "fern"
+"constant.character"              = "teal"
+"constant.character.escape"       = "iris"
+"constant.numeric"                = "teal"
+"constructor"                     = "moss"
+"function"                        = "amber"
+"function.builtin"                = "amber"
+"function.macro"                  = "clay"
+"keyword"                         = "tx4"
+"keyword.control.conditional"     = { fg = "tx4", modifiers = ["italic"] }
+"keyword.directive"               = "clay"
+"keyword.operator"                = "rose"
+"label"                           = "iris"
+"namespace"                       = "plum"
+"operator"                        = "rose"
+"punctuation"                     = "tx"
+"punctuation.delimiter"           = "tx"
+"punctuation.special"             = "amber"
+"special"                         = "amber"
+"string"                          = "delft"
+"string.regexp"                   = "iris"
+"string.special"                  = "iris"
+"string.special.path"             = "teal"
+"string.special.symbol"           = "iris"
+"string.special.url"              = { fg = "teal", modifiers = ["underlined"] }
+"tag"                             = "moss"
+"tag.attribute"                   = "clay"
+"tag.delimiter"                   = "tx3"
+"type"                            = "fern"
+"type.builtin"                    = "fern"
+"type.enum.variant"               = "clay"
+"variable"                        = "tx2"
+"variable.builtin"                = "rose"
+"variable.other.member"           = "tx3"
+"variable.parameter"              = { fg = "tx2", modifiers = ["italic"] }
+
+# ── Markup ────────────────────────────────────────────────────────────────────
+
+"markup.bold"                     = { modifiers = ["bold"] }
+"markup.heading"                  = { fg = "tx", modifiers = ["bold"] }
+"markup.heading.1"                = { fg = "tx", modifiers = ["bold"] }
+"markup.heading.2"                = { fg = "tx2", modifiers = ["bold"] }
+"markup.heading.3"                = { fg = "tx2" }
+"markup.heading.4"                = { fg = "tx3" }
+"markup.heading.5"                = { fg = "tx3" }
+"markup.heading.6"                = { fg = "tx4" }
+"markup.heading.marker"           = "tx4"
+"markup.italic"                   = { modifiers = ["italic"] }
+"markup.link.label"               = "amber"
+"markup.link.text"                = "amber"
+"markup.link.url"                 = { fg = "teal", modifiers = ["underlined"] }
+"markup.link.uri"                 = { fg = "teal", modifiers = ["underlined"] }
+"markup.list"                     = "amber"
+"markup.list.checked"             = { fg = "amber", modifiers = ["crossed_out"] }
+"markup.list.unchecked"           = "tx4"
+"markup.quote"                    = { fg = "tx5", modifiers = ["italic"] }
+"markup.raw"                      = "moss"
+"markup.raw.block"                = "moss"
+"markup.raw.inline"               = "moss"
+"markup.strikethrough"            = { modifiers = ["crossed_out"] }
+
+# ── Diff ──────────────────────────────────────────────────────────────────────
+
+"diff.delta"                      = "amber"
+"diff.delta.moved"                = "iris"
+"diff.minus"                      = "ember"
+"diff.plus"                       = "moss"
+
+# ── Diagnostics ───────────────────────────────────────────────────────────────
+
+"diagnostic"                      = { underline = { style = "curl" } }
+"diagnostic.deprecated"           = { modifiers = ["crossed_out"] }
+"diagnostic.error"                = { underline = { color = "ember", style = "curl" } }
+"diagnostic.hint"                 = { underline = { color = "tx4", style = "curl" } }
+"diagnostic.info"                 = { underline = { color = "delft", style = "curl" } }
+"diagnostic.unnecessary"          = { modifiers = ["dim"] }
+"diagnostic.warning"              = { underline = { color = "clay", style = "curl" } }
+
+error   = "ember"
+warning = "clay"
+info    = "delft"
+hint    = "tx3"
+
+# ── UI ────────────────────────────────────────────────────────────────────────
+
+"ui.background"                   = { fg = "tx", bg = "bg" }
+"ui.background.separator"         = { fg = "bg4" }
+"ui.cursor"                       = { fg = "bg", bg = "tx" }
+"ui.cursor.insert"                = { fg = "bg", bg = "tx3" }
+"ui.cursor.match"                 = { bg = "bg4", modifiers = ["bold"] }
+"ui.cursor.primary"               = { fg = "bg", bg = "amber" }
+"ui.cursor.primary.insert"        = { fg = "bg", bg = "amber" }
+"ui.cursor.primary.normal"        = { fg = "bg", bg = "amber" }
+"ui.cursor.primary.select"        = { fg = "bg", bg = "iris" }
+"ui.cursor.select"                = { fg = "bg", bg = "plum" }
+"ui.cursorline.primary"           = { bg = "bg2" }
+"ui.cursorline.secondary"         = { bg = "bg2" }
+"ui.gutter"                       = { bg = "bg" }
+"ui.gutter.selected"              = { bg = "bg2" }
+"ui.help"                         = { fg = "tx2", bg = "bg2" }
+"ui.highlight"                    = { bg = "bg3", modifiers = ["bold"] }
+"ui.highlight.frameline"          = { bg = "bg3" }
+"ui.linenr"                       = { fg = "tx4", bg = "bg" }
+"ui.linenr.selected"              = { fg = "tx2", bg = "bg" }
+"ui.menu"                         = { fg = "tx2", bg = "bg2" }
+"ui.menu.scroll"                  = { fg = "tx4", bg = "bg3" }
+"ui.menu.selected"                = { fg = "bg", bg = "amber" }
+"ui.popup"                        = { fg = "tx2", bg = "bg2" }
+"ui.popup.info"                   = { fg = "tx2", bg = "bg2" }
+"ui.selection"                    = { bg = "bg3" }
+"ui.selection.primary"            = { bg = "bg4" }
+"ui.statusline"                   = { fg = "tx2", bg = "bg2" }
+"ui.statusline.inactive"          = { fg = "tx4", bg = "bg2" }
+"ui.statusline.insert"            = { fg = "bg", bg = "moss", modifiers = ["bold"] }
+"ui.statusline.normal"            = { fg = "bg", bg = "amber", modifiers = ["bold"] }
+"ui.statusline.select"            = { fg = "bg", bg = "iris", modifiers = ["bold"] }
+"ui.statusline.separator"         = { fg = "tx4" }
+"ui.text"                         = { fg = "tx" }
+"ui.text.focus"                   = { fg = "tx" }
+"ui.text.inactive"                = { fg = "tx4" }
+"ui.text.info"                    = { fg = "tx3" }
+"ui.virtual.inlay-hint"           = { fg = "tx5" }
+"ui.virtual.inlay-hint.parameter" = { fg = "tx4", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type"      = { fg = "tx4", modifiers = ["italic"] }
+"ui.virtual.jump-label"           = { fg = "amber", modifiers = ["bold"] }
+"ui.virtual.ruler"                = { bg = "bg2" }
+"ui.virtual.whitespace"           = { fg = "tx5" }
+"ui.virtual.wrap"                 = { fg = "tx5" }
+"ui.window"                       = { fg = "bg4" }
+
+# ── Palette ───────────────────────────────────────────────────────────────────
+
+[palette]
+bg    = "#100E0C"
+bg2   = "#1C1916"
+bg3   = "#262220"
+bg4   = "#322F2B"
+bg5   = "#403C38"
+tx    = "#F5EDD8"
+tx2   = "#D8CEBC"
+tx3   = "#A89A88"
+tx4   = "#79685A"
+tx5   = "#584F45"
+amber = "#C69F2A"
+clay  = "#BA6836"
+delft = "#427BAE"
+ember = "#C6372A"
+fern  = "#60A848"
+iris  = "#603CB4"
+moss  = "#93AE42"
+plum  = "#B43C7C"
+rose  = "#C03054"
+teal  = "#48A8A0"

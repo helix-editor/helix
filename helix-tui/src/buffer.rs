@@ -391,6 +391,24 @@ impl Buffer {
         }
     }
 
+    /// Fast path for tab expansion: write each char of `tab` into its own
+    /// single-column cell starting at (x, y), all sharing `style`.
+    ///
+    /// Unlike [`Self::set_grapheme`], the columns are written as independent
+    /// width-1 cells rather than one wide cell, so background styles (selection,
+    /// cursorline) cover every column. Caller must guarantee each char is one column
+    /// and that the whole run fits inside the buffer area.
+    #[inline]
+    pub fn set_tab(&mut self, x: u16, y: u16, tab: &str, style: Style) {
+        let mut index = self.index_of(x, y);
+        for (i, ch) in tab.char_indices() {
+            let cell = &mut self.content[index];
+            cell.set_symbol_with_width(&tab[i..i + ch.len_utf8()], 1);
+            cell.set_style(style);
+            index += 1;
+        }
+    }
+
     /// Print at most the first `width` characters of a string if enough space is available
     /// until the end of the line.
     /// If `ellipsis` is true appends a `…` at the end of truncated lines.

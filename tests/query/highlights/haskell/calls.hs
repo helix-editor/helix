@@ -1,0 +1,2 @@
+main = invokeit x
+--     ^ @function

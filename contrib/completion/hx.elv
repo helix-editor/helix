@@ -3,7 +3,7 @@
 # Be sure to replace `$REPOS` with something that makes sense for you!
 
 ### Renders a pretty completion candidate
-var candidate = { | _stem  _desc | 
+var candidate = { | _stem  _desc |
   edit:complex-candidate $_stem &display=(styled $_stem bold)(styled " "$_desc dim)
 }
 
@@ -24,26 +24,27 @@ set edit:completion:arg-completer[hx] = {|@args|
     # and invalidate further input
     if (has-value $skips $args[-2]) {
       return
-    } 
+    }
     # If the previous arg == --grammar, then only suggest:
     if (has-value $grammar $args[-2]) {
       $candidate "fetch" "Fetch the tree-sitter grammars"
       $candidate "build" "Build the tree-sitter grammars"
       return
-    } 
+    }
     # When we have --config, we need a file
     if (has-values $config $args[-2]) {
       edit:complete-filename $args[-1] | each { |v| put $v[stem] }
       return
-    } 
+    }
     # When we have --log, we need a file
     if (has-values "log" $args[-2]) {
       edit:complete-filename $args[-1] | each { |v| put $v[stem] }
       return
-    } 
-  } 
+    }
+  }
   edit:complete-filename $args[-1] | each { |v| put $v[stem]}
   $candidate "--help" "(Prints help information)"
+  $candidate "--strict" "(Bail on error for commands that can fail)"
   $candidate "--version" "(Prints version information)"
   $candidate "--tutor" "(Loads the tutorial)"
   $candidate "--health" "(Checks for errors in editor setup)"

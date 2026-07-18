@@ -1,10 +1,37 @@
 {
+    // unquoted keys, trailing commas, comments
     name: "test",
+    version: 1.0,
     nested: {
         value: 1,
+        deeper: {
+            flag: true,
+        },
     },
     list: [
         1,
         2,
+    ],
+    objects: [
+        {
+            id: 1,
+            tags: [
+                "a",
+                "b",
+            ],
+        },
+        {
+            id: 2,
+        },
+    ],
+    matrix: [
+        [
+            1,
+            2,
+        ],
+        [
+            3,
+            4,
+        ],
     ],
 }

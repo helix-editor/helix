@@ -88,6 +88,26 @@ fn ensure_git_is_available() -> Result<()> {
     Ok(())
 }
 
+/// Print a notice if the current workspace has a `.helix/languages.toml` that we *would* have
+/// merged but the workspace-trust gate is keeping us from.
+fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
+    let workspace_languages = crate::workspace_lang_config_file();
+    if !workspace_languages.exists() {
+        return;
+    }
+    if trust
+        .query_current(crate::workspace_trust::TrustQuery::LocalConfig)
+        .is_trusted()
+    {
+        return;
+    }
+    println!(
+        "Note: workspace `{}` was skipped because the workspace is not trusted. Run \
+         `:workspace-trust` from an interactive helix session in this workspace to opt in.",
+        workspace_languages.display(),
+    );
+}
+
 pub fn fetch_grammars(strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
@@ -226,7 +246,14 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
 // merged. The `grammar_selection` key of the config is then used to filter
 // down all grammars into a subset of the user's choosing.
 fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    let config: Configuration = crate::config::user_lang_config(false)
+    // `--grammar fetch/build` clones grammar sources from URLs in `languages.toml` and compiles
+    // them into `.so` files helix later loads at runtime. If we let workspace
+    // `.helix/languages.toml` in through `fully_trusted`, a malicious workspace could inject a
+    // grammar with an attacker-controlled git source — running grammar build in that
+    // directory would clone and compile attacker code
+    let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
+    warn_if_workspace_languages_skipped(&trust);
+    let config: Configuration = crate::config::user_lang_config(&trust)
         .context("Could not parse languages.toml")?
         .try_into()?;
 
@@ -248,7 +275,12 @@ fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
 }
 
 pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    let config: Configuration = crate::config::user_lang_config(false)
+    // See `get_grammar_configs`, same threat: workspace-local
+    // `languages.toml` must not influence the grammar set without
+    // explicit on-disk trust.
+    let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
+    warn_if_workspace_languages_skipped(&trust);
+    let config: Configuration = crate::config::user_lang_config(&trust)
         .context("Could not parse languages.toml")?
         .try_into()?;
 

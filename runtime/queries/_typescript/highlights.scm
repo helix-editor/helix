@@ -33,6 +33,19 @@
     (pair_pattern
       value: (identifier) @variable.parameter)))
 
+; ({ p = default }: { p: t = default })
+(required_parameter
+  (object_pattern
+    (object_assignment_pattern
+      left: (shorthand_property_identifier_pattern) @variable.parameter)))
+
+; ({ a: p = default }: { a: t = default })
+(required_parameter
+  (object_pattern
+    (pair_pattern
+      value: (assignment_pattern
+        left: (identifier) @variable.parameter))))
+
 ; ([ p ]: t[])
 (required_parameter
   (array_pattern
@@ -58,6 +71,19 @@
   (object_pattern
     (pair_pattern
       value: (identifier) @variable.parameter)))
+
+; ({ p = default }: { p?: t = default })
+(optional_parameter
+  (object_pattern
+    (object_assignment_pattern
+      left: (shorthand_property_identifier_pattern) @variable.parameter)))
+
+; ({ a: p = default }: { a?: t = default })
+(optional_parameter
+  (object_pattern
+    (pair_pattern
+      value: (assignment_pattern
+        left: (identifier) @variable.parameter))))
 
 ; ([ p ]?: t[]) // Invalid but still possible to highlight.
 (optional_parameter
