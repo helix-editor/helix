@@ -3471,6 +3471,7 @@ file-types = [
   { glob = ".buckconfig.d/*" },
   { glob = "/etc/buckconfig" },
   { glob = "/etc/buckconfig.d/*" },
+  { glob = "aerc/*.conf" }, # https://aerc-mail.org/
 ]
 injection-regex = "ini"
 comment-token = "#"
