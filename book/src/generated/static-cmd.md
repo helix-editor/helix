@@ -13,8 +13,8 @@
 | `extend_line_down` | Extend down | select: `` gj `` |
 | `extend_visual_line_up` | Extend up | select: `` k ``, `` <up> `` |
 | `extend_visual_line_down` | Extend down | select: `` j ``, `` <down> `` |
-| `copy_selection_on_next_line` | Copy selection on next line | normal: `` C ``, select: `` C `` |
-| `copy_selection_on_prev_line` | Copy selection on previous line | normal: `` <A-C> ``, select: `` <A-C> `` |
+| `copy_selection_on_next_line` | Copy selection onto next line | normal: `` C ``, select: `` C `` |
+| `copy_selection_on_prev_line` | Copy selection onto previous line | normal: `` <A-C> ``, select: `` <A-C> `` |
 | `move_next_word_start` | Move to start of next word | normal: `` w `` |
 | `move_prev_word_start` | Move to start of previous word | normal: `` b `` |
 | `move_next_word_end` | Move to end of next word | normal: `` e `` |
