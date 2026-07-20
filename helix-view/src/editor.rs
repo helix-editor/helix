@@ -1624,7 +1624,12 @@ impl Editor {
     }
 
     /// Refreshes the language server for a given document
+    ///
+    /// This will clear all exisiting diagnostics for the document
     pub fn refresh_language_servers(&mut self, doc_id: DocumentId) {
+        if let Some(doc) = self.documents.get_mut(&doc_id) {
+            doc.diagnostics.clear();
+        };
         self.launch_language_servers(doc_id)
     }
 
