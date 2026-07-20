@@ -35,7 +35,7 @@
 
 (comment) @comment
 
-((haddock) @comment.documentation)
+((haddock) @comment.line.documentation)
 
 ; ----------------------------------------------------------------------------
 ; Punctuation

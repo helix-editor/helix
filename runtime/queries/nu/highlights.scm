@@ -372,12 +372,12 @@ key: (identifier) @property
 
 [(comment) (shebang)] @comment
 
-((comment)+ @comment.documentation
+((comment)+ @comment.line.documentation
   .
   (decl_def))
 
 (parameter
-  (comment) @comment.documentation)
+  (comment) @comment.line.documentation)
 
 (command
   head: ((cmd_identifier) @function.builtin

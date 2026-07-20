@@ -12,7 +12,7 @@
 ; Comments ------------------------------------------------------------
 
 (comment) @comment
-(doc_comment) @comment.documentation
+(doc_comment) @comment.line.documentation
 
 ; Keywords ------------------------------------------------------------
 
