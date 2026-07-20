@@ -1,4 +1,5 @@
 use ropey::RopeSlice;
+use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::{chars::char_is_word, Range, Rope, Selection, Tendril};
@@ -9,7 +10,7 @@ pub type Change = (usize, usize, Option<Tendril>);
 pub type Deletion = (usize, usize);
 
 // TODO: pub(crate)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Operation {
     /// Move cursor by n characters.
     Retain(usize),
@@ -69,7 +70,7 @@ impl Assoc {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChangeSet {
     pub(crate) changes: Vec<Operation>,
     /// The required document length. Will refuse to apply changes unless it matches.
@@ -570,7 +571,7 @@ impl ChangeSet {
 
 /// Transaction represents a single undoable unit of changes. Several changes can be grouped into
 /// a single transaction.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Transaction {
     changes: ChangeSet,
     selection: Option<Selection>,

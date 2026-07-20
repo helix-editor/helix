@@ -140,6 +140,21 @@ pub fn data_dir() -> PathBuf {
     path
 }
 
+pub fn undo_dir() -> PathBuf {
+    cache_dir().join("undo")
+}
+
+pub fn undo_file_path(path: &Path) -> Option<PathBuf> {
+    let canonical = path::normalize(path);
+    let path_str = canonical.to_str()?;
+    let encoded_filename = path_str
+        .replace('/', "%")
+        .replace('\\', "%")
+        .replace(':', "%");
+    Some(undo_dir().join(encoded_filename))
+}
+
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }

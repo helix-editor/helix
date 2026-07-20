@@ -1353,6 +1353,7 @@ impl Document {
 
         self.detect_readonly();
         self.pickup_last_saved_time();
+        self.load_undofile();
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
@@ -1860,6 +1861,39 @@ impl Document {
         );
         self.last_saved_revision = rev;
         self.last_saved_time = save_time;
+        self.save_undofile();
+    }
+
+    pub fn save_undofile(&self) {
+        if !self.config.load().undofile {
+            return;
+        }
+        let Some(path) = self.path().map(|p| p.to_path_buf()) else { return };
+        let Some(u_path) = helix_loader::undo_file_path(&path) else { return };
+        let history = self.history.take();
+        let res = history.save_undofile(&self.text, &u_path);
+        self.history.set(history);
+        if let Err(err) = res {
+            log::error!("failed to save undofile for {:?}: {}", path, err);
+        }
+    }
+
+    pub fn load_undofile(&mut self) {
+        if !self.config.load().undofile {
+            return;
+        }
+        let Some(path) = self.path().map(|p| p.to_path_buf()) else { return };
+        let Some(u_path) = helix_loader::undo_file_path(&path) else { return };
+        match History::load_undofile(&self.text, &u_path) {
+            Ok(history) => {
+                self.last_saved_revision = history.current_revision();
+                self.history = Cell::new(history);
+                log::debug!("loaded undofile for {:?}", path);
+            }
+            Err(err) => {
+                log::debug!("failed to load undofile for {:?}: {}", path, err);
+            }
+        }
     }
 
     /// Get the document's latest saved revision.
