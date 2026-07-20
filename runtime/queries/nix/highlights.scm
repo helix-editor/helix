@@ -88,6 +88,73 @@
       attrpath: (attrpath
         attr: (identifier) @function .))])
 
+; Function-valued arguments of Nix builtins and nixpkgs lib functions.
+; Applications are left-associative, so each argument position has a
+; differently nested `apply_expression`.
+((apply_expression
+  function: [
+    (variable_expression (identifier) @_higher_order @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @_higher_order @function .))]
+  argument: [
+    (variable_expression (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))])
+ (#any-of? @_higher_order
+   "all" "any" "collect" "compareLists" "composeExtensions" "concatImapStrings"
+   "concatMap" "concatMapAttrs" "concatMapStrings" "converge" "count" "crossLists"
+   "extends" "filter" "filterAttrs" "filterAttrsRecursive" "filterSource" "findFirst"
+   "findFirstIndex" "findSingle" "fix" "fix'" "flip" "fold" "foldAttrs" "foldl"
+   "foldl'" "foldlAttrs" "foldr" "functionArgs" "genList" "groupBy" "groupBy'"
+   "ifilter0" "imap0" "imap1" "makeExtensible" "makeOverridable" "makeScope"
+   "makeScopeWithSplicing" "map" "mapAttrs" "mapAttrs'" "mapAttrsRecursive"
+   "mapAttrsRecursiveCond" "mapAttrsToList" "mapAttrsToListRecursive"
+   "mapAttrsToListRecursiveCond" "mapCartesianProduct" "mapCrossIndex" "mapDerivationAttrset"
+   "mapNullable" "mirrorFunctionArgs" "mkAliasAndWrapDefinitions" "optionDescriptionPhrase"
+   "partition" "recursiveUpdateUntil"
+   "setFunctionArgs" "sort" "sortOn" "splitByAndCompare" "splitStringBy" "stringAsChars"
+   "toposort" "traceValFn" "traceValSeqFn" "traceValSeqNFn" "updateName"
+   "zipAttrsWith" "zipListsWith"))
+
+((apply_expression
+  function: (apply_expression
+    function: [
+      (variable_expression (identifier) @_higher_order @function)
+      (select_expression
+        attrpath: (attrpath
+          attr: (identifier) @_higher_order @function .))])
+  argument: [
+    (variable_expression (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))])
+ (#any-of? @_higher_order
+   "addCheck" "coercedTo" "composeExtensions" "concatImapStringsSep"
+   "concatMapAttrsStringSep" "concatMapStringsSep" "extends" "forEach" "genAttrs"
+   "genAttrs'" "listDfs" "makeExtensibleWithCustomName" "makeScope"
+   "makeScopeWithSplicing" "mapAttrsRecursiveCond" "mapAttrsToListRecursiveCond"
+   "mirrorFunctionArgs" "mkDerivedConfig" "overrideDerivation" "splitByAndCompare"
+   "zipAttrsWithNames"))
+
+((apply_expression
+  function: (apply_expression
+    function: (apply_expression
+      function: [
+        (variable_expression (identifier) @_higher_order @function)
+        (select_expression
+          attrpath: (attrpath
+            attr: (identifier) @_higher_order @function .))]))
+  argument: [
+    (variable_expression (identifier) @function)
+    (select_expression
+      attrpath: (attrpath
+        attr: (identifier) @function .))])
+ (#any-of? @_higher_order
+   "groupBy'" "mkChangedOptionModule" "mkMergedOptionModule" "splitByAndCompare"
+   "traceFnSeqN"))
+
 ; Pipe operators evaluate the side pointed to by the operator as a function:
 ; `value |> lib.foo` and `lib.foo <| value`.
 (binary_expression
