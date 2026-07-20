@@ -437,6 +437,17 @@ pub fn register_hooks(_handlers: &Handlers) {
         // Send textDocument/didClose notifications.
         for language_server in event.doc.language_servers() {
             language_server.text_document_did_close(event.doc.identifier());
+
+            // Stop the language server if this was the last open document using it.
+            if event
+                .editor
+                .documents()
+                .all(|d| !d.supports_language_server(language_server.id()))
+            {
+                event
+                    .editor
+                    .remove_language_server_by_id(language_server.id());
+            };
         }
 
         Ok(())
