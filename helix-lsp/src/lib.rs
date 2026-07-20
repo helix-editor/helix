@@ -687,16 +687,24 @@ impl Registry {
         Some(Ok(client))
     }
 
-    pub fn stop(&mut self, name: &str) {
-        if let Some(clients) = self.inner_by_name.get_mut(name) {
+    pub fn stop(&mut self, server_id: LanguageServerId) {
+        if let Some(client) = self.inner.remove(server_id) {
             // Drain the clients vec so that the entry in `inner_by_name` remains
             // empty. We use the empty vec as a "tombstone" to mean that a server
             // has been manually stopped with :lsp-stop and shouldn't be automatically
             // restarted by `get`. :lsp-restart can be used to restart the server
             // manually.
-            for client in clients.drain(..) {
+            let mut saw_id = false;
+            for subclient in self.inner_by_name.entry(client.name().into()).or_default() {
+                saw_id |= client.id() == subclient.id();
+                self.inner.remove(subclient.id());
+                self.file_event_handler.remove_client(subclient.id());
+                subclient.force_shutdown();
+            }
+            // Thoroughness check, but in practice this should never be entered,
+            // iterating by name should always contain the client we're removing by id
+            if !saw_id {
                 self.file_event_handler.remove_client(client.id());
-                self.inner.remove(client.id());
                 client.force_shutdown();
             }
         }

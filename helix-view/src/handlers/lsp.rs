@@ -386,6 +386,14 @@ impl Editor {
             }
         });
     }
+
+    pub fn remove_language_server_by_id(&mut self, server_id: LanguageServerId) {
+        self.language_servers.stop(server_id);
+        self.diagnostics.retain(|_, diags| {
+            diags.retain(|(_, provider)| provider.language_server_id() != Some(server_id));
+            !diags.is_empty()
+        });
+    }
 }
 
 pub fn register_hooks(_handlers: &Handlers) {
