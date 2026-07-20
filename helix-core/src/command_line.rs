@@ -923,6 +923,11 @@ impl<'a> Args<'a> {
         self.positionals.is_empty()
     }
 
+    /// Positionals arguments, in the order they were given.
+    pub fn positionals(&self) -> &[Cow<'a, str>] {
+        &self.positionals
+    }
+
     /// Gets the first positional argument, if one exists.
     pub fn first(&'a self) -> Option<&'a str> {
         self.positionals.first().map(AsRef::as_ref)
