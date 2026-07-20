@@ -240,8 +240,10 @@ We use a similar set of scopes as
 - `operator` - `||`, `+=`, `>`
 
 - `function` - Function definitions and calls
+  - `public` - Public function definitions
   - `builtin` - Language built-in functions
   - `method` - Method definitions and calls (`obj.method()`)
+    - `public` - Public method definitions
     - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
   - `macro` - Macro invocations (e.g. `println!` in Rust)
   - `special` (preprocessor in C)

@@ -1022,3 +1022,20 @@ async fn test_move_file_when_given_dir_only() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_open_does_not_panic_on_closed_scratch() -> anyhow::Result<()> {
+    let other = tempfile::NamedTempFile::new()?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?, // scratch buffer
+        Some(format!(":write<ret>:open {}<ret>", other.path().to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert_eq!(1, app.editor.documents().count());
+        }), // Reaching here at all means the deferred tail did not panic
+        false,
+    )
+    .await?;
+
+    Ok(())
+}

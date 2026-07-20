@@ -151,6 +151,8 @@
 "diff.delta.gutter" = { fg = "fg_2" }
 "diff.minus.gutter" = { fg = "fg_err" }
 
+rainbow = ["rnb_1", "rnb_2", "rnb_3", "rnb_4", "rnb_5"]
+
 
 [palette]
 fg = "#B6BFBC"
@@ -168,6 +170,12 @@ fg_tertiary = "#9C59B2"
 fg_primary_variant = "#0F996B"
 fg_secondary_variant = "#526B82"
 fg_tertiary_variant = "#945EA6"
+
+rnb_1 = "#00CCCC"
+rnb_2 = "#BF568B"
+rnb_3 = "#00CC66"
+rnb_4 = "#CC5F29"
+rnb_5 = "#B4CC3D"
 
 bg = "#00120C"
 bg_1 = "#001F14"

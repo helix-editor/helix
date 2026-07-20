@@ -57,11 +57,23 @@
 (function_declaration
   name: (identifier) @function)
 
+((function_declaration
+  name: (identifier) @function.public)
+  (#match? @function.public "^[A-Z]"))
+
 (method_declaration
   name: (field_identifier) @function.method)
 
+((method_declaration
+  name: (field_identifier) @function.method.public)
+  (#match? @function.method.public "^[A-Z]"))
+
 (method_elem
   name: (field_identifier) @function.method)
+
+((method_elem
+  name: (field_identifier) @function.method.public)
+  (#match? @function.method.public "^[A-Z]"))
 
 ; Blank identifier `_` (Go's discard) — dim as unused.
 ; It parses as (blank_identifier) in imports and as (identifier) elsewhere

@@ -888,6 +888,10 @@ impl Application {
                                     self.lsp_progress.end_progress(server_id, &token);
                                     if !self.lsp_progress.is_progressing(server_id) {
                                         editor_view.spinners_mut().get_or_create(server_id).stop();
+                                        handlers::diagnostics::request_all_document_diagnostics_for_language_server(
+                                            &mut self.editor,
+                                            server_id,
+                                        );
                                     }
                                     self.editor.clear_status();
 
@@ -932,6 +936,10 @@ impl Application {
                                 self.lsp_progress.end_progress(server_id, &token);
                                 if !self.lsp_progress.is_progressing(server_id) {
                                     editor_view.spinners_mut().get_or_create(server_id).stop();
+                                    handlers::diagnostics::request_all_document_diagnostics_for_language_server(
+                                        &mut self.editor,
+                                        server_id,
+                                    );
                                 };
                             }
                         }
@@ -940,7 +948,9 @@ impl Application {
                         // do nothing
                     }
                     Notification::Exit => {
-                        self.editor.set_status("Language server exited");
+                        let status =
+                            format!("Language server exited: {}", language_server!().name());
+                        self.editor.set_status(status);
 
                         // LSPs may produce diagnostics for files that haven't been opened in helix,
                         // we need to clear those and remove the entries from the list if this leads to
@@ -1120,22 +1130,11 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::WorkspaceDiagnosticRefresh) => {
-                        let language_server = language_server!().id();
-
-                        let documents: Vec<_> = self
-                            .editor
-                            .documents
-                            .values()
-                            .filter(|x| x.supports_language_server(language_server))
-                            .map(|x| x.id())
-                            .collect();
-
-                        for document in documents {
-                            handlers::diagnostics::request_document_diagnostics(
-                                &mut self.editor,
-                                document,
-                            );
-                        }
+                        let server_id = language_server!().id();
+                        handlers::diagnostics::request_all_document_diagnostics_for_language_server(
+                            &mut self.editor,
+                            server_id,
+                        );
 
                         Ok(serde_json::Value::Null)
                     }

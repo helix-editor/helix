@@ -24,11 +24,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
 
         let (workspace, servers_to_load) = {
             let doc = doc!(event.editor, &doc_id);
-            let servers_to_load = doc
-                .language_config()
-                .map(|lang| !lang.language_servers.is_empty() || lang.debugger.is_some())
-                .unwrap_or(false);
-            (doc.workspace_root().to_path_buf(), servers_to_load)
+            (doc.workspace_root().to_path_buf(), doc.servers_to_load())
         };
 
         // Stale: `.helix/` was edited since the user last ran `trust`. LSPs keep
