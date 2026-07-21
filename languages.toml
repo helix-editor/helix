@@ -610,9 +610,9 @@ file-types = [
   { glob = ".babelrc" },
   { glob = ".bowerrc" },
   { glob = ".jscrc" },
-  "js.map",
-  "ts.map",
-  "css.map",
+  { glob = "*.js.map" },
+  { glob = "*.ts.map" },
+  { glob = "*.css.map" },
   { glob = ".jslintrc" },
   "jsonl",
   { glob = ".vuerc" },
@@ -2880,7 +2880,10 @@ source = { git = "https://github.com/gmlarumbe/tree-sitter-systemverilog", rev =
 [[language]]
 name = "edoc"
 scope = "source.edoc"
-file-types = ["edoc", "edoc.in"]
+file-types = [
+  "edoc",
+  { glob = "*.edoc.in" },
+]
 injection-regex = "edoc"
 indent = { tab-width = 4, unit = "    " }
 
@@ -3271,7 +3274,7 @@ file-types = [
   "checkstyle",
   "cpt",
   "csl",
-  "csproj.user",
+  { glob = "*.csproj.user" },
   "dita",
   "ditamap",
   "dtml",
@@ -3304,7 +3307,7 @@ file-types = [
   "pt",
   "publishsettings",
   "pubxml",
-  "pubxml.user",
+  { glob = "*.pubxml.user" },
   "rbxlx",
   "rbxmx",
   "resx",
@@ -3319,9 +3322,9 @@ file-types = [
   "tld",
   "tmx",
   "ui",
-  "vbproj.user",
+  { glob = "*.vbproj.user" },
   "vcxproj",
-  "vcxproj.filters",
+  { glob = "*.vcxproj.filters" },
   "wixproj",
   "wsdl",
   "wxi",
