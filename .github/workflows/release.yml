@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false # don't fail other jobs if one fails
       matrix:
-        build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos, aarch64-windows]
+        build: [x86_64-linux, i686-linux, aarch64-linux, x86_64-macos, x86_64-windows, aarch64-macos, aarch64-windows]
         include:
         - build: x86_64-linux
           # WARN: When changing this to a newer version, make sure that the GLIBC isnt too new, as this can cause issues
@@ -68,6 +68,11 @@ jobs:
           os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-gnu
+        - build: i686-linux
+          # Version should be kept in lockstep with the x86_64 version
+          os: ubuntu-22.04
+          rust: stable
+          target: i686-unknown-linux-gnu
         - build: aarch64-linux
           # Version should be kept in lockstep with the x86_64 version
           os: ubuntu-22.04-arm
@@ -118,6 +123,12 @@ jobs:
       - name: Show command used for Cargo
         run: |
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
+
+      - name: Install multilib (for 32-bit Linux)
+        if: matrix.target == 'i686-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
 
       - name: Build release binary
         run: cargo build --profile opt --locked --target ${{ matrix.target }}
