@@ -63,15 +63,16 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
 
-"ui.selection" = { bg = "#540099" }
-"ui.selection.primary" = { bg = "#540099" }
+"ui.selection" = { bg = "violet" }
+"ui.selection.primary" = { bg = "violet_light" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
-"ui.cursor.select" = { bg = "delta" }
+"ui.cursor.select" = { fg = "revolver", bg = "delta" }
 "ui.cursor.insert" = { bg = "white" }
-"ui.cursor.primary.select" = { bg = "delta" }
+"ui.cursor.primary" = { fg = "revolver", bg = "lavender" }
+"ui.cursor.primary.select" = { fg = "revolver", bg = "delta_light" }
 "ui.cursor.primary.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
-"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor" = { fg = "revolver", bg = "delta_light" }
 "ui.cursorline.primary" = { bg = "bossanova" }
 "ui.highlight" = { bg = "bossanova" }
 "ui.highlight.frameline" = { bg = "#634450" }
@@ -97,6 +98,8 @@ hint = "silver"
 white = "#ffffff"
 lilac = "#dbbfef"
 lavender = "#a4a0e8"
+violet = "#540099"
+violet_light = "#8700F5"
 comet = "#5a5977"
 bossanova = "#452859"
 midnight = "#3b224c"
@@ -112,3 +115,4 @@ honey = "#efba5d"
 apricot = "#f47868"
 lightning = "#ffcd1c"
 delta = "#6F44F0"
+delta_light = "#8B69F2"
