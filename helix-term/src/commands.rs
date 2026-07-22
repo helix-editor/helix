@@ -2511,7 +2511,7 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
         .collect::<Vec<_>>()
         .join("|");
 
-    let msg = format!("register '{}' set to '{}'", register, &regex);
+    let msg = format!("register '{}' set to '{}'", register, regex);
     match cx.editor.registers.push(register, regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;
@@ -2551,7 +2551,7 @@ fn make_search_word_bounded(cx: &mut Context) {
         new_regex.push_str("\\b");
     }
 
-    let msg = format!("register '{}' set to '{}'", register, &new_regex);
+    let msg = format!("register '{}' set to '{}'", register, new_regex);
     match cx.editor.registers.push(register, new_regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;

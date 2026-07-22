@@ -1140,7 +1140,7 @@ impl Document {
             .await;
 
             let save_time = match fs::metadata(&write_path).await {
-                Ok(metadata) => metadata.modified().map_or(SystemTime::now(), |mtime| mtime),
+                Ok(metadata) => metadata.modified().unwrap_or_else(|_| SystemTime::now()),
                 Err(_) => SystemTime::now(),
             };
 

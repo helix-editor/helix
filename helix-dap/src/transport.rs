@@ -139,7 +139,7 @@ impl Transport {
         err: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
     ) -> Result<()> {
-        buffer.truncate(0);
+        buffer.clear();
         if err.read_line(buffer).await? == 0 {
             return Err(Error::StreamClosed);
         };
