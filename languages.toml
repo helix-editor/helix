@@ -171,6 +171,7 @@ vlang-language-server = { command = "v-analyzer" }
 vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { provideFormatter = true, css = { validate = { enable = true } } } }
 vscode-html-language-server = { command = "vscode-html-language-server", args = ["--stdio"], config = { provideFormatter = true } }
 vscode-json-language-server = { command = "vscode-json-language-server", args = ["--stdio"], config = { provideFormatter = true, json = { validate = { enable = true } } } }
+vtsls = { command = "vtsls", args = ["--stdio"], config = { vtsls.autoUseWorkspaceTsdk = true } }
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl-analyzer = { command = "wgsl-analyzer" }
 wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
