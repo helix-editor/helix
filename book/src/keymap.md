@@ -149,7 +149,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Alt-p`, `Alt-left`      | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
 | `Alt-n`, `Alt-right`     | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
 | `Alt-a`                  | Select all sibling nodes in syntax tree (**TS**)                  | `select_all_siblings`                |
-| `Alt-I`, `Alt-Shift-down`| Select all children nodes in syntax tree (**TS**)                 | `select_all_children`                |
+| `Alt-I`, `Alt-Shift-down`| Select all child nodes in syntax tree (**TS**)                    | `select_all_children`                |
 | `Alt-e`                  | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
 | `Alt-b`                  | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
 
