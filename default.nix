@@ -20,6 +20,7 @@ let
       ./book
       ./docs
       ./runtime
+      ./nix
       ./flake.lock
       (fs.fileFilter (file: lib.strings.hasInfix ".git" file.name) ./.)
       (fs.fileFilter (file: file.hasExt "svg") ./.)
@@ -32,7 +33,7 @@ let
   # that they reside in. It is built by calling the derivation in the
   # grammars.nix file, then taking the runtime directory in the git repo
   # and hooking symlinks up to it.
-  grammars = callPackage ./grammars.nix { inherit grammarOverlays includeGrammarIf; };
+  grammars = callPackage ./nix/grammars.nix { inherit grammarOverlays includeGrammarIf; };
   runtimeDir = runCommand "helix-runtime" { } ''
     mkdir -p $out
     ln -s ${./runtime}/* $out
