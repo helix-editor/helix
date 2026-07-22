@@ -149,7 +149,7 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
             let documents: Vec<_> = editor.documents.keys().copied().collect();
 
             for document in documents {
-                request_document_diagnostics_for_language_severs(
+                request_document_diagnostics_for_language_servers(
                     editor,
                     document,
                     language_servers.clone(),
@@ -159,7 +159,7 @@ impl helix_event::AsyncHook for PullAllDocumentsDiagnosticHandler {
     }
 }
 
-fn request_document_diagnostics_for_language_severs(
+fn request_document_diagnostics_for_language_servers(
     editor: &mut Editor,
     doc_id: DocumentId,
     language_servers: HashSet<LanguageServerId>,
@@ -247,7 +247,7 @@ fn request_document_diagnostics_for_language_severs(
             tokio::time::sleep(Duration::from_millis(500)).await;
 
             job::dispatch(move |editor, _| {
-                request_document_diagnostics_for_language_severs(
+                request_document_diagnostics_for_language_servers(
                     editor,
                     doc_id,
                     retry_language_servers,
@@ -256,6 +256,21 @@ fn request_document_diagnostics_for_language_severs(
             .await;
         }
     });
+}
+
+pub fn request_all_document_diagnostics_for_language_server(
+    editor: &mut Editor,
+    server_id: LanguageServerId,
+) {
+    let doc_ids: Vec<_> = editor
+        .documents
+        .values()
+        .filter(|doc| doc.supports_language_server(server_id))
+        .map(|doc| doc.id())
+        .collect();
+    for doc_id in doc_ids {
+        request_document_diagnostics(editor, doc_id);
+    }
 }
 
 pub fn request_document_diagnostics(editor: &mut Editor, doc_id: DocumentId) {
@@ -268,7 +283,7 @@ pub fn request_document_diagnostics(editor: &mut Editor, doc_id: DocumentId) {
         .map(|language_servers| language_servers.id())
         .collect();
 
-    request_document_diagnostics_for_language_severs(editor, doc_id, language_servers);
+    request_document_diagnostics_for_language_servers(editor, doc_id, language_servers);
 }
 
 fn handle_pull_diagnostics_response(

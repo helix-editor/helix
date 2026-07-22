@@ -35,7 +35,7 @@
 
 (comment) @comment
 
-((haddock) @comment.documentation)
+((haddock) @comment.line.documentation)
 
 ; ----------------------------------------------------------------------------
 ; Punctuation
@@ -58,7 +58,7 @@
 [
   "forall"
   ; "∀" ; utf-8 is not cross-platform safe
-] @keyword.repeat
+] @keyword.control.repeat
 
 (pragma) @keyword.directive
 
@@ -68,13 +68,13 @@
   "else"
   "case"
   "of"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [
   "import"
   "qualified"
   "module"
-] @keyword.import
+] @keyword.control.import
 
 [
   (operator)
@@ -185,9 +185,9 @@
 ; view patterns
 (view_pattern
   [
-    (expression/variable) @function.call
+    (expression/variable) @function
     (expression/qualified
-      (variable) @function.call)
+      (variable) @function)
   ])
 
 ; consider infix functions as operators
@@ -202,10 +202,10 @@
 ; e.g. func <$> a <*> b
 (infix
   [
-    (variable) @function.call
+    (variable) @function
     (qualified
       ((module) @namespace
-        (variable) @function.call))
+        (variable) @function))
   ]
   .
   (operator))
@@ -225,9 +225,9 @@
 
 ; decl/function calls with infix operators
 ([
-    (expression/variable) @function.call
+    (expression/variable) @function
     (expression/qualified
-      (variable) @function.call)
+      (variable) @function)
   ]
   .
   (operator) @operator
@@ -241,9 +241,9 @@
   ] ; infix or `func`
   .
   [
-    (variable) @function.call
+    (variable) @function
     (qualified
-      (variable) @function.call)
+      (variable) @function)
   ])
   .
   (operator) @operator
@@ -296,9 +296,9 @@
 
 (apply
   [
-    (expression/variable) @function.call
+    (expression/variable) @function
     (expression/qualified
-      (variable) @function.call)
+      (variable) @function)
   ])
 
 ; function compositions, in parentheses, applied
@@ -308,9 +308,9 @@
   (expression/parens
     (infix
       [
-        (variable) @function.call
+        (variable) @function
         (qualified
-          (variable) @function.call)
+          (variable) @function)
       ]
       .
       (operator))))
@@ -323,9 +323,9 @@
       (operator)
       .
       [
-        (variable) @function.call
+        (variable) @function
         (qualified
-          (variable) @function.call)
+          (variable) @function)
       ])))
 
 ; variables being passed to a function call
@@ -383,7 +383,7 @@
 
 ; ----------------------------------------------------------------------------
 ; Quasi-quotes
-(quoter) @function.call
+(quoter) @function
 
 (quasiquote
   [
@@ -405,7 +405,7 @@
   (_
     (module) @namespace
     .
-    (variable) @function.call))
+    (variable) @function))
 
 ; Highlighting of quasiquote_body for other languages is handled by injections.scm
 ; ----------------------------------------------------------------------------
@@ -429,10 +429,10 @@
 ; Fields
 
 (field_name
-  (variable) @variable.member)
+  (variable) @variable.other.member)
 
 (import_name
   (name)
   .
   (children
-    (variable) @variable.member))
+    (variable) @variable.other.member))

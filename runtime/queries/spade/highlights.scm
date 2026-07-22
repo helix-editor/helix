@@ -19,7 +19,10 @@
     @type.builtin
     "uint"
     "Option"
-    "Memory"))
+    "Memory"
+    "Fn"
+    "Entity"
+    "Pipeline"))
 
 ((identifier) @type.enum.variant.builtin
  (#any-of? @type.enum.variant.builtin "Some" "None"))
@@ -67,7 +70,7 @@
 
 [
   "use"
-] @keyword.import
+] @keyword.control.import
 
 [
   "gen"

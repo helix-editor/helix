@@ -345,9 +345,9 @@ impl<T: Component> Component for Popup<T> {
         let max_offset = child_height.saturating_sub(inner.height) as usize;
         let half_page_size = (inner.height / 2) as usize;
         let scroll = max_offset.min(self.scroll_half_pages * half_page_size);
-        if half_page_size > 0 {
-            self.scroll_half_pages = scroll / half_page_size;
-        }
+        self.scroll_half_pages = scroll
+            .checked_div(half_page_size)
+            .unwrap_or(self.scroll_half_pages);
         cx.scroll = Some(scroll);
         self.contents.render(inner, surface, cx);
 

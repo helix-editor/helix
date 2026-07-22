@@ -3,6 +3,12 @@
 (assert_parameters
   ((_) @parameter.inside . ","? @parameter.around)) @parameter.around
 
+(function
+  (expression) @function.inside) @function.around
+
+(function_decl_parameters
+  ((_) @parameter.inside . ","? @parameter.around)) @parameter.around
+
 (recipe
   (recipe_body) @function.inside) @function.around
 
@@ -13,7 +19,7 @@
   (_) @parameter.inside) @parameter.around
 
 (function_call
-  (function_parameters
+  (function_call_parameters
     ((_) @parameter.inside . ","? @parameter.around)) @parameter.around) @function.around
 
 (comment) @comment.around

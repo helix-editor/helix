@@ -4,10 +4,11 @@
 ;; Let binding
 [ "let" ] @keyword
 
-(let_bindings name: (symbol) @variable)
-
 ;; Apply
 (apply_stmt . (symbol) @function)
+
+;; Quasiquote template head (constructed application)
+(quasi_list . (symbol) @function)
 
 ;; Use module
 [ "use" ] @keyword
@@ -25,7 +26,7 @@
 
 (external_definition name: (symbol) @function)
 (external_definition signature: (signature (symbol) @variable.parameter (dot) (external_type) @type.builtin))
-(external_definition docstring: (string) @comment)
+(external_definition docstring: (string) @string.documentation)
 (external_definition return_type: (external_type) @type.builtin)
 
 ;; Function definitions
@@ -33,19 +34,24 @@
 
 (function_definition name: (symbol) @function)
 (function_definition parameters: (parameters (symbol) @variable.parameter))
-(function_definition docstring: (string) @comment)
+(function_definition docstring: (string) @string.documentation)
 
 ;; Macro definitions
 [ "mac" ] @keyword
 
 (macro_definition name: (symbol) @function)
 (macro_definition parameters: (parameters (symbol) @variable.parameter))
-(macro_definition docstring: (string) @comment)
+(macro_definition docstring: (string) @string.documentation)
 
 ;; Lambda 
 [ "\\" ] @keyword
 
 (lambda_stmt parameters: (parameters (symbol) @variable.parameter))
+(lambda_stmt docstring: (string) @string.documentation)
+
+;; Decons bindings.
+(decons_stmt (symbol) @variable.parameter)
+(decons_item (symbol) @variable.parameter)
 
 ;; Atoms
 (char) @constant.character
@@ -57,18 +63,27 @@
 [ "(" ")" ] @punctuation.bracket
 
 ;; Operators
+(ampersand) @operator
+(colon) @operator
 (dot) @operator
 (tilde) @operator
+(tilde_splice) @operator
 (backquote) @operator
 (quote) @operator
 (unquote) @operator
 (unquote_splice) @operator
 
-;; Highlight nil t as constant
+;; Highlight wildcard as constant
+(wildcard) @constant.builtin
+
+;; Highlight nil as constant
 [ "nil" ] @constant.builtin
 
 ;; Highlight as t as boolean constant
 [ "T" ] @constant.builtin.boolean
 
 ;; Highlight variable names used in anamorphic macros.
-[ "it" ] @variable.builtin
+[ "it" "self" ] @variable.builtin
+
+;; Highlight generated symbols (#name) used for macro hygiene.
+(gensym) @variable.special

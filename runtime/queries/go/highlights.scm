@@ -10,9 +10,6 @@
 (const_spec
   name: (identifier) @constant)
 
-(type_spec
-  name: (type_identifier) @constructor)
-
 (keyed_element . (literal_element (identifier) @variable.other.member))
 (field_declaration
   name: (field_identifier) @variable.other.member)
@@ -49,16 +46,41 @@
 ((type_identifier) @type.builtin
   (#match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
 
+; Type definition names: `type Foo struct{}`, `type Bar = Baz`.
+(type_spec
+  name: (type_identifier) @type.definition)
+(type_alias
+  name: (type_identifier) @type.definition)
+
 ; Function definitions
 
 (function_declaration
   name: (identifier) @function)
 
+((function_declaration
+  name: (identifier) @function.public)
+  (#match? @function.public "^[A-Z]"))
+
 (method_declaration
   name: (field_identifier) @function.method)
 
+((method_declaration
+  name: (field_identifier) @function.method.public)
+  (#match? @function.method.public "^[A-Z]"))
+
 (method_elem
   name: (field_identifier) @function.method)
+
+((method_elem
+  name: (field_identifier) @function.method.public)
+  (#match? @function.method.public "^[A-Z]"))
+
+; Blank identifier `_` (Go's discard) — dim as unused.
+; It parses as (blank_identifier) in imports and as (identifier) elsewhere
+; (`_ = x`, `a, _ := f()`, `for _, v := range`).
+(blank_identifier) @comment.unused
+((identifier) @comment.unused
+ (#eq? @comment.unused "_"))
 
 ; Operators
 

@@ -10,6 +10,13 @@
   (_) @injection.content)
   (#set! injection.language "regex"))
 
+; Highlight the value of attribute `[arg(pattern = "...")]` as regex
+(attribute_named_parameter
+  name: (identifier) @_name
+  value: (expression (value (string) @injection.content
+    (#set! injection.language "regex")))
+  (#match? @_name "^pattern$"))
+
 ; ================ Global defaults ================
 
 ; Default recipe lines to be bash, but exclude interpolation nodes
@@ -45,7 +52,7 @@
 ; See https://github.com/tree-sitter/tree-sitter/issues/880 for more on that.
 
 (file
-  (setting "shell" ":=" "[" (string) @_langstr
+  (setting "shell" ":=" "[" . (string) @_langstr
     (#match? @_langstr ".*(powershell|pwsh|cmd).*")
     (#set! injection.language "powershell"))
   [
@@ -63,7 +70,7 @@
   ])
 
 (file
-  (setting "shell" ":=" "[" (string) @injection.language
+  (setting "shell" ":=" "[" . (string) @injection.language
     (#not-match? @injection.language ".*(powershell|pwsh|cmd).*"))
   [
     (recipe

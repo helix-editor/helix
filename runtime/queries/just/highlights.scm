@@ -10,6 +10,8 @@
 
 [
   "alias"
+  "assert"
+  "eager"
   "set"
   "shell"
 ] @keyword
@@ -18,11 +20,6 @@
   "if"
   "else"
 ] @keyword.control.conditional
-
-[
-  "&&"
-  "||"
-] @operator
 
 ; Variables
 
@@ -42,16 +39,25 @@
 
 ; Functions
 
+(function
+  name: (identifier) @function)
+
 (recipe
   name: (identifier) @function)
 
 (recipe_dependency
-  name: (identifier) @function.call)
+  name: (identifier) @function)
 
 (function_call
   name: (identifier) @function.builtin)
 
 ; Parameters
+
+(attribute_named_parameter
+  name: (identifier) @variable.parameter)
+
+(function_decl_parameters
+    (identifier) @variable.parameter)
 
 (recipe_parameter
   name: (identifier) @variable.parameter)
@@ -78,7 +84,6 @@
 (shebang_line
   (shebang_shell) @string.special)
 
-
 (shell_expanded_string
   [
     (expansion_short_start)
@@ -90,23 +95,26 @@
 ; Operators
 
 [
-  ":="
-  "?"
-  "=="
-  "!="
-  "=~"
-  "!~"
-  "@"
-  "="
-  "$"
-  "*"
-  "+"
-  "&&"
-  "@-"
-  "-@"
   "-"
-  "/"
+  "-@"
   ":"
+  ":="
+  "!"
+  "!="
+  "!~"
+  "?"
+  "@-"
+  "@"
+  "*"
+  "/"
+  "&&"
+  "+"
+  "++"
+  "="
+  "=="
+  "=~"
+  "||"
+  "$"
 ] @operator
 
 ; Punctuation
