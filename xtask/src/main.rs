@@ -1,4 +1,5 @@
 mod docgen;
+mod grammar_sources;
 mod helpers;
 mod path;
 
@@ -557,6 +558,9 @@ Usage: Run with `cargo xtask <task>`, eg. `cargo xtask docgen`.
                                    winning capture per span for an arbitrary input file.
         theme-check [themes]       Check that the theme files in runtime/themes/ are valid for the
                                    given themes, or all themes if none are specified.
+        update-nix-grammar-sources [--jobs <count>]
+                                   Update nix/grammar-sources.json from the Git revisions configured in
+                                   languages.toml, prefetching changed archives with Nix.
 "
         );
     }
@@ -573,6 +577,7 @@ fn main() -> Result<(), DynError> {
             "indent-check" => tasks::indentcheck(args)?,
             "highlight-check" => tasks::highlightcheck(args)?,
             "theme-check" => tasks::themecheck(args)?,
+            "update-nix-grammar-sources" => grammar_sources::update(args)?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
