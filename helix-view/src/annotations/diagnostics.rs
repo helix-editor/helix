@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
@@ -32,6 +34,26 @@ impl<'de> Deserialize<'de> for DiagnosticFilter {
     }
 }
 
+fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let millis = u64::deserialize(deserializer)?;
+    Ok(Duration::from_millis(millis))
+}
+
+fn serialize_duration_millis<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_u64(
+        duration
+            .as_millis()
+            .try_into()
+            .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
+    )
+}
+
 impl Serialize for DiagnosticFilter {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -57,6 +79,11 @@ pub struct InlineDiagnosticsConfig {
     pub prefix_len: u16,
     pub max_wrap: u16,
     pub max_diagnostics: usize,
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub timeout: Duration,
 }
 
 impl InlineDiagnosticsConfig {
@@ -115,6 +142,7 @@ impl Default for InlineDiagnosticsConfig {
             prefix_len: 1,
             max_wrap: 20,
             max_diagnostics: 10,
+            timeout: Duration::from_millis(350),
         }
     }
 }

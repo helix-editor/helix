@@ -8,6 +8,7 @@ use helix_event::{request_redraw, send_blocking, AsyncHook};
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
 
+use crate::annotations::diagnostics::InlineDiagnosticsConfig;
 use crate::{Document, DocumentId, ViewId};
 
 #[derive(Debug)]
@@ -19,9 +20,8 @@ pub enum DiagnosticEvent {
 struct DiagnosticTimeout {
     active_generation: Arc<AtomicUsize>,
     generation: usize,
+    timeout: Duration,
 }
-
-const TIMEOUT: Duration = Duration::from_millis(350);
 
 impl AsyncHook for DiagnosticTimeout {
     type Event = DiagnosticEvent;
@@ -35,12 +35,12 @@ impl AsyncHook for DiagnosticTimeout {
             DiagnosticEvent::CursorLineChanged { generation } => {
                 if generation > self.generation {
                     self.generation = generation;
-                    Some(Instant::now() + TIMEOUT)
+                    Some(Instant::now() + self.timeout)
                 } else {
                     timeout
                 }
             }
-            DiagnosticEvent::Refresh if timeout.is_some() => Some(Instant::now() + TIMEOUT),
+            DiagnosticEvent::Refresh if timeout.is_some() => Some(Instant::now() + self.timeout),
             DiagnosticEvent::Refresh => None,
         }
     }
@@ -61,6 +61,7 @@ pub struct DiagnosticsHandler {
     last_cursor_line: Cell<usize>,
     pub active: bool,
     pub events: Sender<DiagnosticEvent>,
+    config: InlineDiagnosticsConfig,
 }
 
 // make sure we never share handlers across multiple views this is a stop
@@ -69,17 +70,18 @@ pub struct DiagnosticsHandler {
 // but to fix that larger architecutre changes are needed
 impl Clone for DiagnosticsHandler {
     fn clone(&self) -> Self {
-        Self::new()
+        Self::new(self.config.clone())
     }
 }
 
 impl DiagnosticsHandler {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(inline_diagnostics_config: InlineDiagnosticsConfig) -> Self {
         let active_generation = Arc::new(AtomicUsize::new(0));
         let events = DiagnosticTimeout {
             active_generation: active_generation.clone(),
             generation: 0,
+            timeout: inline_diagnostics_config.timeout,
         }
         .spawn();
         Self {
@@ -89,6 +91,7 @@ impl DiagnosticsHandler {
             last_doc: Cell::new(DocumentId(NonZeroUsize::new(usize::MAX).unwrap())),
             last_cursor_line: Cell::new(usize::MAX),
             active: true,
+            config: inline_diagnostics_config,
         }
     }
 }
