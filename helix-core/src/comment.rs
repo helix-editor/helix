@@ -28,6 +28,31 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
         .max_by_key(|token| token.len())
 }
 
+/// Checks if a line contains only a comment token (with optional trailing whitespace).
+/// Returns `true` if the line is an "empty comment" that should be cleared when
+/// pressing Enter twice to end comment continuation.
+pub fn is_empty_comment_line(text: RopeSlice, token: &str, line_num: usize) -> bool {
+    let line = text.line(line_num);
+    let Some(start) = line.first_non_whitespace_char() else {
+        return false;
+    };
+
+    let content_after_indent = line.slice(start..);
+    // Check if the line starts with the token
+    if !content_after_indent.starts_with(token) {
+        return false;
+    }
+
+    // Get the content after the token
+    let after_token = content_after_indent.slice(token.chars().count()..);
+
+    // The line is an "empty comment" if there's nothing after the token,
+    // or only whitespace after the token
+    after_token
+        .chars()
+        .all(|c| c.is_whitespace() || c == '\n' || c == '\r')
+}
+
 /// Given text, a comment token, and a set of line indices, returns the following:
 /// - Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.
