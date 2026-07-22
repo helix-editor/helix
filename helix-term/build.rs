@@ -19,7 +19,13 @@ mod windows_rc {
     use std::{env, io, path::Path, path::PathBuf, process};
 
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
-        let rc_exe = find_rc_exe().expect("Windows SDK is to be installed along with MSVC");
+        let rc_exe = match find_rc_exe() {
+            Ok(path) => path,
+            Err(e) => {
+                println!("cargo:warning=Failed to find Windows SDK (rc.exe), skipping icon embedding: {}", e);
+                return;
+            }
+        };
 
         let output = env::var("OUT_DIR").expect("Env var OUT_DIR should have been set by compiler");
         let output_dir = PathBuf::from(output);
