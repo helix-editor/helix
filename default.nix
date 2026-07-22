@@ -30,7 +30,9 @@
   git,
   formats,
   gitRev ? null,
+  # Deprecated. Use grammarsOverlay instead!
   grammarOverlays ? [ ],
+  grammarsOverlay ? _: _: { },
   includeGrammarIf ? _: true,
 }:
 let
@@ -70,7 +72,9 @@ let
   # that they reside in. It is built by calling the derivation in the
   # grammars.nix file, then taking the runtime directory in the git repo
   # and hooking symlinks up to it.
-  grammars = callPackage ./grammars.nix { inherit grammarOverlays includeGrammarIf; };
+  grammars = callPackage ./nix/grammars.nix {
+    inherit grammarOverlays grammarsOverlay includeGrammarIf;
+  };
   runtimeDir = runCommand "helix-runtime" { } ''
     mkdir -vp $out
     ln -vs -t $out ${./runtime}/*
@@ -136,9 +140,11 @@ let
   # runtime there instead of setting `HELIX_RUNTIME`, which would override the
   # user's own and leak into child processes.
   helix-wrap =
-    { helix ? helix-unwrapped
-    , runtime ? runtimeDir
-    }: runCommand "helix-${helix.version}"
+    {
+      helix ? helix-unwrapped,
+      runtime ? runtimeDir,
+    }:
+    runCommand "helix-${helix.version}"
       {
         inherit (helix) version meta;
       }
@@ -153,8 +159,8 @@ let
         done
       '';
 in
-(helix-wrap { }).overrideAttrs
-  (final: prev: {
+(helix-wrap { }).overrideAttrs (
+  final: prev: {
     passthru = {
       # By including this separately we can more easily do override of
       # `helix-unwrapped`. Below is an example of how to modify helix (apply
@@ -176,4 +182,5 @@ in
       wrap = helix-wrap;
       inherit runtimeDir grammars;
     };
-  })
+  }
+)
