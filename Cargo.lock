@@ -3482,6 +3482,9 @@ dependencies = [
  "helix-term",
  "helix-view",
  "ropey",
+ "serde",
+ "serde_json",
+ "tempfile",
  "toml",
 ]
 

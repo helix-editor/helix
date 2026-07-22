@@ -1,0 +1,3362 @@
+{
+  "ada": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-30yCHcO9LdZ9VKQpObWRfk49M5tC85IZvutXgzGwTjQ=",
+        "owner": "briot",
+        "repo": "tree-sitter-ada",
+        "rev": "ba0894efa03beb70780156b91e28c716b7a4764d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "adl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-gYEtTjjy8qClYg4+ZnKwNUWMxKTc3sUXQdsVCwB7H6w=",
+        "owner": "adl-lang",
+        "repo": "tree-sitter-adl",
+        "rev": "2787d04beadfbe154d3f2da6e98dc45a1b134bbf"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "agda": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-5h56+A7ZypckJ9mwht7XP/66oiehwAEQ4Z6WeVhQBvQ=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-agda",
+        "rev": "e8d47a6987effe34d5595baf321d82d3519a8527"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "alloy": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-yDYGtM/vlZqeOy2O+scGHc6Dae0H/cXyC6Gu0inwJNA=",
+        "owner": "mattsre",
+        "repo": "tree-sitter-alloy",
+        "rev": "58d462b1cdb077682b130caa324f3822aeb00b8e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "amber": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-vEEjHg/qRFfgA8AEWP7hp28/rxBCjPTvxLSMnvlXyi8=",
+        "owner": "amber-lang",
+        "repo": "tree-sitter-amber",
+        "rev": "107c6d4a420fb0c5962b62ebd9347b7eb0015957"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "astro": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-q1ni++SPbq5y+47fPb6TryMw86gpULwNcXwi5yjXCWI=",
+        "owner": "virchau13",
+        "repo": "tree-sitter-astro",
+        "rev": "947e93089e60c66e681eba22283f4037841451e7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "awk": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-MDfAtG6ZC0KttJ5bdW71Jgts+SAJitRnwu8xQ26N9K0=",
+        "owner": "Beaglefoot",
+        "repo": "tree-sitter-awk",
+        "rev": "34bbdc7cce8e803096f47b625979e34c1be38127"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "bash": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ONQ1Ljk3aRWjElSWD2crCFZraZoRj3b3/VELz1789GE=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-bash",
+        "rev": "a06c2e4415e9bc0346c6b86d401879ffb44058f7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "basic": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-4wJLK+yZjBELTzTnB/9Xb70uGodetEyjVDtFshviQyA=",
+        "owner": "Ra77a3l3-jar",
+        "repo": "tree-sitter-basic",
+        "rev": "a98449c11d6c688b54c1ca132148a62d7e586a2a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "bass": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-AmrzHntk8FLw8qtJAVvOzFuBA7H3wURTnx+PsrIp+pM=",
+        "owner": "vito",
+        "repo": "tree-sitter-bass",
+        "rev": "501133e260d768ed4e1fd7374912ed5c86d6fd90"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "batch": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-c3z2EbwtKs+/2DErpMA0EsCglzIvIxXErnHRDW51J70=",
+        "owner": "wharflab",
+        "repo": "tree-sitter-batch",
+        "rev": "5fc5f54267ef9a78e7a5319b80e092194252aabf"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "beancount": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-UJ8bswQJB7UYspNKLWaEXMOR4XlKVHfd7rvV5iaA5Tw=",
+        "owner": "polarmutex",
+        "repo": "tree-sitter-beancount",
+        "rev": "429cff869513cf9e34a2cf604fbfaaedc467e809"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "bibtex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-UOXGWm8k9YP0GUwvNEuIxeiXqJo4Jf9uBt+/oYaYUl4=",
+        "owner": "latex-lsp",
+        "repo": "tree-sitter-bibtex",
+        "rev": "8d04ed27b3bc7929f14b7df9236797dab9f3fa66"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "bicep": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+qvhJgYqs8aj/Kmojr7lmjbXmskwVvbYBn4ia9wOv3k=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-bicep",
+        "rev": "bff59884307c0ab009bd5e81afd9324b46a6c0f9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "bitbake": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-PSI1XVDGwDk5GjHjvCJfmBDfYM2Gmm1KR4h5KxBR1d0=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-bitbake",
+        "rev": "10bacac929ff36a1e8f4056503fe4f8717b21b94"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "blade": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-NOyGw9jhy0r2zCsbkbew+VsHWx92flJOfaCgTjRQdX4=",
+        "owner": "EmranMR",
+        "repo": "tree-sitter-blade",
+        "rev": "5dbdcb0ccbe91e64b038b41545d3acc26c74907a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "blueprint": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+lkDfAL3zKt+NpvHIb1nyHvHkmZ2Ydh78N22ZOeiErs=",
+        "owner": "gabmus",
+        "repo": "tree-sitter-blueprint",
+        "rev": "355ef84ef8a958ac822117b652cf4d49bac16c79"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "c": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Juuf57GQI7OAP6O03KtSzyKJAoXtGKjyYJ+sTM1A4mU=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-c",
+        "rev": "b780e47fc780ddc8da13afa35a3f4ed5c157823d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "c-sharp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-N5AAlwQFGGi47cj0m7Te08bA486gwY6NBOx4Qcy4lpo=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-c-sharp",
+        "rev": "cac6d5fb595f5811a076336682d5d595ac1c9e85"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "c3": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-0r1uFIxrc5azpxoP8qNZbs7r/eS0mAV2L7KDu9VIsVo=",
+        "owner": "c3lang",
+        "repo": "tree-sitter-c3",
+        "rev": "15d3502510af0a6c888c663ec8d6aca8791216ce"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "caddyfile": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-piaKIUZDc4wJOW6O1enO6J1Jg4g3Rlj+HJy6aImIigo=",
+        "owner": "caddyserver",
+        "repo": "tree-sitter-caddyfile",
+        "rev": "15437433b7deec0f0431fb4a5bedb64ecae01513"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cairo": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Ikn8KE5OflDl3x7uCTrkHTaKXZ2J09mInOyg9f5wRKo=",
+        "owner": "starkware-libs",
+        "repo": "tree-sitter-cairo",
+        "rev": "4c6a25680546761b80a710ead1dd34e76c203125"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "capnp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WKrZuOMxmdGlvUI9y8JgwCNMdJ8MULucMhkmW8JCiXM=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-capnp",
+        "rev": "7b0883c03e5edd34ef7bcf703194204299d7099f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cel": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ioorpQwPOVYAqjMaXqMaYcsYDGR2KHe4AB8uO5n3908=",
+        "owner": "bufbuild",
+        "repo": "tree-sitter-cel",
+        "rev": "9f2b65da14c216df53933748e489db0f11121464"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "chuck": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-yd+RWeY+gHtTkRaxYxXSv27yWupjZtnIDxbsUAMa9eg=",
+        "owner": "tymbalodeon",
+        "repo": "tree-sitter-chuck",
+        "rev": "68fb7bdba480915d87177feaa5593a666c0bb602"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "circom": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-wosqwiDkK1rytGWMJApz1M42Sme9OaWXC0rmj7vM4g8=",
+        "owner": "Decurity",
+        "repo": "tree-sitter-circom",
+        "rev": "02150524228b1e6afef96949f2d6b7cc0aaf999e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "clarity": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Ja79mtXHcZQbs/aPWCaCELWH8RIfeQ35gcRifgIyW/0=",
+        "owner": "xlittlerag",
+        "repo": "tree-sitter-clarity",
+        "rev": "1436da3946359fcd7ac2d81917aaa78ef1e01755"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "clojure": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jokekIuuQLx5UtuPs4XAI+euispeFCwSQByVKVelrC4=",
+        "owner": "sogaiu",
+        "repo": "tree-sitter-clojure",
+        "rev": "e43eff80d17cf34852dcd92ca5e6986d23a7040f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cmake": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+Lom3xjPmhhZr3G4aV054lbhLjvJsPaQalSqkKUijvU=",
+        "owner": "uyha",
+        "repo": "tree-sitter-cmake",
+        "rev": "c7b2a71e7f8ecb167fad4c97227c838439280175"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "comment": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ky+P22s2/fuhriTF4GVQquWaiMs6ZktxDibzKs/I+ao=",
+        "owner": "stsewd",
+        "repo": "tree-sitter-comment",
+        "rev": "66272d2b6c73fb61157541b69dd0a7ce7b42a5ad"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "commonlisp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-cNGxZXoxhnXGo4yhMHDSjF/j43JNXg1ClpqN2xJgLQU=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-commonlisp",
+        "rev": "32323509b3d9fe96607d151c2da2c9009eb13a2f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "concerto": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WD+YEdwZJg4F4wNvUGDIMsL68QUt5AMypfC22lmLB+8=",
+        "owner": "accordproject",
+        "repo": "concerto-tree-sitter",
+        "rev": "920ba23ea93af56b19dfc38fcddf80b3ddc62685"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cpon": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-pnQ5pUDlpMJot7w2OQkXsYOzSAuiygFITPeGJ6VrKKs=",
+        "owner": "fvacek",
+        "repo": "tree-sitter-cpon",
+        "rev": "0d01fcdae5a53191df5b1349f9bce053833270e7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cpp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-x3gDJ7/lukdOwfRFKrHZqV2zZ3Buqel5GcfbFnxStLU=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-cpp",
+        "rev": "8b5b49eb196bec7040441bee33b2c9a4838d6967"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "crystal": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xmQrplDxoJ8GhcTyCOuEGn4wwMM3/9M6tyM1dgRGARU=",
+        "owner": "crystal-lang-tools",
+        "repo": "tree-sitter-crystal",
+        "rev": "50ca9e6fcfb16a2cbcad59203cfd8ad650e25c49"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "css": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jFsnEyS+FThk7L48FzAdSp5fNPSLvM8hTL/VC5FMlOE=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-css",
+        "rev": "dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "csv": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-p0qH7twC3yN8QIrnr0TKx2Nb7qTaDclhFGePR8qLXHU=",
+        "owner": "weartist",
+        "repo": "rainbow-csv-tree-sitter",
+        "rev": "d3dbf916446131417e4c2ea9eb8591b23b466d27"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cue": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-uV7Tl41PCU+8uJa693km5xvysvbptbT7LvGyYIelspk=",
+        "owner": "eonpatapon",
+        "repo": "tree-sitter-cue",
+        "rev": "8a5f273bfa281c66354da562f2307c2d394b6c81"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cylc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jgQCTM36S8UwSyT4LAfcX4DUIl2OYVMeQdDg3zRrw00=",
+        "owner": "elliotfontaine",
+        "repo": "tree-sitter-cylc",
+        "rev": "6d1d81137112299324b526477ce1db989ab58fb8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "cython": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-TFMVjzKWZBN1JISq5RTbXDTkqnttLKxckvwhf3WBQX0=",
+        "owner": "b0o",
+        "repo": "tree-sitter-cython",
+        "rev": "62f44f5e7e41dde03c5f0a05f035e293bcf2bcf8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "d": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-mX6ISmJRC1v3QVTRiTR6c+vrtq00DH15qJwjXsjAPes=",
+        "owner": "gdamore",
+        "repo": "tree-sitter-d",
+        "rev": "8bcb13dbddf16ca44a42f8e98e8cf3d86b2b2e48"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dart": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-uDrlxJ8uZypeVe+NAhuYjCluYIjXwtVYH9aBW9P9ars=",
+        "owner": "UserNobody14",
+        "repo": "tree-sitter-dart",
+        "rev": "a9bdfa3db2fbc9b9f12c93450d04a671f33a5102"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dbml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-IxxUW6YYxP1hkwA9NEojEEE3c8pwvAI6juX8aF7NfMw=",
+        "owner": "dynamotn",
+        "repo": "tree-sitter-dbml",
+        "rev": "2e2fa5640268c33c3d3f27f7e676f631a9c68fd9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "debian": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VjWoF5oI+K101xKvF+MDsy1+eCkkUytn39PHKqOCkjo=",
+        "owner": "MggMuggins",
+        "repo": "tree-sitter-debian",
+        "rev": "9b3f4b78c45aab8a2f25a5f9e7bbc00995bc3dde"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "devicetree": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-avjOWIK+DTyJQq2sgvm3PN4umagNrJ3wCKS8woK56pk=",
+        "owner": "joelspadin",
+        "repo": "tree-sitter-devicetree",
+        "rev": "e78bf56f206cb47bee28a217423acb651e076848"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dhall": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-q9OkKmp0Nor+YkFc8pBVAOoXoWzwjjzg9lBUKAUnjmQ=",
+        "owner": "jbellerb",
+        "repo": "tree-sitter-dhall",
+        "rev": "affb6ee38d629c9296749767ab832d69bb0d9ea8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "diff": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8rYLNGgoZSvvfqO2++nAgFKmvbkKJ3m+9B8bTXp6Us4=",
+        "owner": "the-mikedavis",
+        "repo": "tree-sitter-diff",
+        "rev": "2520c3f934b3179bb540d23e0ef45f75304b5fed"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "djot": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-QLjTBLWjybrj197oykkH0saED8SPpjOwyL4VFUnKBCw=",
+        "owner": "treeman",
+        "repo": "tree-sitter-djot",
+        "rev": "759a61896ccb2200a4becec4443e768638a21d58"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dockerfile": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WJJ/rjFea1sudGIyjKGupwm39TJ1zbyWlLgoRf1KCBI=",
+        "owner": "camdencheek",
+        "repo": "tree-sitter-dockerfile",
+        "rev": "971acdd908568b4531b0ba28a445bf0bb720aba5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dot": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-wk4mmbPD+kxH5RsVB1tGtx9lB+jAXtpXrhTGZsJeWeA=",
+        "owner": "rydesun",
+        "repo": "tree-sitter-dot",
+        "rev": "917230743aa10f45a408fea2ddb54bbbf5fbe7b7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "doxyfile": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-/u1BHMJkj3FkTUwNiB6d8aQIBnnENsBzagXnQa9Dcls=",
+        "owner": "tingerrr",
+        "repo": "tree-sitter-doxyfile",
+        "rev": "18e44c6da639632a4e42264c7193df34be915f34"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "drools": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-TuIJbr5URQJOChsb0OuiLO3A0mUyoZ0zMU4dzquhL58=",
+        "owner": "iByteABit256",
+        "repo": "tree-sitter-drools",
+        "rev": "f1404d2a3974dfcfd4193246e763edeeb4b399c1"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dtd": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-mq617pfH/Na9JB8SDEudxbKJfaoezgjC3xVOIOZ8Qb8=",
+        "owner": "KMikeeU",
+        "repo": "tree-sitter-dtd",
+        "rev": "6116becb02a6b8e9588ef73d300a9ba4622e156f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "dunstrc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-yfjOly1NvdNIFc3zzFb8XSCA+IW9uIzjtQRhf4/NQzY=",
+        "owner": "rotmh",
+        "repo": "tree-sitter-dunstrc",
+        "rev": "9cb9d5cc51cf5e2a47bb2a0e2f2e519ff11c1431"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "earthfile": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-I4qmdDKDXvUJRM0ThN6Hy2oMiGo+FA6QIdfgAzYgWiE=",
+        "owner": "glehmann",
+        "repo": "tree-sitter-earthfile",
+        "rev": "dbfb970a59cd87b628d087eb8e3fbe19c8e20601"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ebnf": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Cch6WCYq9bsWGypzDGapxBLJ0ZB432uAl6YjEjBJ5yg=",
+        "owner": "RubixDev",
+        "repo": "ebnf",
+        "rev": "8e635b0b723c620774dfb8abf382a7f531894b40"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "crates/tree-sitter-ebnf"
+  },
+  "edoc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ALGr1vI/R2gAgjHfwORYMP/+CeIejnSGqC9Db+GD5uM=",
+        "owner": "the-mikedavis",
+        "repo": "tree-sitter-edoc",
+        "rev": "74774af7b45dd9cefbf9510328fc6ff2374afc50"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "eex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-UPq62MkfGFh9m/UskoB9uBDIYOcotITCJXDyrbg/wKY=",
+        "owner": "connorlay",
+        "repo": "tree-sitter-eex",
+        "rev": "f742f2fe327463335e8671a87c0b9b396905d1d1"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "eiffel": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-DeZZT+xlb+oWdTKXvf4W/siL8q/ESDVtpCOXUO/yeao=",
+        "owner": "imustafin",
+        "repo": "tree-sitter-eiffel",
+        "rev": "d934fb44f1d22bb76be6b56a7b2425ab3b1daf8b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "elisp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-vemNtoFr4HDGPtk7ATfBgKQrd1hZ7ndKFMUKc67rXIE=",
+        "owner": "Wilfred",
+        "repo": "tree-sitter-elisp",
+        "rev": "29b4e49275f4a947ce17c8533bc20a1f97768c70"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "elixir": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-6V1W/MOx03dPvL8adgE16du7eGemPwwdiZ3NL8FNBkg=",
+        "owner": "elixir-lang",
+        "repo": "tree-sitter-elixir",
+        "rev": "7937d3b4d65fa574163cfa59394515d3c1cf16f4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "elm": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jhI0CRi8rgiwBfwEwNBBZ7QrKXYRQ9gUCO7c37Y/ibc=",
+        "owner": "elm-tooling",
+        "repo": "tree-sitter-elm",
+        "rev": "6d9511c28181db66daee4e883f811f6251220943"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "elvish": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-N+z+KJqSycClyPm85YR0NolHc96KbmsifZSYOzCuifc=",
+        "owner": "ckafi",
+        "repo": "tree-sitter-elvish",
+        "rev": "e50787cadd3bc54f6d9c0704493a79078bb8a4e5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "embedded-perl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-4I14D3FY/GTOyESIywrRz298G1+I6DxwdSz84cI7Bqc=",
+        "owner": "jobindex-open",
+        "repo": "tree-sitter-embedded-perl",
+        "rev": "5557a53f1f59a67cbd54c25bacd0c56d43158818"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "embedded-template": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-nBQain0Lc21jOgQFfvkyq615ZmT8qdMxtqIoUcOcO3A=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-embedded-template",
+        "rev": "5bce9d580d3b78f48e13e331f69dfa0abd4ff68b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "erlang": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-x/1IsGz74I3Hg1pufke7fpzbQHJFXEZOCwp7hSL90J0=",
+        "owner": "the-mikedavis",
+        "repo": "tree-sitter-erlang",
+        "rev": "d85b18e76962d6a3ba131bc5b514d77558e82762"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "esdl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-eH/XO53CZCbtDFQt4ok1H3Rhd9E8HXQOhYd68Mnjb84=",
+        "owner": "hongquan",
+        "repo": "tree-sitter-esdl",
+        "rev": "c824fe2bbbed6b29e50c694420aa2b377782f80a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fennel": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jk9Misdfdso/h/lK/o9FTorK6DbNJPrZs/aw+3r/H1M=",
+        "owner": "alexmozaidze",
+        "repo": "tree-sitter-fennel",
+        "rev": "3f0f6b24d599e92460b969aabc4f4c5a914d15a0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fga": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8op8IFKh3dZY02Yiehvqz1XyeOw9qSoe0f31M4yzw1U=",
+        "owner": "matoous",
+        "repo": "tree-sitter-fga",
+        "rev": "ce72d1c484ba133a18e966d67be66bce85695451"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fidl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-QFAkxQo2w/+OR7nZn9ldBk2yHOd23kzciAcQvIZ5hrY=",
+        "owner": "google",
+        "repo": "tree-sitter-fidl",
+        "rev": "0a8910f293268e27ff554357c229ba172b0eaed2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fish": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-9an4YAz2QKC3yAJ5/tOfmqOJViGATz7+NhKuZpr4oC4=",
+        "owner": "ram02z",
+        "repo": "tree-sitter-fish",
+        "rev": "f435b0bd772578c70e5d158b85267bb886316f88"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "flatbuffers": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-rxCgEpZ9NXjhq7ByJLtl/3Oy73dPv1EGG95k3eGOUVE=",
+        "owner": "yuanchenxi95",
+        "repo": "tree-sitter-flatbuffers",
+        "rev": "95e6f9ef101ea97e870bf6eebc0bd1fdfbaf5490"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "forth": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-d7X1Ubd9tKMQgNHlH+sQxmcsgLWB4mxR5CIdyKkLnM8=",
+        "owner": "alexanderbrevig",
+        "repo": "tree-sitter-forth",
+        "rev": "360ef13f8c609ec6d2e80782af69958b84e36cd0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fortran": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jXSzFAj+pOIHcfEckHxFBojW7axHI9E0If0UgH3j+Z0=",
+        "owner": "stadelmanma",
+        "repo": "tree-sitter-fortran",
+        "rev": "2880b7aab4fb7cc618de1ef3d4c6d93b2396c031"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "freebasic": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-9JDf9Tj6K55JRTNfw9U7wR3/idQ8eBoQRCOQnLm3hbs=",
+        "owner": "Ra77a3l3-jar",
+        "repo": "tree-sitter-freebasic",
+        "rev": "dbf696adb4c0b9c020074e75043c90592981ee7f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "fsharp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-YjCqtdaxjlEJooU8dbrfI7RPtF9FYFjTDlUqJsQ6Oj8=",
+        "owner": "ionide",
+        "repo": "tree-sitter-fsharp",
+        "rev": "cfc12456941da47b64b7a3994f8dccdc9fe7d2c9"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "fsharp"
+  },
+  "gas": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Fm0KxYLJpcfKPwo4HPx6pNeDrIOQAMBXirkSB7R9c+A=",
+        "owner": "sirius94",
+        "repo": "tree-sitter-gas",
+        "rev": "5d6c0a0b4d7b6f35913906ba922fe38064a9bede"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gdscript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-HikAZVoOqKRNnEBv/CCqqyt94HbXg2dBq+4GsmUFSIA=",
+        "owner": "PrestonKnopp",
+        "repo": "tree-sitter-gdscript",
+        "rev": "1f1e782fe2600f50ae57b53876505b8282388d77"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gemini": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-grWpLh5ozSUct5sSI8M8qnWy72b7ruRuhOpoyswvJuU=",
+        "owner": "~nbsp",
+        "repo": "tree-sitter-gemini",
+        "rev": "3cc5e4bdf572d5df4277fc2e54d6299bd59a54b3"
+      },
+      "fetcher": "fetchFromSourcehut"
+    }
+  },
+  "gherkin": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-6Ywu4HPfgpKsuZ6wo2b1CA3Z+lD+/3XEyJi2l2Q66+Y=",
+        "owner": "SamyAB",
+        "repo": "tree-sitter-gherkin",
+        "rev": "43873ee8de16476635b48d52c46f5b6407cb5c09"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ghostty": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-szLEyrZ9/6/wFa5X2c8iTC8LufihGN4Py0u5+wrISmI=",
+        "owner": "bezhermoso",
+        "repo": "tree-sitter-ghostty",
+        "rev": "4a0fd2ae492c6bbfd13a134067ee4258f0e0f189"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "git-config": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-u1NrtCap+CvhSW4q7xrwiUPGuCspjk9sHKkXQcEXc2E=",
+        "owner": "the-mikedavis",
+        "repo": "tree-sitter-git-config",
+        "rev": "0fbc9f99d5a28865f9de8427fb0672d66f9d83a5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "git-rebase": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+aQNbKWZgmWe21Wv1ih6kuiPDrjgY8ghi6dbQbV3PQg=",
+        "owner": "the-mikedavis",
+        "repo": "tree-sitter-git-rebase",
+        "rev": "32686d6b72980b36f876ae2d07719c9c3ed154e2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gitattributes": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-JOE+ezW6WrwVAtOTz4jnhhPDP3cbQBF38SeweTMMscU=",
+        "owner": "mtoohey31",
+        "repo": "tree-sitter-gitattributes",
+        "rev": "3dd50808e3096f93dccd5e9dc7dc3dba2eb12dc4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gitcommit": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-LMo+NufYbxb8G3ZCKNvtPHafTVHRM4HrZr7kjSkHjrw=",
+        "owner": "gbprod",
+        "repo": "tree-sitter-gitcommit",
+        "rev": "49715a9e6f19ce3d33b875aacdd6ad8ddaee0ffe"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gitignore": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-MjoY1tlVZgN6JqoTjhhg0zSdHzc8yplMr8824sfIKp8=",
+        "owner": "shunsambongi",
+        "repo": "tree-sitter-gitignore",
+        "rev": "f4685bf11ac466dd278449bcfe5fd014e94aa504"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gleam": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-BeLkPEsigTKZxWZHx9qPtcREtgpiP5EkiHFyNqgrKyI=",
+        "owner": "gleam-lang",
+        "repo": "tree-sitter-gleam",
+        "rev": "c610c282ef73f830d80c1f0999dce8e83f024ef5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "glimmer": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-AW+jd1Kl3krTgnPc8NoXfSM91fOan/wIB/mo/feWj74=",
+        "owner": "ember-tooling",
+        "repo": "tree-sitter-glimmer",
+        "rev": "88af85568bde3b91acb5d4c352ed094d0c1f9d84"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "glimmer-javascript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-gvs85PiyNov10Ar0JytOzjmJQVOeVx74ZQSbV+XUKa4=",
+        "owner": "ember-tooling",
+        "repo": "tree-sitter-glimmer-javascript",
+        "rev": "d9cf7a2f1dad3c6b660148eaf77e955d418fdb8b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "glimmer-typescript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-3cJI6vcbU62kUIhphprNeAl9RyY9TThrzVeArdLfxnI=",
+        "owner": "ember-tooling",
+        "repo": "tree-sitter-glimmer-typescript",
+        "rev": "12d98944c1d5077b957cbdb90d663a7c4d50118c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "glsl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-TjF79WH3bX4nueYr8CbPptkNb2lNkHQNB0VZoMB35Nk=",
+        "owner": "theHamsta",
+        "repo": "tree-sitter-glsl",
+        "rev": "24a6c8ef698e4480fecf8340d771fbcb5de8fbb4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gn": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-3OLlUL21YcdOZcnroPMwvMVJgu8bsGHldTnZh8y6q9M=",
+        "owner": "willcassella",
+        "repo": "tree-sitter-gn",
+        "rev": "fbaa7b3d52b958e3ac06e15416e1785138bde063"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gnuplot": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-2Z0CDtLOZ7LWffFboxO+tE0VWEkzNNodFMXr5PHQkoo=",
+        "owner": "maribu",
+        "repo": "tree-sitter-gnuplot",
+        "rev": "21a3a3929facb964b3592daeb69119294ff84cf2"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "go": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-fifTM/m2Mxd7kpJBlzwWGheAKGq6QbbzyxpBSyplYa0=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-go",
+        "rev": "2346a3ab1bb3857b48b29d779a1ef9799a248cd7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "go-format-string": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-Em9uodgqj1TXyZieLuwrYouth5r4UvZoBFSSbzAqJE0=",
+        "owner": "kpbaks",
+        "repo": "tree-sitter-go-format-string",
+        "rev": "06587ea641155db638f46a32c959d68796cd36bb"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "godot-resource": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-wdxCfG48fzswUg4q2pgI4q7jK7ZimpKo4+dRnZsZJ6U=",
+        "owner": "PrestonKnopp",
+        "repo": "tree-sitter-godot-resource",
+        "rev": "2ffb90de47417018651fc3b970e5f6b67214dc9d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gomod": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-KD6Fio9qie3wbGAvQaYsMdYOK1QjnRrGExt1oL/6mis=",
+        "owner": "camdencheek",
+        "repo": "tree-sitter-go-mod",
+        "rev": "6efb59652d30e0e9cd5f3b3a669afd6f1a926d3c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gotmpl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-QSzUyRDGdBH9TaG3YCHnJp12WcR8kdbsZFIk8I+JW1Y=",
+        "owner": "ngalaiko",
+        "repo": "tree-sitter-go-template",
+        "rev": "aa71f63de226c5592dfbfc1f29949522d7c95fac"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gowork": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-C/taNah+rJJwCHTn41udtY5ZyhQgr3wQBGv4dTPR+c8=",
+        "owner": "omertuc",
+        "repo": "tree-sitter-go-work",
+        "rev": "6dd9dd79fb51e9f2abc829d5e97b15015b6a8ae2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gpr": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tqff8Aaj9uebJeNYuNdaDBllsj/mwRStWhhY3zB8xlU=",
+        "owner": "brownts",
+        "repo": "tree-sitter-gpr",
+        "rev": "cea857d3c18d1385d1f5b66cd09ea1e44173945c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "graphql": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-NvE9Rpdp4sALqKSRWJpqxwl6obmqnIIdvrL1nK5peXc=",
+        "owner": "bkegley",
+        "repo": "tree-sitter-graphql",
+        "rev": "5e66e961eee421786bdda8495ed1db045e06b5fe"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "gren": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-42NfFE/QQi1LacquvGHaR3tGVeaU2n/q7tMhwV5+w4E=",
+        "owner": "MaeBrooks",
+        "repo": "tree-sitter-gren",
+        "rev": "76554f4f2339f5a24eed19c58f2079b51c694152"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "groovy": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Grp1ziaPyMNxoPbsJSiDCiKPXCtWJ/EC/d0OX/jqHF0=",
+        "owner": "murtaza64",
+        "repo": "tree-sitter-groovy",
+        "rev": "235009aad0f580211fc12014bb0846c3910130c1"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hare": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-mONAnzm2YLeTvefeeRfrBVeaPhv/qnepZRIw9n0CUfI=",
+        "owner": "~ecs",
+        "repo": "tree-sitter-hare",
+        "rev": "07035a248943575444aa0b893ffe306e1444c0ab"
+      },
+      "fetcher": "fetchFromSourcehut"
+    }
+  },
+  "haskell": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-R4KAAaBoDUGuQtR2U+0xdB9iLclWBrm+/blqsCX5ZjQ=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-haskell",
+        "rev": "97288e585b0bd44199720280d067fa35bacd81ff"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "haskell-literate": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-P9FTcMwPU1AvH55ly0XydCSVOP0Mfi6jQ0Yg6Muraqk=",
+        "owner": "LaurentRDC",
+        "repo": "tree-sitter-haskell-literate",
+        "rev": "8ad7bd1b1595f4cc1a4ccc775d4a3c460f43a596"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "haskell-persistent": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-p4Anm/xeG/d7nYBPDABcdDih/a+0rMjwtVUJru7m9QY=",
+        "owner": "MercuryTechnologies",
+        "repo": "tree-sitter-haskell-persistent",
+        "rev": "58a6ccfd56d9f1de8fb9f77e6c42151f8f0d0f3d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "haxe": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-i/wNeZwHDu1hcPXLjjjndiD4Qd/h8pxnKQkdZ5yzQg4=",
+        "owner": "vantreeseba",
+        "repo": "tree-sitter-haxe",
+        "rev": "f2a2394d9ca7a6099f78d8b0d178530e7c9a8e26"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hcl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Wp+2Zqg279kfHV3Lqcn3Gx7+Nl0PH09tya/tQTh70WA=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-hcl",
+        "rev": "64ad62785d442eb4d45df3a1764962dafd5bc98b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hdl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-aurnBP9R03QN1cDTKpZbp1VX3HCYjleRkSQs6m1aCxA=",
+        "owner": "quantonganh",
+        "repo": "tree-sitter-hdl",
+        "rev": "2199fdf1d302100a53002ea2cf540999119836a0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "heex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-B9kNSHH/FhBdeAnXPUxiZAZK9efJpqo0MnuR9nfLlLU=",
+        "owner": "phoenixframework",
+        "repo": "tree-sitter-heex",
+        "rev": "f6b83f305a755cd49cf5f6a66b2b789be93dc7b9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hocon": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-9Zo3YYoo9mJ4Buyj7ofSrlZURrwstBo0vgzeTq1jMGw=",
+        "owner": "antosha417",
+        "repo": "tree-sitter-hocon",
+        "rev": "c390f10519ae69fdb03b3e5764f5592fb6924bcc"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hoon": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-RkSPoscrinmuSTWHzXkRNaiqECDXpKAbQ4z7a6Tpvek=",
+        "owner": "urbit-pilled",
+        "repo": "tree-sitter-hoon",
+        "rev": "1545137aadcc63660c47db9ad98d02fa602655d0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hosts": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-f8ldDZD0I/D8IC566bZ4YgQE/b0maTE3BfzuzPfy92k=",
+        "owner": "ath3",
+        "repo": "tree-sitter-hosts",
+        "rev": "301b9379ce7dfc8bdbe2c2699a6887dcb73953f9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "html": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WT8ZHU4wDNovIAWbHNSvjx6zmaTn8XH3IobsckIVXxg=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-html",
+        "rev": "73a3947324f6efddf9e17c0ea58d454843590cc0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "htmldjango": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tFcdc2fd+oEVtB2ccKRHppMkxf1bPorKWRgfn5xZoaw=",
+        "owner": "interdependence",
+        "repo": "tree-sitter-htmldjango",
+        "rev": "a10318892603d9a0b925df7cc7771a840304b997"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hurl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-sQjjx3DGfi0l8/XNOIoyFYAcDpaQOkD4Ics3g6vkgjM=",
+        "owner": "pfeiferj",
+        "repo": "tree-sitter-hurl",
+        "rev": "597efbd7ce9a814bb058f48eabd055b1d1e12145"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "hyprlang": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-cVlhrAfL8lVHMicJxPqsBZl7NhbfbJXwH8Ga2TQLMc8=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-hyprlang",
+        "rev": "27af9b74acf89fa6bed4fb8cb8631994fcb2e6f3"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "iex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-YRVxMz9VqZ00bG0tQ/IDxf/8UkK3/OYZTIMxsQfknII=",
+        "owner": "elixir-lang",
+        "repo": "tree-sitter-iex",
+        "rev": "39f20bb51f502e32058684e893c0c0b00bb2332c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ini": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8WCyIaApsLPOybe+cntF4ISyQKN41L2IRAATd9KmzL0=",
+        "owner": "justinmk",
+        "repo": "tree-sitter-ini",
+        "rev": "e4018b5176132b4f3c5d6e61cea383f42288d0f5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ink": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-qbGyhza2/KodyXA+8aVp74DPNyjcuFU9oqVWLt/66WE=",
+        "owner": "wldmr",
+        "repo": "tree-sitter-ink",
+        "rev": "632072bab485ab4c705c39cb9aae9eaeac6893ba"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "inko": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-hZdbF9lw7fR5K8UfUaESS7/c4v9u7vEcSylEEbc6//4=",
+        "owner": "inko-lang",
+        "repo": "tree-sitter-inko",
+        "rev": "f58a87ac4dc6a7955c64c9e4408fbd693e804686"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "janet-simple": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-IiL3vi2i+VVKtfd49hz4T+mztj+o2Hxaeo/PAGFBX8Y=",
+        "owner": "sogaiu",
+        "repo": "tree-sitter-janet-simple",
+        "rev": "3c1bdcfff374138da03a1db25c75efce623910fe"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "java": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-XoaHRQ0esrV9e5JFSZkVR7QkGfky9NMnXaLQl8lohAM=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-java",
+        "rev": "e10607b45ff745f5f876bfa3e94fbcc6b44bdc11"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "javascript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+fbTNX7qz6Ew1NrXF49wQh3RVl2ZQ3R7YXMkclUoNT8=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-javascript",
+        "rev": "58404d8cf191d69f2674a8fd507bd5776f46cb11"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jinja2": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ksHel/kkWk4cyCx/+k8IfqjnID8i744WsZi9+AVSNpw=",
+        "owner": "varpeti",
+        "repo": "tree-sitter-jinja2",
+        "rev": "a533cd3c33aea6acb0f9bf9a56f35dcfe6a8eb53"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jjdescription": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-HPghz3mOukXrY0KQllOR7Kkl2U3+ukPBrXWKnJCwsqI=",
+        "owner": "kareigu",
+        "repo": "tree-sitter-jjdescription",
+        "rev": "1613b8c85b6ead48464d73668f39910dcbb41911"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jjrevset": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-815IDF/V+blItEjW1ljUeV/it/8w532tm4k295z+ago=",
+        "owner": "bryceberger",
+        "repo": "tree-sitter-jjrevset",
+        "rev": "d9af23944b884ec528b505f41d81923bb3136a51"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jjtemplate": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8rEatsR1vKBOlYYnGW88uwV0xLXGa+/rMAwiUeAuofk=",
+        "owner": "bryceberger",
+        "repo": "tree-sitter-jjtemplate",
+        "rev": "4313eda8ac31c60e550e3ad5841b100a0a686715"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jq": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-pek2Vg1osMYAdx6DfVdZhuIDb26op3i2cfvMrf5v3xY=",
+        "owner": "flurie",
+        "repo": "tree-sitter-jq",
+        "rev": "13990f530e8e6709b7978503da9bc8701d366791"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jsdoc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xjLC56NiOwwb5BJ2DLiG3rknMR3rrcYrPuHI24NVL+M=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-jsdoc",
+        "rev": "658d18dcdddb75c760363faa4963427a7c6b52db"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "json": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-cUjbN+e8UtoLRm8ZnxG7iRGD5YIc032RbHBIlmV8aLc=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-json",
+        "rev": "001c28d7a29832b06b0e831ec77845553c89b56d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "json5": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-1tzvsId57HV4bKyZ5IRdXqhW2c8sc+0CfcsE9WYxz14=",
+        "owner": "Joakker",
+        "repo": "tree-sitter-json5",
+        "rev": "248b8564567087d7866be76569b182f6dd7e14e9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "jsonnet": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ODGRkirfUG8DqV6ZcGRjKeCyEtsU0r+ICK0kCG6Xza0=",
+        "owner": "sourcegraph",
+        "repo": "tree-sitter-jsonnet",
+        "rev": "ddd075f1939aed8147b7aa67f042eda3fce22790"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "julia": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Jk2jby7vWWSdnUU8s8zIIfyXFt7keWPJPyTyxPBrqBw=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-julia",
+        "rev": "e0f9dcd180fdcfcfa8d79a3531e11d99e79321d3"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "just": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ZKgn869O3eB5SmVilhxB9GQe9vCGXckJbWFKYnPtDD8=",
+        "owner": "poliorcetics",
+        "repo": "tree-sitter-just",
+        "rev": "00859eebfb774d371af174ea1e582d46e697b469"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "kcl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-aHrJtLBefP76dXPUSxm9qX7rQrgXs/Gt4c7fRRunl68=",
+        "owner": "KittyCAD",
+        "repo": "tree-sitter-kcl",
+        "rev": "8905e0bdbf5870b50bc3f24345f1af27746f42e8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "kconfig": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8gZZLGL7giVHQIirjUIfsx3scP1L1VTFIZX7QOyjWvk=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-kconfig",
+        "rev": "9ac99fe4c0c27a35dc6f757cef534c646e944881"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "kdl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-irx8aMEdZG2WcQVE2c7ahwLjqEoUAOOjvhDDk69a6lE=",
+        "owner": "amaanq",
+        "repo": "tree-sitter-kdl",
+        "rev": "b37e3d58e5c5cf8d739b315d6114e02d42e66664"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "klog": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-L0FJpQsiMvPxZOGvp5kfStTPRc5Zgr8xMUj06Yp6VGU=",
+        "owner": "Ansimorph",
+        "repo": "tree-sitter-klog",
+        "rev": "0b215fe75bdeb8368546e3cee36aca8c19212d06"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "koka": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-0ohPSEtQLq6PJBIInX4NDRfMWCoPVz7gSoai89L6nc4=",
+        "owner": "koka-community",
+        "repo": "tree-sitter-koka",
+        "rev": "fd3b482274d6988349ba810ea5740e29153b1baf"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "kotlin": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-sfaLNslFpW/NiFxJNXqoMEykBdfjoxgGBbfntrszaUo=",
+        "owner": "fwcd",
+        "repo": "tree-sitter-kotlin",
+        "rev": "f66d2908542e93c0204c6c241f794afe4e9cd5d1"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "koto": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ZzDhi8p8eNrCNTRRUmNCKr0WIYyb4gBAl0tp+Y2Kv2o=",
+        "owner": "koto-lang",
+        "repo": "tree-sitter-koto",
+        "rev": "633744bca404ae4edb961a3c2d7bc947a987afa4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "latex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-zkp4De2eBoOsPZRHHT3mIPVWFPYboTvn6AQ4AkwXhFE=",
+        "owner": "latex-lsp",
+        "repo": "tree-sitter-latex",
+        "rev": "8c75e93cd08ccb7ce1ccab22c1fbd6360e3bcea6"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ld": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-U+yqSO+vo1RAZrCqCojhY4HwjcjirZU/HgWDCdw3YGw=",
+        "owner": "mtoohey31",
+        "repo": "tree-sitter-ld",
+        "rev": "0e9695ae0ede47b8744a8e2ad44d4d40c5d4e4c9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ldif": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xivgajrM0sqbEcX+ZN0h5C+s7KJVJanrvxRQ/j1VNIQ=",
+        "owner": "kepet19",
+        "repo": "tree-sitter-ldif",
+        "rev": "0a917207f65ba3e3acfa9cda16142ee39c4c1aaa"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "lean": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-U4ObSk4mtpp/gq8fnDQOKFfrgZ8/SuF6v5UhqxyAhWk=",
+        "owner": "Julian",
+        "repo": "tree-sitter-lean",
+        "rev": "d98426109258b266e1e92358c5f11716d2e8f638"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ledger": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bZcEeTv37CvSUa0geSlFX3La3flBi2awbU1RC0hTreM=",
+        "owner": "cbarrete",
+        "repo": "tree-sitter-ledger",
+        "rev": "1f864fb2bf6a87fe1b48545cc6adc6d23090adf7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "less": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-yOzU/INVeAfxzCFUdtn+4VHHAzshBtERvXx2HA9RV0U=",
+        "owner": "jimliang",
+        "repo": "tree-sitter-less",
+        "rev": "e5ae6245f841b5778c79ac93b28fa4f56b679c5d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "llvm": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-L3XwPhvwIR/mUbugMbaHS9dXyhO7bApv/gdlxQ+2Bbo=",
+        "owner": "benwilliamgraham",
+        "repo": "tree-sitter-llvm",
+        "rev": "c14cb839003348692158b845db9edda201374548"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "llvm-mir": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ivslvFNr3550Grko9xbHPtA63XNc+twFfZQFhBmPaME=",
+        "owner": "Flakebi",
+        "repo": "tree-sitter-llvm-mir",
+        "rev": "d166ff8c5950f80b0a476956e7a0ad2f27c12505"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "log": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-lvN2it+pNyYvGIqtRI+zUZwPrj/3SLMZX9zordYg3IU=",
+        "owner": "Tudyx",
+        "repo": "tree-sitter-log",
+        "rev": "62cfe307e942af3417171243b599cc7deac5eab9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "lpf": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Y+W4Ceb0+gUJbBC9ziy672not6zc8JVIGTWYsPmWk7c=",
+        "owner": "TheZoq2",
+        "repo": "tree-sitter-lpf",
+        "rev": "db7372e60c722ca7f12ab359e57e6bf7611ab126"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "lua": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VzaaN5pj7jMAb/u1fyyH6XmLI+yJpsTlkwpLReTlFNY=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-lua",
+        "rev": "10fe0054734eec83049514ea2e718b2a56acd0c9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "lua-format-string": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-fP1c2F/nn4BsmO1u0JAGbECQfv0J9TCZWqiwu6W+JvM=",
+        "owner": "kpbaks",
+        "repo": "tree-sitter-lua-format-string",
+        "rev": "b667c8cab109df307e1b4d56b0b43f5c4a353533"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "luap": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-4mMUHBsdK4U4uhh8GpKlG3p/s3ZCcLX1qATPyTD4Xhg=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-luap",
+        "rev": "c134aaec6acf4fa95fe4aa0dc9aba3eacdbbe55a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "luau": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-a+TJFLt77G4UyvcLz5Nsc6gvsgCTwmpZDNyfN8YUJDc=",
+        "owner": "polychromatist",
+        "repo": "tree-sitter-luau",
+        "rev": "ec187cafba510cddac265329ca7831ec6f3b9955"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "mail": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-ax9MlBuat3SmYJE5lkuTSula0A/RKoHljSqi9UZ2wO8=",
+        "owner": "ficd",
+        "repo": "tree-sitter-mail",
+        "rev": "5eddbfdbec4c893182c79047499901c196332e78"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "make": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-qQqapnKKH5X8rkxbZG5PjnyxvnpyZHpFVi/CLkIn/x0=",
+        "owner": "alemuller",
+        "repo": "tree-sitter-make",
+        "rev": "a4b9187417d6be349ee5fd4b6e77b4172c6827dd"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "markdoc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WFFrpvulhT9Z0L+zAgZQGIzcg3YxkcJpLfNeqpf3afI=",
+        "owner": "markdoc-extra",
+        "repo": "tree-sitter-markdoc",
+        "rev": "e4211fe541a13350275e4684de79adfebe9a91f8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "markdown": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WUVN7+lzDI+VC5PuJjhHiS4JpVr1x0Ic30i2tVrI6W8=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-markdown",
+        "rev": "f969cd3ae3f9fbd4e43205431d0ae286014c05b5"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "tree-sitter-markdown"
+  },
+  "markdown_inline": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WUVN7+lzDI+VC5PuJjhHiS4JpVr1x0Ic30i2tVrI6W8=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-markdown",
+        "rev": "f969cd3ae3f9fbd4e43205431d0ae286014c05b5"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "tree-sitter-markdown-inline"
+  },
+  "matlab": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-WgyWvItbysSqeD/LdBr233NYlKF1HaxIDtHIr6BQOjw=",
+        "owner": "acristoffers",
+        "repo": "tree-sitter-matlab",
+        "rev": "c2390a59016f74e7d5f75ef09510768b4f30217e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "mermaid": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-JwQ3jfwwOvM9eJWP/D3wXUBDysRxpa+mktYFajwA3IA=",
+        "owner": "monaqa",
+        "repo": "tree-sitter-mermaid",
+        "rev": "d787c66276e7e95899230539f556e8b83ee16f6d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "meson": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-+GMR051L89asgavX2T3zKwWl8xUFHenlCWJYELhMuyA=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-meson",
+        "rev": "c84f3540624b81fc44067030afce2ff78d6ede05"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "metamath": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-nmigwfHYceqGxUsyselG6zXZDlsjziXc43YedNcSt0U=",
+        "owner": "~m4dh0rs3",
+        "repo": "tree-sitter-metamath",
+        "rev": "d6a57b0ddb4feba4a88f8cbb2f497b718e0c5c1d"
+      },
+      "fetcher": "fetchFromSourcehut"
+    }
+  },
+  "mojo": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-OhhAGOSO+oLazYjjLwqdPDJWC80KLMnCIJvmsJxyNN0=",
+        "owner": "lsh",
+        "repo": "tree-sitter-mojo",
+        "rev": "3d7c53b8038f9ebbb57cd2e61296180aa5c1cf64"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "moonbit": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-JiQNymLy6BSBQKFbinud4uxVOOu5gvCrTBQiJFRJu0c=",
+        "owner": "moonbitlang",
+        "repo": "tree-sitter-moonbit",
+        "rev": "36191d7fe4ec4298c8c1f251af6a82939f8e9a67"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "move": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-vlBpL57GQgAFgQf6gUePRlqX6PBSvsmCU1ZmkLOFb0A=",
+        "owner": "tzakian",
+        "repo": "tree-sitter-move",
+        "rev": "8bc0d1692caa8763fef54d48068238d9bf3c0264"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nasm": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-205joaeq4ZSyfgxagPQTsx0zpZwSEpq1VCQoHJ77OL8=",
+        "owner": "naclsn",
+        "repo": "tree-sitter-nasm",
+        "rev": "570f3d7be01fffc751237f4cfcf52d04e20532d1"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nearley": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Uhr1DbUK7svhJX1JCtBvKhwO4jgxQLvFPL3mc/zWAy8=",
+        "owner": "mi2ebi",
+        "repo": "tree-sitter-nearley",
+        "rev": "12d01113e194c8e83f6341aab8c2a5f21db9cac9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nginx": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ofFBxW4p7rZFZm9w5cyA0semYLJWFu9emv8bfTfAFok=",
+        "owner": "joncoole",
+        "repo": "tree-sitter-nginx",
+        "rev": "f6d13cf6281b25f2ce342a49a41a10a0381e00f0"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "nickel": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-IvlUwNO/wLLPuqCZf0NtSxMdDx+4ASYYOobklY/97aQ=",
+        "owner": "nickel-lang",
+        "repo": "tree-sitter-nickel",
+        "rev": "88d836a24b3b11c8720874a1a9286b8ae838d30a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nim": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-KzAZf5vgrdp33esrgle71i0m52MvRJ3z/sMwzb+CueU=",
+        "owner": "alaviss",
+        "repo": "tree-sitter-nim",
+        "rev": "c5f0ce3b65222f5dbb1a12f9fe894524881ad590"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nix": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-n3sQz0LhDCdoza4bmXHGvZWROyUpYO7u+00/w7bsO/I=",
+        "owner": "numtide",
+        "repo": "tree-sitter-nix",
+        "rev": "70f34e95e30b7ebcc40815d4385d68576c4a15cd"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "nu": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-cQiUrsSIs7AgDifOChKScZj+/25qUxEVMg3TcsGkQUY=",
+        "owner": "nushell",
+        "repo": "tree-sitter-nu",
+        "rev": "cc4624fbc6ec3563d98fbe8f215a8b8e10b16f32"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ocaml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-rbBzoj5m+GAIQyOm5I6W5OIbGH5z0gLheRyGI1q3lmU=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-ocaml",
+        "rev": "59e2b9f63526db8b95cf59dde6b2402ec2e48b52"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "grammars/ocaml"
+  },
+  "ocaml-interface": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-rbBzoj5m+GAIQyOm5I6W5OIbGH5z0gLheRyGI1q3lmU=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-ocaml",
+        "rev": "59e2b9f63526db8b95cf59dde6b2402ec2e48b52"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "grammars/interface"
+  },
+  "odin": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Pv/X6xgJeVjgIuBXIgZT4/vVrytnl1mMiKjMMjH/qQo=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-odin",
+        "rev": "6c6b07e354a52f8f2a9bc776cbc262a74e74fd26"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ohm": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-phH6FHdP9ycVXSzsON0/IyEuqkR65/8cNxJcTOBr3JE=",
+        "owner": "novusnota",
+        "repo": "tree-sitter-ohm",
+        "rev": "a1de3e748a185a335b446613aaeff1eb10e83cdf"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "opencl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tymKOBQbbXAI4bUDSOnZaMoyhFuDwSInvqgGq0eTDl8=",
+        "owner": "lefp",
+        "repo": "tree-sitter-opencl",
+        "rev": "8e1d24a57066b3cd1bb9685bbc1ca9de5c1b78fb"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "openscad": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-2+Ii4uqqmFkuRQEarCUY7dNaR2uk3cvcWleE91Gs5a8=",
+        "owner": "openscad",
+        "repo": "tree-sitter-openscad",
+        "rev": "4c36a4fb569688c97cfa28090031e039a6079244"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "org": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-hj71GKIScfHFVDjXzJ2waBJDFU1dDVduOXxMxKdYvyk=",
+        "owner": "milisims",
+        "repo": "tree-sitter-org",
+        "rev": "698bb1a34331e68f83fc24bdd1b6f97016bb30de"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "p": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tZIXecoXYsxpc5i/nF7DhD/0W3ElzcuyY6dnXgMbFWU=",
+        "owner": "battesonb",
+        "repo": "tree-sitter-p",
+        "rev": "701dcc1c72f425f78bc128d2b8031686a60ae058"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "pascal": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jqpY3g19YzX5T2rD4EFUAs594XrUdmk5DjkgGO6MC2g=",
+        "owner": "Isopod",
+        "repo": "tree-sitter-pascal",
+        "rev": "042119eca2e18a60e56317fb06ee3ba5c32cb447"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "passwd": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-3UfuyJeblQBKjqZvLYyO3GoCvYJp+DvBwQGkR3pFQQ4=",
+        "owner": "ath3",
+        "repo": "tree-sitter-passwd",
+        "rev": "20239395eacdc2e0923a7e5683ad3605aee7b716"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "pem": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-yxxm3Iu3FQxdWM0d2VeptZj/ePTa58NFhLgYBzaeSeU=",
+        "owner": "mtoohey31",
+        "repo": "tree-sitter-pem",
+        "rev": "62842ea106ff66876f9af4cccdf87913d1ed912e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "penrose": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-E/tpautC1I3w2+p2xrnd2CjdHVvNooX7yW84gUXlyrg=",
+        "owner": "klukaszek",
+        "repo": "tree-sitter-penrose",
+        "rev": "d9368ff7f743b2ac2145a3342db13b1ad950cba5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "perl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-/WA3E5kDxHl3YJ5yd020iIVc1YEssAcvlD5/Voceu2Y=",
+        "owner": "tree-sitter-perl",
+        "repo": "tree-sitter-perl",
+        "rev": "72a08a496a23212f23802490ef6f4700d68cfd0e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "pest": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-S5qg/LLPlMmNtRTTi7vW8y/c+zcId7ADmMqIt0gqJBo=",
+        "owner": "pest-parser",
+        "repo": "tree-sitter-pest",
+        "rev": "c19629a0c50e6ca2485c3b154b1dde841a08d169"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "php": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-RV6wHYVTOFdRYMqXdPw2Ryk3FadJJ4jcJVFjsJG8Ri0=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-php",
+        "rev": "3f2465c217d0a966d41e584b42d75522f2a3149e"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "php"
+  },
+  "php-only": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-RV6wHYVTOFdRYMqXdPw2Ryk3FadJJ4jcJVFjsJG8Ri0=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-php",
+        "rev": "3f2465c217d0a966d41e584b42d75522f2a3149e"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "php_only"
+  },
+  "picat": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xMiQQHC2GsH9MQJDQkSeAaFr5g7tix0CVn3JvgwxauQ=",
+        "owner": "dlr-ft",
+        "repo": "tree-sitter-picat",
+        "rev": "ecb6b07d280f2cef8214bc4b999ad83ac1d9205c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "pkl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-uyW4mPS+sctj6TVqeg03Xd6nbxicHqWwsRFK9582PQI=",
+        "owner": "apple",
+        "repo": "tree-sitter-pkl",
+        "rev": "c03f04a313b712f8ab00a2d862c10b37318699ae"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "po": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-iylo1e7CjLRZS1Yu4n3wy9cL9BGQ1Ai14TkJVT2Dpuo=",
+        "owner": "erasin",
+        "repo": "tree-sitter-po",
+        "rev": "417cee9abb2053ed26b19e7de972398f2da9b29e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "pod": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-fKHVcAEuEqFtzPvS6aV7qfOQfpDPOb8MWx0sPPw9/SY=",
+        "owner": "tree-sitter-perl",
+        "repo": "tree-sitter-pod",
+        "rev": "cd1931314beafeebc957964c65802961e283411e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ponylang": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-fqr+PmsCEZr3sTQ2ttFrS8Cy9Z/R/6gNwjmcXedQ4CE=",
+        "owner": "mfelsche",
+        "repo": "tree-sitter-ponylang",
+        "rev": "ef66b151bc2604f431b5668fcec4747db4290e11"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "powershell": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-TKiV7yfYY/WJ0US7mkJ3J7nBFBHtdGHgwzkDgZmyv1A=",
+        "owner": "airbus-cert",
+        "repo": "tree-sitter-powershell",
+        "rev": "c9316be0faca5d5b9fd3b57350de650755f42dc0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "prisma": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-MOqkM7DCQl1L8Jn9nyw89EoAr0ez4+d39HeKy2cb66c=",
+        "owner": "victorhqc",
+        "repo": "tree-sitter-prisma",
+        "rev": "eca2596a355b1a9952b4f80f8f9caed300a272b5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "prolog": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-SEqqmkfV/wsr1ObcBN5My29RY9TWfxnQlsnEEIZyR18=",
+        "owner": "foxy",
+        "repo": "tree-sitter-prolog",
+        "rev": "d8d415f6a1cf80ca138524bcc395810b176d40fa"
+      },
+      "fetcher": "fetchFromGitea"
+    },
+    "subpath": "grammars/prolog"
+  },
+  "properties": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-LRutvpXXVK7z+xrnLQVvLY+VRg8IB/VK572PNgvsQfc=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-properties",
+        "rev": "6310671b24d4e04b803577b1c675d765cbd5773b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "proto": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-peKqzEMB1pRKgGqU5DCg5M2wCwFCDyFlcFA5G4VO4u4=",
+        "owner": "sdoerner",
+        "repo": "tree-sitter-proto",
+        "rev": "35a6a3b543e418b7037328261f40e912c767c598"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "proverif": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-fMtGQsEbZHNIamrz3hoGvCJn5Dtu0oHhuLmMxOjFhGU=",
+        "owner": "maribu",
+        "repo": "tree-sitter-proverif",
+        "rev": "7741807092c4009c1fe4c3648da60ca72b1b80f1"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "prql": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bdT7LZ2x7BdUqLJRq4ENJTaIFnciac7l2dCxOSB09CI=",
+        "owner": "PRQL",
+        "repo": "tree-sitter-prql",
+        "rev": "09e158cd3650581c0af4c49c2e5b10c4834c8646"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ptx": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-h2a+ievbZGAYFVl3aZxM4/zTn92/fnfxelHWKfnXoP8=",
+        "owner": "jer-gremlin",
+        "repo": "tree-sitter-ptx",
+        "rev": "3dfa6758d4c15832d051f933101992b9e01d6611"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "pug": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Yk1oBv9Flz+QX5tyFZwx0y67I5qgbnLhwYuAvLi9eV8=",
+        "owner": "zealot128",
+        "repo": "tree-sitter-pug",
+        "rev": "13e9195370172c86a8b88184cc358b23b677cc46"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "puppet": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bO5g5AdhzpB13yHklpAndUHIX7Rvd7OMjH0Ds2ATA6Q=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-puppet",
+        "rev": "15f192929b7d317f5914de2b4accd37b349182a6"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "purescript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tONS2Eai/eVDecn6ow4nN9F7++UjY6OAKezeCco8hYU=",
+        "owner": "postsolar",
+        "repo": "tree-sitter-purescript",
+        "rev": "f541f95ffd6852fbbe88636317c613285bc105af"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "python": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-F5XH21PjPpbwYylgKdwD3MZ5o0amDt4xf/e5UikPcxY=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-python",
+        "rev": "293fdc02038ee2bf0e2e206711b69c90ac0d413f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ql": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-mJ/bj09mT1WTaiKoXiRXDM7dkenf5hv2ArXieeTVe6I=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-ql",
+        "rev": "1fd627a4e8bff8c24c11987474bd33112bead857"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "qmljs": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Yn3/adOETfPHBVCIVfI5qXUwC2wQr14pbhK2aUtdCiY=",
+        "owner": "yuja",
+        "repo": "tree-sitter-qmljs",
+        "rev": "de96ed62abded51fcdfcbeaaa120e0dd0d20c697"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "query": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xtr2IVI+3h/u9f84ye7szHR/U2E8Bm5NN7vhqaCkiyI=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-query",
+        "rev": "a6674e279b14958625d7a530cabe06119c7a1532"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "quint": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Eo9jvIhiRlMvNYSqQVS9/sIIkmIWpDJfenqObTWgy40=",
+        "owner": "gruhn",
+        "repo": "tree-sitter-quint",
+        "rev": "eebbd01edfeff6404778c92efe5554e42e506a18"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "r": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-9T0wjo8i34rvR1g4WBpDFQXQodyv4kNomayGBZK9hfg=",
+        "owner": "r-lib",
+        "repo": "tree-sitter-r",
+        "rev": "0e6ef7741712c09dc3ee6e81c42e919820cc65ef"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "regex": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bR0K6SR19QuQwDUic+CJ69VQTSGqry5a5IOpPTVJFlo=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-regex",
+        "rev": "b2ac15e27fce703d2f37a79ccd94a5c0cbe9720b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rego": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-I6jZ5jsJUAdjQti/lj4d11+GRSHjbN/hoGYO7ezGKv8=",
+        "owner": "FallenAngel97",
+        "repo": "tree-sitter-rego",
+        "rev": "ddd39af81fe8b0288102a7cb97959dfce723e0f3"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "requirements": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jLG+DcdVfC2Rj8SYL3WTBWreOLJWwtxpPxzyvJl77d4=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-requirements",
+        "rev": "2c3bb291f497258ba417d052faa14a2dfee6d401"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rescript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-DTO+AMzjq/+n4zJNkTyjiiIlvAo8NlDQ7gbwrFYt0Os=",
+        "owner": "rescript-lang",
+        "repo": "tree-sitter-rescript",
+        "rev": "5e2a44a9d886b0a509f5bfd0437d33b4871fbac5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ripple": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ohUhJXdo9UPKhSCxuFXGJE1vl8/QNApQkIrbiszVCbM=",
+        "owner": "Ripple-TS",
+        "repo": "ripple",
+        "rev": "49762f0a63de0d1845fcd2e6632639c095995336"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "packages/tree-sitter"
+  },
+  "robot": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-BtkSJpR+eGl0VHZ59mf17hCS92ZfGWUoPCbCTUUE2kg=",
+        "owner": "Hubro",
+        "repo": "tree-sitter-robot",
+        "rev": "93c48ca74274a60688a3beda7f6c8ae3145efce7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "robots-txt": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-fQq5agJ/xHsWxEJAydGxED4Z0bmREfXJ1t/EspBkYC8=",
+        "owner": "opa-oz",
+        "repo": "tree-sitter-robots-txt",
+        "rev": "0c066107e3548de79316a6a4ec771e2f7cf7c468"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ron": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Sp0g6AWKHNjyUmL5k3RIU+5KtfICfg3o/DH77XRRyI0=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-ron",
+        "rev": "78938553b93075e638035f624973083451b29055"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rpmspec": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-QHAcaZ5HbgoWpRDAau6IWPdBD2+WhBZVq9VDQRas5oU=",
+        "owner": "cryptomilk",
+        "repo": "tree-sitter-rpmspec",
+        "rev": "d0275cd1316d9b7a2e0fae028ce95a5a18741e1d"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "rshtml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-7RzjvJEMhtWDRnaoLki7FjTK9Y7+ZECE5gIqGUlx6DE=",
+        "owner": "rshtml",
+        "repo": "tree-sitter-rshtml",
+        "rev": "a1499c58d4692ec5bc0faed790b4e90ab0fb8996"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rst": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-x8Wi6/vFSJ0nncqLNTGq1tuVErxSB2zrWrVTBFIZtek=",
+        "owner": "stsewd",
+        "repo": "tree-sitter-rst",
+        "rev": "6322f2629f29d8b442f4ca897904d407672ebb78"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ruby": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-JcAgEKmn1cvuBmicnzwkQiVG0GNJCNp5C2pVSxz699g=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-ruby",
+        "rev": "ad907a69da0c8a4f7a943a7fe012712208da6dee"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rust": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Ls6tB6IxXDQDWwx0BJ7RgbheelC4MH8z97E7wwhkDcY=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-rust",
+        "rev": "77a3747266f4d621d0757825e6b11edcbf991ca5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "rust-format-args": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-IOc2etC92RsZ02+TY+j+Wy19OY6rz8kI3q0D+BrdiCg=",
+        "owner": "nik-rev",
+        "repo": "tree-sitter-rust-format-args",
+        "rev": "84ffe550e261cf5ea40a0ec31849ba2443bae99f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "scala": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-arwLfqA/C4w8GQv6GE/H4/tDRWaGDfvEiv7Q7mYRBRI=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-scala",
+        "rev": "4d081d98670ff6e98ca42c085294fc75eec15e1d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "scfg": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-AnyOcQFA3N6AFZiG7eLS1xCm1qX6hko9lFV4oV9p/E8=",
+        "owner": "rockorager",
+        "repo": "tree-sitter-scfg",
+        "rev": "d850fd470445d73de318a21d734d1e09e29b773c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "scheme": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-aFonUd15PJkQmz5lDJthtd1rU+8OXNknHDlgqH2s+OA=",
+        "owner": "6cdh",
+        "repo": "tree-sitter-scheme",
+        "rev": "c6cb7c7d7a04b3f5d999c28e2e9c0c31b2d50ece"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "scss": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-BFtMT6eccBWUyq6b8UXRAbB1R1XD3CrrFf1DM3aUI5c=",
+        "owner": "serenadeai",
+        "repo": "tree-sitter-scss",
+        "rev": "c478c6868648eff49eb04a4df90d703dc45b312a"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "sgf": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-40gUZfJH3QhvxALwr4bUryIo7IXwMF2HNsNk1SrpGHs=",
+        "owner": "lykahb",
+        "repo": "tree-sitter-sgf",
+        "rev": "b7e0fb713b29495722e056fdc3dc4f889f6d6ed2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "shellcheckrc": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-ag8xIRd66owaOMjH05eqZtRRYhViWP/OkLX3cWP1BJU=",
+        "owner": "kpbaks",
+        "repo": "tree-sitter-shellcheckrc",
+        "rev": "ad3da4e8f7fd72dcc5e93a6b89822c59a7cd10ff"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "slang": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Oj3Z1Zw1geM2jid7xg0041cYtStV+CRl7anXbIIGE5c=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-slang",
+        "rev": "327b1b821c255867a4fb724c8eee48887e3d014b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "slint": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-CeNOS8u3kKkD5+3OyFyGq0MOWYF0lPrqlsZ6Jii7dvE=",
+        "owner": "slint-ui",
+        "repo": "tree-sitter-slint",
+        "rev": "f94f96ce093ec153f037228ac2fac5f1a3cd9ac6"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "slisp": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xx+g85kEmRNOIHynAvNOZPq2YAcArOMHvM24RUR8iio=",
+        "owner": "~xguerin",
+        "repo": "tree-sitter-slisp",
+        "rev": "e14f62169145d9661c1ab16790f527770d157bb8"
+      },
+      "fetcher": "fetchFromSourcehut"
+    }
+  },
+  "smali": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-S0U6Xuntz16DrpYwSqMQu8Cu7UuD/JufHUxIHv826yw=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-smali",
+        "rev": "fdfa6a1febc43c7467aa7e937b87b607956f2346"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "smithy": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-wEm4HSfeZOpn1OKw7ipLhoeNko8aPKDl2abupdQq+ok=",
+        "owner": "indoorvivants",
+        "repo": "tree-sitter-smithy",
+        "rev": "ec4fe14586f2b0a1bc65d6db17f8d8acd8a90433"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "sml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-fOn9ijHtouLncw4r7ohUa3HLt+4WxY884mKDzM7yoHs=",
+        "owner": "Giorbo",
+        "repo": "tree-sitter-sml",
+        "rev": "bd4055d5554614520d4a0706b34dc0c317c6b608"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "snakemake": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-d2n1fsdt4+1hv4In+o6GpGyfeyVHpn39Njm7tQ2zyYQ=",
+        "owner": "osthomas",
+        "repo": "tree-sitter-snakemake",
+        "rev": "e909815acdbe37e69440261ebb1091ed52e1dec6"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "solidity": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tv78h5m5g+O16i6ZkQX4Ozh5pM47Xd7wCc3Owo3awzs=",
+        "owner": "JoranHonig",
+        "repo": "tree-sitter-solidity",
+        "rev": "048fe686cb1fde267243739b8bdbec8fc3a55272"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "sourcepawn": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-TfLCG2Ro3QnGStyCNqHwO54HQMR2fEOV6FjBv+0LjJ0=",
+        "owner": "nilshelmig",
+        "repo": "tree-sitter-sourcepawn",
+        "rev": "5a8fdd446b516c81e218245c12129c6ad4bccfa2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "spade": {
+    "nurl": {
+      "args": {
+        "domain": "codeberg.org",
+        "hash": "sha256-FtzYqeurwXBtO0gyc8zwh3/qc2MRyce7yr+uLZiY0xc=",
+        "owner": "spade-lang",
+        "repo": "tree-sitter-spade",
+        "rev": "4eb2fc0173e48564421721f8e4f25a0fde89ac70"
+      },
+      "fetcher": "fetchFromGitea"
+    }
+  },
+  "spicedb": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-dEpPkEohBB3qU1Vma/1VePkGGst4nA2RKgun7NiO2OA=",
+        "owner": "jzelinskie",
+        "repo": "tree-sitter-spicedb",
+        "rev": "a4e4645651f86d6684c15dfa9931b7841dc52a66"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "sql": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VP9W8X+S51oEAc2MMl5ALf7aglYZ2Ai38MGSo/FOL98=",
+        "owner": "DerekStride",
+        "repo": "tree-sitter-sql",
+        "rev": "851e9cb257ba7c66cc8c14214a31c44d2f1e954e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ssh_client_config": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-jluMtWRFuyG8WGiVn1ge2NfSdRIq8zqS1R12AG/Imtc=",
+        "owner": "metio",
+        "repo": "tree-sitter-ssh-client-config",
+        "rev": "4abd07dc3884124d60e37e1f2dd98a1676859ae0"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "strace": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-lT4gv3PJm6x0GEvQmSHPzkkNA3G0by7AncppDKvpug0=",
+        "owner": "sigmaSd",
+        "repo": "tree-sitter-strace",
+        "rev": "2b18fdf9a01e7ec292cc6006724942c81beb7fd5"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "strictdoc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-sIbh8mYWrGhaXtRxe/FYIT1aD8WAKfQYJJbhWhz9jEs=",
+        "owner": "manueldiagostino",
+        "repo": "tree-sitter-strictdoc",
+        "rev": "bba07bd4d41835e3e5f456a9603ce601b1be1937"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "styx": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-uvOUKbJUTDy9ejJI47Zl3JYi8YNISWWeC/IBjxRK47U=",
+        "owner": "bearcove",
+        "repo": "styx",
+        "rev": "51feb2a67f211e806e5e2764bc5c06738a6c40d7"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "crates/tree-sitter-styx"
+  },
+  "supercollider": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-mWTOZ3u9VGjEhjDeYJGd8aVxjVG9kJgKX/wHMZSsaEU=",
+        "owner": "madskjeldgaard",
+        "repo": "tree-sitter-supercollider",
+        "rev": "3b35bd0fded4423c8fb30e9585c7bacbcd0e8095"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "svelte": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-qEzK2sPmSFYBNMeLR7KNwReOkx3LIytUFbuF1BMFZsw=",
+        "owner": "themixednuts",
+        "repo": "tree-sitter-htmlx",
+        "rev": "c9b9cc35709fff494a3a9e41cd9471b633649e45"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "crates/tree-sitter-svelte"
+  },
+  "sway": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bYAIprYyqELNsWPZ86IZRtSeauOPCBaRmQ35ePrXODU=",
+        "owner": "FuelLabs",
+        "repo": "tree-sitter-sway",
+        "rev": "e491a005ee1d310f4c138bf215afd44cfebf959c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "swift": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-tG+tM7B6901QP4QyJdf55V38b4XduSU1eb+gaP7BikE=",
+        "owner": "alex-pinkus",
+        "repo": "tree-sitter-swift",
+        "rev": "7b7909f2f6b9414be0958275f4c8e5d69c3bca43"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "systemverilog": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-nWbym6LEAp5zqGblMi8Xu5hX3jgSYOIGw0RFx+BhnFc=",
+        "owner": "gmlarumbe",
+        "repo": "tree-sitter-systemverilog",
+        "rev": "5f7a4121ef40e8d38317833968fe861fd6913d28"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "t32": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-BRDlNZolMurXpUqnFbS+7ADTcuBthGDYVr6wBn9PIr4=",
+        "owner": "xasc",
+        "repo": "tree-sitter-t32",
+        "rev": "6da5e3cbabd376b566d04282005e52ffe67ef74a"
+      },
+      "fetcher": "fetchFromGitLab"
+    }
+  },
+  "tablegen": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8yn/Czv/aNQfa/k8gnr8qeCsuDtU2L2qHGKAMbv8Vgk=",
+        "owner": "Flakebi",
+        "repo": "tree-sitter-tablegen",
+        "rev": "3e9c4822ab5cdcccf4f8aa9dcd42117f736d51d9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tact": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-z9ykKuxN54QBkT1+MPPNvlAS54xu+yb2Aa1exYws0us=",
+        "owner": "tact-lang",
+        "repo": "tree-sitter-tact",
+        "rev": "ec57ab29c86d632639726631fb2bb178d23e1c91"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "task": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-zBEAROWfH6+G2sCBIN/F83byfq8dKCecokIqazQ74n0=",
+        "owner": "alexanderbrevig",
+        "repo": "tree-sitter-task",
+        "rev": "f2cb435c5dbf3ee19493e224485d977cb2d36d8b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tcl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-GhK92+nbJ+M5/1ZnPbIJ3EuNub332YK+hyWiwyBqUmk=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-tcl",
+        "rev": "56ad1fa6a34ba800e5495d1025a9b0fda338d5b8"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "teal": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-9RX7QMrG8+EZQ5yeYGeAGxRz8wqPP6p1GcSyDY4OvlY=",
+        "owner": "euclidianAce",
+        "repo": "tree-sitter-teal",
+        "rev": "3db655924b2ff1c54fdf6371b5425ea6b5dccefe"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "templ": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-dL8RYzGRXpdIa2/aze5GNg7/Kq+I5IZKqgbW2qKv2EU=",
+        "owner": "vrischmann",
+        "repo": "tree-sitter-templ",
+        "rev": "68d6707ed20159ae7525241b8161c126dc1c620c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tera": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-JyH5iBaqW+qylqkZEN+JmG3NkMc5NKGwHp/xJ3NRR2Y=",
+        "owner": "uncenter",
+        "repo": "tree-sitter-tera",
+        "rev": "3a38c368e806268daac9923a27e72bcafbbc16bb"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "textproto": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VAj8qSxbkFqNp0X8BOZNvGTggSXZvzDjODedY11J0BQ=",
+        "owner": "PorterAtGoogle",
+        "repo": "tree-sitter-textproto",
+        "rev": "568471b80fd8793d37ed01865d8c2208a9fefd1b"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "thrift": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-owZbs8ttjKrqTA8fQ/NmBGyIUUItSUvvW4hRv0NPV8Y=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-thrift",
+        "rev": "68fd0d80943a828d9e6f49c58a74be1e9ca142cf"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tlaplus": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-nqbIpLHL2m+Mq6kI0hzVBrfyv5Xwdz+oeOFUslN5VsI=",
+        "owner": "tlaplus-community",
+        "repo": "tree-sitter-tlaplus",
+        "rev": "add40814fda369f6efd989977b2c498aaddde984"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "todotxt": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-OeAh51rcFTiexAraRzIZUR/A8h9RPwKY7rmtc3ZzoRQ=",
+        "owner": "arnarg",
+        "repo": "tree-sitter-todotxt",
+        "rev": "3937c5cd105ec4127448651a21aef45f52d19609"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tolk": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-EeCp7i8ao+KCm8OAx4ALCDg7Nj0GAZbcC1ecyw76qZQ=",
+        "owner": "ton-blockchain",
+        "repo": "ton-language-server",
+        "rev": "e90dbb89f8ec8fbf8a16b61a31d6cc19a840de4f"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "server/src/languages/tolk/tree-sitter-tolk"
+  },
+  "toml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-m9RlGkHiOL/PNENrdEPqtPlahSqGymsx7gZrCoN/Lsk=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-toml",
+        "rev": "64b56832c2cffe41758f28e05c756a3a98d16f41"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tql": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Z3HILb3TpzkvCG3w5sUiVqXY5XCqkVzGn2BZGTJq5T4=",
+        "owner": "tenzir",
+        "repo": "tree-sitter-tql",
+        "rev": "477e8ba230867b9135deb7af88ea96f160900173"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "tsx": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-A0M6IBoY87ekSV4DfGHDU5zzFWdLjGqSyVr6VENgA+s=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-typescript",
+        "rev": "75b3874edb2dc714fb1fd77a32013d0f8699989f"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "tsx"
+  },
+  "twig": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-QXwijdfVay4PH0yKmWuMUnqqInir2yjJZjHxZQTYRxE=",
+        "owner": "gbprod",
+        "repo": "tree-sitter-twig",
+        "rev": "0afd9a6d808944e65a7be393e31868b85345735f"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "typescript": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-A0M6IBoY87ekSV4DfGHDU5zzFWdLjGqSyVr6VENgA+s=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-typescript",
+        "rev": "75b3874edb2dc714fb1fd77a32013d0f8699989f"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "typescript"
+  },
+  "typespec": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-qXA87soeEdlpzj8svEao8L0F5V14NSZc1WsX9z0PVB0=",
+        "owner": "happenslol",
+        "repo": "tree-sitter-typespec",
+        "rev": "0ee05546d73d8eb64635ed8125de6f35c77759fe"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "typst": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-n6RTRMJS3h+g+Wawjb7I9NJbz+w/SGi+DQVj1jiyGaU=",
+        "owner": "uben0",
+        "repo": "tree-sitter-typst",
+        "rev": "13863ddcbaa7b68ee6221cea2e3143415e64aea4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "ungrammar": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ftvcD8I+hYqH3EGxaRZ0w8FHjBA34OSTTsrUsAOtayU=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-ungrammar",
+        "rev": "debd26fed283d80456ebafa33a06957b0c52e451"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "unison": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-xveOQpCCkYdeiPkRbFlPNfXOpWW0lzCxfQbxXz+eurM=",
+        "owner": "kylegoetz",
+        "repo": "tree-sitter-unison",
+        "rev": "3c97db76d3cdbd002dfba493620c2d5df2fd6fa9"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "uxntal": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-S6B2K2eqHktLknpfTATR5fZYE8+W1BvOYTSNTwslSVg=",
+        "owner": "Jummit",
+        "repo": "tree-sitter-uxntal",
+        "rev": "1a44f8d31053096b79c52f10a39da12479edbf64"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "v": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-I6+4CRwLNFwozNRNE5+cbrOX8hBroCh90H2V7qo2gIo=",
+        "owner": "vlang",
+        "repo": "v-analyzer",
+        "rev": "59a8889d84a293d7c0366d14c8dbb0eec24fe889"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "tree_sitter_v"
+  },
+  "vala": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-hAekweZGDHVrWVd04RrN+9Jz0D2kode+DpceTlUXii0=",
+        "owner": "vala-lang",
+        "repo": "tree-sitter-vala",
+        "rev": "97e6db3c8c73b15a9541a458d8e797a07f588ef4"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "varlink": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VGFzf3xMLBcHGTGcWQlK9zE3I+wgw3bF0ZMvI98jjn0=",
+        "owner": "bachorp",
+        "repo": "tree-sitter-varlink",
+        "rev": "a80ecffda60b28612cbda652e38d97c1d8b90568"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "vento": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-h8yC+MJIAH7DM69UQ8moJBmcmrSZkxvWrMb+NqtYB2Y=",
+        "owner": "ventojs",
+        "repo": "tree-sitter-vento",
+        "rev": "3b32474bc29584ea214e4e84b47102408263fe0e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "verilog": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-l4DgThuP9EFU55YQ9lgvVP/8pXojOllQ870gRsBF3FE=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-verilog",
+        "rev": "4457145e795b363f072463e697dfe2f6973c9a52"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "vhdl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-RBfzfxYzUnwVprnZFAiBinUL++09svvWjNA0Hc9zkiw=",
+        "owner": "jpt13653903",
+        "repo": "tree-sitter-vhdl",
+        "rev": "b8e31d110c6b039899d0f307792bdb0ff50ece2c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "vhs": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-Qf4Y1I/X5xGVZ4u2ud+XdC2dL+0sjR+0pJRJ8SUraiQ=",
+        "owner": "charmbracelet",
+        "repo": "tree-sitter-vhs",
+        "rev": "9534865e614c95eb9418e5e73f061c32fa4d9540"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "vim": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-KVaTJKU7r7zk57Fn9zl5s34oq8tsLkSRV3VHM6Q6F+s=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-vim",
+        "rev": "f3cd62d8bd043ef20507e84bb6b4b53731ccf3a7"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "vue": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-NeuNpMsKZUP5mrLCjJEOSLD6tlJpNO4Z/rFUqZLHE1A=",
+        "owner": "ikatyang",
+        "repo": "tree-sitter-vue",
+        "rev": "91fe2754796cd8fba5f229505a23fa08f3546c06"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wast": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-a1l4RsGpRQfUxEjwewyKiV0G7J2DHZW6+y1HnjREYAs=",
+        "owner": "wasm-lsp",
+        "repo": "tree-sitter-wasm",
+        "rev": "2ca28a9f9d709847bf7a3de0942a84e912f59088"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "wast"
+  },
+  "wat": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-a1l4RsGpRQfUxEjwewyKiV0G7J2DHZW6+y1HnjREYAs=",
+        "owner": "wasm-lsp",
+        "repo": "tree-sitter-wasm",
+        "rev": "2ca28a9f9d709847bf7a3de0942a84e912f59088"
+      },
+      "fetcher": "fetchFromGitHub"
+    },
+    "subpath": "wat"
+  },
+  "werk": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-VPY1fMYGSF1+87ia+d7b7l8PzNIoKwAbAT+yw5KHjjQ=",
+        "owner": "little-bonsai",
+        "repo": "tree-sitter-werk",
+        "rev": "92b0f7fe98465c4c435794a58e961306193d1c1e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wesl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-n9yob5tDyWalSAPjH2a3BFcH4Zqd6rwb+V/Qbvaxt7c=",
+        "owner": "wgsl-tooling-wg",
+        "repo": "tree-sitter-wesl",
+        "rev": "94ee6122680ef8ce2173853ca7c99f7aaeeda8ce"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wgsl": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-x42qHPwzv3uXVahHE9xYy3RkrYFctJGNEJmu6w1/2Qo=",
+        "owner": "szebniok",
+        "repo": "tree-sitter-wgsl",
+        "rev": "272e89ef2aeac74178edb9db4a83c1ffef80a463"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wikitext": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-3wEuoko0/EpA10JloV9O95zMK+NSqaGV4x59puvT3dE=",
+        "owner": "santhoshtr",
+        "repo": "tree-sitter-wikitext",
+        "rev": "444214b31695e9dd4d32fb06247397fb8778a9d2"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wit": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-5+cw9vWPizK7YlEhiNJheYVYOgtheEifd4g1KF5ldyE=",
+        "owner": "hh9527",
+        "repo": "tree-sitter-wit",
+        "rev": "c917790ab9aec50c5fd664cbfad8dd45110cfff3"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "wren": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-CU08QY4X/u4W4AEkK+gUmy5P8/XoBHDJmWX1vdGjmsI=",
+        "owner": "~jummit",
+        "repo": "tree-sitter-wren",
+        "rev": "6748694be32f11e7ec6b5faeb1b48ca6156d4e06"
+      },
+      "fetcher": "fetchFromSourcehut"
+    }
+  },
+  "xit": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-hw/EHIYY620doxWTzd+dMf/umLAr1iHmEQWtlR+6Q1I=",
+        "owner": "synaptiko",
+        "repo": "tree-sitter-xit",
+        "rev": "7d7902456061bc2ad21c64c44054f67b5515734c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "xml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-8c/XtnffylxiqX3Q7VFWlrk/655FG2pwqYrftGpnVxI=",
+        "owner": "RenjiSann",
+        "repo": "tree-sitter-xml",
+        "rev": "48a7c2b6fb9d515577e115e6788937e837815651"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "xtc": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-teUDDvH8Km1WHNXyrUtX1yULYOaTgaAwT6aCaR4MTfs=",
+        "owner": "Alexis-Lapierre",
+        "repo": "tree-sitter-xtc",
+        "rev": "7bc11b736250c45e25cfb0215db2f8393779957e"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "xwiki": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-iGb8r2zNoYiOKhI63ck45RmeeEke0+FyCGSKtqY46rE=",
+        "owner": "battesonb",
+        "repo": "tree-sitter-xwiki",
+        "rev": "58010c62c63fabbf5a94762bfa8849d4733d1f6c"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "yaml": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-bpiT3FraOZhJaoiFWAoVJX1O+plnIi8aXOW2LwyU23M=",
+        "owner": "ikatyang",
+        "repo": "tree-sitter-yaml",
+        "rev": "0e36bed171768908f331ff7dff9d956bae016efb"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "yara": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-twcbL2fKOE0PdiEboSIObzAedljZ3arBm6QQUw/W5HQ=",
+        "owner": "egibs",
+        "repo": "tree-sitter-yara",
+        "rev": "eb3ede203275c38000177f72ec0f9965312806ef"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "yuck": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-ZbUN9lv2nGgpQ0rU+H38gSCdCSav//47ESHXDMuQX7c=",
+        "owner": "Philipp-M",
+        "repo": "tree-sitter-yuck",
+        "rev": "6c60112b3b3e739fb1ca4a8ea4bea2b6ffe11318"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  },
+  "zig": {
+    "nurl": {
+      "args": {
+        "hash": "sha256-T9Q6EhJ20tH5v1fUlnNA3UcdX52DMZE/PQjPWQtcHw0=",
+        "owner": "tree-sitter-grammars",
+        "repo": "tree-sitter-zig",
+        "rev": "6479aa13f32f701c383083d8b28360ebd682fb7d"
+      },
+      "fetcher": "fetchFromGitHub"
+    }
+  }
+}
