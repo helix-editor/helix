@@ -47,7 +47,7 @@ use std::{
 /// will spam the "No configured language server supports \<feature>" status message confusingly.
 #[macro_export]
 macro_rules! language_server_with_feature {
-    ($editor:expr, $doc:expr, $feature:expr) => {{
+    ($editor:expr_2021, $doc:expr_2021, $feature:expr_2021) => {{
         let language_server = $doc.language_servers_with_feature($feature).next();
         match language_server {
             Some(language_server) => language_server,
@@ -677,7 +677,7 @@ pub(crate) fn code_actions_for_range(
     only: Option<Vec<CodeActionKind>>,
     trigger_kind: CodeActionTriggerKind,
 ) -> Vec<(
-    impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>>,
+    impl Future<Output = Result<Option<Vec<CodeActionOrCommand>>, helix_lsp::Error>> + use<>,
     LanguageServerId,
 )> {
     let mut seen_language_servers = HashSet::new();
@@ -835,10 +835,10 @@ fn resolve_and_apply_code_actions_of_kind(
             .filter(|ca| code_action_kind_matches(ca, &kind))
             .filter_map(|ca| {
                 // Resolve only when the server left out the edit or command.
-                if ca.edit.is_none() || ca.command.is_none() {
-                    if let Some(future) = ls.resolve_code_action(ca) {
-                        return Some(ResolveStep::Resolve(Box::pin(future)));
-                    }
+                if (ca.edit.is_none() || ca.command.is_none())
+                    && let Some(future) = ls.resolve_code_action(ca)
+                {
+                    return Some(ResolveStep::Resolve(Box::pin(future)));
                 }
                 ca.edit.clone().map(ResolveStep::Ready)
             })
@@ -1348,7 +1348,9 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
-) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
+) -> Option<
+    std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>> + use<>>>,
+> {
     let view_id = view.id;
     let doc_id = view.doc;
 

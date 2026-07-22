@@ -256,7 +256,7 @@ impl<T: ?Sized> RawBox<T> {
     /// created by this function may exist at a given time.
     #[allow(clippy::mut_from_ref)]
     unsafe fn get(&self) -> &mut T {
-        &mut *self.0.as_ptr()
+        unsafe { &mut *self.0.as_ptr() }
     }
 }
 impl<T: ?Sized> From<Box<T>> for RawBox<T> {

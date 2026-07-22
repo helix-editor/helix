@@ -8,7 +8,7 @@ authors = [
   # Since forking
   "Helix contributors"
 ]
-edition = "2018"
+edition.workspace = true
 description = "Types for interaction with a language server, using VSCode's Language Server Protocol"
 
 repository = "https://github.com/gluon-lang/lsp-types"

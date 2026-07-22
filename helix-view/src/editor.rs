@@ -1708,10 +1708,10 @@ impl Editor {
             }
         }
 
-        if let Some(dir) = path.parent() {
-            if !dir.is_dir() {
-                fs::create_dir_all(dir)?;
-            }
+        if let Some(dir) = path.parent()
+            && !dir.is_dir()
+        {
+            fs::create_dir_all(dir)?;
         }
         if is_dir {
             fs::create_dir(&path)?;
@@ -2646,7 +2646,7 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     };
 
     fn inserted_a_new_blank_line(changes: &[Operation], pos: usize, line_end_pos: usize) -> bool {
-        if let [Operation::Retain(move_pos), Operation::Insert(ref inserted_str), Operation::Retain(_)] =
+        if let [Operation::Retain(move_pos), Operation::Insert(inserted_str), Operation::Retain(_)] =
             changes
         {
             let mut graphemes = inserted_str.graphemes(true);

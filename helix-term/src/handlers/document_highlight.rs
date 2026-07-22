@@ -85,13 +85,13 @@ fn document_highlight_ranges(
 
     let mut merged: Vec<std::ops::Range<usize>> = Vec::with_capacity(ranges.len());
     for range in ranges {
-        if let Some(last) = merged.last_mut() {
-            if range.start <= last.end {
-                if range.end > last.end {
-                    last.end = range.end;
-                }
-                continue;
+        if let Some(last) = merged.last_mut()
+            && range.start <= last.end
+        {
+            if range.end > last.end {
+                last.end = range.end;
             }
+            continue;
         }
         merged.push(range);
     }

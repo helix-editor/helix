@@ -92,35 +92,34 @@ fn find_pair(
 
             if let (Some((start_pos, open)), Some((end_pos, close))) =
                 (as_char(doc, &open), as_char(doc, &close))
+                && PAIRS.contains(&(open, close))
+                && start_pos <= pos_
+                && pos_ <= end_pos
             {
-                if PAIRS.contains(&(open, close)) && start_pos <= pos_ && pos_ <= end_pos {
-                    if end_pos == pos_ {
-                        return Some(start_pos);
-                    }
+                if end_pos == pos_ {
+                    return Some(start_pos);
+                }
 
-                    // We return the end char if the cursor is either on the start char
-                    // or at some arbitrary position between start and end char.
-                    if traverse_parents || start_pos == pos_ {
-                        return Some(end_pos);
-                    }
+                // We return the end char if the cursor is either on the start char
+                // or at some arbitrary position between start and end char.
+                if traverse_parents || start_pos == pos_ {
+                    return Some(end_pos);
                 }
             }
         }
         // this node itselt wasn't a pair but maybe its siblings are
 
-        if let Some((start_char, end_char)) = as_close_pair(doc, &node) {
-            if let Some(pair_start) =
+        if let Some((start_char, end_char)) = as_close_pair(doc, &node)
+            && let Some(pair_start) =
                 find_pair_end(doc, node.prev_sibling(), start_char, end_char, Backward)
-            {
-                return Some(pair_start);
-            }
+        {
+            return Some(pair_start);
         }
-        if let Some((start_char, end_char)) = as_open_pair(doc, &node) {
-            if let Some(pair_end) =
+        if let Some((start_char, end_char)) = as_open_pair(doc, &node)
+            && let Some(pair_end) =
                 find_pair_end(doc, node.next_sibling(), start_char, end_char, Forward)
-            {
-                return Some(pair_end);
-            }
+        {
+            return Some(pair_end);
         }
 
         if traverse_parents {

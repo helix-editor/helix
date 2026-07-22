@@ -27,10 +27,10 @@ pub fn current_working_dir() -> PathBuf {
     #[cfg(windows)]
     let pwd = pwd.or_else(|| std::env::var_os("CD"));
 
-    if let Some(pwd) = pwd.map(PathBuf::from) {
-        if pwd.canonicalize().ok().as_ref() == Some(&cwd) {
-            cwd = pwd;
-        }
+    if let Some(pwd) = pwd.map(PathBuf::from)
+        && pwd.canonicalize().ok().as_ref() == Some(&cwd)
+    {
+        cwd = pwd;
     }
     let mut dst = CWD.write().unwrap();
     *dst = Some(cwd.clone());
