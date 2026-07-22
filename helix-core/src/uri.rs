@@ -84,7 +84,8 @@ impl fmt::Display for UrlConversionError {
 impl std::error::Error for UrlConversionError {}
 
 fn convert_url_to_uri(url: &helix_stdx::Url) -> Result<Uri, UrlConversionErrorKind> {
-    if url.scheme() == "file" {
+    // Schemes are case-insensitive (RFC3986 §3.1).
+    if url.scheme().eq_ignore_ascii_case("file") {
         url.to_file_path()
             .map(|path| Uri::File(helix_stdx::path::normalize(path).into()))
             .map_err(|_| UrlConversionErrorKind::UnableToConvert)
@@ -127,5 +128,14 @@ mod test {
                 ..
             })
         ));
+    }
+
+    // Schemes are case-insensitive (RFC3986 §3.1), so a mixed-case `file` scheme
+    // must still convert to a `File` URI rather than being rejected.
+    #[cfg(not(windows))]
+    #[test]
+    fn uppercase_file_scheme() {
+        let url = Url::parse("FILE:///home/user/Baz.cs").unwrap();
+        assert!(matches!(Uri::try_from(url), Ok(Uri::File(_))));
     }
 }
