@@ -19,7 +19,7 @@ pub enum Severity {
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
 pub enum NumberOrString {
     Number(i32),
-    String(String),
+    String(Box<str>),
 }
 
 #[derive(Debug, Clone)]
@@ -37,12 +37,12 @@ pub struct Diagnostic {
     pub starts_at_word: bool,
     pub zero_width: bool,
     pub line: usize,
-    pub message: String,
+    pub message: Box<str>,
     pub severity: Option<Severity>,
     pub code: Option<NumberOrString>,
     pub provider: DiagnosticProvider,
     pub tags: Vec<DiagnosticTag>,
-    pub source: Option<String>,
+    pub source: Option<Box<str>>,
     pub data: Option<serde_json::Value>,
 }
 
