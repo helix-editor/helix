@@ -255,9 +255,8 @@ Please refer to the relevant sections for detailed explanations about [surround]
 | `d` `<char>`     | Delete surround character `<char>`              | `surround_delete`          |
 | `a` `<object>`   | Select around textobject                        | `select_textobject_around` |
 | `i` `<object>`   | Select inside textobject                        | `select_textobject_inner`  |
-
-TODO: Mappings for selecting syntax nodes (a superset of `[`).
-
+| `A` `<object>`   | Select all textobjects around selections        | `select_all_textobjects_around` |
+| `I` `<object>`   | Select all textobjects inside selections        | `select_all_textobjects_inner`  |
 #### Window mode
 
 Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).

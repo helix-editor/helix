@@ -369,6 +369,8 @@ impl MappableCommand {
         page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
+        select_all_textobjects_around, "Select all textobjects around selections",
+        select_all_textobjects_inner, "Select all textobjects inside selections",
         split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
         merge_selections, "Merge selections",
@@ -6257,6 +6259,249 @@ fn select_textobject_around(cx: &mut Context) {
 
 fn select_textobject_inner(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Inside);
+}
+
+fn range_contains_range(range: Range, other: Range) -> bool {
+    range.from() <= other.from() && other.to() <= range.to()
+}
+
+fn select_all_treesitter_textobject_ranges(
+    text: RopeSlice,
+    range: Range,
+    objtype: textobject::TextObject,
+    obj_name: &str,
+    syntax: Option<&Syntax>,
+    loader: &helix_core::syntax::Loader,
+) -> SmallVec<[Range; 1]> {
+    let Some(syntax) = syntax else {
+        return SmallVec::new();
+    };
+
+    let from = text.char_to_byte(range.from()) as u32;
+    let to = text.char_to_byte(range.to()) as u32;
+    let end = if to > from { to - 1 } else { to };
+    let layer = syntax.layer_for_byte_range(from, end);
+    let root = syntax.tree_for_byte_range(from, end).root_node();
+    let Some(textobject_query) = loader.textobject_query(syntax.layer(layer).language) else {
+        return SmallVec::new();
+    };
+
+    let capture_name = format!("{}.{}", obj_name, objtype);
+    let Some(nodes) = textobject_query.capture_nodes(&capture_name, &root, text) else {
+        return SmallVec::new();
+    };
+
+    nodes
+        .filter_map(|node| {
+            let start_byte = node.start_byte();
+            let end_byte = node.end_byte();
+            if start_byte > text.len_bytes() || end_byte > text.len_bytes() {
+                return None;
+            }
+
+            let object_range =
+                Range::new(text.byte_to_char(start_byte), text.byte_to_char(end_byte))
+                    .with_direction(range.direction());
+
+            range_contains_range(range, object_range).then_some(object_range)
+        })
+        .collect()
+}
+
+fn select_all_word_textobject_ranges(
+    text: RopeSlice,
+    range: Range,
+    objtype: textobject::TextObject,
+    long: bool,
+) -> SmallVec<[Range; 1]> {
+    let mut ranges = SmallVec::new();
+    let mut pos = range.from();
+
+    while pos < range.to() {
+        let object_range = textobject::textobject_word(text, Range::point(pos), objtype, 1, long)
+            .with_direction(range.direction());
+
+        if !object_range.is_empty() && range_contains_range(range, object_range) {
+            ranges.push(object_range);
+            pos = object_range.to();
+        } else {
+            pos = next_grapheme_boundary(text, pos);
+        }
+    }
+
+    ranges
+}
+
+fn select_all_paragraph_textobject_ranges(
+    text: RopeSlice,
+    range: Range,
+    objtype: textobject::TextObject,
+) -> SmallVec<[Range; 1]> {
+    let mut ranges = SmallVec::new();
+    let mut pos = range.from();
+
+    while pos < range.to() {
+        let object_range = textobject::textobject_paragraph(text, Range::point(pos), objtype, 1)
+            .with_direction(range.direction());
+
+        if !object_range.is_empty() && range_contains_range(range, object_range) {
+            ranges.push(object_range);
+            pos = object_range.to();
+        } else {
+            pos = next_grapheme_boundary(text, pos);
+        }
+    }
+
+    ranges
+}
+
+fn select_all_textobjects_ranges(
+    editor: &mut Editor,
+    objtype: textobject::TextObject,
+    ch: char,
+) -> Result<Option<Selection>, ()> {
+    let (view, doc) = current!(editor);
+    let loader: &helix_core::syntax::Loader = &editor.syn_loader.load();
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone();
+    let mut ranges = SmallVec::new();
+
+    for range in selection {
+        match ch {
+            'w' => ranges.extend(select_all_word_textobject_ranges(
+                text, range, objtype, false,
+            )),
+            'W' => ranges.extend(select_all_word_textobject_ranges(
+                text, range, objtype, true,
+            )),
+            'p' => ranges.extend(select_all_paragraph_textobject_ranges(text, range, objtype)),
+            't' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "class",
+                doc.syntax(),
+                loader,
+            )),
+            'f' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "function",
+                doc.syntax(),
+                loader,
+            )),
+            'a' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "parameter",
+                doc.syntax(),
+                loader,
+            )),
+            'c' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "comment",
+                doc.syntax(),
+                loader,
+            )),
+            'T' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "test",
+                doc.syntax(),
+                loader,
+            )),
+            'e' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "entry",
+                doc.syntax(),
+                loader,
+            )),
+            'x' => ranges.extend(select_all_treesitter_textobject_ranges(
+                text,
+                range,
+                objtype,
+                "xml-element",
+                doc.syntax(),
+                loader,
+            )),
+            'g' => {
+                let Some(diff_handle) = doc.diff_handle() else {
+                    editor.set_status("Diff is not available in current buffer");
+                    return Err(());
+                };
+                let diff = diff_handle.load();
+                ranges.extend((0..diff.len()).filter_map(|idx| {
+                    let hunk_range =
+                        hunk_range(diff.nth_hunk(idx), text).with_direction(range.direction());
+                    range_contains_range(range, hunk_range).then_some(hunk_range)
+                }));
+            }
+            'd' => {
+                ranges.extend(doc.diagnostics().iter().filter_map(|diagnostic| {
+                    let diagnostic_range = Range::new(diagnostic.range.start, diagnostic.range.end)
+                        .with_direction(range.direction());
+                    range_contains_range(range, diagnostic_range).then_some(diagnostic_range)
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    Ok((!ranges.is_empty()).then(|| Selection::new(ranges, 0)))
+}
+
+fn select_all_textobjects(cx: &mut Context, objtype: textobject::TextObject) {
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+        let Some(ch) = event.char() else {
+            return;
+        };
+
+        match select_all_textobjects_ranges(cx.editor, objtype, ch) {
+            Ok(Some(selection)) => {
+                let (view, doc) = current!(cx.editor);
+                doc.set_selection(view.id, selection);
+            }
+            Ok(None) => cx.editor.set_error("nothing selected"),
+            Err(()) => {}
+        }
+    });
+
+    let title = match objtype {
+        textobject::TextObject::Inside => "Select all inside",
+        textobject::TextObject::Around => "Select all around",
+        _ => return,
+    };
+    let help_text = [
+        ("w", "Word"),
+        ("W", "WORD"),
+        ("p", "Paragraph"),
+        ("t", "Type definition (tree-sitter)"),
+        ("f", "Function (tree-sitter)"),
+        ("a", "Argument/parameter (tree-sitter)"),
+        ("c", "Comment (tree-sitter)"),
+        ("T", "Test (tree-sitter)"),
+        ("e", "Data structure entry (tree-sitter)"),
+        ("g", "Change"),
+        ("d", "Diagnostic"),
+        ("x", "(X)HTML element (tree-sitter)"),
+    ];
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+}
+
+fn select_all_textobjects_around(cx: &mut Context) {
+    select_all_textobjects(cx, textobject::TextObject::Around);
+}
+
+fn select_all_textobjects_inner(cx: &mut Context) {
+    select_all_textobjects(cx, textobject::TextObject::Inside);
 }
 
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
