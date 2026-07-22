@@ -3409,7 +3409,18 @@ fn jumplist_picker(cx: &mut Context) {
     }
 
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection| {
-        let doc = doc!(cx.editor, &doc_id);
+        let doc = if let Some(doc) = cx.editor.documents.get(&doc_id) {
+            doc
+        } else {
+            return JumpMeta {
+                id: doc_id,
+                path: None,
+                selection,
+                line_start: 0,
+                text: String::new(),
+                is_current: view.doc == doc_id,
+            };
+        };
         let text = doc.text().slice(..);
         let contents = selection
             .fragments(text)
@@ -3560,24 +3571,20 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
-    let trust_full = cx
-        .editor
-        .workspace_trust
-        .query(
-            &helix_loader::find_workspace_in(&cwd).0,
-            helix_loader::workspace_trust::TrustQuery::Git,
-        )
-        .is_trusted();
     cx.editor
         .diff_providers
         .clone()
-        .for_each_changed_file(cwd, trust_full, move |change| match change {
-            Ok(change) => injector.push(change).is_ok(),
-            Err(err) => {
-                status::report_blocking(err);
-                true
-            }
-        });
+        .for_each_changed_file(
+            cwd.clone(),
+            cx.editor.diff_base_override_for_dir(&cwd).map(ToOwned::to_owned),
+            move |change| match change {
+                Ok(change) => injector.push(change).is_ok(),
+                Err(err) => {
+                    status::report_blocking(err);
+                    true
+                }
+            },
+        );
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

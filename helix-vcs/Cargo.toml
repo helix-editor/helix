@@ -13,12 +13,25 @@ homepage.workspace = true
 helix-core = { path = "../helix-core" }
 helix-event = { path = "../helix-event" }
 
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
+tokio = { version = "1", features = [
+  "rt",
+  "rt-multi-thread",
+  "time",
+  "sync",
+  "parking_lot",
+  "macros",
+] }
 parking_lot.workspace = true
 arc-swap.workspace = true
 
-gix = { version = "0.85.0", features = ["attributes", "status", "max-performance", "sha1"], default-features = false, optional = true }
-imara-diff =  "0.2.0"
+gix = { version = "0.85.0", features = [
+  "attributes",
+  "status",
+  "max-performance",
+  "sha1",
+  "revision",
+], default-features = false, optional = true }
+imara-diff = "0.2.0"
 anyhow = "1"
 
 log = "0.4"
