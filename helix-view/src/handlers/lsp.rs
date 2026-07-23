@@ -386,6 +386,14 @@ impl Editor {
             }
         });
     }
+
+    pub fn remove_language_server_by_id(&mut self, server_id: LanguageServerId) {
+        self.language_servers.stop(server_id);
+        self.diagnostics.retain(|_, diags| {
+            diags.retain(|(_, provider)| provider.language_server_id() != Some(server_id));
+            !diags.is_empty()
+        });
+    }
 }
 
 pub fn register_hooks(_handlers: &Handlers) {
@@ -429,6 +437,17 @@ pub fn register_hooks(_handlers: &Handlers) {
         // Send textDocument/didClose notifications.
         for language_server in event.doc.language_servers() {
             language_server.text_document_did_close(event.doc.identifier());
+
+            // Stop the language server if this was the last open document using it.
+            if event
+                .editor
+                .documents()
+                .all(|d| !d.supports_language_server(language_server.id()))
+            {
+                event
+                    .editor
+                    .remove_language_server_by_id(language_server.id());
+            };
         }
 
         Ok(())

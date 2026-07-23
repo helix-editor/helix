@@ -1804,6 +1804,9 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
+    // Stop existing LSPs to ensure their diagnostics are correctly cleared
+    lsp_stop_inner(cx, args.positionals(), event)?;
+
     let editor_config = cx.editor.config.load();
     let doc = doc!(cx.editor);
     let config = doc
@@ -1885,31 +1888,40 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
 }
 
 fn lsp_stop(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    lsp_stop_inner(cx, args.positionals(), event)
+}
+
+fn lsp_stop_inner(
+    cx: &mut compositor::Context,
+    args: &[Cow<'_, str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     let doc = doc!(cx.editor);
 
     let language_servers: Vec<_> = doc
         .language_servers()
-        .map(|ls| ls.name().to_string())
+        .map(|ls| (ls.id(), ls.name().to_string()))
         .collect();
     let language_servers = if args.is_empty() {
         language_servers
     } else {
-        let (valid, invalid): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|arg| arg.to_string())
-            .partition(|name| language_servers.contains(name));
+        let (valid, invalid): (Vec<_>, Vec<_>) = language_servers
+            .into_iter()
+            .partition(|(_, name)| args.contains(&Cow::Borrowed(name.as_str())));
         if !invalid.is_empty() {
+            let invalid: Vec<_> = invalid.into_iter().map(|i| i.1).collect();
             let s = if invalid.len() == 1 { "" } else { "s" };
             bail!("Unknown language server{s}: {}", invalid.join(", "));
         }
         valid
     };
 
-    for ls_name in &language_servers {
-        cx.editor.language_servers.stop(ls_name);
+    for (ls_id, ls_name) in &language_servers {
+        cx.editor.remove_language_server_by_id(*ls_id);
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
