@@ -121,7 +121,12 @@ pub fn render_text(
                 // draw indent guides for the last line
                 renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
                 is_in_indent_area = true;
-                decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+                decorations.render_virtual_lines(
+                    renderer,
+                    last_line_pos,
+                    last_line_end,
+                    last_line_indent_level,
+                )
             }
             last_line_pos = LinePos {
                 first_visual_line: grapheme.line_idx != last_line_pos.doc_line,
@@ -169,7 +174,12 @@ pub fn render_text(
     }
 
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
-    decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
+    decorations.render_virtual_lines(
+        renderer,
+        last_line_pos,
+        last_line_end,
+        last_line_indent_level,
+    )
 }
 
 #[derive(Debug)]
