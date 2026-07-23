@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -6,6 +6,8 @@ use crate::{
     Diagnostic, PartialResultParams, StaticRegistrationOptions, TextDocumentIdentifier,
     TextDocumentRegistrationOptions, Url, WorkDoneProgressOptions, WorkDoneProgressParams,
 };
+
+use hashbrown::HashMap;
 
 /// Client capabilities specific to diagnostic pull requests.
 ///

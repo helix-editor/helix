@@ -11,7 +11,6 @@ use serde_json::Value;
 
 use anyhow::anyhow;
 use std::{
-    collections::HashMap,
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
@@ -25,6 +24,8 @@ use tokio::{
     sync::mpsc::{channel, unbounded_channel, UnboundedReceiver, UnboundedSender},
     time,
 };
+
+use hashbrown::HashMap;
 
 #[derive(Debug)]
 pub struct Client {

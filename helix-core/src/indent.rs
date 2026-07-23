@@ -1,7 +1,5 @@
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
-};
+use hashbrown::{HashMap, HashSet};
+use std::borrow::Cow;
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_house::TREE_SITTER_MATCH_LIMIT;

@@ -19,3 +19,4 @@ helix-loader = { path = "../helix-loader" }
 helix-stdx = { path = "../helix-stdx" }
 ropey.workspace = true
 toml.workspace = true
+hashbrown.workspace = true

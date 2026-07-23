@@ -1,10 +1,11 @@
 use crate::{registry::DebugAdapterId, Error, Result};
 use anyhow::Context;
+use hashbrown::HashMap;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt::Debug;
 use std::sync::Arc;
-use std::{collections::HashMap, fmt::Debug};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     sync::{

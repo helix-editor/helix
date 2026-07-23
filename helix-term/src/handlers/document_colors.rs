@@ -1,4 +1,5 @@
-use std::{collections::HashSet, time::Duration};
+use hashbrown::HashSet;
+use std::time::Duration;
 
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use helix_core::{syntax::config::LanguageServerFeature, text_annotations::InlineAnnotation};

@@ -1,4 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
+use hashbrown::HashMap;
+use std::sync::Arc;
 
 use helix_core::completion::CompletionProvider;
 use helix_event::{send_blocking, TaskController};

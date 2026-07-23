@@ -1,4 +1,5 @@
-use std::{collections::HashMap, mem, ops::Range, sync::Arc};
+use hashbrown::HashMap;
+use std::{mem, ops::Range, sync::Arc};
 
 #[derive(Debug)]
 pub(super) struct PickerQuery {

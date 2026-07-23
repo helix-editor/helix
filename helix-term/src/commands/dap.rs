@@ -13,7 +13,7 @@ use helix_view::editor::Breakpoint;
 use serde_json::{to_value, Value};
 use tui::text::Spans;
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
 

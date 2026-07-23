@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
+use hashbrown::HashMap;
 use serde_json::Value;
 
 use crate::{Range, Url};

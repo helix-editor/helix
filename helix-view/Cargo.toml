@@ -61,6 +61,8 @@ thiserror.workspace = true
 
 kstring = "2.0"
 
+hashbrown.workspace = true
+
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
 crossterm = { version = "0.28", optional = true }

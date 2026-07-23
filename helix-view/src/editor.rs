@@ -26,7 +26,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use std::{
     borrow::Cow,
     cell::Cell,
-    collections::{BTreeMap, HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     fs,
     io::{self, stdin},
     num::{NonZeroU8, NonZeroUsize},
@@ -34,6 +34,8 @@ use std::{
     pin::Pin,
     sync::Arc,
 };
+
+use hashbrown::{HashMap, HashSet};
 
 use tokio::{
     sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},

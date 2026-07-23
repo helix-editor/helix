@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 use super::macros::keymap;
 use super::{KeyTrie, Mode};

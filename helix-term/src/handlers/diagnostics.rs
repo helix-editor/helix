@@ -1,5 +1,5 @@
 use futures_util::stream::FuturesUnordered;
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use std::mem;
 use std::time::Duration;
 use tokio::time::Instant;

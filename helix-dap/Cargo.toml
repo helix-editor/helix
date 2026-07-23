@@ -28,3 +28,4 @@ futures-executor.workspace = true
 futures-util.workspace = true
 tokio-stream.workspace = true
 sonic-rs.workspace = true
+hashbrown.workspace = true

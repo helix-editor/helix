@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use foldhash::HashSet;
+use hashbrown::HashSet;
 use helix_stdx::range::{is_exact_subset, is_subset};
 use helix_stdx::Range;
 use ropey::Rope;

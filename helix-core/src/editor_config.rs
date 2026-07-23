@@ -8,8 +8,8 @@
 //! At time of writing, this module follows the [spec](https://spec.editorconfig.org/) at
 //! version 0.17.2.
 
+use hashbrown::HashMap;
 use std::{
-    collections::HashMap,
     fs,
     num::{NonZeroU16, NonZeroU8},
     path::Path,
