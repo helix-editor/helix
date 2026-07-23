@@ -3383,7 +3383,7 @@ name = "wit"
 scope = "source.wit"
 injection-regex = "wit"
 file-types = ["wit"]
-comment-token = "//"
+comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
 
@@ -3397,7 +3397,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "wit"
-source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9aec50c5fd664cbfad8dd45110cfff3" }
+source = { git = "https://github.com/bytecodealliance/tree-sitter-wit", rev = "da195e4e3a670187abdddee948a115dbe30ebc21" }
 
 [[language]]
 name = "env"
