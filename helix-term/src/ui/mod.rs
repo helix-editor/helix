@@ -18,6 +18,7 @@ mod text_decorations;
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+use crate::ui::completers::CompletionResult;
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
@@ -53,7 +54,7 @@ pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
@@ -62,24 +63,11 @@ pub fn prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn prompt_with_input(
-    cx: &mut crate::commands::Context,
-    prompt: std::borrow::Cow<'static, str>,
-    input: String,
-    history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
-) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
-    cx.push_layer(Box::new(prompt));
-}
-
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
 ) {
     raw_regex_prompt(
@@ -94,7 +82,7 @@ pub fn raw_regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
@@ -427,7 +415,9 @@ pub mod completers {
     use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::config::LanguageServerFeature;
+    use helix_event::TaskHandle;
     use helix_view::document::SCRATCH_BUFFER_NAME;
+    use helix_view::graphics::Style;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
@@ -435,13 +425,57 @@ pub mod completers {
     use std::collections::BTreeSet;
     use tui::text::Span;
 
-    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
+    /// A completion computation to be run on a background thread.
+    ///
+    /// The closure is handed a [TaskHandle] and should check [TaskHandle::is_canceled] at
+    /// convenient intervals, bailing out early when the results are no longer needed (i.e.
+    /// when the prompt line has changed or the prompt was closed).
+    pub type DeferredCompletion = Box<dyn FnOnce(&TaskHandle) -> Vec<Completion> + Send>;
 
-    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
-        Vec::new()
+    /// The result of invoking a [Completer].
+    ///
+    /// Completers which read only in-memory editor state complete immediately. Completers which need
+    /// blocking I/O (i.e. :cd, :open, etc...) return a `Deferred` closure instead.
+    pub enum CompletionResult {
+        Immediate(Vec<Completion>),
+        Deferred(DeferredCompletion),
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    fn deferred(
+        f: impl FnOnce(&TaskHandle) -> Vec<Completion> + Send + 'static,
+    ) -> CompletionResult {
+        CompletionResult::Deferred(Box::new(f))
+    }
+
+    impl CompletionResult {
+        /// Applies a transformation to the completions, either immediately or, for deferred
+        /// completions, on the background thread once they have been computed.
+        pub fn map(
+            self,
+            f: impl FnOnce(Vec<Completion>) -> Vec<Completion> + Send + 'static,
+        ) -> CompletionResult {
+            match self {
+                CompletionResult::Immediate(completions) => {
+                    CompletionResult::Immediate(f(completions))
+                }
+                CompletionResult::Deferred(g) => deferred(move |handle| f(g(handle))),
+            }
+        }
+    }
+
+    impl FromIterator<Completion> for CompletionResult {
+        fn from_iter<T: IntoIterator<Item = Completion>>(items: T) -> Self {
+            Self::Immediate(items.into_iter().collect())
+        }
+    }
+
+    pub type Completer = fn(&Editor, &str) -> CompletionResult;
+
+    pub fn none(_editor: &Editor, _input: &str) -> CompletionResult {
+        CompletionResult::Immediate(Vec::new())
+    }
+
+    pub fn buffer(editor: &Editor, input: &str) -> CompletionResult {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
@@ -454,20 +488,23 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
-        for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
-        names.sort();
-        names.dedup();
+    pub fn theme(_editor: &Editor, input: &str) -> CompletionResult {
+        let input = String::from(input);
+        deferred(move |_| {
+            let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+            for rt_dir in helix_loader::runtime_dirs() {
+                names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            }
+            names.push("default".into());
+            names.push("base16_default".into());
+            names.sort();
+            names.dedup();
 
-        fuzzy_match(input, names, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect()
+            fuzzy_match(&input, names, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect()
+        })
     }
 
     /// Recursive function to get all keys from this value and add them to vec
@@ -487,7 +524,7 @@ pub mod completers {
     }
 
     /// Completes names of language servers which are running for the current document.
-    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn active_language_servers(editor: &Editor, input: &str) -> CompletionResult {
         let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
 
         fuzzy_match(input, language_servers, false)
@@ -498,7 +535,7 @@ pub mod completers {
 
     /// Completes names of language servers which are configured for the language of the current
     /// document.
-    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn configured_language_servers(editor: &Editor, input: &str) -> CompletionResult {
         let language_servers = doc!(editor)
             .language_config()
             .into_iter()
@@ -511,7 +548,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -525,7 +562,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn filename(editor: &Editor, input: &str) -> CompletionResult {
         filename_with_git_ignore(editor, input, true)
     }
 
@@ -533,7 +570,7 @@ pub mod completers {
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             if entry.path().is_dir() {
                 FileMatch::AcceptIncomplete
@@ -543,7 +580,7 @@ pub mod completers {
         })
     }
 
-    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn language(editor: &Editor, input: &str) -> CompletionResult {
         let text: String = "text".into();
 
         let loader = editor.syn_loader.load();
@@ -558,7 +595,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> CompletionResult {
         let commands = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .flat_map(|ls| {
@@ -574,7 +611,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn directory(editor: &Editor, input: &str) -> CompletionResult {
         directory_with_git_ignore(editor, input, true)
     }
 
@@ -582,7 +619,7 @@ pub mod completers {
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             if entry.path().is_dir() {
                 FileMatch::Accept
@@ -603,11 +640,40 @@ pub mod completers {
         Accept,
     }
 
-    // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
         editor: &Editor,
         input: &str,
         git_ignore: bool,
+        filter_fn: F,
+    ) -> CompletionResult
+    where
+        F: Fn(&ignore::DirEntry) -> FileMatch + Send + 'static,
+    {
+        // Walking the directory performs blocking I/O, which can be slow on network
+        // filesystems. Defer it so that the prompt stays responsive. Only the styles below are
+        // needed from the editor: everything else can move to the background thread.
+        let input = String::from(input);
+        let directory_style = editor.theme.get("ui.text.directory");
+        let symlink_style = editor.theme.get("ui.text.symlink");
+        deferred(move |handle| {
+            filename_completions(
+                handle,
+                &input,
+                git_ignore,
+                directory_style,
+                symlink_style,
+                filter_fn,
+            )
+        })
+    }
+
+    // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
+    fn filename_completions<F>(
+        handle: &TaskHandle,
+        input: &str,
+        git_ignore: bool,
+        directory_style: Style,
+        symlink_style: Style,
         filter_fn: F,
     ) -> Vec<Completion>
     where
@@ -655,6 +721,9 @@ pub mod completers {
             .git_ignore(git_ignore)
             .max_depth(Some(1))
             .build()
+            // Stop walking early if these completions are no longer needed. Partial results
+            // are fine: the canceling task has already invalidated the receiving end.
+            .take_while(|_| !handle.is_canceled())
             .filter_map(|file| {
                 file.ok().and_then(|entry| {
                     let fmatch = filter_fn(&entry);
@@ -692,14 +761,11 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
-        let directory_color = editor.theme.get("ui.text.directory");
-        let symlink_color = editor.theme.get("ui.text.symlink");
-
         let style_from_file = |file: Utf8PathBuf| {
             if file.is_symlink {
-                Span::styled(file.path, symlink_color)
+                Span::styled(file.path, symlink_style)
             } else if file.is_dir {
-                Span::styled(file.path, directory_color)
+                Span::styled(file.path, directory_style)
             } else {
                 Span::raw(file.path)
             }
@@ -723,7 +789,7 @@ pub mod completers {
         }
     }
 
-    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn register(editor: &Editor, input: &str) -> CompletionResult {
         let iter = editor
             .registers
             .iter_preview()
@@ -737,7 +803,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn program(_editor: &Editor, input: &str) -> CompletionResult {
         static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
             // Go through the entire PATH and read all files into a set.
             let Some(path) = std::env::var_os("PATH") else {
@@ -759,14 +825,18 @@ pub mod completers {
                 .collect()
         });
 
-        fuzzy_match(input, PROGRAMS_IN_PATH.iter(), false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.clone().into()))
-            .collect()
+        // Deferred because the first access to `PROGRAMS_IN_PATH` scans every directory in `$PATH`.
+        let input = String::from(input);
+        deferred(move |_| {
+            fuzzy_match(&input, PROGRAMS_IN_PATH.iter(), false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.clone().into()))
+                .collect()
+        })
     }
 
     /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
-    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> CompletionResult {
         let token = match Tokenizer::new(input, false).last() {
             Some(token) => token.unwrap(),
             None => return filename(editor, input),
@@ -774,27 +844,28 @@ pub mod completers {
 
         let offset = token.content_start;
 
-        let mut completions = filename(editor, &input[offset..]);
-        for completion in completions.iter_mut() {
-            completion.0.start += offset;
-        }
-        completions
+        filename(editor, &input[offset..]).map(move |mut completions| {
+            for completion in completions.iter_mut() {
+                completion.0.start += offset;
+            }
+            completions
+        })
     }
 
-    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn shell(editor: &Editor, input: &str) -> CompletionResult {
         let (command, args, complete_command) = command_line::split(input);
 
         if complete_command {
             return program(editor, command);
         }
 
-        let mut completions = repeating_filenames(editor, args);
-        for completion in completions.iter_mut() {
-            // + 1 for separator between `command` and `args`
-            completion.0.start += command.len() + 1;
-        }
-
-        completions
+        let offset = command.len() + 1; // + 1 for separator between `command` and `args`
+        repeating_filenames(editor, args).map(move |mut completions| {
+            for completion in completions.iter_mut() {
+                completion.0.start += offset;
+            }
+            completions
+        })
     }
 }
 

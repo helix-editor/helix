@@ -1,11 +1,15 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
-use crate::{alt, ctrl, key, shift, ui};
+use crate::ui::completers::CompletionResult;
+use crate::{alt, ctrl, job, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_event::TaskController;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::sync::mpsc::{Receiver, TryRecvError};
 use std::sync::Arc;
+use std::time::Duration;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
@@ -24,9 +28,16 @@ use helix_view::{
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub type Completion = (RangeFrom<usize>, Span<'static>);
-type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
+type CompletionFn = Box<dyn FnMut(&Editor, &str) -> CompletionResult>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
+
+/// How long to wait for deferred completions before falling back to asynchronous delivery.
+///
+/// Deferred completions which finish within this window behave exactly like immediate ones,
+/// so the completion menu does not flicker on fast filesystems. The prompt never blocks
+/// longer than this.
+const DEFERRED_COMPLETION_TIMEOUT: Duration = Duration::from_millis(50);
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -43,6 +54,14 @@ pub struct Prompt {
     history_register: Option<char>,
     history_pos: Option<usize>,
     completion_fn: CompletionFn,
+    /// Cancels background work computing deferred completions when they are no longer needed.
+    task_controller: TaskController,
+    /// The receiving end for completions currently being computed on a background thread.
+    ///
+    /// Swapping this out in [Self::recalculate_completion] is what guarantees that stale
+    /// results are never delivered: a pending background task can only fill the receiver
+    /// that was created alongside it.
+    deferred_completion: Option<Receiver<Vec<Completion>>>,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
@@ -83,7 +102,7 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
@@ -99,6 +118,8 @@ impl Prompt {
             history_register,
             history_pos: None,
             completion_fn: Box::new(completion_fn),
+            task_controller: TaskController::new(),
+            deferred_completion: None,
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
@@ -155,8 +176,56 @@ impl Prompt {
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
+        // Invalidate any in-flight deferred completion: canceling the task stops background
+        // work early, while dropping the receiver guarantees stale results are unreachable
+        // even if the task has already finished.
+        let handle = self.task_controller.restart();
+        self.deferred_completion = None;
+
         self.exit_selection();
-        self.completion = (self.completion_fn)(editor, &self.line);
+        match (self.completion_fn)(editor, &self.line) {
+            CompletionResult::Immediate(completion) => self.completion = completion,
+            CompletionResult::Deferred(compute) => {
+                let (tx, rx) = std::sync::mpsc::sync_channel(1);
+                tokio::task::spawn_blocking(move || {
+                    let completion = compute(&handle);
+                    if handle.is_canceled() || tx.send(completion).is_err() {
+                        return;
+                    }
+                    job::dispatch_blocking(|_editor, compositor| {
+                        if let Some(prompt) = compositor.find::<Prompt>() {
+                            prompt.handle_deferred_completion();
+                        }
+                    });
+                });
+                // Give fast completions a chance to finish synchronously so the completion
+                // menu doesn't flicker. If the deadline is missed the results are delivered
+                // through the job queue instead, which triggers the dispatch above.
+                match rx.recv_timeout(DEFERRED_COMPLETION_TIMEOUT) {
+                    Ok(completion) => self.completion = completion,
+                    Err(_) => {
+                        self.completion.clear();
+                        self.deferred_completion = Some(rx);
+                    }
+                }
+            }
+        }
+    }
+
+    fn handle_deferred_completion(&mut self) {
+        let Some(rx) = &self.deferred_completion else {
+            return;
+        };
+        match rx.try_recv() {
+            Ok(completion) => {
+                self.deferred_completion = None;
+                self.completion = completion;
+                helix_event::request_redraw();
+            }
+            // The results this dispatch was meant to deliver were invalidated by a newer
+            // recalculation; that recalculation's own dispatch will deliver the new results.
+            Err(TryRecvError::Empty | TryRecvError::Disconnected) => (),
+        }
     }
 
     /// Compute the cursor position after applying movement
