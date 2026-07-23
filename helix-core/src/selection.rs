@@ -523,6 +523,16 @@ impl Selection {
         }
     }
 
+    /// Returns an iterator over line ranges in reverse.
+    ///
+    /// Adjacent and overlapping line ranges of the [Range]s in the selection are merged.
+    pub fn reverse_line_ranges<'a>(&'a self, text: RopeSlice<'a>) -> ReverseLineRangeIter<'a> {
+        ReverseLineRangeIter {
+            ranges: self.ranges.iter().rev().peekable(),
+            text,
+        }
+    }
+
     pub fn range_bounds(&self) -> impl Iterator<Item = helix_stdx::Range> + '_ {
         self.ranges.iter().map(|&range| range.into())
     }
@@ -732,6 +742,30 @@ impl From<Range> for Selection {
             ranges: smallvec![range],
             primary_index: 0,
         }
+    }
+}
+
+pub struct ReverseLineRangeIter<'a> {
+    ranges: std::iter::Peekable<std::iter::Rev<std::slice::Iter<'a, Range>>>,
+    text: RopeSlice<'a>,
+}
+
+impl Iterator for ReverseLineRangeIter<'_> {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (mut start, end) = self.ranges.next()?.line_range(self.text);
+        while let Some((prev_start, prev_end)) =
+            self.ranges.peek().map(|range| range.line_range(self.text))
+        {
+            if start - prev_end <= 1 {
+                start = prev_start;
+                self.ranges.next();
+            } else {
+                break;
+            }
+        }
+        Some((start, end))
     }
 }
 

@@ -1699,6 +1699,7 @@ dependencies = [
  "open",
  "parking_lot",
  "pulldown-cmark",
+ "quickcheck",
  "same-file",
  "serde",
  "serde_json",

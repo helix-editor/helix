@@ -9,7 +9,7 @@ use super::*;
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::line_ending;
+use helix_core::{line_ending, Change};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
@@ -2962,6 +2962,158 @@ fn noop(_cx: &mut compositor::Context, _args: Args, _event: PromptEvent) -> anyh
     Ok(())
 }
 
+fn trim_trailing_whitespace_cmd(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let tx = trim_trailing_whitespace_cmd_impl(doc, selection);
+    doc.apply(&tx, view.id);
+    doc.append_changes_to_history(view);
+    Ok(())
+}
+
+/// 1. Strips trailing empty lines per selection, while leaving one line ending alone.
+/// 2. Strips trailing whitespace per-line.
+fn trim_trailing_whitespace_cmd_impl(doc: &Document, selection: &Selection) -> Transaction {
+    /// Find the char index (relative to the line start) just after the last non-whitespace character (the start of trailing whitespace).
+    ///
+    /// Returns:
+    /// - `None` if the line has zero length
+    /// - `Some(0)` if the entire (non-empty) line is whitespace
+    /// - `Some(n)` where `n` is the first trailing-whitespace char index
+    fn find_trailing_whitespace(line: RopeSlice) -> Option<usize> {
+        // A doc of `\n` will decompose to `["", "\n"]` via the lines iterator, so we skip these truly empty "lines."
+        if line.len_chars() == 0 {
+            return None;
+        }
+        line.chars_at(line.len_chars())
+            .reversed()
+            .position(|ch| !ch.is_whitespace())
+            .map(|n| line.len_chars() - n)
+            .or(Some(0))
+    }
+
+    fn push_change(
+        changes: &mut Vec<Change>,
+        old_text: RopeSlice,
+        start: usize,
+        end: usize,
+        replacement: Option<Tendril>,
+    ) {
+        debug_assert!(start <= end);
+        if replacement
+            .as_ref()
+            .is_some_and(|replacement| !replacement.is_empty() && replacement.as_str() == old_text)
+            || start == end
+        {
+            return;
+        }
+        changes.push((start, end, replacement));
+    }
+
+    fn push_deletion(changes: &mut Vec<Change>, start: usize, end: usize) {
+        debug_assert!(start <= end);
+        if start != end {
+            changes.push((start, end, None));
+        }
+    }
+
+    let full_text = doc.text().slice(..);
+    let mut pending_changes: Vec<Change> = Vec::new();
+
+    for line_range in selection.reverse_line_ranges(full_text) {
+        let range_start_char_idx = full_text.line_to_char(line_range.0);
+
+        // +1 the final char of the range (the char after the last line's LE).
+        // `line_to_char(len_lines())` returns `len_chars()` (which is one past by def)
+        let range_end_char_idx =
+            full_text.line_to_char((line_range.1 + 1).min(full_text.len_lines()));
+
+        // The slice of the text within the current selection range.
+        let range_slice = full_text.slice(range_start_char_idx..range_end_char_idx);
+
+        let mut range_lines = range_slice
+            .lines_at(range_slice.len_lines())
+            .reversed()
+            .take(range_slice.len_lines())
+            .enumerate()
+            .peekable();
+
+        let mut trimming_trailing_lines = true;
+        while let Some((i, line)) = range_lines.peek() {
+            // Can't use range.1 - i since range doesn't map to number of lines within the selection.
+            let line_idx = line_range.0 + range_slice.len_lines() - 1 - i;
+
+            // CAREFUL: Here be dragons.
+            // Slice-relative indices must be correctly mapped to doc-relative indices. This can be very confusing!
+            //
+            // While `trimming_trailing_lines` is true:
+            // - Skip trailing whitespace-only and empty lines (e.g. zero-width selection/document).
+            //   They will be covered by one deletion created later.
+            match find_trailing_whitespace(*line) {
+                None => {}
+
+                // Skip empty and WS-only trailing lines; they'll get deleted in one block later.
+                Some(0) if trimming_trailing_lines => {}
+
+                // Exit when we find a line with actual content -> move on to line-level trailing whitespace deletions.
+                // Delete all but one trailing WS-only lines.
+                Some(_) if trimming_trailing_lines => {
+                    // Preserve one empty line. That way, EOF LE is preserved.
+                    if line_idx + 1 < range_slice.len_lines() {
+                        let start = full_text.line_to_char(line_idx + 1);
+                        push_deletion(&mut pending_changes, start, range_end_char_idx);
+                    }
+                    trimming_trailing_lines = false;
+
+                    // Avoid incrementing the iterator so that the excluded line still gets its trailing whitespace removed.
+                    continue;
+                }
+
+                // After trailing empty lines were removed, remove trailing WS from each line.
+                Some(n) => {
+                    let doc_relative_line_start = full_text.line_to_char(line_idx);
+                    let start = doc_relative_line_start + n;
+
+                    // Compute the position before this line's LE (to preserve it).
+                    // Example: "hello   \n" (9 chars; LENGTH)
+                    // 1. doc_relative_next_line start = 9 (because it's the POSITION!)
+                    // 2. le_len = 1
+                    // 3. end = 9 - 1 = 8
+                    let doc_relative_next_line_start = full_text.line_to_char(line_idx + 1);
+                    let le_len = line_ending::get_line_ending(line).map_or(0, |le| le.len_chars());
+                    let end = doc_relative_next_line_start - le_len;
+                    push_deletion(&mut pending_changes, start, end);
+                }
+            }
+            range_lines.next();
+        }
+
+        // Fallback: Entered only if the entire range is whitespace-only/empty lines.
+        // Deletes everything except the final LE in the range.
+        if trimming_trailing_lines {
+            let replacement = line_ending::get_line_ending(&range_slice.line(0))
+                .map(|le| Tendril::from(le.as_str()));
+            push_change(
+                &mut pending_changes,
+                range_slice,
+                range_start_char_idx,
+                range_end_char_idx,
+                replacement,
+            );
+        }
+    }
+
+    // Deletions were collected in reverse-line order (bottom-up), so reverse to put it in correct top-down order.
+    Transaction::change(doc.text(), pending_changes.into_iter().rev())
+}
+
 /// This command accepts a single boolean --skip-visible flag and no positionals.
 const BUFFER_CLOSE_OTHERS_SIGNATURE: Signature = Signature {
     positionals: (0, Some(0)),
@@ -4108,7 +4260,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
-    }
+    },
+    TypableCommand {
+        name: "trim-trailing-whitespace",
+        aliases: &["trim"],
+        doc: "Delete trailing whitespace from the current selections",
+        fun: trim_trailing_whitespace_cmd,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, None),
+            ..Signature::DEFAULT
+        },
+    },
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
@@ -4605,4 +4768,195 @@ fn exclude_workspace(
     cx.editor.workspace_trust.exclude(&workspace);
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use arc_swap::ArcSwap;
+    use helix_core::syntax;
+    use helix_view::editor::{Config, GutterConfig};
+
+    // To check whether a final EOF LE gets preserved!
+    #[test]
+    fn test_trim_command_ends_with_ws() {
+        let input = "𢃌\u{fff2}䝏r\n\u{3000}";
+        let text = Rope::from(input);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        let selection = Selection::single(0, doc.text().len_chars());
+        let view = View::new(doc.id(), GutterConfig::default());
+        let view_id = view.id;
+        doc.set_selection(view_id, selection.clone());
+
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
+        doc.apply(&tx, view_id);
+
+        let command_result = doc.text().to_string();
+        let simple_result = trim_trailing_whitespace_naive_impl(input);
+        assert_eq!(command_result, simple_result);
+    }
+
+    #[test]
+    fn test_trim_command_single_line() {
+        let input = "\n";
+        let text = Rope::from(input);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        let selection = Selection::single(0, doc.text().len_chars());
+        let view = View::new(doc.id(), GutterConfig::default());
+        let view_id = view.id;
+        doc.set_selection(view_id, selection.clone());
+
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
+        doc.apply(&tx, view_id);
+
+        let command_result = doc.text().to_string();
+        let simple_result = trim_trailing_whitespace_naive_impl(input);
+        eprintln!("input   = {:?}", input);
+        eprintln!("command = {:?}", command_result);
+        eprintln!("simple  = {:?}", simple_result);
+        eprintln!("changes = {:?}", tx.changes());
+        let slice = doc.text().slice(..);
+        eprintln!(
+            "len_chars={}, len_lines={}",
+            slice.len_chars(),
+            slice.len_lines()
+        );
+        for i in 0..slice.len_lines() {
+            eprintln!(
+                "  line {}: {:?} (len={})",
+                i,
+                slice.line(i).to_string(),
+                slice.line(i).len_chars()
+            );
+        }
+        eprintln!("lines_at({}).reversed():", slice.len_lines());
+        for line in slice.lines_at(slice.len_lines()).reversed() {
+            eprintln!("  {:?}", line.to_string());
+        }
+
+        assert_eq!(command_result, simple_result);
+    }
+
+    #[test]
+    fn test_trim_command_preserves_intermediate_empty_lines() {
+        let input = "foo\n\n\n\nbob";
+        let text = Rope::from(input);
+        let mut doc = Document::from(
+            text,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        let selection = Selection::single(0, doc.text().len_chars());
+        let view = View::new(doc.id(), GutterConfig::default());
+        let view_id = view.id;
+        doc.set_selection(view_id, selection.clone());
+
+        let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
+        doc.apply(&tx, view_id);
+
+        let command_result = doc.text().to_string();
+
+        assert_eq!(command_result, input);
+    }
+
+    quickcheck::quickcheck! {
+        fn test_trim_command_matches_simple(input: String) -> bool {
+            let text = Rope::from(input.clone());
+            let mut doc = Document::from(
+                text,
+                None,
+                Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+                Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+            );
+            let selection = Selection::single(0, doc.text().len_chars());
+            let view = View::new(doc.id(), GutterConfig::default());
+            let view_id = view.id;
+            doc.set_selection(view_id, selection.clone());
+
+            let tx = trim_trailing_whitespace_cmd_impl(&doc, &selection);
+            doc.apply(&tx, view_id);
+
+            let command_result = doc.text().to_string();
+            let simple_result = trim_trailing_whitespace_naive_impl(&input);
+
+            let passes = command_result == simple_result;
+            if !passes {
+                eprintln!(
+                    "MISMATCH:\n  input   = {:?}\n  command = {:?}\n  simple  = {:?}\n  changes = {:?}",
+                    input, command_result, simple_result, tx.changes()
+                );
+            }
+            passes
+
+        }
+    }
+
+    /// A simple naive reference implementation (only for LF, CRLF).
+    fn trim_trailing_whitespace_naive_impl(input: &str) -> String {
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+
+        // Separate string into individual lines (preserving line endings).
+        for c in input.chars() {
+            current_line.push(c);
+            if c == '\n' {
+                lines.push(current_line);
+                current_line = String::new();
+            }
+        }
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        // Strip trailing whitespace per line.
+        for line in &mut lines {
+            let mut le = "";
+            if line.ends_with("\r\n") {
+                le = "\r\n";
+                line.truncate(line.len() - 2);
+            } else if line.ends_with('\n') {
+                le = "\n";
+                line.truncate(line.len() - 1);
+            }
+            *line = format!("{}{}", line.trim_end(), le);
+        }
+
+        let mut res = lines.join("");
+        let original_ends_with_crlf = res.ends_with("\r\n");
+        let original_ends_with_lf = !original_ends_with_crlf && res.ends_with('\n');
+
+        // Strip trailing empty lines.
+        res = res.trim_end().to_string();
+
+        // Put back the final newline (if there was one)
+        if res.is_empty() {
+            if original_ends_with_crlf {
+                "\r\n".to_string()
+            } else if original_ends_with_lf {
+                "\n".to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            if original_ends_with_crlf {
+                res.push_str("\r\n");
+            } else if original_ends_with_lf {
+                res.push('\n');
+            }
+            res
+        }
+    }
 }
