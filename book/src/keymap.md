@@ -267,6 +267,7 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | Key                    | Description                                          | Command           |
 | -----                  | -------------                                        | -------           |
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
+| `W`                    | Switch to previous window                            | `rotate_view_reverse` |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
 | `t`, `Ctrl-t`          | Transpose the two adjacent splits                    | `transpose_view`  |

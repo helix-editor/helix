@@ -192,6 +192,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-w" => { "Window"
             "C-w" | "w" => rotate_view,
+            "W" => rotate_view_reverse,
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
             "C-t" | "t" => transpose_view,
@@ -259,6 +260,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
             "w" => { "Window"
                 "C-w" | "w" => rotate_view,
+                "W" => rotate_view_reverse,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
                 "C-t" | "t" => transpose_view,
