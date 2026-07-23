@@ -23,12 +23,12 @@
 | `move_prev_long_word_start` | Move to start of previous long word | normal: `` B `` |
 | `move_next_long_word_end` | Move to end of next long word | normal: `` E `` |
 | `move_prev_long_word_end` | Move to end of previous long word |  |
-| `move_next_sub_word_start` | Move to start of next sub word |  |
-| `move_prev_sub_word_start` | Move to start of previous sub word |  |
-| `move_next_sub_word_end` | Move to end of next sub word |  |
+| `move_next_sub_word_start` | Move to start of next sub word | normal: `` <A-w> `` |
+| `move_prev_sub_word_start` | Move to start of previous sub word | normal: `` <A-b> `` |
+| `move_next_sub_word_end` | Move to end of next sub word | normal: `` <A-e> `` |
 | `move_prev_sub_word_end` | Move to end of previous sub word |  |
-| `move_parent_node_end` | Move to end of the parent node | normal: `` <A-e> `` |
-| `move_parent_node_start` | Move to beginning of the parent node | normal: `` <A-b> `` |
+| `move_parent_node_end` | Move to end of the parent node | normal: `` <A-l> `` |
+| `move_parent_node_start` | Move to beginning of the parent node | normal: `` <A-h> `` |
 | `extend_next_word_start` | Extend to start of next word | select: `` w `` |
 | `extend_prev_word_start` | Extend to start of previous word | select: `` b `` |
 | `extend_next_word_end` | Extend to end of next word | select: `` e `` |
@@ -37,12 +37,12 @@
 | `extend_prev_long_word_start` | Extend to start of previous long word | select: `` B `` |
 | `extend_next_long_word_end` | Extend to end of next long word | select: `` E `` |
 | `extend_prev_long_word_end` | Extend to end of prev long word |  |
-| `extend_next_sub_word_start` | Extend to start of next sub word |  |
-| `extend_prev_sub_word_start` | Extend to start of previous sub word |  |
-| `extend_next_sub_word_end` | Extend to end of next sub word |  |
+| `extend_next_sub_word_start` | Extend to start of next sub word | select: `` <A-w> `` |
+| `extend_prev_sub_word_start` | Extend to start of previous sub word | select: `` <A-b> `` |
+| `extend_next_sub_word_end` | Extend to end of next sub word | select: `` <A-e> `` |
 | `extend_prev_sub_word_end` | Extend to end of prev sub word |  |
-| `extend_parent_node_end` | Extend to end of the parent node | select: `` <A-e> `` |
-| `extend_parent_node_start` | Extend to beginning of the parent node | select: `` <A-b> `` |
+| `extend_parent_node_end` | Extend to end of the parent node | select: `` <A-l> `` |
+| `extend_parent_node_start` | Extend to beginning of the parent node | select: `` <A-h> `` |
 | `find_till_char` | Move till next occurrence of char | normal: `` t `` |
 | `find_next_char` | Move to next occurrence of char | normal: `` f `` |
 | `extend_till_char` | Extend till next occurrence of char | select: `` t `` |
