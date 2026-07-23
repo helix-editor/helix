@@ -252,6 +252,28 @@ inlayHints.typeHints.hideClosureInitialization = false
 [language-server.rust-analyzer.config.files]
 watcher = "server"
 
+[language-server.typescript-language-server-official]
+command = "tsc"
+args = ["--lsp", "--stdio"]
+
+[language-server.typescript-language-server-official.config.typescript]
+format.enabled = false
+inlayHints.enumMemberValues.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.parameterTypes.enabled = true
+inlayHints.parameterNames.enabled = "all"
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.variableTypes.enabled = true
+
+[language-server.typescript-language-server-official.config.javascript]
+format.enabled = false
+inlayHints.enumMemberValues.enabled = true
+inlayHints.functionLikeReturnTypes.enabled = true
+inlayHints.parameterTypes.enabled = true
+inlayHints.parameterNames.enabled = "all"
+inlayHints.propertyDeclarationTypes.enabled = true
+inlayHints.variableTypes.enabled = true
+
 [language-server.typescript-language-server]
 command = "typescript-language-server"
 args = ["--stdio"]
@@ -1001,7 +1023,7 @@ shebangs = ["node"]
 roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "typescript-language-server" ]
+language-servers = [ "typescript-language-server-official" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
@@ -1030,7 +1052,7 @@ file-types = ["jsx"]
 roots = [ "package.json", "jsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "typescript-language-server" ]
+language-servers = [ "typescript-language-server-official" ]
 indent = { tab-width = 2, unit = "  " }
 grammar = "javascript"
 
@@ -1044,7 +1066,7 @@ shebangs = ["deno", "bun", "ts-node"]
 roots = [ "package.json", "tsconfig.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = [ "typescript-language-server" ]
+language-servers = [ "typescript-language-server-official" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
