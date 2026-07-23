@@ -374,6 +374,8 @@ pub struct Config {
     pub true_color: bool,
     /// Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative. Defaults to `false`.
     pub undercurl: bool,
+    /// How to restore the terminal background color after Helix changes it.
+    pub terminal_background_restore: TerminalBackgroundRestore,
     /// Search configuration.
     #[serde(default)]
     pub search: SearchConfig,
@@ -546,6 +548,14 @@ pub enum KittyKeyboardProtocolConfig {
     Auto,
     Disabled,
     Enabled,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum TerminalBackgroundRestore {
+    #[default]
+    RestoreOriginal,
+    Reset,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1207,6 +1217,7 @@ impl Default for Config {
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,
+            terminal_background_restore: TerminalBackgroundRestore::default(),
             search: SearchConfig::default(),
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),

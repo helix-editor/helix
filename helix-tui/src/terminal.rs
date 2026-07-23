@@ -2,7 +2,9 @@
 //! Frontend for [Backend]
 
 use crate::{backend::Backend, buffer::Buffer};
-use helix_view::editor::{Config as EditorConfig, KittyKeyboardProtocolConfig};
+use helix_view::editor::{
+    Config as EditorConfig, KittyKeyboardProtocolConfig, TerminalBackgroundRestore,
+};
 use helix_view::graphics::{CursorKind, Rect};
 use std::io;
 
@@ -26,6 +28,7 @@ pub struct Config {
     pub enable_mouse_capture: bool,
     pub force_enable_extended_underlines: bool,
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
+    pub terminal_background_restore: TerminalBackgroundRestore,
 }
 
 impl From<&EditorConfig> for Config {
@@ -34,6 +37,7 @@ impl From<&EditorConfig> for Config {
             enable_mouse_capture: config.mouse,
             force_enable_extended_underlines: config.undercurl,
             kitty_keyboard_protocol: config.kitty_keyboard_protocol,
+            terminal_background_restore: config.terminal_background_restore,
         }
     }
 }

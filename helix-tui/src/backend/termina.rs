@@ -1,7 +1,7 @@
 use std::io::{self, Write as _};
 
 use helix_view::{
-    editor::KittyKeyboardProtocolConfig,
+    editor::{KittyKeyboardProtocolConfig, TerminalBackgroundRestore},
     graphics::{CursorKind, Rect, UnderlineStyle},
     theme::{self, Color, Modifier},
 };
@@ -296,12 +296,19 @@ impl TerminaBackend {
         write!(
             self.terminal,
             "{}",
-            match self.original_background_color {
-                Some(color) => Osc::ChangeDynamicColors(
-                    osc::DynamicColorNumber::TextBackgroundColor,
-                    vec![color.into()]
-                ),
-                None => Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor),
+            match (
+                self.config.terminal_background_restore,
+                self.original_background_color,
+            ) {
+                (TerminalBackgroundRestore::RestoreOriginal, Some(color)) =>
+                    Osc::ChangeDynamicColors(
+                        osc::DynamicColorNumber::TextBackgroundColor,
+                        vec![color.into()]
+                    ),
+                (TerminalBackgroundRestore::RestoreOriginal, None)
+                | (TerminalBackgroundRestore::Reset, _) => {
+                    Osc::ResetDynamicColor(osc::DynamicColorNumber::TextBackgroundColor)
+                }
             }
         )
     }
