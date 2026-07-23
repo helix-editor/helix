@@ -45,6 +45,7 @@ use helix_core::{
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
+    document::Mode,
     editor::Action,
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
@@ -1174,18 +1175,44 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         // calculate the inner area inside the box
         let inner = block.inner(area);
 
-        // prompt area
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let prompt_cursor = || {
+            // prompt area
+            let render_preview = self.show_preview
+                && self.file_fn.is_some()
+                && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
 
-        let picker_width = if render_preview {
-            area.width / 2
-        } else {
-            area.width
+            let picker_width = if render_preview {
+                area.width / 2
+            } else {
+                area.width
+            };
+
+            let area = inner.clip_left(1).with_height(1).with_width(picker_width);
+
+            self.prompt.cursor(area, editor)
         };
-        let area = inner.clip_left(1).with_height(1).with_width(picker_width);
 
-        self.prompt.cursor(area, editor)
+        if editor.config().picker_cursor_follows_selection
+            && self.matcher.snapshot().matched_item_count() > 0
+        {
+            let area = inner.clip_top(2);
+            let header_height = self.header_height();
+            let rows = area.height.saturating_sub(header_height) as u32;
+            if rows == 0 {
+                return prompt_cursor();
+            }
+            let offset = self.cursor - (self.cursor % std::cmp::max(1, rows));
+            let cursor = self.cursor.saturating_sub(offset);
+            let y = area.y as usize + header_height as usize + cursor as usize;
+            let x = area.x as usize;
+
+            (
+                Some(Position::new(y, x)),
+                editor.config().cursor_shape.from_mode(Mode::Normal),
+            )
+        } else {
+            prompt_cursor()
+        }
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
