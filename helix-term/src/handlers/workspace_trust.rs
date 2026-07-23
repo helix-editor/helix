@@ -46,7 +46,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             return Ok(());
         }
 
-        // Users who opt out of the modal still get the statusline `[⚠]` indicator and can act
+        // Users who opt out of the modal still get the statusline `[!]` indicator and can act
         // explicitly via `:workspace-trust`.
         if !event.editor.workspace_trust.prompts_enabled() {
             return Ok(());
