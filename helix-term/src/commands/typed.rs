@@ -400,7 +400,7 @@ fn write_impl(
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
-    let auto_format = config.auto_format && options.auto_format;
+    let auto_format = options.auto_format;
     let force = options.force;
     let path: Option<PathBuf> = path.map(Into::into);
 
@@ -905,7 +905,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let auto_format = config.auto_format && options.auto_format;
+        let auto_format = options.auto_format;
         let force = options.force;
 
         let run_code_actions = options.code_actions
