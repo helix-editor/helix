@@ -38,7 +38,8 @@ pub enum Variable {
     LineEnding,
     /// Curreng working directory
     CurrentWorkingDirectory,
-    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
+    /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`,
+    /// `jj`, `.helix`, or `.config/helix`
     WorkspaceDirectory,
     // The name of current buffers language as set in `languages.toml`
     Language,
