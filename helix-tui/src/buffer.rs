@@ -9,7 +9,7 @@ pub const SYMBOL_CAPACITY: usize = 28;
 pub type Symbol = arrayvec::ArrayString<SYMBOL_CAPACITY>;
 
 /// One cell of the terminal. Contains one stylized grapheme.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct Cell {
     pub symbol: Symbol,
     /// Cached display width of `symbol` to avoid multiple recomputes in the hot path.
@@ -131,6 +131,19 @@ impl Default for Cell {
             underline_style: UnderlineStyle::Reset,
             modifier: Modifier::empty(),
         }
+    }
+}
+
+impl PartialEq for Cell {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.modifier == other.modifier
+            && self.underline_style == other.underline_style
+            && self.fg == other.fg
+            && self.bg == other.bg
+            && self.underline_color == other.underline_color
+            // Last as its the most expensive
+            && self.symbol == other.symbol
     }
 }
 
@@ -746,8 +759,8 @@ impl Buffer {
     /// Updates: `0: a, 1: コ` (double width symbol at index 1 - skip index 2)
     /// ```
     pub fn diff<'a>(&self, other: &'a Buffer) -> Vec<(u16, u16, &'a Cell)> {
-        let previous_buffer = &self.content;
-        let next_buffer = &other.content;
+        let previous_buffer = self.content.as_slice();
+        let next_buffer = other.content.as_slice();
         let width = self.area.width;
 
         let mut updates: Vec<(u16, u16, &Cell)> = vec![];
@@ -757,7 +770,7 @@ impl Buffer {
         // place (the skipped cells should be blank anyway):
         let mut to_skip: usize = 0;
         for (i, (current, previous)) in next_buffer.iter().zip(previous_buffer.iter()).enumerate() {
-            if (current != previous || invalidated > 0) && to_skip == 0 {
+            if to_skip == 0 && (invalidated > 0 || current != previous) {
                 let x = (i % width as usize) as u16;
                 let y = (i / width as usize) as u16;
                 updates.push((x, y, &next_buffer[i]));
