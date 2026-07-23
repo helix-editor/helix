@@ -90,7 +90,7 @@ impl Tree {
         let mut nodes = SlotMap::with_key();
         let root = nodes.insert(root);
 
-        // root is it's own parent
+        // root is its own parent
         nodes[root].parent = root;
 
         Self {
@@ -303,7 +303,7 @@ impl Tree {
 
     /// Try to get reference to a [View] by index. Returns `None` if node content is not a [`Content::View`].
     ///
-    /// Does not panic if the view does not exists anymore.
+    /// Does not panic if the view does not exist anymore.
     pub fn try_get(&self, index: ViewId) -> Option<&View> {
         match self.nodes.get(index) {
             Some(Node {
