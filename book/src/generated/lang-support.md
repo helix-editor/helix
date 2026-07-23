@@ -188,6 +188,7 @@
 | mermaid | ✓ |  |  |  |  |  |
 | meson | ✓ |  | ✓ |  |  | `mesonlsp` |
 | metamath | ✓ |  |  | ✓ |  | `mm-lsp-server` |
+| microcad | ✓ |  |  | ✓ |  | `microcad-lsp` |
 | mint |  |  |  |  |  | `mint` |
 | miseconfig | ✓ | ✓ | ✓ |  |  | `taplo`, `tombi` |
 | mojo | ✓ | ✓ | ✓ |  |  | `pixi` |
