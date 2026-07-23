@@ -1536,9 +1536,11 @@ dependencies = [
  "ropey",
  "serde",
  "serde_json",
+ "sha2",
  "slotmap",
  "smallvec",
  "smartstring",
+ "tempfile",
  "textwrap",
  "toml",
  "tree-house",
@@ -2667,6 +2669,9 @@ name = "smallvec"
 version = "1.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "smartstring"
@@ -2675,6 +2680,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
 dependencies = [
  "autocfg",
+ "serde",
  "static_assertions",
  "version_check",
 ]

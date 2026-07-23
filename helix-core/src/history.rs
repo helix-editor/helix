@@ -1,8 +1,71 @@
 use crate::{Assoc, ChangeSet, Range, Rope, Selection, Transaction};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
+
+mod serde_instant {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+    pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let now_instant = Instant::now();
+        let now_system = SystemTime::now();
+        let system_time = if *instant <= now_instant {
+            now_system
+                .checked_sub(now_instant.duration_since(*instant))
+                .unwrap_or(now_system)
+        } else {
+            now_system
+                .checked_add(instant.duration_since(now_instant))
+                .unwrap_or(now_system)
+        };
+        let millis = system_time
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        serializer.serialize_u64(millis)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Instant, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let millis = u64::deserialize(deserializer)?;
+        let target_system = UNIX_EPOCH + Duration::from_millis(millis);
+        let now_system = SystemTime::now();
+        let now_instant = Instant::now();
+        let instant = if target_system <= now_system {
+            let elapsed = now_system.duration_since(target_system).unwrap_or_default();
+            now_instant.checked_sub(elapsed).unwrap_or(now_instant)
+        } else {
+            let future = target_system.duration_since(now_system).unwrap_or_default();
+            now_instant.checked_add(future).unwrap_or(now_instant)
+        };
+        Ok(instant)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UndoFileData {
+    pub doc_hash: String,
+    pub history: History,
+}
+
+pub fn hash_rope(doc: &Rope) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    for chunk in doc.chunks() {
+        hasher.update(chunk.as_bytes());
+    }
+    let res = hasher.finalize();
+    res.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -47,14 +110,14 @@ pub struct State {
 ///    delete, we also store an inversion of the transaction.
 ///
 /// Using time to navigate the history: <https://github.com/helix-editor/helix/pull/194>
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct History {
     revisions: Vec<Revision>,
     current: usize,
 }
 
 /// A single point in history. See [History] for more information.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
@@ -62,6 +125,7 @@ struct Revision {
     // We need an inversion for undos because delete transactions don't store
     // the deleted text.
     inversion: Transaction,
+    #[serde(with = "serde_instant")]
     timestamp: Instant,
 }
 
@@ -82,7 +146,38 @@ impl Default for History {
 }
 
 impl History {
+    pub fn save_undofile(
+        &self,
+        doc: &Rope,
+        undofile_path: &std::path::Path,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(parent) = undofile_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let data = UndoFileData {
+            doc_hash: hash_rope(doc),
+            history: self.clone(),
+        };
+        let json = serde_json::to_vec(&data)?;
+        std::fs::write(undofile_path, json)?;
+        Ok(())
+    }
+
+    pub fn load_undofile(
+        doc: &Rope,
+        undofile_path: &std::path::Path,
+    ) -> Result<History, anyhow::Error> {
+        let bytes = std::fs::read(undofile_path)?;
+        let data: UndoFileData = serde_json::from_slice(&bytes)?;
+        let current_hash = hash_rope(doc);
+        if data.doc_hash != current_hash {
+            anyhow::bail!("undofile hash mismatch");
+        }
+        Ok(data.history)
+    }
+
     pub fn commit_revision(&mut self, transaction: &Transaction, original: &State) {
+
         self.commit_revision_at_timestamp(transaction, original, Instant::now());
     }
 
@@ -630,4 +725,47 @@ mod test {
             Err("duration too large".to_string())
         );
     }
+
+    #[test]
+    fn test_save_load_undofile() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let undofile_path = temp_dir.path().join("test_undofile");
+
+        let mut history = History::default();
+        let mut state = State {
+            doc: Rope::from("hello"),
+            selection: Selection::point(0),
+        };
+
+        let transaction1 = Transaction::change(
+            &state.doc,
+            vec![(5, 5, Some(" world!".into()))].into_iter(),
+        );
+
+        history.commit_revision(&transaction1, &state);
+        transaction1.apply(&mut state.doc);
+
+        // Save undofile
+        history.save_undofile(&state.doc, &undofile_path).unwrap();
+
+        // Load undofile
+        let restored_history = History::load_undofile(&state.doc, &undofile_path).unwrap();
+        assert_eq!(restored_history.current_revision(), 1);
+
+        let mut restored_state = State {
+            doc: state.doc.clone(),
+            selection: Selection::point(0),
+        };
+        let mut restored_history = restored_history;
+
+        // Verify undo works on restored history
+        let transaction = restored_history.undo().unwrap();
+        transaction.apply(&mut restored_state.doc);
+        assert_eq!("hello", restored_state.doc);
+
+        // Hash mismatch test
+        let wrong_doc = Rope::from("different text");
+        assert!(History::load_undofile(&wrong_doc, &undofile_path).is_err());
+    }
 }
+

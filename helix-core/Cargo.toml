@@ -21,8 +21,9 @@ helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
 ropey.workspace = true
-smallvec = "1.15"
-smartstring = "1.0.1"
+smallvec = { version = "1.15", features = ["serde"] }
+smartstring = { version = "1.0.1", features = ["serde"] }
+sha2 = "0.11"
 unicode-segmentation.workspace = true
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common
@@ -60,3 +61,5 @@ regex-cursor = "0.1.5"
 [dev-dependencies]
 quickcheck.workspace = true
 indoc = "2.0.6"
+tempfile.workspace = true
+
