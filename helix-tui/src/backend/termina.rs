@@ -1,5 +1,6 @@
 use std::io::{self, Write as _};
 
+use helix_core::graphemes;
 use helix_view::{
     editor::KittyKeyboardProtocolConfig,
     graphics::{CursorKind, Rect, UnderlineStyle},
@@ -51,6 +52,7 @@ fn vte_version() -> Option<usize> {
 struct Capabilities {
     kitty_keyboard: KittyKeyboardSupport,
     synchronized_output: bool,
+    grapheme_clustering: GraphemeClusteringSupport,
     true_color: bool,
     extended_underlines: bool,
     /// OSC11 / OSC111 - change the terminal's background color.
@@ -70,6 +72,17 @@ enum KittyKeyboardSupport {
     Partial,
     /// The terminal supports all flags require.
     Full,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum GraphemeClusteringSupport {
+    /// The terminal doesn't support the protocol.
+    #[default]
+    None,
+    /// The terminal supports mode 2027 but it's off
+    Disabled,
+    /// The terminal supports & enables mode 2027
+    Enabled,
 }
 
 #[derive(Debug)]
@@ -120,10 +133,14 @@ impl TerminaBackend {
         // If we only receive the device attributes then we know it is not.
         write!(
             terminal,
-            "{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}",
             // Synchronized output
             Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
                 csi::DecPrivateModeCode::SynchronizedOutput
+            ))),
+            // Mode 2027 grapheme clustering
+            Csi::Mode(csi::Mode::QueryDecPrivateMode(csi::DecPrivateMode::Code(
+                csi::DecPrivateModeCode::GraphemeClustering
             ))),
             // Mode 2031 theme updates. Query the current theme.
             Csi::Mode(csi::Mode::QueryTheme),
@@ -162,6 +179,18 @@ impl TerminaBackend {
                     })) => {
                         capabilities.synchronized_output = true;
                     }
+                    Event::Csi(Csi::Mode(csi::Mode::ReportDecPrivateMode {
+                        mode: csi::DecPrivateMode::Code(csi::DecPrivateModeCode::GraphemeClustering),
+                        setting: settings,
+                    })) => match settings {
+                        csi::DecModeSetting::Set | csi::DecModeSetting::PermanentlySet => {
+                            capabilities.grapheme_clustering = GraphemeClusteringSupport::Enabled;
+                        }
+                        csi::DecModeSetting::Reset => {
+                            capabilities.grapheme_clustering = GraphemeClusteringSupport::Disabled;
+                        }
+                        _ => (),
+                    },
                     Event::Csi(Csi::Mode(csi::Mode::ReportTheme(mode))) => {
                         capabilities.theme_mode = Some(mode.into());
                     }
@@ -246,6 +275,11 @@ impl TerminaBackend {
                 decreset!(ClearAndEnableAlternateScreen),
             );
         });
+
+        // Notify helix-core of the terminal's Unicode width behavior.
+        if capabilities.grapheme_clustering != GraphemeClusteringSupport::None {
+            graphemes::set_mode_2027(true);
+        }
 
         Ok(Self {
             terminal,
@@ -359,6 +393,10 @@ impl TerminaBackend {
             }
         }
 
+        if self.capabilities.grapheme_clustering == GraphemeClusteringSupport::Disabled {
+            write!(self.terminal, "{}", decset!(GraphemeClustering))?;
+        }
+
         if self.capabilities.theme_mode.is_some() {
             // Enable mode 2031 theme mode notifications:
             write!(self.terminal, "{}", decset!(Theme))?;
@@ -374,6 +412,10 @@ impl TerminaBackend {
                 "{}",
                 Csi::Keyboard(csi::Keyboard::PopFlags(1))
             )?;
+        }
+
+        if self.capabilities.grapheme_clustering == GraphemeClusteringSupport::Disabled {
+            write!(self.terminal, "{}", decreset!(GraphemeClustering))?;
         }
 
         if self.capabilities.theme_mode.is_some() {

@@ -5,8 +5,8 @@ use crate::{
     text::Text,
     widgets::{Block, StatefulWidget, Widget},
 };
+use helix_core::graphemes::str_width;
 use std::iter::{self, Iterator};
-use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone)]
 pub struct ListState {
@@ -186,7 +186,7 @@ impl<'a> StatefulWidget for List<'a> {
 
         let highlight_symbol = self.highlight_symbol.unwrap_or("");
         let blank_symbol = iter::repeat(" ")
-            .take(highlight_symbol.width())
+            .take(str_width(highlight_symbol))
             .collect::<String>();
 
         let mut current_height = 0;

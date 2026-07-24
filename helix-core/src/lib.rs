@@ -40,6 +40,8 @@ pub mod unicode {
     pub use unicode_width as width;
 }
 
+mod widechar_width;
+
 pub use helix_loader::find_workspace;
 
 mod rope_reader;

@@ -126,3 +126,14 @@ fn spans_width() {
     ]);
     assert_eq!(7, spans.width());
 }
+
+#[test]
+fn text_width_counts_wide_graphemes_consistently() {
+    helix_core::graphemes::set_mode_2027(true);
+
+    let text = Text::from("A🤦🏼‍♂️B");
+    let spans = Spans::from(vec![Span::raw("🤦🏼‍♂️")]);
+
+    assert_eq!(4, text.width());
+    assert_eq!(2, spans.width());
+}

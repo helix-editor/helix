@@ -15,11 +15,10 @@ use crate::{
 
 use helix_core::{
     diagnostic::NumberOrString,
-    graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
+    graphemes::{next_grapheme_boundary, prev_grapheme_boundary, str_width},
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
-    unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -1658,7 +1657,7 @@ impl Component for EditorView {
 
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
-            status_msg_width = status_msg.width();
+            status_msg_width = str_width(status_msg);
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
                 cx.editor.theme.get("error")
