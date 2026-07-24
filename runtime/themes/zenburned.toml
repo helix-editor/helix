@@ -1,0 +1,244 @@
+# Zenburned — a soft, low-contrast dark theme inspired by zenburn-m and gruvbox
+# Ported from the Neovim colorscheme (https://github.com/marcos-venicius/zenburned)
+# Author: Marcos Venicius <marcosdevelopment.business(at)gmail.com>
+# License: GNU GPL <http://www.gnu.org/licenses/gpl.html>
+
+# Syntax highlighting
+
+"attribute" = "zen-orange"
+
+"type" = "zen-green1"
+"type.builtin" = "zen-green1"
+"type.parameter" = "zen-yellow-3"
+"type.enum" = "zen-yellow-4"
+"type.enum.variant" = "zen-yellow-4"
+"constructor" = "zen-green1"
+
+"constant" = "zen-blue2"
+"constant.builtin" = "zen-blue2"
+"constant.builtin.boolean" = "zen-blue2"
+"constant.character" = "zen-red"
+"constant.character.escape" = "zen-orange"
+"constant.numeric" = "zen-blue2"
+"constant.numeric.integer" = "zen-blue2"
+"constant.numeric.float" = "zen-blue2"
+
+"string" = "zen-red"
+"string.regexp" = "zen-orange"
+"string.special" = "zen-orange"
+"string.special.path" = "zen-orange"
+"string.special.url" = { fg = "zen-orange", underline.style = "line" }
+"string.special.symbol" = "zen-orange"
+
+"comment" = { fg = "zen-green-1", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "zen-green", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "zen-green", modifiers = ["italic"] }
+"comment.unused" = { fg = "zen-bg3", modifiers = ["italic"] }
+
+"variable" = "zen-fg2"
+"variable.builtin" = { fg = "zen-fg2", modifiers = ["bold"] }
+"variable.parameter" = "zen-fg"
+"variable.other.member" = "zen-fg"
+"variable.other.member.private" = "zen-fg1"
+
+"label" = "zen-yellow"
+
+"punctuation" = "zen-fg1"
+"punctuation.delimiter" = "zen-fg1"
+"punctuation.bracket" = "zen-fg1"
+"punctuation.special" = "zen-orange"
+
+"keyword" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.control" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.control.conditional" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.control.repeat" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.control.import" = { fg = "zen-orange", modifiers = ["bold"] }
+"keyword.control.return" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.control.exception" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.operator" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.directive" = { fg = "zen-orange", modifiers = ["bold"] }
+"keyword.function" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.storage" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.storage.type" = { fg = "zen-yellow", modifiers = ["bold"] }
+"keyword.storage.modifier" = { fg = "zen-yellow", modifiers = ["bold"] }
+
+"operator" = "zen-yellow-3"
+
+"function" = "zen-blue"
+"function.builtin" = "zen-blue"
+"function.method" = "zen-blue"
+"function.macro" = "zen-orange"
+"function.special" = "zen-orange"
+
+"tag" = "zen-blue-2"
+"tag.builtin" = { fg = "zen-blue-2", modifiers = ["bold"] }
+
+"namespace" = "zen-orange"
+
+"special" = "zen-orange"
+
+"embedded" = "zen-orange"
+
+# Markup
+
+"markup.heading.marker" = { fg = "zen-blue", modifiers = ["bold"] }
+"markup.heading.1" = { fg = "zen-orange", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "zen-green3", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "zen-blue-2", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "zen-yellow-2", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "zen-blue2", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "zen-green-1", modifiers = ["bold"] }
+"markup.list" = "zen-yellow"
+"markup.list.unnumbered" = "zen-yellow"
+"markup.list.numbered" = "zen-yellow"
+"markup.list.checked" = "zen-green1"
+"markup.list.unchecked" = "zen-bg2"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = { fg = "zen-blue-2", underline.style = "line" }
+"markup.link.url" = { fg = "zen-blue2", underline.style = "line" }
+"markup.link.label" = "zen-blue-2"
+"markup.link.text" = "zen-red"
+"markup.quote" = { fg = "zen-green2", modifiers = ["italic"] }
+"markup.raw" = "zen-orange"
+"markup.raw.inline" = { fg = "zen-orange", bg = "zen-bg4" }
+"markup.raw.block" = "zen-orange"
+
+# Diff
+
+"diff.plus" = "zen-green1"
+"diff.plus.gutter" = "zen-green1"
+"diff.minus" = "zen-red-2"
+"diff.minus.gutter" = "zen-red-2"
+"diff.delta" = "zen-yellow-2"
+"diff.delta.moved" = "zen-blue-2"
+"diff.delta.conflict" = "zen-orange"
+"diff.delta.gutter" = "zen-yellow-2"
+
+# Interface
+
+"ui.background" = { fg = "zen-fg", bg = "zen-bg" }
+"ui.background.separator" = "zen-bg03"
+
+"ui.cursor" = { fg = "zen-bg", bg = "zen-fg2" }
+"ui.cursor.normal" = { fg = "zen-bg", bg = "zen-fg2" }
+"ui.cursor.insert" = { fg = "zen-bg", bg = "zen-green1" }
+"ui.cursor.select" = { fg = "zen-bg", bg = "zen-blue" }
+"ui.cursor.primary" = { fg = "zen-bg", bg = "zen-fg2" }
+"ui.cursor.primary.normal" = { fg = "zen-bg", bg = "zen-fg2" }
+"ui.cursor.primary.insert" = { fg = "zen-bg", bg = "zen-green1" }
+"ui.cursor.primary.select" = { fg = "zen-bg", bg = "zen-blue" }
+"ui.cursor.match" = { fg = "zen-yellow", bg = "zen-bg03", modifiers = ["bold"] }
+
+"ui.debug.breakpoint" = "zen-red-2"
+"ui.debug.active" = "zen-yellow-2"
+
+"ui.gutter" = { bg = "zen-bg" }
+"ui.gutter.selected" = { bg = "zen-bg4" }
+"ui.linenr" = { fg = "zen-bg2", bg = "zen-bg" }
+"ui.linenr.selected" = { fg = "zen-yellow", bg = "zen-bg4", modifiers = ["bold"] }
+
+"ui.statusline" = { fg = "zen-fg", bg = "zen-bg03" }
+"ui.statusline.inactive" = { fg = "zen-bg2", bg = "zen-bg1" }
+"ui.statusline.normal" = { fg = "zen-bg", bg = "zen-yellow", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "zen-bg", bg = "zen-green1", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "zen-bg", bg = "zen-blue", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "zen-bg2", bg = "zen-bg03" }
+
+"ui.bufferline" = { fg = "zen-bg2", bg = "zen-bg1" }
+"ui.bufferline.active" = { fg = "zen-fg2", bg = "zen-bg", modifiers = ["bold"] }
+"ui.bufferline.background" = { bg = "zen-bg1" }
+
+"ui.popup" = { fg = "zen-fg", bg = "zen-bg1" }
+"ui.popup.info" = { fg = "zen-fg", bg = "zen-bg1" }
+"ui.window" = { fg = "zen-bg03", bg = "zen-bg" }
+"ui.help" = { fg = "zen-fg", bg = "zen-bg1" }
+
+"ui.picker.header" = { fg = "zen-bg2", bg = "zen-bg1" }
+"ui.picker.header.column" = { fg = "zen-yellow-2", bg = "zen-bg1" }
+"ui.picker.header.column.active" = { fg = "zen-yellow", bg = "zen-bg1", modifiers = ["bold"] }
+
+"ui.text" = "zen-fg"
+"ui.text.focus" = { fg = "zen-fg2", bg = "zen-bg03", modifiers = ["bold"] }
+"ui.text.inactive" = "zen-bg2"
+"ui.text.info" = { fg = "zen-fg", bg = "zen-bg1" }
+"ui.text.directory" = { fg = "zen-yellow", modifiers = ["bold"] }
+"ui.text.symlink" = "zen-blue-2"
+
+"ui.virtual.ruler" = { bg = "zen-bg1" }
+"ui.virtual.whitespace" = "zen-bg3"
+"ui.virtual.indent-guide" = "zen-bg1"
+"ui.virtual.inlay-hint" = { fg = "zen-bg3", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.parameter" = { fg = "zen-bg3", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "zen-bg3", modifiers = ["italic"] }
+"ui.virtual.wrap" = "zen-bg3"
+"ui.virtual.jump-label" = { fg = "zen-orange", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "zen-fg", bg = "zen-bg1" }
+"ui.menu.selected" = { fg = "zen-fg2", bg = "zen-bg03", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "zen-bg2", bg = "zen-bg1" }
+
+"ui.selection" = { bg = "zen-bg1" }
+"ui.selection.primary" = { bg = "zen-bg03" }
+
+"ui.highlight" = { bg = "zen-bg03" }
+"ui.highlight.frameline" = { bg = "zen-red-3" }
+
+"ui.cursorline.primary" = { bg = "zen-bg4" }
+"ui.cursorline.secondary" = { bg = "zen-bg4" }
+"ui.cursorcolumn.primary" = { bg = "zen-bg4" }
+"ui.cursorcolumn.secondary" = { bg = "zen-bg4" }
+
+"tabstop" = { bg = "zen-bg03" }
+
+# Diagnostics
+
+"error" = "zen-red-1"
+"warning" = "zen-orange"
+"info" = "zen-blue"
+"hint" = "zen-green-1"
+
+"error.diagnostic.inline" = { fg = "zen-fg2", bg = "zen-red-3" }
+"warning.diagnostic.inline" = { fg = "zen-bg", bg = "zen-orange" }
+"info.diagnostic.inline" = { fg = "zen-bg", bg = "zen-blue" }
+"hint.diagnostic.inline" = { fg = "zen-bg", bg = "zen-green-1" }
+
+"diagnostic" = { underline = { color = "zen-fg1", style = "curl" } }
+"diagnostic.error" = { underline = { color = "zen-red-1", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "zen-orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "zen-blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "zen-green-1", style = "curl" } }
+"diagnostic.unnecessary" = { fg = "zen-bg3", modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+zen-fg1 = "#858575"
+zen-fg = "#EAEADC"
+zen-fg2 = "#FFFFFF"
+zen-bg = "#0E0E0E"
+zen-bg03 = "#383838"
+zen-bg1 = "#2B2B2B"
+zen-bg2 = "#707070"
+zen-bg3 = "#6F6F6F"
+zen-bg4 = "#1C1C1C"
+zen-red-3 = "#8C4343"
+zen-red-2 = "#BC7373"
+zen-red-1 = "#CC8383"
+zen-red = "#DCA3A3"
+zen-orange = "#EFC9A9"
+zen-yellow-2 = "#E0CF9F"
+zen-yellow-1 = "#F0DFBF"
+zen-yellow = "#F0E6B4"
+zen-yellow-3 = "#DFDFBF"
+zen-yellow-4 = "#DFE4CF"
+zen-green-5 = "#2F4F2F"
+zen-green-1 = "#8FBC8F"
+zen-green = "#9FC59F"
+zen-green1 = "#AFD8AF"
+zen-green2 = "#C0E4C0"
+zen-green3 = "#D1F0D1"
+zen-blue2 = "#BCE0E3"
+zen-blue = "#9CDCDA"
+zen-blue-2 = "#7CA0A3"
+zen-blue-3 = "#6C888B"
