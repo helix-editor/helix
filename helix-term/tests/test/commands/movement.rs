@@ -948,3 +948,198 @@ async fn match_bracket() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn expand_shrink_selection() -> anyhow::Result<()> {
+    let tests = vec![
+        // single range
+        (
+            indoc! {r##"
+                Some(#[thing|]#)
+            "##},
+            "<A-o><A-o>",
+            indoc! {r##"
+                #[Some(thing)|]#
+            "##},
+        ),
+        // multi range
+        (
+            indoc! {r##"
+                Some(#[thing|]#)
+                Some(#(other_thing|)#)
+            "##},
+            "<A-o>",
+            indoc! {r##"
+                Some#[(thing)|]#
+                Some#((other_thing)|)#
+            "##},
+        ),
+        // multi range collision merges
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-o><A-o><A-o>",
+            indoc! {r##"
+                #[(
+                    Some(thing),
+                    Some(other_thing),
+                )|]#
+            "##},
+        ),
+        // multi range collision merges, then shrinks back to original
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-o><A-o><A-o><A-i>",
+            indoc! {r##"
+                (
+                    #[Some(thing)|]#,
+                    #(Some(other_thing)|)#,
+                )
+            "##},
+        ),
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-o><A-o><A-o><A-i><A-i>",
+            indoc! {r##"
+                (
+                    Some#[(thing)|]#,
+                    Some#((other_thing)|)#,
+                )
+            "##},
+        ),
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-o><A-o><A-o><A-i><A-i><A-i>",
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+        ),
+        // shrink with no expansion history defaults to first child
+        (
+            indoc! {r##"
+                #[(
+                    Some(thing),
+                    Some(other_thing),
+                )|]#
+            "##},
+            "<A-i>",
+            indoc! {r##"
+                (
+                    #[Some(thing)|]#,
+                    Some(other_thing),
+                )
+            "##},
+        ),
+        // any movement cancels selection history and falls back to first child
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+
+            "##},
+            "<A-o><A-o><A-o>jkvkkk<A-i>",
+            indoc! {r##"
+                (
+                    #[|Some(thing)]#,
+                    Some(other_thing),
+                )
+
+            "##},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn expand_selection_around() -> anyhow::Result<()> {
+    let tests = vec![
+        // single cursor stays single cursor, first goes to end of current
+        // node, then parent
+        (
+            indoc! {r##"
+                Some(#[thing|]#)
+            "##},
+            "<A-O><A-O>",
+            indoc! {r##"
+                #[Some(|]#thing#()|)#
+            "##},
+        ),
+        // shrinking restores previous selection
+        (
+            indoc! {r##"
+                Some(#[thing|]#)
+            "##},
+            "<A-O><A-O><A-i><A-i>",
+            indoc! {r##"
+                Some(#[thing|]#)
+            "##},
+        ),
+        // multi range collision merges expand as normal, except with the
+        // original selection removed from the result
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-O><A-O><A-O>",
+            indoc! {r##"
+                #[(
+                    Some(|]#thing#(),
+                    Some(|)#other_thing#(),
+                )|)#
+            "##},
+        ),
+        (
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+            "<A-O><A-O><A-O><A-i><A-i><A-i>",
+            indoc! {r##"
+                (
+                    Some(#[thing|]#),
+                    Some(#(other_thing|)#),
+                )
+            "##},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
+    }
+
+    Ok(())
+}
