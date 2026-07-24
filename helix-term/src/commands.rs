@@ -45,7 +45,7 @@ use helix_core::{
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SelectionHistoryDirection, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     expansion,
     info::Info,
@@ -470,6 +470,8 @@ impl MappableCommand {
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
         extend_to_line_end, "Extend to line end",
+        undo_selection, "Go to previous selection",
+        redo_selection, "Go to next selection",
         extend_to_line_end_newline, "Extend to line end",
         signature_help, "Show signature help",
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
@@ -848,6 +850,22 @@ fn goto_line_end(cx: &mut Context) {
 fn extend_to_line_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     goto_line_end_impl(view, doc, Movement::Extend)
+}
+
+fn undo_selection(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    if !doc.select_from_history(view.id, SelectionHistoryDirection::Backward(count)) {
+        cx.editor.set_status("Already at oldest selection");
+    }
+}
+
+fn redo_selection(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    if !doc.select_from_history(view.id, SelectionHistoryDirection::Forward(count)) {
+        cx.editor.set_status("Already at newest selection");
+    }
 }
 
 fn goto_line_end_newline_impl(view: &mut View, doc: &mut Document, movement: Movement) {
