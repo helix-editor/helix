@@ -15,3 +15,10 @@
   (quoted_attribute_value
     (attribute_value) @injection.content)
   (#set! injection.language "regex"))
+
+; `<button onclick="getElementById('demo').innerHTML = Date()">What is the time?</button>`
+(attribute
+  (attribute_name) @_attr (#eq? @_attr "onclick")
+  (quoted_attribute_value
+    (attribute_value) @injection.content)
+  (#set! injection.language "javascript"))
