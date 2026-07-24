@@ -4,6 +4,7 @@ use std::ops::{self, Deref};
 
 use crate::job::Job;
 
+use super::shell::{shell, shell_impl_async, ShellBehavior};
 use super::*;
 
 use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
