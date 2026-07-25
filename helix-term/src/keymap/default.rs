@@ -121,6 +121,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "x" => goto_prev_xml_element,
+            "i" => goto_indent_start,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
@@ -136,6 +137,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "x" => goto_next_xml_element,
+            "i" => goto_indent_end,
             "space" => add_newline_below,
         },
 
@@ -376,6 +378,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "k" => extend_line_up,
             "j" => extend_line_down,
             "w" => extend_to_word,
+        },
+        "[" => { "Left bracket"
+            "i" => extend_to_indent_start,
+        },
+        "]" => { "Right bracket"
+            "i" => extend_to_indent_end,
         },
     }));
     let insert = keymap!({ "Insert mode"
