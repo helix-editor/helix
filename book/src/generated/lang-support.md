@@ -266,6 +266,7 @@
 | scss | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
 | sgf | ✓ | ✓ | ✓ |  |  |  |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
+| sieve | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
 | slint | ✓ | ✓ | ✓ |  |  | `slint-lsp` |
 | slisp | ✓ |  |  | ✓ |  |  |

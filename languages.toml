@@ -5655,3 +5655,16 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "sieve"
+scope = "source.sieve"
+injection-regex = "^(siv|sieve)$"
+file-types = ["siv"]
+comment-tokens = "#"
+block-comment-tokens = { start = "/*", end = "*/"}
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "sieve"
+source = { git = "https://codeberg.org/poliorcetics/tree-sitter-sieve", rev = "770beaf4744492411fe296c6f848b90e87b4bf25" }
