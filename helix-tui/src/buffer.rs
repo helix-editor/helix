@@ -25,6 +25,17 @@ pub struct Cell {
 const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
 impl Cell {
+    #[inline]
+    #[must_use]
+    pub fn new(symbol: &str) -> Self {
+        Self {
+            symbol: symbol
+                .try_into()
+                .unwrap_or_else(|_| "�".try_into().unwrap()),
+            ..Default::default()
+        }
+    }
+
     /// Set the cell's grapheme
     pub fn set_symbol(&mut self, symbol: &str) -> &mut Cell {
         self.symbol.clear();
