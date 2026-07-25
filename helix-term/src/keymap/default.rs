@@ -377,6 +377,23 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
+
+        "C-b" | "pageup" => extend_page_up,
+        "C-f" | "pagedown" => extend_page_down,
+        "C-u" => extend_page_cursor_half_up,
+        "C-d" => extend_page_cursor_half_down,
+        "z" => { "View"
+            "C-b" | "pageup" => extend_page_up,
+            "C-f" | "pagedown" => extend_page_down,
+            "C-u" | "backspace" => extend_page_cursor_half_up,
+            "C-d" | "space" => extend_page_cursor_half_down,
+        },
+        "Z" => { "View" sticky=true
+            "C-b" | "pageup" => extend_page_up,
+            "C-f" | "pagedown" => extend_page_down,
+            "C-u" | "backspace" => extend_page_cursor_half_up,
+            "C-d" | "space" => extend_page_cursor_half_down,
+        },
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
