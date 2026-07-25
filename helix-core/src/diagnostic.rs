@@ -1,5 +1,5 @@
 //! LSP diagnostic utility types.
-use std::{fmt, sync::Arc};
+use std::{borrow::Cow, fmt, sync::Arc};
 
 pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,9 @@ pub struct Diagnostic {
     pub code: Option<NumberOrString>,
     pub provider: DiagnosticProvider,
     pub tags: Vec<DiagnosticTag>,
-    pub source: Option<String>,
+    /// The source of the diagnostic. For internal providers this is typically a `&'static str`
+    /// (for example `"spelling"`). For LSP it's an owned string from the server.
+    pub source: Option<Cow<'static, str>>,
     pub data: Option<serde_json::Value>,
 }
 
@@ -64,14 +66,15 @@ pub enum DiagnosticProvider {
         /// not clear the pull diagnostics and vice-versa.
         identifier: Option<Arc<str>>,
     },
-    // Future internal features can go here...
+    /// Diagnostics from the built-in spellchecker.
+    Spelling,
 }
 
 impl DiagnosticProvider {
     pub fn language_server_id(&self) -> Option<LanguageServerId> {
         match self {
             Self::Lsp { server_id, .. } => Some(*server_id),
-            // _ => None,
+            _ => None,
         }
     }
 }

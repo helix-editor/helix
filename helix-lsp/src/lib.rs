@@ -131,7 +131,7 @@ pub mod util {
             range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            source: diag.source.clone(),
+            source: diag.source.as_ref().map(|source| source.to_string()),
             message: diag.message.to_owned(),
             related_information: None,
             tags,

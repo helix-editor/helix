@@ -11,6 +11,9 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
+use std::collections::HashSet;
+use std::path::Path;
+
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
@@ -266,24 +269,42 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     use helix_core::diagnostic::Severity;
-    let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
-        (0u32, 0u32, 0u32, 0u32),
-        |mut counts, (diag, _)| {
+    let editor = context.editor;
+    let (mut hints, mut info, mut warnings, mut errors) = (0u32, 0u32, 0u32, 0u32);
+
+    // Open documents carry diagnostics from every provider (spelling included), edit-mapped.
+    for doc in editor.documents() {
+        for diag in doc.diagnostics() {
             match diag.severity {
-                // PERF: For large workspace diagnostics, this loop can be very tight.
-                //
-                // Most often the diagnostics will be for warnings and errors.
-                // Errors should tend to be fixed fast, leaving warnings as the most common.
-                Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
-                Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
-                Some(DiagnosticSeverity::HINT) => counts.0 += 1,
-                Some(DiagnosticSeverity::INFORMATION) => counts.1 += 1,
-                // Fallback to `hint`.
-                _ => counts.0 += 1,
+                Some(Severity::Warning) => warnings += 1,
+                Some(Severity::Error) => errors += 1,
+                Some(Severity::Info) => info += 1,
+                Some(Severity::Hint) | None => hints += 1,
             }
-            counts
-        },
-    );
+        }
+    }
+
+    // The store additionally holds LSP diagnostics for files which are not currently open.
+    let open_paths: HashSet<&Path> = editor.documents().filter_map(|doc| doc.path()).collect();
+    for (uri, diags) in &editor.diagnostics {
+        if uri.as_path().is_some_and(|path| open_paths.contains(path)) {
+            continue;
+        }
+        for (diag, _) in diags {
+            // PERF: For large workspace diagnostics, this loop can be very tight.
+            //
+            // Most often the diagnostics will be for warnings and errors.
+            // Errors should tend to be fixed fast, leaving warnings as the most common.
+            match diag.severity {
+                Some(DiagnosticSeverity::WARNING) => warnings += 1,
+                Some(DiagnosticSeverity::ERROR) => errors += 1,
+                Some(DiagnosticSeverity::HINT) => hints += 1,
+                Some(DiagnosticSeverity::INFORMATION) => info += 1,
+                // Fallback to `hint`.
+                _ => hints += 1,
+            }
+        }
+    }
 
     let sevs_to_show = &context.editor.config().statusline.workspace_diagnostics;
 

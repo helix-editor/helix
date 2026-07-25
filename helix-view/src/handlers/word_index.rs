@@ -250,13 +250,12 @@ impl WordIndex {
         // A single changed window can span the whole document, so the check is driven by a count
         // of the words processed rather than the number of windows.
         let mut since_check = 0;
-        for (old_window, new_window) in changed_windows(old_text.slice(..), text.slice(..), changes)
-        {
-            for word in words(new_window) {
+        for (old_window, new_window) in changes.changed_ranges(MAX_WORD_LEN) {
+            for word in words(text.slice(new_window)) {
                 inner.insert(word);
                 since_check += 1;
             }
-            for word in words(old_window) {
+            for word in words(old_text.slice(old_window)) {
                 inner.remove(word);
                 since_check += 1;
             }
@@ -372,62 +371,6 @@ fn words(text: RopeSlice) -> impl Iterator<Item = RopeSlice> {
                 }
             }
         }
-    })
-}
-
-/// Finds areas of the old and new texts around each operation in `changes`.
-///
-/// The window is larger than the changed area and can encompass multiple insert/delete operations
-/// if they are grouped closely together.
-///
-/// The ranges of the old and new text should usually be of different sizes. For example a
-/// deletion of "foo" surrounded by large retain sections would give a longer window into the
-/// `old_text` and shorter window of `new_text`. Vice-versa for an insertion. A full replacement
-/// of a word though would give two slices of the same size.
-fn changed_windows<'a>(
-    old_text: RopeSlice<'a>,
-    new_text: RopeSlice<'a>,
-    changes: &'a ChangeSet,
-) -> impl Iterator<Item = (RopeSlice<'a>, RopeSlice<'a>)> {
-    use helix_core::Operation::*;
-
-    let mut operations = changes.changes().iter().peekable();
-    let mut old_pos = 0;
-    let mut new_pos = 0;
-    iter::from_fn(move || loop {
-        let operation = operations.next()?;
-        let old_start = old_pos;
-        let new_start = new_pos;
-        let len = operation.len_chars();
-        match operation {
-            Retain(_) => {
-                old_pos += len;
-                new_pos += len;
-                continue;
-            }
-            Insert(_) => new_pos += len,
-            Delete(_) => old_pos += len,
-        }
-
-        // Scan ahead until a `Retain` is found which would end a window.
-        while let Some(o) = operations.next_if(|op| !matches!(op, Retain(n) if *n > MAX_WORD_LEN)) {
-            let len = o.len_chars();
-            match o {
-                Retain(_) => {
-                    old_pos += len;
-                    new_pos += len;
-                }
-                Delete(_) => old_pos += len,
-                Insert(_) => new_pos += len,
-            }
-        }
-
-        let old_window = old_start.saturating_sub(MAX_WORD_LEN)
-            ..(old_pos + MAX_WORD_LEN).min(old_text.len_chars());
-        let new_window = new_start.saturating_sub(MAX_WORD_LEN)
-            ..(new_pos + MAX_WORD_LEN).min(new_text.len_chars());
-
-        return Some((old_text.slice(old_window), new_text.slice(new_window)));
     })
 }
 

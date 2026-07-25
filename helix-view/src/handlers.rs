@@ -1,5 +1,6 @@
 use completion::{CompletionEvent, CompletionHandler};
 use helix_event::send_blocking;
+use spelling::SpellingHandler;
 use tokio::sync::mpsc::Sender;
 
 use crate::handlers::lsp::SignatureHelpInvoked;
@@ -9,6 +10,7 @@ pub mod completion;
 pub mod dap;
 pub mod diagnostics;
 pub mod lsp;
+pub mod spelling;
 pub mod word_index;
 
 #[derive(Debug)]
@@ -28,6 +30,7 @@ pub struct Handlers {
     pub pull_diagnostics: Sender<lsp::PullDiagnosticsEvent>,
     pub pull_all_documents_diagnostics: Sender<lsp::PullAllDocumentsDiagnosticsEvent>,
     pub code_action_hint: Sender<lsp::CodeActionHintEvent>,
+    pub spelling: SpellingHandler,
 }
 
 impl Handlers {

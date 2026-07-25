@@ -67,6 +67,9 @@ pub struct LanguageConfiguration {
     /// If set, overrides `editor.word-completion`.
     pub word_completion: Option<WordCompletion>,
 
+    /// Layers over `editor.spelling` for this language.
+    pub spelling: Option<SpellingConfig>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -608,6 +611,104 @@ pub struct SoftWrap {
 pub struct WordCompletion {
     pub enable: Option<bool>,
     pub trigger_length: Option<NonZeroU8>,
+}
+
+/// Spell-checking configuration. The same shape is used globally (`[editor.spelling]`) and
+/// per-language in `languages.toml`; a language's settings layer over the global ones (see
+/// [`SpellingConfig::merged`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SpellingConfig {
+    /// The dictionaries to check a document against; unset inherits (and the global default is
+    /// none, i.e. spell checking off). A word is flagged only when every dictionary rejects it.
+    pub languages: Option<Vec<crate::SpellingLanguage>>,
+    /// Extra accepted words, checked case-insensitively. A language's `words` are *added* to the
+    /// global ones rather than replacing them.
+    pub words: Vec<String>,
+    /// Tokens matching any of these regexes are not checked (e.g. `"^[A-Z0-9_]+$"` to skip
+    /// SCREAMING_CASE). A language's regexes are *added* to the global ones.
+    pub ignore_regexes: Vec<String>,
+    /// Tokens shorter than this are not checked. Unset inherits; the global default is 1 (check
+    /// everything).
+    pub min_word_length: Option<usize>,
+}
+
+impl SpellingConfig {
+    /// Layers a language's `spelling` settings over these (global) ones: `languages` and
+    /// `min-word-length` replace, while `words` and `ignore-regexes` are unioned.
+    pub fn merged(&self, language: Option<&SpellingConfig>) -> SpellingConfig {
+        let Some(language) = language else {
+            return self.clone();
+        };
+        SpellingConfig {
+            languages: language
+                .languages
+                .clone()
+                .or_else(|| self.languages.clone()),
+            words: self.words.iter().chain(&language.words).cloned().collect(),
+            ignore_regexes: self
+                .ignore_regexes
+                .iter()
+                .chain(&language.ignore_regexes)
+                .cloned()
+                .collect(),
+            min_word_length: language.min_word_length.or(self.min_word_length),
+        }
+    }
+
+    /// The dictionaries to check against (empty when spell checking is off).
+    pub fn languages(&self) -> &[crate::SpellingLanguage] {
+        self.languages.as_deref().unwrap_or_default()
+    }
+
+    /// The shortest token length that is checked.
+    pub fn min_word_length(&self) -> usize {
+        self.min_word_length.unwrap_or(1)
+    }
+}
+
+/// The compiled form of a [`SpellingConfig`]'s token filters: words to accept and regexes to skip,
+/// resolved once so the checker can apply them per word. Lives here (rather than in the term-side
+/// handler) to keep the regex compilation next to the config.
+#[derive(Debug)]
+pub struct SpellingFilter {
+    min_word_length: usize,
+    /// Lowercased for case-insensitive matching.
+    words: HashSet<String>,
+    ignore: Vec<regex::Regex>,
+}
+
+impl SpellingFilter {
+    pub fn new(config: &SpellingConfig) -> Self {
+        let words = config
+            .words
+            .iter()
+            .map(|word| word.to_lowercase())
+            .collect();
+        let ignore = config
+            .ignore_regexes
+            .iter()
+            .filter_map(|pattern| {
+                regex::Regex::new(pattern)
+                    .map_err(|err| {
+                        log::error!("ignoring invalid spelling ignore-regex {pattern:?}: {err}")
+                    })
+                    .ok()
+            })
+            .collect();
+        Self {
+            min_word_length: config.min_word_length(),
+            words,
+            ignore,
+        }
+    }
+
+    /// Whether `word` should be skipped rather than spell-checked.
+    pub fn ignores(&self, word: &str) -> bool {
+        word.chars().count() < self.min_word_length
+            || self.words.contains(&word.to_lowercase())
+            || self.ignore.iter().any(|regex| regex.is_match(word))
+    }
 }
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<rope::Regex>, D::Error>
