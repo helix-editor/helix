@@ -83,11 +83,20 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         }
     };
 
+    // Separators must only be inserted between digits, never within the sign or
+    // base prefix. Otherwise a negative number that loses a digit (e.g. -1_000
+    // incrementing to -999) would place a separator right after the `-`.
+    let digit_start = if radix == 10 {
+        usize::from(new_text.starts_with('-'))
+    } else {
+        2
+    };
+
     // Add separators from original number.
     for &rtl_index in &separator_rtl_indexes {
         if rtl_index < new_text.len() {
             let new_index = new_text.len().saturating_sub(rtl_index);
-            if new_index > 0 {
+            if new_index > digit_start {
                 new_text.insert(new_index, SEPARATOR);
             }
         }
@@ -219,6 +228,23 @@ mod test {
             ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
+        ];
+
+        for (original, amount, expected) in tests {
+            assert_eq!(increment(original, amount).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_increment_negative_with_separators_shrinking() {
+        // A negative number that loses a digit must not gain a stray separator
+        // directly after the minus sign.
+        let tests = [
+            ("-1_000", 1, "-999"),
+            ("-1_000", 2, "-998"),
+            ("-1_000_000", 1, "-999_999"),
+            ("-1_0", 1, "-9"),
+            ("999_999", -1_000_000, "-1"),
         ];
 
         for (original, amount, expected) in tests {
