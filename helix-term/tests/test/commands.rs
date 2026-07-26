@@ -949,3 +949,30 @@ async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_open_file_with_section_fragment() -> anyhow::Result<()> {
+    let file = helpers::temp_file_with_contents_and_ext(
+        "# Introduction\n\nSome text here.\n\n## Features\n\nFeature list.\n\n## Installation\n\nInstall steps.\n",
+        ".md",
+    )?;
+
+    let mut app = AppBuilder::new()
+        .with_file_section(file.path(), "Installation")
+        .build()?;
+
+    run_event_loop_until_idle(&mut app).await;
+
+    let (view, doc) = helix_view::current!(app.editor);
+    let cursor_line = doc
+        .selection(view.id)
+        .primary()
+        .cursor_line(doc.text().slice(..));
+
+    assert_eq!(
+        cursor_line, 8,
+        "cursor should be on the Installation heading"
+    );
+
+    Ok(())
+}
