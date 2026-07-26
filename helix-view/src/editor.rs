@@ -796,6 +796,9 @@ pub enum StatusLineElement {
     /// Current version control information
     VersionControl,
 
+    /// Indicator for number of selections yanked in selected register
+    YankedSelections,
+
     /// Indicator for selected register
     Register,
 
