@@ -719,6 +719,18 @@ async fn test_join_selections_comment() -> anyhow::Result<()> {
     ))
     .await?;
 
+    test((
+        indoc! {"\
+            #[|// Join comments
+            // through injected comment syntax]#
+        "},
+        ":lang go<ret>J",
+        indoc! {"\
+            #[|// Join comments through injected comment syntax]#
+        "},
+    ))
+    .await?;
+
     Ok(())
 }
 

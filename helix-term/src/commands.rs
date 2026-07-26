@@ -5336,32 +5336,23 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
         changes.reserve(lines.len());
 
-        // Strip the comment leader of joined lines using the comment tokens of the layer at this selection.
-        let byte = slice.char_to_byte(slice.line_to_char(start));
-        let comment_tokens = doc
-            .language_config_at(&loader, byte)
-            .and_then(|config| config.comment_tokens.as_deref())
-            .unwrap_or(&[]);
-        // Sort by length to handle Rust's /// vs //
-        let mut comment_tokens: Vec<&str> = comment_tokens.iter().map(|x| x.as_str()).collect();
-        comment_tokens.sort_unstable_by_key(|x| std::cmp::Reverse(x.len()));
-
         let first_line_idx = slice.line_to_char(start);
         let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(first_line_idx);
-        let first_line = slice.slice(first_line_idx..);
-        let mut current_comment_token = comment_tokens
-            .iter()
-            .find(|token| first_line.starts_with(token));
+        let mut current_comment_token = continued_line_comment_token(
+            doc,
+            &loader,
+            slice,
+            start,
+            slice.char_to_byte(first_line_idx),
+        );
 
         for line in lines {
             let start = line_end_char_index(&slice, line);
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
-            let slice_from_end = slice.slice(end..);
-            if let Some(token) = comment_tokens
-                .iter()
-                .find(|token| slice_from_end.starts_with(token))
+            if let Some(token) =
+                continued_line_comment_token(doc, &loader, slice, line + 1, slice.char_to_byte(end))
             {
                 if Some(token) == current_comment_token {
                     end += token.chars().count();
