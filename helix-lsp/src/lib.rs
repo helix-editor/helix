@@ -16,7 +16,7 @@ use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::config::{
     LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures, RootMarkers,
 };
-use helix_stdx::path;
+use helix_stdx::{hint::cold_path, path};
 use slotmap::SlotMap;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -549,26 +549,31 @@ impl Notification {
         use lsp::notification::Notification as _;
 
         let notification = match method {
-            lsp::notification::Initialized::METHOD => Self::Initialized,
-            lsp::notification::Exit::METHOD => Self::Exit,
             lsp::notification::PublishDiagnostics::METHOD => {
                 let params: lsp::PublishDiagnosticsParams = params.parse()?;
                 Self::PublishDiagnostics(params)
+            }
+
+            lsp::notification::Progress::METHOD => {
+                let params: lsp::ProgressParams = params.parse()?;
+                Self::ProgressMessage(params)
             }
 
             lsp::notification::ShowMessage::METHOD => {
                 let params: lsp::ShowMessageParams = params.parse()?;
                 Self::ShowMessage(params)
             }
+
             lsp::notification::LogMessage::METHOD => {
                 let params: lsp::LogMessageParams = params.parse()?;
                 Self::LogMessage(params)
             }
-            lsp::notification::Progress::METHOD => {
-                let params: lsp::ProgressParams = params.parse()?;
-                Self::ProgressMessage(params)
-            }
+
+            lsp::notification::Initialized::METHOD => Self::Initialized,
+            lsp::notification::Exit::METHOD => Self::Exit,
+
             _ => {
+                cold_path();
                 return Err(Error::Unhandled);
             }
         };

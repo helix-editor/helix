@@ -6,6 +6,7 @@ use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_stdx::hint::{cold_path, likely};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
@@ -510,19 +511,23 @@ impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
     }
 
     fn update_pos(&mut self) {
-        self.pos = self
-            .inner
-            .as_ref()
-            .and_then(|highlighter| {
+        self.pos = match self.inner.as_ref() {
+            Some(highlighter) => {
                 let next_byte_idx = highlighter.next_event_offset();
-                (next_byte_idx != u32::MAX).then(|| {
+                if likely(next_byte_idx != u32::MAX) {
                     // Move the byte index to the nearest character boundary (rounding up) and
                     // convert it to a character index.
                     self.text
                         .byte_to_char(self.text.ceil_char_boundary(next_byte_idx as usize))
-                })
-            })
-            .unwrap_or(usize::MAX);
+                } else {
+                    usize::MAX
+                }
+            }
+            None => {
+                cold_path();
+                usize::MAX
+            }
+        };
     }
 
     fn advance(&mut self) {
