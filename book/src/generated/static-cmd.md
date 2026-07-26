@@ -204,7 +204,7 @@
 | `paste_primary_clipboard_before` | Paste primary clipboard before selections |  |
 | `indent` | Indent selection | normal: `` <gt> ``, select: `` <gt> `` |
 | `unindent` | Unindent selection | normal: `` <lt> ``, select: `` <lt> `` |
-| `format_selections` | Format selection | normal: `` = ``, select: `` = `` |
+| `format_selections` | Format selections | normal: `` = ``, select: `` = `` |
 | `join_selections` | Join lines inside selection | normal: `` J ``, select: `` J `` |
 | `join_selections_space` | Join lines inside selection and select spaces | normal: `` <A-J> ``, select: `` <A-J> `` |
 | `keep_selections` | Keep selections matching regex | normal: `` K ``, select: `` K `` |
