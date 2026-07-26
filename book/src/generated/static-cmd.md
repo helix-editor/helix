@@ -176,6 +176,7 @@
 | `append_char_interactive` | Append an interactively-chosen char |  |
 | `delete_char_backward` | Delete previous char | insert: `` <C-h> ``, `` <backspace> ``, `` <S-backspace> `` |
 | `delete_char_forward` | Delete next char | insert: `` <C-d> ``, `` <del> `` |
+| `delete_sub_word_backward` | Delete previous sub word |  |
 | `delete_word_backward` | Delete previous word | insert: `` <C-w> ``, `` <A-backspace> `` |
 | `delete_word_forward` | Delete next word | insert: `` <A-d> ``, `` <A-del> `` |
 | `kill_to_line_start` | Delete till start of line | insert: `` <C-u> `` |
