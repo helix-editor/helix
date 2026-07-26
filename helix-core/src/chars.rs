@@ -3,10 +3,22 @@
 use crate::LineEnding;
 
 #[derive(Debug, Eq, PartialEq)]
+pub enum WordCategory {
+    Alphanumeric,
+    Superscript,
+    Subscript,
+    Braille,
+    Hiragana,
+    Katakana,
+    HangulSyllable,
+    CJKIdeograph,
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub enum CharCategory {
     Whitespace,
     Eol,
-    Word,
+    Word(WordCategory),
     Punctuation,
     Unknown,
 }
@@ -17,8 +29,8 @@ pub fn categorize_char(ch: char) -> CharCategory {
         CharCategory::Eol
     } else if ch.is_whitespace() {
         CharCategory::Whitespace
-    } else if char_is_word(ch) {
-        CharCategory::Word
+    } else if let Some(cat) = char_word_category(ch) {
+        CharCategory::Word(cat)
     } else if char_is_punctuation(ch) {
         CharCategory::Punctuation
     } else {
@@ -55,7 +67,7 @@ pub fn char_is_whitespace(ch: char) -> bool {
         // En Quad, Em Quad, En Space, Em Space, Three-per-em Space,
         // Four-per-em Space, Six-per-em Space, Figure Space,
         // Punctuation Space, Thin Space, Hair Space, Zero Width Space.
-        ch if ('\u{2000}' ..= '\u{200B}').contains(&ch) => true,
+        '\u{2000}' ..= '\u{200B}' => true,
 
         _ => false,
     }
@@ -82,7 +94,31 @@ pub fn char_is_punctuation(ch: char) -> bool {
 
 #[inline]
 pub fn char_is_word(ch: char) -> bool {
-    ch.is_alphanumeric() || ch == '_'
+    char_word_category(ch).is_some()
+}
+
+pub fn char_word_category(ch: char) -> Option<WordCategory> {
+    use WordCategory::*;
+
+    // Different subcategories so e.g. おはよう世界 is not treated as one block
+    let level = match ch {
+        '\u{2070}'..='\u{207f}' => Superscript,
+        '\u{2080}'..='\u{2094}' => Subscript,
+        '\u{2800}'..='\u{28ff}' => Braille,
+        '\u{3040}'..='\u{309f}' => Hiragana,
+        '\u{30a0}'..='\u{30ff}' => Katakana,
+        '\u{ac00}'..='\u{d7a3}' => HangulSyllable,
+
+        '\u{3300}'..='\u{9fff}'
+        | '\u{f900}'..='\u{faff}'
+        | '\u{20000}'..='\u{2a6df}'
+        | '\u{2a700}'..='\u{2b73f}'
+        | '\u{2b740}'..='\u{2b81f}'
+        | '\u{2f800}'..='\u{2fa1f}' => CJKIdeograph,
+        ch if ch.is_alphanumeric() || ch == '_' => Alphanumeric,
+        _ => return None,
+    };
+    Some(level)
 }
 
 #[cfg(test)]
@@ -115,9 +151,8 @@ mod test {
         }
 
         for ch in WORD_TEST_CASE.chars() {
-            assert_eq!(
-                CharCategory::Word,
-                categorize_char(ch),
+            assert!(
+                matches!(categorize_char(ch), CharCategory::Word(_)),
                 "Testing '{}', but got `{:?}` instead of `Category::Word`",
                 ch,
                 categorize_char(ch)
