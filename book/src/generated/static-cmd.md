@@ -3,16 +3,28 @@
 | `no_op` | Do nothing |  |
 | `move_char_left` | Move left | normal: `` h ``, `` <left> ``, insert: `` <left> `` |
 | `move_char_right` | Move right | normal: `` l ``, `` <right> ``, insert: `` <right> `` |
+| `move_same_line_char_left` | Move left within in the same line only |  |
+| `move_same_line_char_right` | Move right within in the same line only |  |
 | `move_line_up` | Move up | normal: `` gk `` |
 | `move_line_down` | Move down | normal: `` gj `` |
+| `move_anchored_line_up` | Move up with newline anchoring behaviour |  |
+| `move_anchored_line_down` | Move down with newline anchoring behaviour |  |
 | `move_visual_line_up` | Move up | normal: `` k ``, `` <up> ``, insert: `` <up> `` |
 | `move_visual_line_down` | Move down | normal: `` j ``, `` <down> ``, insert: `` <down> `` |
+| `move_anchored_visual_line_up` | Move up with newline anchoring behaviour |  |
+| `move_anchored_visual_line_down` | Move down with newline anchoring behaviour |  |
 | `extend_char_left` | Extend left | select: `` h ``, `` <left> `` |
 | `extend_char_right` | Extend right | select: `` l ``, `` <right> `` |
+| `extend_same_line_char_left` | Extend left within the same line only |  |
+| `extend_same_line_char_right` | Extend right within the same line only |  |
 | `extend_line_up` | Extend up | select: `` gk `` |
 | `extend_line_down` | Extend down | select: `` gj `` |
+| `extend_anchored_line_up` | Extend up with newline anchoring behaviour |  |
+| `extend_anchored_line_down` | Extend down with newline anchoring behaviour |  |
 | `extend_visual_line_up` | Extend up | select: `` k ``, `` <up> `` |
 | `extend_visual_line_down` | Extend down | select: `` j ``, `` <down> `` |
+| `extend_anchored_visual_line_up` | Extend up with newline anchoring behaviour |  |
+| `extend_anchored_visual_line_down` | Extend down with newline anchoring behaviour |  |
 | `copy_selection_on_next_line` | Copy selection on next line | normal: `` C ``, select: `` C `` |
 | `copy_selection_on_prev_line` | Copy selection on previous line | normal: `` <A-C> ``, select: `` <A-C> `` |
 | `move_next_word_start` | Move to start of next word | normal: `` w `` |
@@ -96,6 +108,7 @@
 | `ensure_selections_forward` | Ensure all selections face forward | normal: `` <A-:> ``, select: `` <A-:> `` |
 | `insert_mode` | Insert before selection | normal: `` i ``, select: `` i `` |
 | `append_mode` | Append after selection | normal: `` a ``, select: `` a `` |
+| `append_mode_same_line` | Append after selection within the same line only |  |
 | `command_mode` | Enter command mode | normal: `` : ``, select: `` : `` |
 | `file_picker` | Open file picker | normal: `` <space>f ``, select: `` <space>f `` |
 | `file_picker_in_current_buffer_directory` | Open file picker at current buffer's directory |  |
