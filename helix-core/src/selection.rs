@@ -770,15 +770,28 @@ pub fn keep_or_remove_matches(
     regex: &rope::Regex,
     remove: bool,
 ) -> Option<Selection> {
+
+    let prim_range   = selection.primary();
+    let mut diff     = usize::MAX;
+    let mut new_prim = 0;
+
     let result: SmallVec<_> = selection
         .iter()
         .filter(|range| regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove)
+        .enumerate()
+        .map(|(idx, range)| {
+            let new_diff = range.head.abs_diff(prim_range.head);
+            if new_diff < diff {
+                diff = new_diff;
+                new_prim = idx;
+            }
+            range
+        })
         .copied()
         .collect();
 
-    // TODO: figure out a new primary index
     if !result.is_empty() {
-        return Some(Selection::new(result, 0));
+        return Some(Selection::new(result, new_prim));
     }
     None
 }
@@ -789,45 +802,61 @@ pub fn select_on_matches(
     selection: &Selection,
     regex: &rope::Regex,
 ) -> Option<Selection> {
-    let mut result = SmallVec::with_capacity(selection.len());
+
+    let prim_range   = selection.primary();
+    let mut diff     = usize::MAX;
+    let mut new_prim = 0;
+    let mut result   = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
         for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
-            // TODO: retain range direction
 
             let start = text.byte_to_char(mat.start());
             let end = text.byte_to_char(mat.end());
 
-            let range = Range::new(start, end);
+            let range = match sel.direction() {
+                Direction::Forward => Range::new(start, end),
+                Direction::Backward => Range::new(end, start)
+            };
+
             // Make sure the match is not right outside of the selection.
             // These invalid matches can come from using RegEx anchors like `^`, `$`
             if range != Range::point(sel.to()) {
+                let new_diff = range.head.abs_diff(prim_range.head);
+                if new_diff < diff {
+                    diff = new_diff;
+                    new_prim = result.len();
+                }
                 result.push(range);
             }
         }
     }
 
-    // TODO: figure out a new primary index
     if !result.is_empty() {
-        return Some(Selection::new(result, 0));
+        return Some(Selection::new(result, new_prim));
     }
 
     None
 }
 
 pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
-    let mut result = SmallVec::with_capacity(selection.len());
+
+    let mut new_prim = selection.primary_index();
+    let mut result   = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
+        let is_prim = *sel == selection.primary();
+
         // Special case: zero-width selection.
         if sel.from() == sel.to() {
+            if is_prim { new_prim = result.len() }
             result.push(*sel);
             continue;
         }
 
+        let saved_len = result.len();
         let sel_start = sel.from();
-        let sel_end = sel.to();
-
+        let sel_end   = sel.to();
         let mut start = sel_start;
 
         for line in sel.slice(text).lines() {
@@ -835,48 +864,70 @@ pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
                 break;
             };
             let line_end = start + line.len_chars();
-            // TODO: retain range direction
-            result.push(Range::new(start, line_end - line_ending.len_chars()));
+            let range = Range::new(start, line_end - line_ending.len_chars());
+            result.push(
+                if sel.direction() == Direction::Backward { range.flip() }
+                else { range }
+            );
             start = line_end;
         }
 
         if start < sel_end {
             result.push(Range::new(start, sel_end));
         }
+
+        if is_prim {
+            new_prim = if sel.head > sel.anchor {
+                result.len() - 1
+            } else { saved_len };
+        }
     }
 
-    // TODO: figure out a new primary index
-    Selection::new(result, 0)
+    Selection::new(result, new_prim)
 }
 
 pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Regex) -> Selection {
-    let mut result = SmallVec::with_capacity(selection.len());
+
+    let mut new_prim = selection.primary_index();
+    let mut result   = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
+        let is_prim = *sel == selection.primary();
+
         // Special case: zero-width selection.
         if sel.from() == sel.to() {
+            if is_prim { new_prim = result.len() }
             result.push(*sel);
             continue;
         }
 
+        let saved_len = result.len();
         let sel_start = sel.from();
         let sel_end = sel.to();
         let mut start = sel_start;
 
         for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
-            // TODO: retain range direction
             let end = text.byte_to_char(mat.start());
-            result.push(Range::new(start, end));
+            let range = Range::new(start, end);
+            result.push(
+                if sel.direction() == Direction::Backward { range.flip() }
+                else { range }
+            );
             start = text.byte_to_char(mat.end());
         }
 
         if start < sel_end {
             result.push(Range::new(start, sel_end));
         }
+
+        if is_prim && result.len() > saved_len {
+            new_prim = if sel.head > sel.anchor {
+                result.len() - 1
+            } else { saved_len };
+        }
     }
 
-    // TODO: figure out a new primary index
-    Selection::new(result, 0)
+    Selection::new(result, new_prim)
 }
 
 #[cfg(test)]
@@ -1106,7 +1157,7 @@ mod test {
             select_on_matches(s, &selection, &rope::Regex::new(r"[A-Z][a-z]*").unwrap()),
             Some(Selection::new(
                 smallvec![Range::new(0, 6), Range::new(19, 26)],
-                0
+                1
             ))
         );
 
@@ -1145,7 +1196,7 @@ mod test {
             select_on_matches(s, &Selection::single(0, 6), &start_of_line),
             Some(Selection::new(
                 smallvec![Range::point(0), Range::point(5)],
-                0
+                1
             ))
         );
         assert_eq!(
@@ -1165,7 +1216,7 @@ mod test {
             ),
             Some(Selection::new(
                 smallvec![Range::point(12), Range::new(13, 30), Range::new(31, 36)],
-                0
+                2
             ))
         );
     }
