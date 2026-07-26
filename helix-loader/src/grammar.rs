@@ -400,10 +400,8 @@ impl VendoredGrammar {
     /// Creates directory and sets it up as a git repo, with remote set correctly.
     fn init(&self, remote: &str, object_format: GitObjectFormat) -> Result<()> {
         // Create the grammar directory if needed.
-        fs::create_dir_all(&self.dir).context(format!(
-            "Could not create grammar directory {:?}",
-            &self.dir
-        ))?;
+        fs::create_dir_all(&self.dir)
+            .context(format!("Could not create grammar directory {:?}", self.dir))?;
 
         // Ensure directory is git initialized.
         if !self.dir.join(".git").exists() {
@@ -617,7 +615,7 @@ fn build_tree_sitter_library(
                 }
                 cpp_command.args(compiler.args());
                 let object_file =
-                    library_path.with_file_name(format!("{}_scanner.obj", &grammar.grammar_id));
+                    library_path.with_file_name(format!("{}_scanner.obj", grammar.grammar_id));
                 cpp_command
                     .args(["/nologo", "/LD", "/I"])
                     .arg(header_path)
@@ -669,7 +667,7 @@ fn build_tree_sitter_library(
                 }
                 cpp_command.args(compiler.args());
                 let object_file =
-                    library_path.with_file_name(format!("{}_scanner.o", &grammar.grammar_id));
+                    library_path.with_file_name(format!("{}_scanner.o", grammar.grammar_id));
 
                 #[cfg(not(windows))]
                 cpp_command.arg("-fPIC");
