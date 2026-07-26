@@ -455,7 +455,8 @@ pub mod completers {
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+        let themes_dir = helix_loader::config_dir().join("themes");
+        let mut names = theme::Loader::read_names(&themes_dir);
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
