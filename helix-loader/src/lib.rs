@@ -33,8 +33,8 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// The priority is:
 ///
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
-/// 2. subdirectory of user config directory (always included)
-/// 3. `HELIX_RUNTIME` (if environment variable is set)
+/// 2. `HELIX_RUNTIME` (if environment variable is set)
+/// 3. subdirectory of user config directory (always included)
 /// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
 /// 5. subdirectory of path to helix executable (always included)
 ///
@@ -50,13 +50,13 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         rt_dirs.push(path);
     }
 
-    let conf_rt_dir = config_dir().join(RT_DIR);
-    rt_dirs.push(conf_rt_dir);
-
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
         let dir = path::expand_tilde(Path::new(&dir));
         rt_dirs.push(path::normalize(dir));
     }
+
+    let conf_rt_dir = config_dir().join(RT_DIR);
+    rt_dirs.push(conf_rt_dir);
 
     // If this variable is set during build time, it will always be included
     // in the lookup list. This allows downstream packagers to set a fallback
