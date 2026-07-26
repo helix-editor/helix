@@ -42,8 +42,10 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         text,
         selection,
         |cursor| {
+            let range = cursor.node().byte_range();
             while !cursor.goto_next_sibling() {
-                if !cursor.goto_parent() {
+                if !cursor.goto_parent_with(|n| n.byte_range() == range) {
+                    cursor.reset_to_byte_range(range.start, range.end);
                     break;
                 }
             }
@@ -95,8 +97,10 @@ pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         text,
         selection,
         |cursor| {
+            let range = cursor.node().byte_range();
             while !cursor.goto_previous_sibling() {
-                if !cursor.goto_parent() {
+                if !cursor.goto_parent_with(|n| n.byte_range() == range) {
+                    cursor.reset_to_byte_range(range.start, range.end);
                     break;
                 }
             }
