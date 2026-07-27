@@ -226,6 +226,135 @@ async fn test_write() -> anyhow::Result<()> {
     Ok(())
 }
 
+// A writable file shouldn't elevate: `:sudo-write` acts like `:write`.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_sudo_write_writable_saves_normally() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:sudo-write<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+
+    Ok(())
+}
+
+// A read-only file in a writable dir can't be written directly, so `:sudo-write` elevates. The
+// fake sudo just runs the command as the current user, which still works because the atomic write
+// only renames a temp file into the writable dir. Checks the write and the preserved mode.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_sudo_write_elevates_and_preserves_mode() -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir()?;
+    let file_path = dir.path().join("readonly.txt");
+    std::fs::write(&file_path, "old contents\n")?;
+    std::fs::set_permissions(&file_path, std::fs::Permissions::from_mode(0o444))?;
+
+    let fake_sudo = dir.path().join("fake-sudo");
+    std::fs::write(&fake_sudo, "#!/bin/sh\nexec \"$@\"\n")?;
+    std::fs::set_permissions(&fake_sudo, std::fs::Permissions::from_mode(0o755))?;
+
+    let mut config = helpers::test_config();
+    config.editor.sudo_command = vec![fake_sudo.to_string_lossy().into_owned()];
+
+    let mut app = helpers::AppBuilder::new()
+        .with_config(config)
+        .with_file(&file_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<esc>:sudo-write<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    let written = std::fs::read_to_string(&file_path)?;
+    assert!(
+        written.contains("the gostak distims the doshes"),
+        "elevated save did not write the buffer, got: {written:?}"
+    );
+    let mode = std::fs::metadata(&file_path)?.permissions().mode() & 0o777;
+    assert_eq!(mode, 0o444, "elevated save did not preserve the file mode");
+
+    Ok(())
+}
+
+// Plain `:sudo-write` refuses a hardlink instead of breaking it; `:sudo-write!` opts in.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_sudo_write_refuses_hardlink() -> anyhow::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir()?;
+    let file_path = dir.path().join("linked.txt");
+    std::fs::write(&file_path, "old contents\n")?;
+    std::fs::hard_link(&file_path, dir.path().join("other-link.txt"))?;
+    // Read-only so the save takes the elevated path, which does the hardlink check.
+    std::fs::set_permissions(&file_path, std::fs::Permissions::from_mode(0o444))?;
+
+    let mut config = helpers::test_config();
+    // A command that would succeed, to show the refusal happens before elevation.
+    config.editor.sudo_command = vec!["true".to_owned()];
+
+    let mut app = helpers::AppBuilder::new()
+        .with_config(config)
+        .with_file(&file_path, None)
+        .build()?;
+
+    test_key_sequence(&mut app, Some("ichanged<esc>:sudo-write<ret>"), None, false).await?;
+
+    // Unchanged: the save was refused, not attempted.
+    assert_eq!(std::fs::read_to_string(&file_path)?, "old contents\n");
+
+    Ok(())
+}
+
+// A read-only save failure hints `:sudo-write`, for `:wq` too, not just `:w`.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_quit_readonly_hints_sudo_write() -> anyhow::Result<()> {
+    let file = helpers::new_readonly_tempfile()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>:wq<ret>"),
+        Some(&|app| {
+            let (message, severity) = app.editor.get_status().unwrap();
+            assert_eq!(&Severity::Error, severity);
+            assert!(
+                message.contains(":sudo-write"),
+                "expected a :sudo-write hint, got: {message:?}"
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn test_overwrite_protection() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
