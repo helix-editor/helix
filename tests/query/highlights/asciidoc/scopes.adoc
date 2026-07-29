@@ -1,0 +1,35 @@
+= Document title
+//^^^^^^^^^^^^^^ @markup.heading.1
+
+== Section
+// ^^^^^^^ @markup.heading.2
+
+* Unordered
+
+. Ordered
+
+NOTE: Notice
+//   ^ @punctuation.delimiter
+
+X *bold* _italic_ `code` #highlight#
+// ^^^^ @markup.bold
+//        ^^^^^^ @markup.italic
+//                 ^^^^ @markup.raw.inline
+//                        ^^^^^^^^^ @markup.bold
+
+See https://example.com[Example]
+//  ^^^^^^^^^^^^^^^^^^^ @markup.link.url
+//                      ^^^^^^^ @markup.link.label
+
+See <<section-id,Section reference>>
+//    ^^^^^^^^^^ @markup.link.label
+//               ^^^^^^^^^^^^^^^^^ @markup.link.text
+
+Use kbd:[Ctrl+K]
+//  ^^^ @function.macro
+//       ^^^^^^ @label
+
+Use link:https://example.com[Example]
+//  ^^^^ @function.macro
+//       ^^^^^^^^^^^^^^^^^^^ @markup.link.url
+//                           ^^^^^^^ @markup.link.text

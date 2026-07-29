@@ -2103,6 +2103,28 @@ name = "mail"
 source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "5eddbfdbec4c893182c79047499901c196332e78" }
 
 [[language]]
+name = "asciidoc"
+scope = "source.adoc"
+injection-regex = "adoc|asciidoc"
+file-types = ["adoc", "asciidoc"]
+comment-tokens = ["//"]
+block-comment-tokens = { start = "////", end = "////" }
+
+[[grammar]]
+name = "asciidoc"
+source = { git = "https://github.com/cathaysia/tree-sitter-asciidoc", rev = "e0710115e7b060ce6681b5182a49a792813006f1", subpath = "tree-sitter-asciidoc" }
+
+[[language]]
+name = "asciidoc_inline"
+scope = "source.asciidoc_inline"
+injection-regex = "asciidoc_inline"
+file-types = []
+
+[[grammar]]
+name = "asciidoc_inline"
+source = { git = "https://github.com/cathaysia/tree-sitter-asciidoc", rev = "e0710115e7b060ce6681b5182a49a792813006f1", subpath = "tree-sitter-asciidoc_inline" }
+
+[[language]]
 name = "markdown"
 scope = "source.md"
 injection-regex = "md|markdown"

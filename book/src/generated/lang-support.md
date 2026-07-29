@@ -5,6 +5,8 @@
 | agda | ✓ |  |  |  |  |  |
 | alloy | ✓ |  |  |  |  |  |
 | amber | ✓ | ✓ | ✓ | ✓ | ✓ | `amber-lsp` |
+| asciidoc | ✓ |  |  |  |  |  |
+| asciidoc_inline | ✓ |  |  |  |  |  |
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |
