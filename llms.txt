@@ -1,0 +1,47 @@
+# Helix
+
+> Helix is a post-modern modal text editor, written in Rust. It combines Kakoune/Neovim-inspired multi-selection modal editing with an integrated language server (LSP) client, tree-sitter based syntax highlighting and code navigation, and sensible defaults that require no configuration to be productive.
+
+Helix ships as a single binary with built-in support for hundreds of languages via tree-sitter grammars and LSP. This file indexes the official documentation book at https://docs.helix-editor.com, grouped by topic, for use by LLMs and AI coding agents.
+
+## Getting Started
+
+- [Introduction](https://docs.helix-editor.com/title-page.html): What Helix is and how it differs from Vim/Kakoune-style editors.
+- [Installation](https://docs.helix-editor.com/install.html): Installing pre-built binaries and setting up the runtime files.
+- [Package Managers](https://docs.helix-editor.com/package-managers.html): Installing Helix via OS/distro package managers.
+- [Building from Source](https://docs.helix-editor.com/building-from-source.html): Compiling Helix from source with Cargo.
+
+## Usage
+
+- [Usage](https://docs.helix-editor.com/usage.html): Modal editing basics — modes, selections, the command palette.
+- [Registers](https://docs.helix-editor.com/registers.html): Named registers for yank/paste and macros.
+- [Surround](https://docs.helix-editor.com/surround.html): Adding, changing, and deleting surrounding character pairs.
+- [Textobjects](https://docs.helix-editor.com/textobjects.html): Selecting syntax-aware text objects (functions, classes, etc).
+- [Syntax-aware Motions](https://docs.helix-editor.com/syntax-aware-motions.html): Navigating code structurally using tree-sitter.
+- [Pickers](https://docs.helix-editor.com/pickers.html): Fuzzy pickers for files, buffers, symbols, and diagnostics.
+- [Keymap](https://docs.helix-editor.com/keymap.html): Full default keybinding reference for every mode.
+- [Command Line](https://docs.helix-editor.com/command-line.html): Using the `:`-prefixed command line.
+- [Commands](https://docs.helix-editor.com/commands.html): Full list of built-in typable commands.
+- [Language Support](https://docs.helix-editor.com/lang-support.html): Table of supported languages, LSP servers, and formatters.
+
+## Configuration
+
+- [Configuration](https://docs.helix-editor.com/configuration.html): The `config.toml` reference — general editor settings.
+- [Editor](https://docs.helix-editor.com/editor.html): `[editor]` section options in detail.
+- [Themes](https://docs.helix-editor.com/themes.html): Creating and selecting color themes.
+- [Key Remapping](https://docs.helix-editor.com/remapping.html): Customizing keybindings per mode.
+- [Languages](https://docs.helix-editor.com/languages.html): Per-language configuration in `languages.toml`.
+
+## Ecosystem
+
+- [Ecosystem](https://docs.helix-editor.com/ecosystem.html): Plugins, extensions, and related community tooling.
+- [Migrating from Vim](https://docs.helix-editor.com/from-vim.html): Key differences and equivalents for Vim users.
+- [Helix Mode in Other Software](https://docs.helix-editor.com/other-software.html): Helix-style keybindings in other editors/IDEs.
+
+## Guides
+
+- [Guides](https://docs.helix-editor.com/guides/index.html): Overview of tree-sitter query guides for adding language support.
+- [Adding Languages](https://docs.helix-editor.com/guides/adding_languages.html): Registering a new language in `languages.toml`.
+- [Adding Indent Queries](https://docs.helix-editor.com/guides/indent.html): Writing `indents.scm` for auto-indentation.
+- [Adding Injection Queries](https://docs.helix-editor.com/guides/injection.html): Writing `injections.scm` for embedded-language highlighting.
+- [Adding Textobject Queries](https://docs.helix-editor.com/guides/textobject.html): Writing `textobjects.scm` for tree-sitter text objects.
