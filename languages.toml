@@ -147,7 +147,6 @@ systemd-lsp = { command = "systemd-lsp" }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
-spade-language-server = {command = "swim", args = ["lsp"]}
 starpls = {command = "starpls"}
 styx = { command = "styx", args = ["lsp"] }
 svlangserver = { command = "svlangserver", args = [], config.systemverilog.includeIndexing = ["*.{v,vh,sv,svh}", "**/*.{v,vh,sv,svh}"] }
@@ -4706,31 +4705,6 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "quint"
 source = { git = "https://github.com/gruhn/tree-sitter-quint", rev = "eebbd01edfeff6404778c92efe5554e42e506a18" }
-
-[[language]]
-name = "spade"
-scope = "source.spade"
-roots = ["swim.toml"]
-file-types = ['spade']
-injection-regex = "spade"
-comment-tokens = ["//", "///"]
-block-comment-tokens = [
-  { start = "/*", end = "*/" },
-  { start = "/**", end = "*/" },
-]
-language-servers = [ "spade-language-server" ]
-indent = { tab-width = 4, unit = "    " }
-
-[language.auto-pairs]
-'(' = ')'
-'{' = '}'
-'[' = ']'
-'"' = '"'
-'<' = '>'
-
-[[grammar]]
-name = "spade"
-source = { git = "https://codeberg.org/spade-lang/tree-sitter-spade", rev = "4eb2fc0173e48564421721f8e4f25a0fde89ac70" }
 
 [[language]]
 name = "amber"
