@@ -115,6 +115,7 @@ pub fn hook_insert(
     range: &Range,
     ch: char,
     pairs: &AutoPairs,
+    auto_pairs_overtype: bool,
 ) -> Option<(Change, Range)> {
     log::trace!("autopairs hook range: {:#?}", range);
 
@@ -125,7 +126,7 @@ pub fn hook_insert(
             return handle_insert_open(doc, range, pair);
         } else if pair.close == ch {
             // && char_at pos == close
-            return handle_insert_close(doc, range, pair);
+            return handle_insert_close(doc, range, pair, auto_pairs_overtype);
         }
     } else if ch.is_whitespace() {
         return handle_insert_whitespace(doc, range, ch, pairs);
@@ -370,11 +371,11 @@ fn handle_insert_open(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     Some(result)
 }
 
-fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change, Range)> {
+fn handle_insert_close(doc: &Rope, range: &Range, pair: &Pair, auto_pairs_overtype: bool) -> Option<(Change, Range)> {
     let cursor = range.cursor(doc.slice(..));
     let next_char = doc.get_char(cursor);
 
-    let change = if next_char == Some(pair.close) {
+    let change = if auto_pairs_overtype && next_char == Some(pair.close) {
         // return transaction that moves past close
         (cursor, cursor, None) // no-op
     } else {
