@@ -1274,7 +1274,7 @@ impl Application {
         use helix_view::graphics::CursorKind;
         self.terminal
             .backend_mut()
-            .show_cursor(CursorKind::Block)
+            .show_cursor(CursorKind::default())
             .ok();
         self.terminal.restore()
     }
