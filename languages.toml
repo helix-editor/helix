@@ -332,6 +332,9 @@ args = ["server", "--stdio"]
 [language-server.drools-lsp]
 command = "drools-lsp"
 
+[language-server.moon-lsp]
+command = "moon-lsp"
+
 [language-server.moonbit-lsp]
 command = "moonbit-lsp"
 
@@ -5550,7 +5553,7 @@ roots = ["moon.mod.json"]
 comment-tokens = ["//", "///"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
-language-servers = ["moonbit-lsp"]
+language-servers = ["moon-lsp", "moonbit-lsp"]
 auto-format = true
 
 [[grammar]]
