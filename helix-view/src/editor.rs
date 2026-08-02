@@ -434,6 +434,9 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// whether to automatically jump past a closing bracket instead of inserting another closing bracket when typing a closing bracket.
+    /// Defaults to `true`.
+    pub auto_pairs_overtype: bool,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -1240,6 +1243,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            auto_pairs_overtype: true,
         }
     }
 }
