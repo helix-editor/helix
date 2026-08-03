@@ -362,7 +362,13 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
-    .with_query_item(move |query| (!query.is_empty()).then(|| (root_for_query.join(query), false)));
+    .with_query_item(move |query| {
+        (!query.is_empty()).then(|| {
+            let path = root_for_query.join(query);
+            let is_dir = path.is_dir();
+            (path, is_dir)
+        })
+    });
 
     Ok(picker)
 }
