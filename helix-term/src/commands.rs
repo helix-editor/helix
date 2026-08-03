@@ -1525,7 +1525,12 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         return cx.jobs.callback(crate::open_external_url_callback(url));
     }
 
-    let path = &rel_path.join(url.path());
+    let Ok(file_path) = url.to_file_path() else {
+        cx.editor.set_error(format!("Invalid file URL: {url}"));
+        return;
+    };
+
+    let path = &rel_path.join(file_path);
     if path.is_dir() {
         let picker = ui::file_picker(cx.editor, path.into());
         cx.push_layer(Box::new(overlaid(picker)));
@@ -1556,7 +1561,12 @@ fn open_url_in_callback(
         return;
     }
 
-    let path = &rel_path.join(url.path());
+    let Ok(file_path) = url.to_file_path() else {
+        editor.set_error(format!("Invalid file URL: {url}"));
+        return;
+    };
+
+    let path = &rel_path.join(file_path);
     if path.is_dir() {
         let picker = ui::file_picker(editor, path.into());
         compositor.push(Box::new(overlaid(picker)));
@@ -1575,7 +1585,11 @@ fn should_open_url_externally(url: &Url) -> bool {
         return true;
     }
 
-    let is_binary = std::fs::File::open(url.path()).and_then(|file| {
+    let Ok(path) = url.to_file_path() else {
+        return false;
+    };
+
+    let is_binary = std::fs::File::open(path).and_then(|file| {
         // Read up to 1kb to detect the content type
         let mut read_buffer = Vec::new();
         let n = file.take(1024).read_to_end(&mut read_buffer)?;
