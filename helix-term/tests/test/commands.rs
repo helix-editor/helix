@@ -125,6 +125,10 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     let temp_dir = tempfile::tempdir()?;
     let picker_path = temp_dir.path().join("file-picker-buffer");
     let explorer_path = temp_dir.path().join("file-explorer-buffer");
+    let explorer_directory = temp_dir.path().to_path_buf();
+    let background_path = temp_dir.path().join("file-picker-background-buffer");
+    let horizontal_path = temp_dir.path().join("file-picker-horizontal-buffer");
+    let vertical_path = temp_dir.path().join("file-picker-vertical-buffer");
     let workspace_root = helix_loader::find_workspace().0;
     let relative_picker_path = "helix-term/file-picker-relative-buffer";
     let relative_explorer_path = "helix-term/file-explorer-relative-buffer";
@@ -155,6 +159,42 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     .await?;
 
     test_key_sequence(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        Some(&format!("<space>f{}<A-ret>", background_path.display())),
+        Some(&|app| assert_open(app, &background_path)),
+        false,
+    )
+    .await?;
+
+    let horizontal_keys = format!("<space>f{}<C-s>", horizontal_path.display());
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(horizontal_keys.as_str()),
+                Some(&|app| assert_open(app, &horizontal_path)),
+            ),
+            (Some(":wqa<ret>"), None),
+        ],
+        true,
+    )
+    .await?;
+
+    let vertical_keys = format!("<space>f{}<C-v>", vertical_path.display());
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config).build()?,
+        vec![
+            (
+                Some(vertical_keys.as_str()),
+                Some(&|app| assert_open(app, &vertical_path)),
+            ),
+            (Some(":wqa<ret>"), None),
+        ],
+        true,
+    )
+    .await?;
+
+    test_key_sequence(
         &mut AppBuilder::new().build()?,
         Some(&format!("<space>e{}<ret>", explorer_path.display())),
         Some(&|app| assert_open(app, &explorer_path)),
@@ -166,6 +206,14 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
         &mut AppBuilder::new().build()?,
         Some(&format!("<space>e{}<ret>", relative_explorer_path)),
         Some(&|app| assert_open(app, &relative_explorer_absolute_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(&format!("<space>e{}<ret>", explorer_directory.display())),
+        Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
         false,
     )
     .await?;
