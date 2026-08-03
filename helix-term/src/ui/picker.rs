@@ -79,6 +79,7 @@ impl From<DocumentId> for PathOrId<'_> {
 }
 
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
+type QueryItemCallback<T> = Box<dyn Fn(&str) -> Option<T>>;
 
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
@@ -258,7 +259,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
-    query_item_fn: Option<Box<dyn Fn(&str) -> Option<T>>>,
+    query_item_fn: Option<QueryItemCallback<T>>,
     default_action: Action,
 
     pub truncate_start: bool,
