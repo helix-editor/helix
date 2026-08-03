@@ -124,6 +124,7 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
 async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     let temp_dir = tempfile::tempdir()?;
     let picker_path = temp_dir.path().join("file-picker-buffer");
+    let picker_directory = temp_dir.path().join("file-picker-directory");
     let explorer_path = temp_dir.path().join("file-explorer-buffer");
     let explorer_directory = temp_dir.path().to_path_buf();
     let background_path = temp_dir.path().join("file-picker-background-buffer");
@@ -134,6 +135,12 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     let relative_explorer_path = "helix-term/file-explorer-relative-buffer";
     let relative_picker_absolute_path = workspace_root.join(relative_picker_path);
     let relative_explorer_absolute_path = workspace_root.join(relative_explorer_path);
+    let tilde_name = format!(
+        "file-picker-tilde-{}",
+        temp_dir.path().file_name().unwrap().to_string_lossy()
+    );
+    let tilde_path = helix_stdx::path::home_dir()?.join(&tilde_name);
+    std::fs::create_dir(&picker_directory)?;
     let mut config = Config::default();
     config.editor.file_picker.max_depth = Some(0);
 
@@ -154,6 +161,22 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
         &mut AppBuilder::new().with_config(config.clone()).build()?,
         Some(&format!("<space>f{}<ret>", relative_picker_path)),
         Some(&|app| assert_open(app, &relative_picker_absolute_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        Some(&format!("<space>f~/{tilde_name}<ret>")),
+        Some(&|app| assert_open(app, &tilde_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        Some(&format!("<space>f{}<ret>", picker_directory.display())),
+        Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
         false,
     )
     .await?;

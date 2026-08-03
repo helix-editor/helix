@@ -436,23 +436,25 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    fn call_callback(&self, ctx: &mut Context, action: Action) {
+    fn call_callback(&mut self, ctx: &mut Context, action: Action) -> bool {
+        let query = self.primary_query();
+        let query_item_pending = self.query_item_fn.is_some()
+            && !query.is_empty()
+            && (self.matcher.active_injectors() != 0 || self.matcher.tick(0).running);
+
+        if query_item_pending && self.selection().is_none() {
+            return true;
+        }
+
         if let Some(option) = self.selection() {
             (self.callback_fn)(ctx, option, action);
-        } else if self.matcher.active_injectors() == 0 {
-            if let Some(query_item_fn) = &self.query_item_fn {
-                let query = self.primary_query();
-                if let Some(option) = query_item_fn(&query) {
-                    (self.callback_fn)(ctx, &option, action);
-                }
+        } else if let Some(query_item_fn) = &self.query_item_fn {
+            if let Some(option) = query_item_fn(&query) {
+                (self.callback_fn)(ctx, &option, action);
             }
         }
-    }
 
-    fn query_item_pending(&self) -> bool {
-        self.selection().is_none()
-            && self.query_item_fn.is_some()
-            && self.matcher.active_injectors() != 0
+        false
     }
 
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
@@ -1155,9 +1157,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
-                    let query_item_pending = self.query_item_pending();
-                    self.call_callback(ctx, self.default_action);
-                    if query_item_pending {
+                    if self.call_callback(ctx, self.default_action) {
                         return EventResult::Consumed(None);
                     }
                     if let Some(history_register) = self.prompt.history_register() {
@@ -1173,16 +1173,12 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 }
             }
             ctrl!('s') => {
-                let query_item_pending = self.query_item_pending();
-                self.call_callback(ctx, Action::HorizontalSplit);
-                if !query_item_pending {
+                if !self.call_callback(ctx, Action::HorizontalSplit) {
                     return close_fn(self);
                 }
             }
             ctrl!('v') => {
-                let query_item_pending = self.query_item_pending();
-                self.call_callback(ctx, Action::VerticalSplit);
-                if !query_item_pending {
+                if !self.call_callback(ctx, Action::VerticalSplit) {
                     return close_fn(self);
                 }
             }
