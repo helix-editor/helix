@@ -258,6 +258,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
+    query_item_fn: Option<Box<dyn Fn(&str) -> Option<T>>>,
     default_action: Action,
 
     pub truncate_start: bool,
@@ -386,6 +387,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
+            query_item_fn: None,
             default_action: Action::Replace,
             completion_height: 0,
             widths,
@@ -426,6 +428,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_history_register(mut self, history_register: Option<char>) -> Self {
         self.prompt.with_history_register(history_register);
+        self
+    }
+
+    pub fn with_query_item(mut self, query_item_fn: impl Fn(&str) -> Option<T> + 'static) -> Self {
+        self.query_item_fn = Some(Box::new(query_item_fn));
         self
     }
 
@@ -1133,6 +1140,11 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 } else {
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, self.default_action);
+                    } else if let Some(query_item_fn) = &self.query_item_fn {
+                        let query = self.primary_query();
+                        if let Some(option) = query_item_fn(&query) {
+                            (self.callback_fn)(ctx, &option, self.default_action);
+                        }
                     }
                     if let Some(history_register) = self.prompt.history_register() {
                         if let Err(err) = ctx

@@ -121,6 +121,59 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
+    let temp_dir = tempfile::tempdir()?;
+    let picker_path = temp_dir.path().join("file-picker-buffer");
+    let explorer_path = temp_dir.path().join("file-explorer-buffer");
+    let workspace_root = helix_loader::find_workspace().0;
+    let relative_picker_path = "helix-term/file-picker-relative-buffer";
+    let relative_explorer_path = "helix-term/file-explorer-relative-buffer";
+    let relative_picker_absolute_path = workspace_root.join(relative_picker_path);
+    let relative_explorer_absolute_path = workspace_root.join(relative_explorer_path);
+    let mut config = Config::default();
+    config.editor.file_picker.max_depth = Some(0);
+
+    fn assert_open(app: &Application, path: &std::path::Path) {
+        assert!(app.editor.documents().any(|doc| doc.path() == Some(path)));
+        assert!(!path.exists());
+    }
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        Some(&format!("<space>f{}<ret>", picker_path.display())),
+        Some(&|app| assert_open(app, &picker_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        Some(&format!("<space>f{}<ret>", relative_picker_path)),
+        Some(&|app| assert_open(app, &relative_picker_absolute_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(&format!("<space>e{}<ret>", explorer_path.display())),
+        Some(&|app| assert_open(app, &explorer_path)),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(&format!("<space>e{}<ret>", relative_explorer_path)),
+        Some(&|app| assert_open(app, &relative_explorer_absolute_path)),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_goto_file_impl() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
 
