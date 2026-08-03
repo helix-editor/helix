@@ -217,6 +217,13 @@ pub struct FilePickerData {
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
+fn query_path(root: &Path, query: &str) -> Option<PathBuf> {
+    (!query.is_empty()).then(|| {
+        let query = helix_stdx::path::expand_tilde(Path::new(query));
+        root.join(query.as_ref())
+    })
+}
+
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use ignore::WalkBuilder;
     use std::time::Instant;
@@ -279,7 +286,18 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     )];
     let root_for_query = root.clone();
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
+        if path.is_dir() {
+            let path = path.clone();
+            let callback = Box::pin(async move {
+                let call: Callback =
+                    Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                        let picker = file_picker(editor, path).with_default_action(action);
+                        compositor.push(Box::new(overlay::overlaid(picker)));
+                    }));
+                Ok(call)
+            });
+            cx.jobs.callback(callback);
+        } else if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)
             } else {
@@ -289,7 +307,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         }
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)))
-    .with_query_item(move |query| (!query.is_empty()).then(|| root_for_query.join(query)));
+    .with_query_item(move |query| query_path(&root_for_query, query));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -363,11 +381,9 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
     .with_query_item(move |query| {
-        (!query.is_empty()).then(|| {
-            let path = root_for_query.join(query);
-            let is_dir = path.is_dir();
-            (path, is_dir)
-        })
+        let path = query_path(&root_for_query, query)?;
+        let is_dir = path.is_dir();
+        Some((path, is_dir))
     });
 
     Ok(picker)
