@@ -1,0 +1,41 @@
+name: |
+  Update Nix grammar lock file
+on:
+  push:
+    branches:
+      - master
+    paths:
+     - languages.toml
+
+permissions:
+  contents: read write
+
+jobs:
+  update-nix-grammars:
+    name: Update Nix Grammars
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+
+      - name: Update Nix tree-sitter grammars
+        run: |
+          cargo xtask update-nix-grammar-sources
+
+      - name: Update Nix tree-sitter grammars
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          disable_globbing: true
+          commit_message: |
+            [Automated] Nix grammar lockfile update
+          file_pattern: |
+            nix/grammar-sources.json
+
+
