@@ -436,6 +436,25 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
+    fn call_callback(&self, ctx: &mut Context, action: Action) {
+        if let Some(option) = self.selection() {
+            (self.callback_fn)(ctx, option, action);
+        } else if self.matcher.active_injectors() == 0 {
+            if let Some(query_item_fn) = &self.query_item_fn {
+                let query = self.primary_query();
+                if let Some(option) = query_item_fn(&query) {
+                    (self.callback_fn)(ctx, &option, action);
+                }
+            }
+        }
+    }
+
+    fn query_item_pending(&self) -> bool {
+        self.selection().is_none()
+            && self.query_item_fn.is_some()
+            && self.matcher.active_injectors() != 0
+    }
+
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
         self.cursor = cursor;
         self
@@ -1114,9 +1133,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, self.default_action);
-                }
+                self.call_callback(ctx, self.default_action);
             }
             key!(Enter) => {
                 // If the prompt has a history completion and is empty, use enter to accept
@@ -1138,13 +1155,10 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
-                    if let Some(option) = self.selection() {
-                        (self.callback_fn)(ctx, option, self.default_action);
-                    } else if let Some(query_item_fn) = &self.query_item_fn {
-                        let query = self.primary_query();
-                        if let Some(option) = query_item_fn(&query) {
-                            (self.callback_fn)(ctx, &option, self.default_action);
-                        }
+                    let query_item_pending = self.query_item_pending();
+                    self.call_callback(ctx, self.default_action);
+                    if query_item_pending {
+                        return EventResult::Consumed(None);
                     }
                     if let Some(history_register) = self.prompt.history_register() {
                         if let Err(err) = ctx
@@ -1159,16 +1173,18 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 }
             }
             ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::HorizontalSplit);
+                let query_item_pending = self.query_item_pending();
+                self.call_callback(ctx, Action::HorizontalSplit);
+                if !query_item_pending {
+                    return close_fn(self);
                 }
-                return close_fn(self);
             }
             ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::VerticalSplit);
+                let query_item_pending = self.query_item_pending();
+                self.call_callback(ctx, Action::VerticalSplit);
+                if !query_item_pending {
+                    return close_fn(self);
                 }
-                return close_fn(self);
             }
             ctrl!('t') => {
                 self.toggle_preview();
