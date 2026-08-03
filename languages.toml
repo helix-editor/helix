@@ -3867,7 +3867,7 @@ formatter = { command = "just", args = ["--fmt", "--justfile", "-"] }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "00859eebfb774d371af174ea1e582d46e697b469" }
+source = { git = "https://codeberg.org/poliorcetics/tree-sitter-just", rev = "73953d826ba2957c0fe9cb4597fe8d074ee7b6d6" }
 
 [[language]]
 name = "gn"
