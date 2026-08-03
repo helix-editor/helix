@@ -277,6 +277,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             Spans::from(spans).into()
         },
     )];
+    let root_for_query = root.clone();
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
@@ -287,7 +288,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             cx.editor.set_error(err);
         }
     })
-    .with_preview(|_editor, path| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, path| Some((path.as_path().into(), None)))
+    .with_query_item(move |query| (!query.is_empty()).then(|| root_for_query.join(query)));
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -330,6 +332,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )];
+    let root_for_query = root.clone();
     let picker = Picker::new(
         columns,
         0,
@@ -358,7 +361,8 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
+    .with_query_item(move |query| (!query.is_empty()).then(|| (root_for_query.join(query), false)));
 
     Ok(picker)
 }
