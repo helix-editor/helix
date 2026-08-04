@@ -560,7 +560,7 @@ impl Backend for TerminaBackend {
 
     fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
         let style = match kind {
-            CursorKind::Block => CursorStyle::SteadyBlock,
+            CursorKind::BlockSoftware | CursorKind::BlockHardware => CursorStyle::SteadyBlock,
             CursorKind::Bar => CursorStyle::SteadyBar,
             CursorKind::Underline => CursorStyle::SteadyUnderline,
             CursorKind::Hidden => unreachable!(),
