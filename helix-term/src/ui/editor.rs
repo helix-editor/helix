@@ -1284,7 +1284,7 @@ impl EditorView {
                         view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
                     {
                         let line = doc.text().char_to_line(char_idx);
-                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
+                        commands::dap_toggle_breakpoints_impl(cxt, path, vec![line]);
                         return EventResult::Consumed(None);
                     }
                 }
