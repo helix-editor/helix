@@ -641,6 +641,30 @@
        This is also true for future Alt- commands.
 
 =================================================================
+=             5.6 YANKING MULTIPLE SELECTIONS                  =
+=================================================================
+
+ Type y to yank each selection as a separate value.
+ Type p to paste those values after the destination selections,
+ pairing them in selection order.
+
+ 1. Move to the first line marked '-->' below and type x.
+ 2. Type s, enter '[a-z]+', and press Enter to select each word.
+ 3. Type y to yank "red", "green", and "blue" separately.
+ 4. Type , to keep only the primary selection, then j to move to
+    the second line marked '-->' below.
+ 5. Type x, then s, enter '[123]', and press Enter.
+ 6. Type p to paste one yanked word after each number.
+
+ --> red green blue
+ --> 1 2 3
+     1red 2green 3blue
+
+ Note: To paste multiple yanked values separately, first create
+       multiple destination selections. If there are more
+       destinations than values, the last value is repeated.
+
+=================================================================
 =                        CHAPTER 5 RECAP                        =
 =================================================================
 
@@ -653,6 +677,9 @@
  * Type & to align selections.
 
  * Press Alt-s to split the selection into lines.
+
+ * Type y to yank each selection separately and p to paste the
+   values across destination selections in order.
 
 
 
