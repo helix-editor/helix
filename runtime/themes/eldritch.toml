@@ -95,6 +95,7 @@
 "ui.virtual.inlay-hint"           = { fg = "cyan"                                                           }
 "ui.virtual.inlay-hint.parameter" = { fg = "cyan",               modifiers = ["italic", "dim"]              }
 "ui.virtual.inlay-hint.type"      = { fg = "cyan",               modifiers = ["italic", "dim"]              }
+"ui.virtual.jump-label"           = { fg = "pink",               modifiers = ["bold"]                       }
 "hint"                            = { fg = "purple",             bg = "darker"                              }
 "error"                           = { fg = "red",                bg = "darker"                              }
 "warning"                         = { fg = "yellow",             bg = "darker"                              }
