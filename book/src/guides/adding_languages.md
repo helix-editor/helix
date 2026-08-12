@@ -36,7 +36,26 @@ below.
 3. Refer to the
    [tree-sitter website](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights)
    for more information on writing queries.
-4. A list of highlight captures can be found [on the themes page](https://docs.helix-editor.com/themes.html#scopes).
+4. The highlight captures (`@function`, `@type`, ...) and how they resolve are
+   documented [on the themes page](./themes.md):
+   match the most specific scope that fits, capture the leaf node you mean, and
+   remember that the last matching pattern (and the innermost node) wins.
+5. Helix loads several query files from that directory; only `highlights.scm` is
+   required:
+
+   | File | Purpose | Guide |
+   |---|---|---|
+   | `highlights.scm` | syntax highlighting | [highlights.md](./highlights.md) |
+   | `injections.scm` | embed other languages in regions (strings, code fences) | [injection.md](./injection.md) |
+   | `indents.scm` | indentation | [indent.md](./indent.md) |
+   | `textobjects.scm` | textobjects and navigation (`mif`, `]f`, …) | [textobject.md](./textobject.md) |
+   | `locals.scm` | scope tracking so locals highlight distinctly | [locals.md](./locals.md) |
+   | `tags.scm` | document/workspace symbol pickers | [tags.md](./tags.md) |
+   | `rainbows.scm` | rainbow brackets | [rainbow_bracket_queries.md](./rainbow_bracket_queries.md) |
+
+   A query file may reuse another language's with `; inherits: <lang>` on the
+   first line. Run `cargo xtask query-check [language]` to check that the queries
+   are valid against the grammar.
 
 ## Common issues
 
@@ -47,3 +66,6 @@ below.
 - If a parser is causing a segfault, or you want to remove it, make sure to
   remove the compiled parser located at `runtime/grammars/<name>.so`.
 - If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable `HELIX_RUNTIME` is set to the location of the `runtime` folder you're developing in.
+- Validate queries with `cargo xtask query-check [language]` (every query file
+  must compile against the grammar). `highlight-check` and `indent-check`
+  additionally run the real highlighter and indenter over the test fixtures catch mistakes.

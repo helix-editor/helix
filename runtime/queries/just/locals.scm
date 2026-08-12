@@ -13,6 +13,9 @@
 (assignment
   name: (identifier) @local.definition.variable)
 
+(function
+  name: (identifier) @local.definition.function)
+
 (mod
   name: (identifier) @local.definition.namespace)
 

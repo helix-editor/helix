@@ -1,0 +1,6 @@
+module Main exposing (..)
+g x = foo x
+--        ^ @variable.parameter
+h o = o.field
+--    ^ @variable.parameter
+--      ^ @variable.other.member

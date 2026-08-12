@@ -27,7 +27,7 @@
 ; | ... | ...
 (rule_body
   . (top_level_term) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 
 ; N/A or unused:
 ; --------------

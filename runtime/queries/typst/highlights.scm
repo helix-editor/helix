@@ -12,6 +12,8 @@
 (flow ["break" "continue"] @keyword.control)
 
 ; OPERATOR
+(let "=" @operator)
+(lambda "=>" @operator)
 (in ["in" "not"] @keyword.operator)
 (context "context" @keyword.control)
 (and "and" @keyword.operator)

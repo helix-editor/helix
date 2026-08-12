@@ -8,7 +8,7 @@
   name: (identifier) @definition.class)
 
 (enum_declaration
-  name: (identifier) @defintion.class)
+  name: (identifier) @definition.class)
 
 (method_declaration
   name: (identifier) @definition.function)

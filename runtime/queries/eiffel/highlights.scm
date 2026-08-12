@@ -10,7 +10,7 @@
  "create"
 ] @keyword.control.import
 
-["export"] @keyword.control.export
+["export"] @keyword.control.import
 
 [
  "do"

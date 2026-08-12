@@ -54,10 +54,12 @@
   "@keyframes"
   "@media"
   "@namespace"
+  "@scope"
   "@supports"
   (at_keyword)
   (from)
   (important)
+  (important_value)
   (to)
   (keyword_query)
   (keyframes_name)

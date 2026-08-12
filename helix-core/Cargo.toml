@@ -38,7 +38,6 @@ arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
 foldhash.workspace = true
-url = "2.5.4"
 
 log = "0.4"
 anyhow = "1.0"
@@ -59,5 +58,5 @@ globset.workspace = true
 regex-cursor = "0.1.5"
 
 [dev-dependencies]
-quickcheck = { version = "1", default-features = false }
+quickcheck.workspace = true
 indoc = "2.0.6"

@@ -47,7 +47,8 @@
 "function.call" = { fg = "blue" }
 
 "comment" = { fg = "base01" }
-"comment.documentation" = { fg = "base01" }
+"comment.line.documentation" = { fg = "base01" }
+"comment.block.documentation" = { fg = "base01" }
 
 "string" = { fg = "green" }
 "string.regexp" = { fg = "cyan" }

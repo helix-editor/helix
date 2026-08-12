@@ -7,6 +7,7 @@
 "comment"                         = { fg = "comment"                                                        }
 "comment.block.documentation"     = { fg = "comment"                                                        }
 "comment.block"                   = { fg = "comment"                                                        }
+"comment.line.documentation"      = { fg = "comment"                                                        }
 "comment.line"                    = { fg = "comment"                                                        }
 "constant"                        = { fg = "purple"                                                         }
 "constant.numeric"                = { fg = "purple"                                                         }

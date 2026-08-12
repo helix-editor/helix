@@ -3,3 +3,6 @@
 
 (array
   (_) @entry.around)
+
+(comment) @comment.inside
+(comment)+ @comment.around

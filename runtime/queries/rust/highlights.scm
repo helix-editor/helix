@@ -51,6 +51,7 @@
   "@"
   ".."
   "..="
+  "..." ; variadic `...` in extern fn signatures
   "'"
 ] @operator
 
@@ -84,8 +85,9 @@
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
 (type_arguments (type_identifier) @type)
-; `_` in `(_, _)`
-(tuple_struct_pattern "_" @comment.unused)
+; `_` placeholder token in any pattern position:
+; `let _ =`, `match { _ => }`, `|_|`, `fn f(_: T)`, `(_, _)`, `[_, x]`
+("_" @comment.unused)
 ; `_` in `Vec<_>`
 ((type_arguments (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
@@ -208,6 +210,23 @@
 (closure_parameters
 	(identifier) @variable.parameter)
 
+; Mutable variables
+
+(let_declaration
+  (mutable_specifier)
+  pattern: (identifier) @variable.mutable)
+(mut_pattern
+  (mutable_specifier)
+  (identifier) @variable.mutable)
+
+(parameter
+  (mutable_specifier)
+  pattern: (identifier) @variable.parameter.mutable)
+
+(self_parameter
+  (mutable_specifier)
+  (self) @variable.builtin.mutable)
+
 ; -------
 ; Keywords
 ; -------
@@ -270,7 +289,7 @@
 
 "let" @keyword.storage
 "fn" @keyword.function
-"unsafe" @keyword.special
+"unsafe" @keyword.storage.modifier
 "macro_rules!" @function.macro
 
 (mutable_specifier) @keyword.storage.modifier.mut
@@ -286,8 +305,6 @@
   "move"
   "dyn"
 ] @keyword.storage.modifier
-
-; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; ---
 ; Remaining Paths
@@ -325,8 +342,9 @@
     ((identifier) @function)
     (scoped_identifier
       name: (identifier) @function)
+    ; method call `obj.method()` — consistent with the generic_function case below
     (field_expression
-      field: (field_identifier) @function)
+      field: (field_identifier) @function.method)
   ])
 (generic_function
   function: [
@@ -339,9 +357,15 @@
 
 (function_item
   name: (identifier) @function)
-
 (function_signature_item
   name: (identifier) @function)
+
+(function_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
+(function_signature_item
+  (visibility_modifier) 
+  name: (identifier) @function.public)
 
 ; -------
 ; Guess Other Types
@@ -415,6 +439,34 @@
   ((identifier) @constructor)
   ((identifier) @constructor)
   (#match? @constructor "^[A-Z]"))
+
+(match_pattern
+  (scoped_identifier
+    path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+    name: (identifier) @type.enum.variant
+    (#match? @type "^[A-Z]")
+    (#match? @type.enum.variant "^[A-Z]")))
+
+(match_pattern
+  (struct_pattern
+    type: (scoped_type_identifier
+      path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+      name: (type_identifier) @type.enum.variant
+      (#match? @type "^[A-Z]")
+      (#match? @type.enum.variant "^[A-Z]"))))
+
+(match_pattern
+  (tuple_struct_pattern
+    type: (scoped_identifier
+      path: [(identifier) @type (scoped_identifier name: (identifier) @type)]
+      name: (identifier) @type.enum.variant
+      (#match? @type "^[A-Z]")
+      (#match? @type.enum.variant "^[A-Z]"))))
+
+(match_pattern
+  (scoped_identifier
+    name: (identifier) @constant
+    (#match? @constant "^[A-Z_]+$")))
 
 ; ---
 ; Macros

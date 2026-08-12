@@ -8,7 +8,7 @@ There are three kinds of commands that can be used in keymaps:
 
 * Static commands: commands like `move_char_right` which are usually bound to
   keys and used for movement and editing. A list of static commands is
-  available in the [Keymap](./keymap.html) documentation and in the source code
+  available in the [Keymap](./keymap.md) documentation and in the source code
   in [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
   at the invocation of `static_commands!` macro.
 * Typable commands: commands that can be executed from command mode (`:`), for

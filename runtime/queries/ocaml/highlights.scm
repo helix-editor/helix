@@ -3,7 +3,7 @@
 
 "%" @punctuation.special
 
-["(" ")" "[" "]" "{" "}" "[|" "|]" "[<" "[>"] @punctuation.bracket
+["(" ")" "[" "]" "{" "}" "[|" "|]" "[<" "[>" "[:" ":]"] @punctuation.bracket
 
 [
   "," "." ";" ":" "=" "|" "~" "?" "+" "-" "!" ">" "&"
@@ -138,6 +138,8 @@
   "include" "inherit" "initializer" "lazy" "let" "match" "method" "module"
   "mutable" "new" "nonrec" "object" "of" "open" "private" "rec" "sig" "struct"
   "then" "to" "try" "type" "val" "virtual" "when" "while" "with"
+  ; OCaml 5 effects and OxCaml locality/mode keywords.
+  "effect" "exclave_" "stack_" "global_"
 ] @keyword
 
 ; Attributes
@@ -148,4 +150,7 @@
 ; Comments
 ;---------
 
-[(comment) (line_number_directive) (directive) (shebang)] @comment
+; `shebang` is intentionally not captured here: this file is inherited by
+; ocaml-interface (`.mli`), whose grammar has no `shebang` symbol, so capturing
+; it would fail to compile the interface highlights.
+[(comment) (line_number_directive) (directive)] @comment

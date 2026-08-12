@@ -36,6 +36,8 @@
 (menu_section "section" @keyword)
 (menu_item "item" @function.macro)
 
+(condition "condition" @keyword)
+
 (template_definition (template_name_qualifier) @keyword.storage.type)
 
 (import_statement (gobject_library) @namespace)

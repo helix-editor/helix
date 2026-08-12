@@ -38,7 +38,6 @@ inherits = "wolf-alabaster-dark"
 
 # Special cases
 "tag" = { fg = "fg", bg = "definition-bg" }
-"namespace" = { fg = "fg", bg = "definition-bg" }
 
 # MARKUP overrides
 "markup.heading" = { fg = "fg", bg = "definition-bg", modifiers = ["bold"] }

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod grammar;
+pub mod workspace_trust;
 
 use helix_stdx::{env::current_working_dir, path};
 
@@ -132,6 +133,13 @@ pub fn cache_dir() -> PathBuf {
     path
 }
 
+pub fn data_dir() -> PathBuf {
+    let strategy = choose_base_strategy().expect("Unable to find the data directory!");
+    let mut path = strategy.data_dir();
+    path.push("helix");
+    path
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
@@ -142,6 +150,10 @@ pub fn log_file() -> PathBuf {
 
 pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
+}
+
+pub fn workspace_lang_config_file() -> PathBuf {
+    find_workspace().0.join(".helix").join("languages.toml")
 }
 
 pub fn lang_config_file() -> PathBuf {

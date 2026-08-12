@@ -19,7 +19,10 @@
     @type.builtin
     "uint"
     "Option"
-    "Memory"))
+    "Memory"
+    "Fn"
+    "Entity"
+    "Pipeline"))
 
 ((identifier) @type.enum.variant.builtin
  (#any-of? @type.enum.variant.builtin "Some" "None"))
@@ -52,11 +55,22 @@
     "where"
     "trait"
     "for"
+    "pub"
+    "unsafe"
+    "type"
+    "as"
+    "initial"
 ] @keyword
 
 [
+  "wire"
+    "super"
+    "lib"
+] @keyword.storage
+
+[
   "use"
-] @keyword.import
+] @keyword.control.import
 
 [
   "gen"

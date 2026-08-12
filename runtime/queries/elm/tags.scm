@@ -9,7 +9,7 @@
 (type_ref (upper_case_qid (upper_case_identifier) @name)) @reference.type
 (exposed_type (upper_case_identifier) @name) @reference.type
 
-(type_declaration (union_variant (upper_case_identifier) @name)) @definition.union
+(type_declaration (union_variant (upper_case_identifier) @name)) @definition.enum
 
 (value_expr (upper_case_qid (upper_case_identifier) @name)) @reference.union
 

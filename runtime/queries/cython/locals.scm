@@ -5,14 +5,14 @@
   body: (block
     (expression_statement
       (assignment
-        left: (identifier) @local.definition)))) @local.scope
+        left: (identifier) @local.definition.variable)))) @local.scope
 
 (class_definition
   body: (block
     (expression_statement
       (assignment
         left: (_
-          (identifier) @local.definition))))) @local.scope
+          (identifier) @local.definition.variable))))) @local.scope
 
 ; Imports
 (aliased_import
@@ -42,7 +42,7 @@
 ; *args parameter
 (parameters
   (list_splat_pattern
-    (identifier) @local.definition))
+    (identifier) @local.definition.variable))
 
 ; **kwargs parameter
 (parameters

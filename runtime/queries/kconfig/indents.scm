@@ -1,5 +1,3 @@
-(help_text (text) @align)
-
 [
   (config)
   (menuconfig)

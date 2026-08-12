@@ -4,6 +4,7 @@
 "attribute" = { fg = "blue_text", bg = "blue_bg" }
 "comment" = { fg = "base2", bg = "base6" }
 "comment.line" = { fg = "base2", bg = "base6" }
+"comment.line.documentation" = { fg = "base2", bg = "base6" }
 "comment.block" = { fg = "base2", bg = "base6" }
 "comment.block.documentation" = { fg = "base2", bg = "base6" }
 "constant" = { fg = "blue_text", bg = "blue_bg" }

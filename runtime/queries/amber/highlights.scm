@@ -35,7 +35,7 @@
 ; Literals
 (boolean) @constant.builtin.boolean
 (number) @constant.numeric
-(null) @constant.numeric
+(null) @constant.builtin
 (string) @string
 (status) @keyword
 ; Highlight only command delimiters, not content (bash injection handles content)

@@ -31,7 +31,8 @@
 "comment" = { fg = "grey", modifiers = ["italic"] }
 "comment.line" = { fg = "grey", modifiers = ["italic"] }
 "comment.block" = { fg = "grey", modifiers = ["italic"] }
-"comment.documentation" = { fg = "blue", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "blue", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "blue", modifiers = ["italic"] }
 
 "keyword" = "blue"
 "keyword.storage" = "blue" # let keyword in rust 

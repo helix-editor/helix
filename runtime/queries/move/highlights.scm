@@ -41,6 +41,10 @@
   (module_access
     member: (identifier) @type))
 (field_identifier) @variable.other.member
+; Field access `o.val` parses as a dot_expression whose access is a plain
+; name_expression (not a field_identifier), so capture that field too.
+(dot_expression
+  access: (name_expression (module_access member: (identifier) @variable.other.member)))
 
 ; -------
 ; Functions

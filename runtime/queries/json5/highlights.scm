@@ -11,7 +11,7 @@
 (member
   name: (_) @variable.other.member)
 
-"," @punctuation.delimiter
+["," ":"] @punctuation.delimiter
 [
   "["
   "]"

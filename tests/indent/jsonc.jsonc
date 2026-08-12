@@ -1,0 +1,20 @@
+{
+  // a line comment
+  "name": "helix",
+  "build": {
+    "target": "release",
+    /* an inline block comment */
+    "flags": [
+      "-O2",
+      "-g"
+    ]
+  },
+  "servers": [
+    {
+      "name": "rust-analyzer",
+      "config": {
+        "checkOnSave": true
+      }
+    }
+  ]
+}

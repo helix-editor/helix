@@ -16,4 +16,6 @@ helix-term = { path = "../helix-term" }
 helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view" }
 helix-loader = { path = "../helix-loader" }
+helix-stdx = { path = "../helix-stdx" }
+ropey.workspace = true
 toml.workspace = true

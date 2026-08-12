@@ -12,14 +12,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    ignore:
-      # MSRV: these deps use edition 2024 in their newest versions.
-      # Once the MSRV reaches 1.85 these can be updated and unignored.
-      - dependency-name: ignore
-      - dependency-name: globset
-      - dependency-name: grep-matcher
-      # Now requires Rust 1.87:
-      - dependency-name: etcetera
 
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -32,6 +32,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
+            GutterType::CodeActionHint => code_action_hint(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -41,6 +42,7 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
+            GutterType::CodeActionHint => 1,
         }
     }
 }
@@ -284,8 +286,9 @@ fn execution_pause_indicator<'doc>(
         frame
             .source
             .as_ref()
-            .and_then(|source| source.path.as_ref())
+            .and_then(|source| source.path.as_deref())
     });
+
     let should_display_for_current_doc =
         doc.path().is_some() && frame_source_path.unwrap_or(None) == doc.path();
 
@@ -322,6 +325,30 @@ pub fn diagnostics_or_breakpoints<'doc>(
             .or_else(|| breakpoints(line, selected, first_visual_line, out))
             .or_else(|| diagnostics(line, selected, first_visual_line, out))
     })
+}
+
+pub fn code_action_hint<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    is_focused: bool,
+) -> GutterFn<'doc> {
+    let style = theme.get("ui.text");
+    let text = doc.text().slice(..);
+    let show_hint = doc.code_action_hints(view.id);
+    let current_line = doc
+        .text()
+        .char_to_line(doc.selection(view.id).primary().cursor(text));
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            (is_focused && show_hint && current_line == line && first_visual_line).then(|| {
+                write!(out, "⋮").unwrap();
+                style
+            })
+        },
+    )
 }
 
 #[cfg(test)]

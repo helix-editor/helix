@@ -15,6 +15,7 @@ def grammar_categories [] { ["fetch", "build"] }
 # A post-modern text editor.
 export extern hx [
     --help(-h),                                 # Prints help information
+    --strict,                                   # Bail on error for commands that can fail
     --tutor,                                    # Loads the tutorial
     --health: string@health_categories,         # Checks for potential errors in editor setup
     --grammar(-g): string@grammar_categories,   # Fetches or builds tree-sitter grammars listed in `languages.toml`

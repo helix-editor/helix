@@ -17,6 +17,7 @@
   (named_unpack)
   (positional_unpack)
   (tuple_pattern)
+  (match_expression)
 ] @indent
 
 [

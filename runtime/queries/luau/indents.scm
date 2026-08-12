@@ -30,7 +30,7 @@
   [
     (arglist)
   ] @indent
-  (#set! "scope" "all")
+
 )
 
 (
@@ -38,7 +38,7 @@
     (explist)
     (interp_exp)
   ] @indent.always
-  (#set! "scope" "all")
+
 )
 
 [
@@ -58,7 +58,7 @@
   .
   (_) @indent
   (#not-same-line? @indent @expr-start)
-  (#set! "scope" "all")
+
 )
 
 (field
@@ -66,7 +66,7 @@
   .
   field_indexer: (_) @indent
   (#not-same-line? @expr-start @indent)
-  (#set! "scope" "all")
+
 )
 
 (_
@@ -77,7 +77,7 @@
   (_) @expr-end
   (#not-same-line? @indent @expr-start)
   (#same-line? @expr-end @indent)
-  (#set! "scope" "all")
+
 )
 
 (_
@@ -88,7 +88,7 @@
   (_) @indent
   (#same-line? @expr-start @assign-sym)
   (#not-same-line? @assign-sym @indent)
-  (#set! "scope" "all")
+
 )
 
 (ifexp
@@ -100,7 +100,7 @@
   ] @expr-start
   .
   (_) @indent.always
-  (#set! "scope" "all")
+
   (#not-same-line? @indent.always @expr-start)
 )
 
@@ -108,7 +108,7 @@
   (paramtypelist) @expr-start
   return_type: (_) @indent
   (#not-same-line? @expr-start @indent)
-  (#set! "scope" "all")
+
 )
 
 (exp_wrap

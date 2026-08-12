@@ -27,7 +27,7 @@ fn get_repo_dir(file: &Path) -> Result<&Path> {
     file.parent().context("file has no parent directory")
 }
 
-pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
+pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
@@ -35,7 +35,7 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     // TODO cache repository lookup
 
     let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir)
+    let repo = open_repo(repo_dir, trust_full)
         .context("failed to open git repo")?
         .to_thread_local();
     let head = repo.head_commit()?;
@@ -45,6 +45,12 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     let data = file_object.detach().data;
     // Get the actual data that git would make out of the git object.
     // This will apply the user's git config or attributes like crlf conversions.
+    //
+    // The whole filter pipeline still runs in untrusted (`Trust::Reduced`) mode so built-in
+    // conversions like autocrlf keep working, but gix drops `filter.*.clean` / `filter.*.smudge`
+    // drivers defined in untrusted (repository-local) config, so those external programs are not
+    // executed unless the workspace was explicitly trusted. This relies on `open_repo` forcing the
+    // trust level instead of letting gix re-derive it from `.git` ownership; see the note there.
     if let Some(work_dir) = repo.workdir() {
         let rela_path = file.strip_prefix(work_dir)?;
         let rela_path = gix::path::try_into_bstr(rela_path)?;
@@ -59,13 +65,13 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     }
 }
 
-pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
 
     let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir)
+    let repo = open_repo(repo_dir, trust_full)
         .context("failed to open git repo")?
         .to_thread_local();
     let head_ref = repo.head_ref()?;
@@ -79,18 +85,33 @@ pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
 }
 
-pub fn for_each_changed_file(cwd: &Path, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
-    status(&open_repo(cwd)?.to_thread_local(), f)
+pub fn for_each_changed_file(
+    cwd: &Path,
+    trust_full: bool,
+    f: impl Fn(Result<FileChange>) -> bool,
+) -> Result<()> {
+    status(&open_repo(cwd, trust_full)?.to_thread_local(), f)
 }
 
-fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
-    // custom open options
-    let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
+fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
+    // `trust_full` is the workspace-trust decision made by the caller, and it must be the
+    // authority on the gix trust level. gix's own discovery (`discover_*`) ignores a
+    // caller-supplied trust level: it always re-derives trust from `.git` ownership, so a malicious
+    // `.git/config` in a user-owned directory would be opened as `Trust::Full` regardless of our
+    // gate. Worse, the GIT_DIR-environment branch of that discovery panics because it never sets a
+    // trust level at all. So we split discovery from opening: find the repository path ourselves,
+    // then `open_opts(..).with(trust)`, which forces the trust level and skips gix's ownership
+    // check. Under `Trust::Reduced`, gix then refuses to honor untrusted repository-local config
+    // such as `filter.*` smudge/clean drivers.
 
-    // On windows various configuration options are bundled as part of the installations
-    // This path depends on the install location of git and therefore requires some overhead to lookup
-    // This is basically only used on windows and has some overhead hence it's disabled on other platforms.
-    // `gitoxide` doesn't use this as default
+    let trust = if trust_full {
+        gix::sec::Trust::Full
+    } else {
+        gix::sec::Trust::Reduced
+    };
+
+    // On Windows various configuration options are bundled as part of the git installation. The
+    // lookup is expensive; only do it there.
     let config = gix::open::permissions::Config {
         system: true,
         git: true,
@@ -99,30 +120,28 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
         includes: true,
         git_binary: cfg!(windows),
     };
-    // change options for config permissions without touching anything else
-    git_open_opts_map.reduced = git_open_opts_map
-        .reduced
-        .permissions(gix::open::Permissions {
-            config,
-            ..gix::open::Permissions::default_for_level(gix::sec::Trust::Reduced)
-        });
-    git_open_opts_map.full = git_open_opts_map.full.permissions(gix::open::Permissions {
-        config,
-        ..gix::open::Permissions::default_for_level(gix::sec::Trust::Full)
-    });
 
-    let open_options = gix::discover::upwards::Options {
+    let permissions = gix::open::Permissions {
+        config,
+        ..gix::open::Permissions::default_for_level(trust)
+    };
+
+    let discover_options = gix::discover::upwards::Options {
         dot_git_only: true,
         ..Default::default()
     };
+    let (repo_path, _trust_from_ownership) = gix::discover::upwards_opts(path, discover_options)
+        .context("failed to discover git repo")?;
+    let (git_dir, _work_dir) = repo_path.into_repository_and_work_tree_directories();
 
-    let res = ThreadSafeRepository::discover_with_environment_overrides_opts(
-        path,
-        open_options,
-        git_open_opts_map,
-    )?;
+    let options = gix::open::Options::default()
+        .permissions(permissions)
+        // `git_dir` is the discovered `.git` directory (or a linked-worktree git dir), so open it
+        // as-is rather than letting gix append `.git` again.
+        .open_path_as_is(true)
+        .with(trust);
 
-    Ok(res)
+    Ok(ThreadSafeRepository::open_opts(git_dir, options)?)
 }
 
 /// Emulates the result of running `git status` from the command line.
@@ -167,6 +186,13 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
                     EntryStatus::Change(Change::Modification { .. }) => {
                         FileChange::Modified { path }
                     }
+                    // Files marked with `git add --intent-to-add`. Such files
+                    // still show up as new in `git status`, so it's appropriate
+                    // to show them the same way as untracked files in the
+                    // "changed file" picker. One example of this being used
+                    // is Jujutsu, a Git-compatible VCS. It marks all new files
+                    // with `--intent-to-add` automatically.
+                    EntryStatus::IntentToAdd => FileChange::Untracked { path },
                     _ => continue,
                 }
             }

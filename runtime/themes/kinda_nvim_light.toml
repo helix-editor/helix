@@ -24,6 +24,12 @@ fg_primary_variant = "#2F9C77"
 fg_secondary_variant = "#759ABA"
 fg_tertiary_variant = "#A860BF"
 
+rnb_1 = "#008099"
+rnb_2 = "#CC3D9C"
+rnb_3 = "#008C2F"
+rnb_4 = "#CC5F29"
+rnb_5 = "#8F7C00"
+
 bg = "#F2F5F4"
 bg_1 = "#EDF0EF"
 bg_2 = "#FCFFFE"

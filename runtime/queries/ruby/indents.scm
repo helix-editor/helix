@@ -6,7 +6,6 @@
   (call)
   (class)
   (case)
-  (elsif)
   (if)
   (hash)
   (method)
@@ -21,4 +20,8 @@
   "]"
   "end"
   "when"
+  "else"
+  "elsif"
+  "rescue"
+  "ensure"
 ] @outdent

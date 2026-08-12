@@ -1,5 +1,5 @@
 (namespace_definition
-  name: (namespace_name) @name) @module
+  name: (namespace_name) @name) @definition.module
 
 (interface_declaration
   name: (name) @name) @definition.interface
@@ -10,7 +10,7 @@
 (class_declaration
   name: (name) @name) @definition.class
 
-(class_interface_clause [(name) (qualified_name)] @name) @impl
+(class_interface_clause [(name) (qualified_name)] @name) @reference.interface
 
 (property_declaration
   (property_element (variable_name (name) @name))) @definition.field

@@ -104,10 +104,17 @@
     (variable_identifier_declaration
       (identifier) @variable.other.member)))
 
+(type_declaration _ @type)
+
+; A call/constructor callee (the identifier inside the call's type_declaration)
+; is a function — must come after the generic type_declaration rule above, which
+; otherwise paints the callee @type.
 (type_constructor_or_function_call_expression
   (type_declaration (identifier) @function))
 
-(type_declaration _ @type)
+; Member access: obj.field
+(composite_value_decomposition_expression
+  accessor: (identifier) @variable.other.member)
 
 (attribute
   (identifier) @attribute)

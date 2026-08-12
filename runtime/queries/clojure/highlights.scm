@@ -6,7 +6,8 @@
 
 (num_lit) @constant.numeric
 
-[(bool_lit) (nil_lit)] @constant.builtin
+(bool_lit) @constant.builtin.boolean
+(nil_lit) @constant.builtin
 
 (comment) @comment
 

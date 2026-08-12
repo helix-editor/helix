@@ -17,12 +17,12 @@ bg-inactive = "#dfd5cf"
 border = "#9f9690"
 
 # Common accent backgrounds
-bg-red-nuanced = "#ffe8f0"
-bg-green-nuanced = "#e0f5e0"
-bg-yellow-nuanced = "#f9ead0"
-bg-blue-nuanced = "#ebebff"
-bg-magenta-nuanced = "#f6e7ff"
-bg-cyan-nuanced = "#e1f3fc"
+bg-red-nuanced = "#ffe8e8"
+bg-green-nuanced = "#e0f6e0"
+bg-yellow-nuanced = "#f8f0d0"
+bg-blue-nuanced = "#ecedff"
+bg-magenta-nuanced = "#f8e6f5"
+bg-cyan-nuanced = "#e0f2fa"
 
 # Special purpose
 bg-completion = "#f0c1cf"

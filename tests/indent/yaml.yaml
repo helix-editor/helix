@@ -1,0 +1,90 @@
+# Ported from helix-term/tests/test/languages/yaml.rs (the auto-indent o/O/<ret>
+# tests). The corpus checks both directions — reindent (every line re-indents to
+# its own column) and typing (pressing Enter at a line's end indents the next
+# line) — which together cover the open-below (o), open-above (O) and split
+# (<ret>) cases those tests assert. Fixtures whose top-level shape differs (a
+# bare sequence vs a mapping) are separated into their own `---` documents, since
+# they cannot coexist at the root of one document.
+
+# The canonical fixture: nested mappings, a key whose value is an indented
+# sequence, scalar pairs, and a trailing keyless map entry.
+top:
+  baz: foo
+  bazi:
+    more: yes
+    why: because
+  quux:
+    - 1
+    - 2
+  bax: foox
+fook:
+
+# Block scalars inside a nested mapping: literal (|) keeps newlines, folded (>)
+# joins lines; both indent their body one level under the key.
+literal:
+  baz: foo
+  bax: |
+    some
+    multi
+    line
+    string
+folded:
+  baz: foo
+  bax: >
+    some
+    multi
+    line
+    string
+
+# A mapping value that is a sequence of mappings, nested two levels deep.
+root:
+  baz:
+    - one: two
+      three: four
+    - top:
+        baz: foo
+        bax: foox
+
+# Flow collections stay on one line.
+flow-map: { a: 1, b: 2 }
+flow-seq: [1, 2, 3]
+
+# Anchors, aliases and merge keys. An anchor on a key whose mapping/sequence body
+# follows beneath indents like a plain key (the fix this corpus guards).
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+pool: &pool
+  - primary
+  - replica
+development:
+  <<: *defaults
+  database: dev
+
+# A top-level sequence whose item is a mapping; continuation keys align under the
+# first key and a later key dedents back to the item's map level.
+---
+- top:
+    baz: foo
+    bax: foox
+  fook: done
+
+# Multiple documents in one stream.
+---
+doc: one
+nested:
+  value: 1
+---
+doc: two
+list:
+  - x
+  - y
+
+# Keyless entries and an empty block scalar. Opening a line after each indents to
+# the child / body level (the keyless-pair and block_scalar rules); the following
+# line here sits at the outer column, so the corpus records that as a reviewed
+# typing over-indent note rather than a hard assertion.
+holder:
+  keyless:
+  folded: >
+  plain: value

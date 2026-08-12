@@ -4,7 +4,10 @@ use std::io;
 
 use crate::{buffer::Cell, terminal::Config};
 
-use helix_view::graphics::{CursorKind, Rect};
+use helix_view::{
+    graphics::{CursorKind, Rect},
+    theme::Color,
+};
 
 #[cfg(all(feature = "termina", not(windows)))]
 mod termina;
@@ -39,10 +42,17 @@ pub trait Backend {
     fn set_cursor(&mut self, x: u16, y: u16) -> Result<(), io::Error>;
     /// Clears the terminal
     fn clear(&mut self) -> Result<(), io::Error>;
+    /// Begins a synchronized-output frame (if the terminal supports it), so the
+    /// draw and cursor updates between `start_sync` and `end_sync` present as one
+    /// frame instead of flickering.
+    fn start_sync(&mut self) -> Result<(), io::Error>;
+    /// Ends the synchronized-output frame opened by `start_sync`.
+    fn end_sync(&mut self) -> Result<(), io::Error>;
     /// Gets the size of the terminal in cells
     fn size(&self) -> Result<Rect, io::Error>;
     /// Flushes the terminal buffer
     fn flush(&mut self) -> Result<(), io::Error>;
     fn supports_true_color(&self) -> bool;
     fn get_theme_mode(&self) -> Option<helix_view::theme::Mode>;
+    fn set_background_color(&mut self, color: Option<Color>) -> io::Result<()>;
 }

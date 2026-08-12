@@ -28,6 +28,9 @@
 (line_comment) @comment.line
 (block_comment) @comment.block
 
+; Base catch-all: every specific identifier rule below overrides it.
+(identifier) @variable
+
 ; imports (WESL extension)
 
 (import_item (identifier) @type
@@ -105,8 +108,6 @@
 
 (named_component_expression
   component: (_) @variable.other.member)
-
-(identifier) @variable
 
 ; literals
 

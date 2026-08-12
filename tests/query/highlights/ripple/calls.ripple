@@ -1,0 +1,9 @@
+component App() {
+//        ^ @function
+  let x = obj.field;
+//            ^ @variable.other.member
+  obj.method(1);
+//    ^ @function.method
+  foo(2);
+//^ @function
+}

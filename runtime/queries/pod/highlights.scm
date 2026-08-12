@@ -91,7 +91,7 @@
   (#eq? @character "X")
   (content) @markup.reference)
 
-(interior_sequence
+(escape_sequence
   (sequence_letter) @character
-  (#eq? @character "E")
+  ["<" ">"] @punctuation.delimiter
   (content) @string.special.escape)

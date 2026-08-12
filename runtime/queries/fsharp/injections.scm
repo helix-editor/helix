@@ -4,5 +4,5 @@
 ] @injection.content
   (#set! injection.language "comment"))
 
-((xml_doc (xml_doc_content) @injection.content)
+((xml_doc) @injection.content
  (#set! injection.language "xml"))

@@ -9,4 +9,5 @@
 
 [
   "end"
+  "else"
 ] @outdent

@@ -41,7 +41,7 @@
   "def") @indent @extend
 (ERROR
   (block) @indent @extend
-  (#set! "scope" "all"))
+  )
 
 (ERROR
   "try"
@@ -50,7 +50,7 @@
   (ERROR
     (block
       (expression_statement
-        (identifier) @_except) @indent.branch))
+        (identifier) @_except) @indent))
   (#eq? @_except "except"))
 
 [
@@ -88,9 +88,9 @@
 (parameters
   .
   (identifier) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 
 (argument_list
   .
   (_) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align

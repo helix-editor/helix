@@ -289,6 +289,7 @@
  (#match? @constant "^_*[A-Z][A-Z\\d_]*$"))
 
 (escape_sequence) @constant.character.escape
+(escape_interpolation) @constant.character.escape ; the `{{` and `}}` literals in f-strings
 
 [
   (true)
@@ -306,3 +307,24 @@
  
 (comment) @comment
 (string) @string
+
+; -------
+; Type aliases / type variables  (after the generic identifier+type rules so they win)
+; -------
+
+; PEP 695: `type Alias = ...`
+(type_alias_statement
+  . (type (identifier) @type.definition))
+
+; `X = TypeVar("X")` / `X = NewType("X", int)`
+((assignment
+  left: (identifier) @type.definition
+  right: (call
+    function: (identifier) @_func))
+ (#any-of? @_func "TypeVar" "NewType" "ParamSpec" "TypeVarTuple"))
+
+; `X: TypeAlias = ...`
+((assignment
+  left: (identifier) @type.definition
+  type: (type (identifier) @_ann))
+ (#eq? @_ann "TypeAlias"))

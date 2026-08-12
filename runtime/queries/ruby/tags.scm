@@ -17,7 +17,7 @@
   name: (_) @name) @definition.method
 
 (setter
-  (identifier) @ignore)
+  (identifier) @_ignore)
 
 ; Class definitions
 

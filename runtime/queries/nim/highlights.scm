@@ -260,27 +260,32 @@
 (macro_declaration name: (_) @function.macro)
 (symbol_declaration name: (_) @variable)
 
+; Member access: the field of a dot expression (o.field). Before the call
+; rule below so a method call's right-hand identifier reclaims @function.
+(dot_expression
+  right: (identifier) @variable.other.member)
+
 (call
   function: [
-    (identifier) @function.call
+    (identifier) @function
     (dot_expression
-      right: (identifier) @function.call)
+      right: (identifier) @function)
     (bracket_expression
       left: [
-        (identifier) @function.call
+        (identifier) @function
         (dot_expression
-          right: (identifier) @function.call)])])
+          right: (identifier) @function)])])
 (generalized_string
   function: [
-    (identifier) @function.call
+    (identifier) @function
     (dot_expression
-      right: (identifier) @function.call)
+      right: (identifier) @function)
     (bracket_expression
       left: [
-        (identifier) @function.call
+        (identifier) @function
         (dot_expression
-          right: (identifier) @function.call)])])
-(dot_generic_call function: (_) @function.call)
+          right: (identifier) @function)])])
+(dot_generic_call function: (_) @function)
 
 ;; Variables
 

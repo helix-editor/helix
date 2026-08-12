@@ -11,7 +11,7 @@ use crossterm::{
         Attribute as CAttribute, Color as CColor, Colors, Print, SetAttribute, SetBackgroundColor,
         SetColors, SetForegroundColor,
     },
-    terminal::{self, Clear, ClearType},
+    terminal::{self, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate},
     Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
@@ -33,7 +33,7 @@ fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
 }
 fn reset_cursor_approach(terminfo: TermInfo) -> String {
-    let mut reset_str = "\x1B[0 q".to_string();
+    let mut reset_str = String::new();
 
     if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
         reset_str.push_str(se_str);
@@ -44,6 +44,8 @@ fn reset_cursor_approach(terminfo: TermInfo) -> String {
             .utf8_string_cap(termini::StringCapability::CursorNormal)
             .unwrap_or(""),
     );
+
+    reset_str.push_str("\x1B[0 q");
 
     reset_str
 }
@@ -289,7 +291,7 @@ where
     }
 
     fn hide_cursor(&mut self) -> io::Result<()> {
-        execute!(self.buffer, Hide)
+        queue!(self.buffer, Hide)
     }
 
     fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
@@ -299,15 +301,23 @@ where
             CursorKind::Underline => SetCursorStyle::SteadyUnderScore,
             CursorKind::Hidden => unreachable!(),
         };
-        execute!(self.buffer, Show, shape)
+        queue!(self.buffer, Show, shape)
     }
 
     fn set_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
-        execute!(self.buffer, MoveTo(x, y))
+        queue!(self.buffer, MoveTo(x, y))
     }
 
     fn clear(&mut self) -> io::Result<()> {
-        execute!(self.buffer, Clear(ClearType::All))
+        queue!(self.buffer, Clear(ClearType::All))
+    }
+
+    fn start_sync(&mut self) -> io::Result<()> {
+        queue!(self.buffer, BeginSynchronizedUpdate)
+    }
+
+    fn end_sync(&mut self) -> io::Result<()> {
+        queue!(self.buffer, EndSynchronizedUpdate)
     }
 
     fn size(&self) -> io::Result<Rect> {
@@ -327,6 +337,10 @@ where
 
     fn get_theme_mode(&self) -> Option<helix_view::theme::Mode> {
         None
+    }
+
+    fn set_background_color(&mut self, _color: Option<helix_view::theme::Color>) -> io::Result<()> {
+        Ok(())
     }
 }
 

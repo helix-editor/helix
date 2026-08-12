@@ -286,10 +286,7 @@ mod test {
     #[test]
     fn print_multi_code_point_grapheme() {
         assert_eq!(
-            (
-                String::from("hello 👨‍👩‍👧‍👦 goodbye"),
-                Selection::single(13, 6)
-            ),
+            (String::from("hello 👨‍👩‍👧‍👦 goodbye"), Selection::single(13, 6)),
             print("hello #[|👨‍👩‍👧‍👦]# goodbye")
         );
     }

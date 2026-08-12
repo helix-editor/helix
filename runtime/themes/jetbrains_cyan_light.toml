@@ -88,13 +88,13 @@
 ] }
 
 "ui.statusline" = { fg = "shade06", bg = "shade01" }
-"ui.statusline.inactive" = { fg = "shade04", bg = "shade00" }
+"ui.statusline.inactive" = { fg = "shade03_darker", bg = "shade01_lighter" }
 "ui.statusline.normal" = { fg = "shade00", bg = "blue" }
 "ui.statusline.insert" = { fg = "shade00", bg = "green" }
 "ui.statusline.select" = { fg = "shade00", bg = "purple" }
 
 "ui.popup" = { fg = "shade04", bg = "shade01_lighter" }
-"ui.window" = { fg = "shade04", bg = "shade00" }
+"ui.window" = { fg = "shade03_darker", bg = "shade01_lighter" }
 "ui.help" = { fg = "shade06", bg = "shade00" }
 "ui.text" = "shade05"
 "ui.text.focus" = { fg = "shade07", bg = "light_blue" }

@@ -67,6 +67,10 @@
 ; Identifiers
 ;------------
 
+; Base catch-all for value-level identifiers (let bindings, references); the
+; specific rules below (params, calls, escaped operators, raise) override it.
+(value_identifier) @variable
+
 ; Escaped identifiers like \"+."
 ((value_identifier) @function.macro
  (#match? @function.macro "^\\.*$"))
@@ -117,7 +121,7 @@
 [
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
 
 (number) @constant.numeric
 (polyvar) @constant
@@ -194,6 +198,10 @@
   "try"
   "catch"
 ] @keyword.control.exception
+
+; A call's callee is a function (before the raise special-case below).
+(call_expression
+  function: (value_identifier) @function)
 
 (call_expression
   function: (value_identifier) @keyword.control.exception

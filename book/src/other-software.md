@@ -1,6 +1,6 @@
 # Helix mode in other software
 
-Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.
+Helix' keymap and interaction model ([Using Helix](./usage.md)) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.
 
 "Helix mode" is frequently still in early stages or missing entirely. For such cases, we also link to relevant bugs or discussions.
 

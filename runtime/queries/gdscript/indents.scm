@@ -34,3 +34,13 @@
   (pass_statement)
 ] @extend.prevent-once
 
+
+[
+  ")"
+  "]"
+  "}"
+] @outdent
+(elif_clause
+  "elif" @outdent)
+(else_clause
+  "else" @outdent)

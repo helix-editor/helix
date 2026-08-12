@@ -106,6 +106,7 @@
   "%"
   "%="
   ":"
+  ".." ; range, and C# 12 collection-expression spread (`..rest`)
 ] @operator
 
 [
@@ -132,7 +133,6 @@
   "as"
   "base"
   "break"
-  "case"
   "catch"
   "checked"
   "class"
@@ -140,7 +140,6 @@
   "default"
   "delegate"
   "do"
-  "else"
   "enum"
   "event"
   "explicit"
@@ -150,7 +149,6 @@
   "foreach"
   "global"
   "goto"
-  "if"
   "implicit"
   "interface"
   "is"
@@ -165,7 +163,6 @@
   "stackalloc"
   "static"
   "struct"
-  "switch"
   "throw"
   "try"
   "typeof"
@@ -188,11 +185,57 @@
   "init"
   "with"
   "let"
+  ;; LINQ query clauses
+  "group"
+  "by"
+  "into"
+  "join"
+  "on"
+  "equals"
+  "orderby"
+  "ascending"
+  "descending"
 ] @keyword
+
+[
+  "case"
+  "else"
+  "if"
+  "switch"
+  "when"
+] @keyword.control.conditional
+
+;; Pattern matching combinators (`x is not null`, `> 0 and < 10`)
+
+[
+  "and"
+  "or"
+  "not"
+] @keyword.operator
+
+;; Preprocessor directives
+
+[
+  "#define"
+  "#undef"
+  "#if"
+  "#elif"
+  "#else"
+  "#endif"
+  "#region"
+  "#endregion"
+  "#error"
+  "#warning"
+  "#line"
+  "#nullable"
+  "#pragma"
+] @keyword.directive
 
 ;; Attribute
 
 (attribute name: (identifier) @attribute)
+; Named attribute argument `[Attr(Name = value)]`.
+(attribute_argument name: (identifier) @variable.other.member)
 
 ;; Parameters
 
@@ -203,6 +246,12 @@
 
 (type_parameter_constraints_clause (identifier) @type.parameter)
 
+;; Member access. Before the method-call rules below so `obj.Method()` reclaims
+;; @function, while a plain `obj.field` stays a member.
+(member_access_expression name: (identifier) @variable.other.member)
+
 ;; Method calls
 
 (invocation_expression (member_access_expression name: (identifier) @function))
+; Bare calls (`Method()` without a receiver)
+(invocation_expression function: (identifier) @function)

@@ -1,5 +1,6 @@
 [
-  (lookahead_assertion)
+  (lookaround_assertion)
+  (inline_flags_group)
   (character_class)
   (anonymous_capturing_group)
   (named_capturing_group)
@@ -10,8 +11,8 @@
 
 [
   "(?" "(?:"
-  "(?<" ">"
+  "(?<" "(?P<" "(?P=" ">"
   "(" ")"
-  "[" "]"
+  "[" "[:" ":]" "]"
   "{" "}"
 ] @rainbow.bracket

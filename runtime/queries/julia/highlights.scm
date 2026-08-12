@@ -37,7 +37,7 @@
 ; ------
 
 (macro_definition
-  name: (identifier) @function.macro)
+  (signature (call_expression . (identifier) @function.macro)))
 
 (macro_identifier
   "@" @function.macro
@@ -56,33 +56,27 @@
 (selected_import
   . (identifier) @namespace)
 
-(scoped_identifier
+(import_path
   (identifier) @namespace)
 
 ; -------------------
 ; Function definition
 ; -------------------
 
+; The name now lives in the signature's call_expression (optionally wrapped in a
+; where_expression); short-form `f(x) = …` is an assignment with a call LHS.
 (
   (function_definition
-    name: [
-      (identifier) @function
-      (scoped_identifier
-        (identifier) @namespace
-        (identifier) @function)
-    ])
-  ; prevent constructors (PascalCase) to be highlighted as functions
+    (signature
+      [
+        (call_expression . (identifier) @function)
+        (where_expression (call_expression . (identifier) @function))
+      ]))
   (#match? @function "^[^A-Z]"))
 
 (
-  (short_function_definition
-    name: [
-      (identifier) @function
-      (scoped_identifier
-        (identifier) @namespace
-        (identifier) @function)
-    ])
-  ; prevent constructors (PascalCase) to be highlighted as functions
+  (assignment
+    . (call_expression . (identifier) @function))
   (#match? @function "^[^A-Z]"))
 
 ; ---------------
@@ -127,52 +121,39 @@
 ; -----------
 ; Parameters
 ; -----------
+; Parameters now live in the signature's argument_list: plain identifiers,
+; optional (assignment), splat (splat_expression) and typed (typed_expression).
 
-(parameter_list
+(argument_list
   (identifier) @variable.parameter)
 
-(optional_parameter
-  . (identifier) @variable.parameter)
+(argument_list
+  (assignment . (identifier) @variable.parameter))
 
-(slurp_parameter
-  (identifier) @variable.parameter)
+(argument_list
+  (splat_expression (identifier) @variable.parameter))
 
-(typed_parameter
-  parameter: (identifier)? @variable.parameter
-  type: (_) @type)
+(argument_list
+  (typed_expression . (identifier) @variable.parameter))
 
-(function_expression
+(arrow_function_expression
   . (identifier) @variable.parameter) ; Single parameter arrow functions
 
 ; -----
 ; Types
 ; -----
 
-; Definitions
-(abstract_definition
-  name: (identifier) @type.definition) @keyword
+; Definitions — the type name(s) and supertype live in a type_head.
+(type_head (_) @type)
 
-(primitive_definition
-  name: (identifier) @type.definition) @keyword
+; Struct fields (in the body block).
+(struct_definition
+  (block (identifier) @variable.other.member))
 
 (struct_definition
-  name: (identifier) @type)
-
-(struct_definition
-  . (_)
-    (identifier) @variable.other.member)
-
-(struct_definition
-  . (_)
-  (typed_expression
-    . (identifier) @variable.other.member))
-
-(type_clause
-  [
-    (identifier) @type
-    (field_expression
-      (identifier) @type .)
-  ])
+  (block
+    (typed_expression
+      . (identifier) @variable.other.member)))
 
 ; Annotations
 (parametrized_type_expression
@@ -180,22 +161,13 @@
   (curly_expression
     (_) @type))
 
-(type_parameter_list
-  (identifier) @type)
-
 (typed_expression
   (identifier) @type . )
 
-(function_definition
-  return_type: (identifier) @type)
-
-(short_function_definition
-  return_type: (identifier) @type)
-
-(where_clause
+(where_expression
   (identifier) @type)
 
-(where_clause
+(where_expression
   (curly_expression
     (_) @type))
 
@@ -386,11 +358,8 @@
 ; Operators
 ; ---------
 
-[
-  (operator)
-  "="
-  "∈"
-] @operator
+; `=` and `∈` are now `(operator)` nodes rather than standalone tokens.
+(operator) @operator
 
 (adjoint_expression
   "'" @operator)
@@ -400,12 +369,6 @@
 
 ((operator) @keyword.operator
   (#any-of? @keyword.operator "in" "isa"))
-
-(for_binding
-  "in" @keyword.operator)
-
-(where_clause
-  "where" @keyword.operator)
 
 (where_expression
   "where" @keyword.operator)

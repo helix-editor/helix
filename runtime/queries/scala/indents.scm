@@ -15,6 +15,8 @@
   (match_expression)
 ] @indent
 
+(ERROR "for") @indent
+
 [
   "}"
   "]"

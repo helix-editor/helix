@@ -16,6 +16,11 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_]*$"))
 
+; Member access. Placed before the call rules below so a method call
+; `obj.m()` is reclaimed as @function.method, while a plain `obj.attr`
+; access stays a member.
+(attribute attribute: (identifier) @variable.other.member)
+
 ; Function calls
 
 (decorator) @function
@@ -68,8 +73,6 @@
   (c_name
     ((identifier) @function))
   (c_function_definition))
-
-(attribute attribute: (identifier) @variable.other.member)
 
 ; Literals
 

@@ -1,0 +1,9 @@
+(class_definition name: (identifier) @name) @definition.class
+(object_definition name: (identifier) @name) @definition.module
+(trait_definition name: (identifier) @name) @definition.interface
+(enum_definition name: (identifier) @name) @definition.enum
+(function_definition name: (identifier) @name) @definition.function
+(val_definition pattern: (identifier) @name) @definition.constant
+(var_definition pattern: (identifier) @name) @definition.constant
+(type_definition name: (type_identifier) @name) @definition.type
+(given_definition name: (identifier) @name) @definition.constant

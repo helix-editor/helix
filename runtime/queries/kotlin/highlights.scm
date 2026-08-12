@@ -59,24 +59,25 @@
 	"?:"
 	"!!"
 	"is"
-	"!is"
 	"in"
-	"!in"
 	"as"
 	"as?"
 	".."
 	"->"
 ] @operator
 
+; `?` in a nullable type (`Int?`) — now its own (quest) node.
+(nullable_type (quest) @operator)
+
 ;;; String interpolation
 
 (string_literal
-	"$" @punctuation.special
+	(interpolation_identifier_start) @punctuation.special
   (interpolated_identifier) @variable)
 (string_literal
-	"${" @punctuation.special
+	(interpolation_expression_start) @punctuation.special
 	(interpolated_expression) @none
-	"}" @punctuation.special)
+	(interpolation_expression_end) @punctuation.special)
 
 ; `it` and `this` inside string interpolation
 ((interpolated_identifier) @variable.builtin
@@ -162,10 +163,8 @@
 
 (character_literal) @constant.character
 
-[
-	(null_literal) ; should be highlighted the same as booleans
-	(boolean_literal)
-] @constant.builtin.boolean
+(boolean_literal) @constant.builtin.boolean
+(null_literal) @constant.builtin
 
 (real_literal) @constant.numeric.float
 [
