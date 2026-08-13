@@ -155,14 +155,15 @@ impl Component for SignatureHelp {
             None => return,
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
-        let sig_doc = sig_doc.parse(Some(&cx.editor.theme));
         let sig_doc_area = area
             .clip_top(sig_text_area.height + 2)
             .clip_bottom(u16::from(cx.editor.popup_border()));
-        let sig_doc_para = Paragraph::new(&sig_doc)
-            .wrap(Wrap { trim: false })
-            .scroll((cx.scroll.unwrap_or_default() as u16, 0));
-        sig_doc_para.render(sig_doc_area, surface);
+        sig_doc.render_content(
+            sig_doc_area,
+            surface,
+            Some(&cx.editor.theme),
+            cx.scroll.unwrap_or_default(),
+        );
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
@@ -189,9 +190,7 @@ impl Component for SignatureHelp {
         let (width, height) = match signature.signature_doc {
             Some(ref doc) => {
                 let doc_md = Markdown::new(doc.clone(), Arc::clone(&self.config_loader));
-                let doc_text = doc_md.parse(None);
-                let (doc_width, doc_height) =
-                    crate::ui::text::required_size(&doc_text, max_text_width);
+                let (doc_width, doc_height) = doc_md.required_size_for_width(max_text_width);
                 (
                     sig_width.max(doc_width),
                     sig_height + SEPARATOR_HEIGHT + doc_height,
