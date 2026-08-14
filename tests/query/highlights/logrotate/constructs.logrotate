@@ -1,0 +1,54 @@
+# application logs
+# ^ @comment.line
+  include /etc/logrotate.d
+# ^^^^^^^ @keyword.control.import
+#         ^ @string.special.path
+
+  "/var/log/application output.log" /var/log/application\ archive.log {
+# ^ @string.special.path
+#                                   ^ @string.special.path
+#                                                       ^ @constant.character.escape
+#                                                                     ^ @punctuation.bracket
+    rotate 14
+#   ^^^^^^ @keyword.directive
+#          ^^ @constant.numeric.integer
+    size = 100M
+#   ^^^^ @keyword.directive
+#        ^ @operator
+#          ^^^^ @constant.numeric
+    vendor_option "literal value"
+#   ^^^^^^^^^^^^^ @variable.other.member
+#                 ^^^^^^^^^^^^^^^ @string
+
+    firstaction
+#   ^^^^^^^^^^^ @keyword.directive
+        echo first
+#       ^^^^ @function.builtin
+    endscript
+#   ^^^^^^^^^ @keyword.directive
+    prerotate
+#   ^^^^^^^^^ @keyword.directive
+        echo before
+#       ^^^^ @function.builtin
+    endscript
+#   ^^^^^^^^^ @keyword.directive
+    postrotate
+#   ^^^^^^^^^^ @keyword.directive
+        echo "$HOME"
+#       ^^^^ @function.builtin
+    endscript
+#   ^^^^^^^^^ @keyword.directive
+    lastaction
+#   ^^^^^^^^^^ @keyword.directive
+        echo last
+#       ^^^^ @function.builtin
+    endscript
+#   ^^^^^^^^^ @keyword.directive
+    preremove
+#   ^^^^^^^^^ @keyword.directive
+        echo remove
+#       ^^^^ @function.builtin
+    endscript
+#   ^^^^^^^^^ @keyword.directive
+}
+# ^ @punctuation.bracket

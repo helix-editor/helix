@@ -1,0 +1,19 @@
+/var/log/application.log {
+    firstaction
+        echo first
+    endscript
+    prerotate
+        if test -f /run/application.pid; then
+            echo before
+        fi
+    endscript
+    postrotate
+        systemctl reload application
+    endscript
+    lastaction
+        echo last
+    endscript
+    preremove
+        rm -f -- "$1.metadata"
+    endscript
+}

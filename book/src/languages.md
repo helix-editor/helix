@@ -126,6 +126,10 @@ with the following priorities:
    the matcher will automatically take the machine-specific separators into account.
    If the glob isn't an absolute path or doesn't already start with a glob prefix,
    `*/` will automatically be added to ensure it matches for any subdirectory.
+   Wildcards match path separators by default. Add `literal-separator = true` to
+   require `/` in the glob to match a path separator. With this option, a relative
+   glob receives a `**/` prefix, and `{ glob = "logrotate.d/*", literal-separator = true }`
+   matches files directly in `logrotate.d` but not files in nested directories.
 2. Extension: if there are no glob matches, any `file-types` string that matches
    the file extension of a given file wins. In the example above, the `"toml"`
    config matches files like `Cargo.toml` or `languages.toml`.

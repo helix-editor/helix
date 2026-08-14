@@ -299,7 +299,7 @@ impl Loader {
                     FileType::Extension(extension) => {
                         languages_by_extension.insert(extension.clone(), language);
                     }
-                    FileType::Glob(glob) => {
+                    FileType::Glob { glob, .. } => {
                         file_type_globs.push(FileTypeGlob::new(glob.to_owned(), language));
                     }
                 };
@@ -1204,6 +1204,83 @@ mod test {
     use crate::{Rope, Transaction};
 
     static LOADER: Lazy<Loader> = Lazy::new(crate::config::default_lang_loader);
+
+    #[test]
+    fn logrotate_file_type_detection() {
+        let language_name = |path: &str| {
+            LOADER
+                .language_for_filename(Path::new(path))
+                .map(|language| LOADER.language(language).config().language_id.as_str())
+        };
+
+        for path in [
+            "/etc/logrotate.conf",
+            "C:/ProgramData/logrotate/logrotate.conf",
+            "/etc/logrotate.d/application",
+            "C:/ProgramData/logrotate/logrotate.d/application",
+            "/tmp/application.logrotate",
+            "/tmp/application.logrotate.conf",
+        ] {
+            assert_eq!(language_name(path), Some("logrotate"), "{path}");
+        }
+
+        for path in [
+            "/tmp/application.conf",
+            "/tmp/logrotate.status",
+            "/var/lib/logrotate/status",
+            "/etc/logrotate.d.backup/application",
+            "/etc/logrotate.d/nested/application",
+            "C:/ProgramData/logrotate/logrotate.d/nested/application",
+        ] {
+            assert_ne!(language_name(path), Some("logrotate"), "{path}");
+        }
+    }
+
+    #[test]
+    fn logrotate_queries_expose_textobjects_and_section_tags() {
+        let source_text = "# application logs\n/var/log/application.log {\n    daily\n}\n";
+        let source = Rope::from_str(source_text);
+        let language = LOADER.language_for_name("logrotate").unwrap();
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let root = syntax.tree().root_node();
+        let rotation_start = source_text.find("/var/log").unwrap();
+        let rotation_end = source_text.len() - 1;
+
+        let textobjects = LOADER.textobject_query(language).unwrap();
+        let entries: Vec<_> = textobjects
+            .capture_nodes("entry.around", &root, source.slice(..))
+            .unwrap()
+            .collect();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].byte_range(), rotation_start..rotation_end);
+
+        for capture in ["comment.inside", "comment.around"] {
+            let comments: Vec<_> = textobjects
+                .capture_nodes(capture, &root, source.slice(..))
+                .unwrap()
+                .collect();
+            assert_eq!(comments.len(), 1, "@{capture}");
+            assert_eq!(comments[0].byte_range(), 0..18, "@{capture}");
+        }
+
+        let tags = LOADER.tag_query(language).unwrap();
+        let definition = tags.query.get_capture("definition.section").unwrap();
+        let name = tags.query.get_capture("name").unwrap();
+        let mut cursor = InactiveQueryCursor::new(0..u32::MAX, TREE_SITTER_MATCH_LIMIT)
+            .execute_query(&tags.query, &root, RopeInput::new(source.slice(..)));
+        let tag = cursor.next_match().unwrap();
+        let definition = tag.nodes_for_capture(definition).next().unwrap();
+        let name = tag.nodes_for_capture(name).next().unwrap();
+
+        assert_eq!(
+            definition.byte_range(),
+            u32::try_from(rotation_start).unwrap()..u32::try_from(rotation_end).unwrap()
+        );
+        assert_eq!(
+            name.byte_range(),
+            u32::try_from(rotation_start).unwrap()..u32::try_from(rotation_start + 24).unwrap()
+        );
+    }
 
     #[test]
     fn test_textobject_queries() {

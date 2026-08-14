@@ -173,6 +173,7 @@
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
 | log | ✓ |  |  |  |  |  |
+| logrotate | ✓ | ✓ | ✓ | ✓ |  |  |
 | lpf | ✓ |  |  |  |  |  |
 | lua | ✓ | ✓ | ✓ | ✓ | ✓ | `lua-language-server` |
 | lua-format-string | ✓ |  |  |  |  |  |

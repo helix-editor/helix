@@ -169,7 +169,10 @@ pub enum FileType {
     /// it can be used to detect files based on their directories. If the glob
     /// is not an absolute path and does not already start with a glob pattern,
     /// a glob pattern will be prepended to it.
-    Glob(globset::Glob),
+    Glob {
+        glob: globset::Glob,
+        literal_separator: bool,
+    },
 }
 
 impl Serialize for FileType {
@@ -181,9 +184,16 @@ impl Serialize for FileType {
 
         match self {
             FileType::Extension(extension) => serializer.serialize_str(extension),
-            FileType::Glob(glob) => {
-                let mut map = serializer.serialize_map(Some(1))?;
+            FileType::Glob {
+                glob,
+                literal_separator,
+            } => {
+                let mut map =
+                    serializer.serialize_map(Some(if *literal_separator { 2 } else { 1 }))?;
                 map.serialize_entry("glob", glob.glob())?;
+                if *literal_separator {
+                    map.serialize_entry("literal-separator", literal_separator)?;
+                }
                 map.end()
             }
         }
@@ -215,29 +225,53 @@ impl<'de> Deserialize<'de> for FileType {
             where
                 M: serde::de::MapAccess<'de>,
             {
-                match map.next_entry::<String, String>()? {
-                    Some((key, mut glob)) if key == "glob" => {
-                        // If the glob isn't an absolute path or already starts
-                        // with a glob pattern, add a leading glob so we
-                        // properly match relative paths.
-                        if !glob.starts_with('/') && !glob.starts_with("*/") {
-                            glob.insert_str(0, "*/");
-                        }
+                let mut glob = None;
+                let mut literal_separator = None;
 
-                        globset::Glob::new(glob.as_str())
-                            .map(FileType::Glob)
-                            .map_err(|err| {
-                                serde::de::Error::custom(format!("invalid `glob` pattern: {}", err))
-                            })
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "glob" => {
+                            if glob.is_some() {
+                                return Err(serde::de::Error::duplicate_field("glob"));
+                            }
+                            glob = Some(map.next_value::<String>()?);
+                        }
+                        "literal-separator" => {
+                            if literal_separator.is_some() {
+                                return Err(serde::de::Error::duplicate_field("literal-separator"));
+                            }
+                            literal_separator = Some(map.next_value::<bool>()?);
+                        }
+                        _ => {
+                            return Err(serde::de::Error::unknown_field(
+                                &key,
+                                &["glob", "literal-separator"],
+                            ));
+                        }
                     }
-                    Some((key, _value)) => Err(serde::de::Error::custom(format!(
-                        "unknown key in `file-types` list: {}",
-                        key
-                    ))),
-                    None => Err(serde::de::Error::custom(
-                        "expected a `suffix` key in the `file-types` entry",
-                    )),
                 }
+
+                let mut glob = glob.ok_or_else(|| serde::de::Error::missing_field("glob"))?;
+                let literal_separator = literal_separator.unwrap_or(false);
+
+                // If the glob isn't an absolute path or already starts
+                // with a glob pattern, add a leading glob so we
+                // properly match relative paths.
+                if !glob.starts_with('/') && !glob.starts_with("*/") && !glob.starts_with("**/") {
+                    glob.insert_str(0, if literal_separator { "**/" } else { "*/" });
+                }
+
+                let mut builder = globset::GlobBuilder::new(&glob);
+                builder.literal_separator(literal_separator);
+                builder
+                    .build()
+                    .map(|glob| FileType::Glob {
+                        glob,
+                        literal_separator,
+                    })
+                    .map_err(|err| {
+                        serde::de::Error::custom(format!("invalid `glob` pattern: {}", err))
+                    })
             }
         }
 
@@ -652,4 +686,66 @@ where
 
 fn default_timeout() -> u64 {
     20
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Serialize, Deserialize)]
+    struct FileTypeConfig {
+        file_types: Vec<FileType>,
+    }
+
+    fn parse_glob(source: &str) -> (globset::Glob, bool) {
+        let config: FileTypeConfig = toml::from_str(source).unwrap();
+        let file_type = config.file_types.into_iter().next().unwrap();
+        let FileType::Glob {
+            glob,
+            literal_separator,
+        } = file_type
+        else {
+            panic!("expected a glob file type");
+        };
+        (glob, literal_separator)
+    }
+
+    #[test]
+    fn file_type_globs_can_require_literal_path_separators() {
+        let (glob, literal_separator) =
+            parse_glob(r#"file_types = [{ glob = "logrotate.d/*", literal-separator = true }]"#);
+        let matcher = glob.compile_matcher();
+
+        assert!(literal_separator);
+        assert!(matcher.is_match("/etc/logrotate.d/application"));
+        assert!(matcher.is_match("C:/ProgramData/logrotate/logrotate.d/application"));
+        assert!(!matcher.is_match("/etc/logrotate.d/nested/application"));
+        assert!(!matcher.is_match("C:/ProgramData/logrotate/logrotate.d/nested/application"));
+    }
+
+    #[test]
+    fn file_type_globs_retain_separator_matching_by_default() {
+        let (glob, literal_separator) = parse_glob(r#"file_types = [{ glob = "logrotate.d/*" }]"#);
+
+        assert!(!literal_separator);
+        assert!(glob
+            .compile_matcher()
+            .is_match("/etc/logrotate.d/nested/application"));
+    }
+
+    #[test]
+    fn file_type_glob_options_round_trip_through_toml() {
+        let config: FileTypeConfig = toml::from_str(
+            r#"file_types = [{ glob = "logrotate.d/*", literal-separator = true }]"#,
+        )
+        .unwrap();
+        let serialized = toml::to_string(&config).unwrap();
+        let (glob, literal_separator) = parse_glob(&serialized);
+
+        assert!(serialized.contains("literal-separator = true"));
+        assert!(literal_separator);
+        assert!(!glob
+            .compile_matcher()
+            .is_match("/etc/logrotate.d/nested/application"));
+    }
 }
