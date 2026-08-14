@@ -689,3 +689,186 @@ async fn test_indent_with_spaces() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typing_bash_fi_outdents_before_the_following_newline() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("test.sh", None),
+        (
+            indoc! {"\
+                if true; then
+                    echo tes#[t|]#
+            "},
+            "A<ret>fi<ret>",
+            indoc! {"\
+                if true; then
+                    echo test
+                fi
+                #[\n|]#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typing_lua_end_outdents_before_the_following_newline() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("test.lua", None),
+        (
+            indoc! {"\
+                if true then
+                    print(#[\"test\"|]#)
+            "},
+            "A<ret>end<ret>",
+            indoc! {"\
+                if true then
+                    print(\"test\")
+                end
+                #[\n|]#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typing_a_closing_brace_outdents_without_automatic_pairs() -> anyhow::Result<()> {
+    let mut config = test_config();
+    config.editor.auto_pairs = AutoPairConfig::Enable(false);
+    test_with_config(
+        AppBuilder::new()
+            .with_config(config)
+            .with_file("test.c", None),
+        (
+            indoc! {"\
+                int main(void) {
+                    return #[0;|]#
+            "},
+            "A<ret>}<ret>",
+            indoc! {"\
+                int main(void) {
+                    return 0;
+                }
+                #[\n|]#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typing_outdent_tokens_updates_multiple_cursors() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("test.sh", None),
+        (
+            indoc! {"\
+                if true; then
+                    echo one
+                    #[f|]#
+                if false; then
+                    echo two
+                    #(f|)#
+            "},
+            "Ai",
+            indoc! {"\
+                if true; then
+                    echo one
+                fi#[\n|]#
+                if false; then
+                    echo two
+                fi#(\n|)#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn editing_after_an_outdent_token_does_not_change_indentation() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("test.sh", None),
+        (
+            indoc! {"\
+                if true; then
+                    echo test
+                        fi # commen#[t|]#
+            "},
+            "A!",
+            indoc! {"\
+                if true; then
+                    echo test
+                        fi # comment!#[\n|]#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn simple_indent_heuristic_leaves_typed_outdent_tokens_unchanged() -> anyhow::Result<()> {
+    let mut config = test_config();
+    config.editor.indent_heuristic = helix_core::syntax::config::IndentationHeuristic::Simple;
+    test_with_config(
+        AppBuilder::new()
+            .with_config(config)
+            .with_file("test.sh", None),
+        (
+            indoc! {"\
+                if true; then
+                    echo tes#[t|]#
+            "},
+            "A<ret>fi<ret>",
+            indoc! {"\
+                if true; then
+                    echo test
+                    fi
+                    #[\n|]#
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn typing_an_outdent_token_inside_an_injection_uses_the_injected_query() -> anyhow::Result<()>
+{
+    let mut config = test_config();
+    config.editor.auto_pairs = AutoPairConfig::Enable(false);
+    test_with_config(
+        AppBuilder::new()
+            .with_config(config)
+            .with_file("test.html", None),
+        (
+            indoc! {"\
+                <script>
+                    function test() {
+                        console.log(#[\"test\"|]#);
+                </script>
+            "},
+            "A<ret>}<ret>",
+            indoc! {"\
+                <script>
+                    function test() {
+                        console.log(\"test\");
+                    }
+                    #[\n|]#</script>
+            "},
+        ),
+    )
+    .await?;
+
+    Ok(())
+}

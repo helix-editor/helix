@@ -37,7 +37,7 @@ use helix_core::{
     regex::{self, Regex},
     search::{self},
     selection, surround,
-    syntax::config::{BlockCommentToken, LanguageServerFeature},
+    syntax::config::{BlockCommentToken, IndentationHeuristic, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
@@ -4370,8 +4370,107 @@ pub mod insert {
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
+        auto_outdent(cx);
 
         helix_event::dispatch(PostInsertChar { c, cx });
+    }
+
+    fn auto_outdent(cx: &mut Context) {
+        let transaction = {
+            let (view, doc) = current_ref!(cx.editor);
+            let config = doc.config.load();
+            if config.indent_heuristic == IndentationHeuristic::Simple {
+                return;
+            }
+
+            let loader: &helix_core::syntax::Loader = &cx.editor.syn_loader.load();
+            let Some(syntax) = doc.syntax() else {
+                return;
+            };
+            let Some(indent_query) = loader.indent_query(syntax.root_language()) else {
+                return;
+            };
+
+            let text = doc.text().slice(..);
+            let mut cursors_by_line: HashMap<usize, SmallVec<[u32; 1]>> = HashMap::new();
+            for range in doc.selection(view.id).ranges() {
+                let cursor = range.cursor(text);
+                cursors_by_line
+                    .entry(text.char_to_line(cursor))
+                    .or_default()
+                    .push(text.char_to_byte(cursor) as u32);
+            }
+
+            let tab_width = doc.tab_width();
+            let indent_width = doc.indent_width();
+            let whitespace_width = |whitespace: RopeSlice| {
+                whitespace.chars().fold(0, |width, ch| match ch {
+                    '\t' => width + tab_width - (width % tab_width),
+                    _ => width + 1,
+                })
+            };
+            let mut changes: Vec<_> = cursors_by_line
+                .into_iter()
+                .filter_map(|(line_idx, cursors)| {
+                    let line = text.line(line_idx);
+                    let first_non_whitespace = line.first_non_whitespace_char()?;
+                    let line_start = text.line_to_char(line_idx);
+                    let token_start = line_start + first_non_whitespace;
+                    let token_byte = text.char_to_byte(token_start) as u32;
+                    let token_range = indent::outdent_token_byte_range_at(
+                        indent_query,
+                        syntax,
+                        loader,
+                        text,
+                        token_byte,
+                    )?;
+
+                    if !cursors
+                        .iter()
+                        .any(|cursor| token_range.start < *cursor && *cursor <= token_range.end)
+                    {
+                        return None;
+                    }
+
+                    let expected = indent::treesitter_indent_for_pos(
+                        indent_query,
+                        syntax,
+                        loader,
+                        tab_width,
+                        indent_width,
+                        text,
+                        line_idx,
+                        token_start,
+                        false,
+                    )?
+                    .to_string(&doc.indent_style, tab_width);
+                    let actual_width = whitespace_width(line.slice(..first_non_whitespace));
+                    let expected_width = whitespace_width(RopeSlice::from(expected.as_str()));
+                    if actual_width <= expected_width {
+                        return None;
+                    }
+
+                    Some((
+                        line_start,
+                        token_start,
+                        Some(Tendril::from(expected.as_str())),
+                    ))
+                })
+                .collect();
+            changes.sort_unstable_by_key(|(from, _, _)| *from);
+
+            if changes.is_empty() {
+                return;
+            }
+
+            let selection = doc.selection(view.id).clone();
+            let transaction = Transaction::change(doc.text(), changes.into_iter());
+            let selection = selection.map(transaction.changes());
+            transaction.with_selection(selection)
+        };
+
+        let (view, doc) = current!(cx.editor);
+        doc.apply(&transaction, view.id);
     }
 
     pub fn smart_tab(cx: &mut Context) {

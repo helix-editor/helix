@@ -199,7 +199,13 @@ pub mod tasks {
                             let want_cols = next_actual.chars().count();
                             let leading_outdent = || {
                                 let byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos);
-                                is_outdent_token_at(indent_query, &syntax, text, byte as u32)
+                                is_outdent_token_at(
+                                    indent_query,
+                                    &syntax,
+                                    &loader,
+                                    text,
+                                    byte as u32,
+                                )
                             };
 
                             if typed_cols < want_cols {

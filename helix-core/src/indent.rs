@@ -1233,26 +1233,24 @@ fn injection_base_level(
     indent_level_for_line(text.line(first), tab_width, indent_width)
 }
 
-/// Whether the token at `byte_pos` (expected to be the first token on its line)
-/// is captured `@outdent`/`@outdent.always` by the indent query — i.e. the
-/// editor dedents that line as the token is entered (a closing bracket, a
-/// `case`/`else`/`except` keyword, …). Used to tell a *recoverable* typing
-/// over-indent (the leading token will pull the line back) from a real one (a
-/// plain statement that the new-line indent placed too deep).
-pub fn is_outdent_token_at(
+/// Returns the byte range of an `@outdent`/`@outdent.always` capture beginning
+/// at `byte_pos`, using the query for the smallest syntax layer at that byte.
+pub fn outdent_token_byte_range_at(
     query: &IndentQuery,
     syntax: &Syntax,
+    loader: &syntax::Loader,
     text: RopeSlice,
     byte_pos: u32,
-) -> bool {
-    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
-    let Some(mut node) = root.descendant_for_byte_range(byte_pos, byte_pos) else {
-        return false;
+) -> Option<std::ops::Range<u32>> {
+    let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);
+    let query = if layer == syntax.root_layer() {
+        query
+    } else {
+        loader.indent_query(syntax.layer(layer).language)?
     };
+    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
+    let mut node = root.descendant_for_byte_range(byte_pos, byte_pos)?;
     let result = query_indents(query, &root, text, byte_pos..byte_pos + 1, None);
-    // Check the leading token and any ancestor that starts at the same byte (the
-    // @outdent may sit on the token itself or on a node it opens, e.g.
-    // `(access_specifier) @outdent`).
     loop {
         if result.indent_captures.get(&node.id()).is_some_and(|caps| {
             caps.iter().any(|c| {
@@ -1262,13 +1260,25 @@ pub fn is_outdent_token_at(
                 )
             })
         }) {
-            return true;
+            return Some(node.start_byte()..node.end_byte());
         }
         match node.parent() {
             Some(parent) if parent.start_byte() == node.start_byte() => node = parent,
-            _ => return false,
+            _ => return None,
         }
     }
+}
+
+/// Whether the token at `byte_pos` (expected to be the first token on its line)
+/// is captured `@outdent`/`@outdent.always` by the applicable indent query.
+pub fn is_outdent_token_at(
+    query: &IndentQuery,
+    syntax: &Syntax,
+    loader: &syntax::Loader,
+    text: RopeSlice,
+    byte_pos: u32,
+) -> bool {
+    outdent_token_byte_range_at(query, syntax, loader, text, byte_pos).is_some()
 }
 
 /// Returns the indentation for a new line.
