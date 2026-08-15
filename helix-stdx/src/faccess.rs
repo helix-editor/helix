@@ -484,12 +484,18 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &path, to: &Path) -> io::Result<()> {
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
         std::fs::set_permissions(to, perms)?;
 
         Ok(())
+    }
+
+    pub fn hardlink_count(_p: &Path) -> io::Result<u64> {
+        // Hard link metadata is unavailable on this platform; report the
+        // file as having a single link so callers treat it as un-linked.
+        Ok(1)
     }
 }
 
