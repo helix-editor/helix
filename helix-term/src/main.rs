@@ -4,6 +4,9 @@ use helix_term::application::Application;
 use helix_term::args::Args;
 use helix_term::config::{Config, ConfigLoadError};
 
+#[cfg(not(any(unix, windows)))]
+compile_error!("Helix only supports Unix and Windows platforms. Building for other targets may succeed, but will likely encounter runtime issues. This build-time error makes that expectation explicit.");
+
 fn setup_logging(verbosity: u64) -> Result<()> {
     let level = match verbosity {
         0 => log::LevelFilter::Warn,
