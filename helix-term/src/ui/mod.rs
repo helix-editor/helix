@@ -278,13 +278,14 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         },
     )];
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
-            let err = if let Some(err) = e.source() {
-                format!("{}", err)
-            } else {
-                format!("unable to open \"{}\"", path.display())
-            };
-            cx.editor.set_error(err);
+        if let Err(err) = cx.editor.open(path, action) {
+            cx.editor.set_error(|| {
+                if let Some(err) = err.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                }
+            });
         }
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
@@ -348,13 +349,14 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
                     Ok(call)
                 });
                 cx.jobs.callback(callback);
-            } else if let Err(e) = cx.editor.open(path, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path.display())
-                };
-                cx.editor.set_error(err);
+            } else if let Err(err) = cx.editor.open(path, action) {
+                cx.editor.set_error(|| {
+                    if let Some(err) = err.source() {
+                        format!("{}", err)
+                    } else {
+                        format!("unable to open \"{}\"", path.display())
+                    }
+                });
             }
         },
     )

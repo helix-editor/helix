@@ -1605,8 +1605,8 @@ impl Component for EditorView {
                         auto_format: false,
                         code_actions: false,
                     };
-                    if let Err(e) = commands::typed::write_all_impl(context, options) {
-                        context.editor.set_error(format!("{}", e));
+                    if let Err(err) = commands::typed::write_all_impl(context, options) {
+                        context.editor.set_error(|| format!("{}", err));
                     }
                 }
                 self.terminal_focused = false;

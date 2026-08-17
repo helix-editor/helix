@@ -1140,7 +1140,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                             .registers
                             .push(history_register, self.primary_query().to_string())
                         {
-                            ctx.editor.set_error(err.to_string());
+                            ctx.editor.set_error(|| err.to_string());
                         }
                     }
                     return close_fn(self);

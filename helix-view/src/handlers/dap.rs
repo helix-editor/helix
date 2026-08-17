@@ -68,8 +68,8 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    if let Err(e) = editor.open(&path, Action::Replace) {
-        editor.set_error(format!("Unable to jump to stack frame: {}", e));
+    if let Err(err) = editor.open(&path, Action::Replace) {
+        editor.set_error(|| format!("Unable to jump to stack frame: {}", err));
         return;
     }
 
@@ -387,7 +387,7 @@ impl Editor {
                         // TODO: fetch breakpoints (in case we're attaching)
 
                         if let Err(err) = debugger.configuration_done().await {
-                            self.set_error(format!("Debugger configuration failed: {}", err));
+                            self.set_error(|| format!("Debugger configuration failed: {}", err));
                         } else {
                             self.set_status("Debugged application started");
                         }
@@ -417,10 +417,12 @@ impl Editor {
                         });
 
                         if let Err(err) = debugger.disconnect(disconnect_args).await {
-                            self.set_error(format!(
+                            self.set_error(|| {
+                                format!(
                                 "Cannot disconnect debugger upon terminated event receival {:?}",
                                 err
-                            ));
+                            )
+                            });
                             return false;
                         }
 
@@ -445,7 +447,7 @@ impl Editor {
                                 let connection_type = match debugger.connection_type() {
                                     Some(connection_type) => connection_type,
                                     None => {
-                                        self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                        self.set_error(|| "No starting request found, to be used in restarting the debugging session.");
                                         return false;
                                     }
                                 };
@@ -458,10 +460,9 @@ impl Editor {
                                 };
 
                                 if let Err(err) = relaunch_resp {
-                                    self.set_error(format!(
-                                        "Failed to restart debugging session: {:?}",
-                                        err
-                                    ));
+                                    self.set_error(|| {
+                                        format!("Failed to restart debugging session: {:?}", err)
+                                    });
                                 }
                             }
                         }
@@ -469,9 +470,11 @@ impl Editor {
                     Event::Exited(resp) => {
                         let exit_code = resp.exit_code;
                         if exit_code != 0 {
-                            self.set_error(format!(
+                            self.set_error(|| {
+                                format!(
                                 "Debuggee failed to exit successfully (exit code: {exit_code})."
-                            ));
+                            )
+                            });
                         }
                     }
                     ev => {
@@ -486,7 +489,7 @@ impl Editor {
                     Ok(Request::RunInTerminal(arguments)) => {
                         let config = self.config();
                         let Some(config) = config.terminal.as_ref() else {
-                            self.set_error("No external terminal defined");
+                            self.set_error(|| "No external terminal defined");
                             return true;
                         };
 
@@ -497,10 +500,9 @@ impl Editor {
                         {
                             Ok(process) => process,
                             Err(err) => {
-                                self.set_error(format!(
-                                    "Error starting external terminal: {}",
-                                    err
-                                ));
+                                self.set_error(|| {
+                                    format!("Error starting external terminal: {}", err)
+                                });
                                 return true;
                             }
                         };
@@ -514,7 +516,7 @@ impl Editor {
                         let debugger = match self.debug_adapters.get_client_mut(id) {
                             Some(debugger) => debugger,
                             None => {
-                                self.set_error("No active debugger found.");
+                                self.set_error(|| "No active debugger found.");
                                 return true;
                             }
                         };
@@ -522,7 +524,7 @@ impl Editor {
                         let socket = match debugger.socket {
                             Some(socket) => socket,
                             None => {
-                                self.set_error("Child debugger can only be started if the parent debugger is using TCP transport.");
+                                self.set_error(||"Child debugger can only be started if the parent debugger is using TCP transport.");
                                 return true;
                             }
                         };
@@ -540,10 +542,9 @@ impl Editor {
                         let client_id = match result {
                             Ok(child) => child,
                             Err(err) => {
-                                self.set_error(format!(
-                                    "Failed to create child debugger: {:?}",
-                                    err
-                                ));
+                                self.set_error(|| {
+                                    format!("Failed to create child debugger: {:?}", err)
+                                });
                                 return true;
                             }
                         };
@@ -551,7 +552,7 @@ impl Editor {
                         let client = match self.debug_adapters.get_client_mut(client_id) {
                             Some(child) => child,
                             None => {
-                                self.set_error("Failed to get child debugger.");
+                                self.set_error(|| "Failed to get child debugger.");
                                 return true;
                             }
                         };
@@ -562,7 +563,9 @@ impl Editor {
                             client.attach(arguments.configuration).await
                         };
                         if let Err(err) = relaunch_resp {
-                            self.set_error(format!("Failed to start debugging session: {:?}", err));
+                            self.set_error(|| {
+                                format!("Failed to start debugging session: {:?}", err)
+                            });
                             return true;
                         }
 

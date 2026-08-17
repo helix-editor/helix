@@ -238,10 +238,12 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     }
 
     if !nonexistent_buffers.is_empty() {
-        editor.set_error(format!(
-            "cannot close non-existent buffers: {}",
-            nonexistent_buffers.join(", ")
-        ));
+        editor.set_error(|| {
+            format!(
+                "cannot close non-existent buffers: {}",
+                nonexistent_buffers.join(", ")
+            )
+        });
     }
 
     document_ids
@@ -439,7 +441,7 @@ fn write_impl(
                 });
             if fmt_job.is_none() {
                 if let Err(err) = editor.save(doc_id, path, force) {
-                    editor.set_error(format!("Error saving: {}", err));
+                    editor.set_error(|| format!("Error saving: {}", err));
                 }
             }
             fmt_job
@@ -938,7 +940,7 @@ pub fn write_all_impl(
                     });
                 if fmt_job.is_none() {
                     if let Err(err) = editor.save::<PathBuf>(doc_id, None, force) {
-                        editor.set_error(format!("Error saving: {}", err));
+                        editor.set_error(|| format!("Error saving: {}", err));
                     }
                 }
                 fmt_job
@@ -1374,7 +1376,7 @@ fn show_directory_stack(
     if !serialized_stack.is_empty() {
         cx.editor.set_status(serialized_stack);
     } else {
-        cx.editor.set_error("Stack is empty");
+        cx.editor.set_error(|| "Stack is empty");
     }
 
     Ok(())
@@ -1413,7 +1415,7 @@ fn pop_directory(
     if let Some(dir) = cx.editor.dir_stack.pop_front() {
         apply_directory_change(cx, &dir)?;
     } else {
-        cx.editor.set_error("Stack is empty");
+        cx.editor.set_error(|| "Stack is empty");
     }
 
     Ok(())
@@ -1434,7 +1436,7 @@ fn show_current_directory(
     if cwd.exists() {
         cx.editor.set_status(message);
     } else {
-        cx.editor.set_error(format!("{} (deleted)", message));
+        cx.editor.set_error(|| format!("{} (deleted)", message));
     }
     Ok(())
 }
@@ -1647,8 +1649,8 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
                 helix_loader::workspace_trust::TrustQuery::Git,
             )
             .is_trusted();
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
-            cx.editor.set_error(format!("{}", error));
+        if let Err(err) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
+            cx.editor.set_error(|| format!("{}", err));
             continue;
         }
 
@@ -2762,7 +2764,7 @@ fn clear_register(
             .set_status(format!("Register {} cleared", register));
     } else {
         cx.editor
-            .set_error(format!("Register {} not found", register));
+            .set_error(|| format!("Register {} not found", register));
     }
     Ok(())
 }
@@ -4172,7 +4174,7 @@ pub(super) fn command_mode(cx: &mut Context) {
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             if let Err(err) = execute_command_line(cx, input, event) {
-                cx.editor.set_error(err.to_string());
+                cx.editor.set_error(|| err.to_string());
             }
         },
     );
