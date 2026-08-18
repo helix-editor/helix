@@ -3786,7 +3786,7 @@ grammar = "rego"
 
 [[grammar]]
 name = "rego"
-source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "ddd39af81fe8b0288102a7cb97959dfce723e0f3" }
+source = { git = "https://github.com/FallenAngel97/tree-sitter-rego", rev = "da2a1f63cd877efb05d56de61fe516e90012b9a7" }
 
 [[language]]
 name = "nim"
