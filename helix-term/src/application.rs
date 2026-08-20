@@ -656,6 +656,91 @@ impl Application {
         ));
     }
 
+    fn handle_file_changes(&mut self, paths: Vec<std::path::PathBuf>) {
+        let mut reloaded = Vec::new();
+        let mut conflicts = Vec::new();
+        let mut deleted = Vec::new();
+        let mut errors = Vec::new();
+
+        for path in paths {
+            let Some(doc_id) = self.editor.document_id_by_path(&path) else {
+                continue;
+            };
+
+            self.editor
+                .language_servers
+                .file_event_handler
+                .file_changed(path.clone());
+
+            if !path.exists() {
+                deleted.push(path);
+                continue;
+            }
+
+            if self
+                .editor
+                .document(doc_id)
+                .is_some_and(|doc| doc.is_modified())
+            {
+                conflicts.push(path);
+                continue;
+            }
+
+            match self.editor.reload_document(doc_id) {
+                Ok(true) => reloaded.push(path),
+                Ok(false) => {}
+                Err(err) => errors.push((path, err)),
+            }
+        }
+
+        if !errors.is_empty() {
+            if errors.len() == 1 {
+                let (path, err) = errors.pop().unwrap();
+                self.editor.set_error(format!(
+                    "failed to reload '{}': {err}",
+                    get_relative_path(path).to_string_lossy()
+                ));
+            } else {
+                self.editor
+                    .set_error(format!("failed to reload {} files", errors.len()));
+            }
+        } else if !conflicts.is_empty() {
+            if conflicts.len() == 1 {
+                self.editor.set_warning(format!(
+                    "'{}' changed on disk; buffer has unsaved changes",
+                    get_relative_path(conflicts.pop().unwrap()).to_string_lossy()
+                ));
+            } else {
+                self.editor.set_warning(format!(
+                    "{} files changed on disk and have unsaved changes",
+                    conflicts.len()
+                ));
+            }
+        } else if !deleted.is_empty() {
+            if deleted.len() == 1 {
+                self.editor.set_warning(format!(
+                    "'{}' was deleted from disk",
+                    get_relative_path(deleted.pop().unwrap()).to_string_lossy()
+                ));
+            } else {
+                self.editor.set_warning(format!(
+                    "{} open files were deleted from disk",
+                    deleted.len()
+                ));
+            }
+        } else if !reloaded.is_empty() {
+            if reloaded.len() == 1 {
+                self.editor.set_status(format!(
+                    "'{}' reloaded because it changed on disk",
+                    get_relative_path(reloaded.pop().unwrap()).to_string_lossy()
+                ));
+            } else {
+                self.editor
+                    .set_status(format!("{} files reloaded from disk", reloaded.len()));
+            }
+        }
+    }
+
     #[inline(always)]
     pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
         log::debug!("received editor event: {:?}", event);
@@ -679,6 +764,10 @@ impl Application {
                 if needs_render {
                     self.render().await;
                 }
+            }
+            EditorEvent::FileChanged(paths) => {
+                self.handle_file_changes(paths);
+                self.render().await;
             }
             EditorEvent::Redraw => {
                 self.render().await;

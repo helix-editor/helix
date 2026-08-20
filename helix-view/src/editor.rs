@@ -5,6 +5,7 @@ use crate::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
     events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
+    file_watcher::FileWatcher,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -65,6 +66,8 @@ use arc_swap::{
 
 pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+const FILE_EVENT_DEBOUNCE: Duration = Duration::from_millis(100);
+const FAR_FUTURE: Duration = Duration::from_secs(86400 * 365 * 30);
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -400,6 +403,9 @@ pub struct Config {
     /// This prevents data loss if the editor is interrupted while writing the file, but may
     /// confuse some file watching/hot reloading programs. Defaults to `true`.
     pub atomic_save: bool,
+    /// Whether to automatically reload unmodified documents when they change on disk.
+    /// Defaults to `true`.
+    pub auto_reload: bool,
     /// Whether to automatically remove all trailing line-endings after the final one on write.
     /// Defaults to `false`.
     pub trim_final_newlines: bool,
@@ -1226,6 +1232,7 @@ impl Default for Config {
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             atomic_save: true,
+            auto_reload: true,
             trim_final_newlines: false,
             trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
@@ -1282,6 +1289,9 @@ pub struct Editor {
     pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
     pub save_queue: SelectAll<Flatten<UnboundedReceiverStream<Once<DocumentSavedEventFuture>>>>,
     pub write_count: usize,
+    file_watcher: Option<FileWatcher>,
+    pending_file_events: HashSet<PathBuf>,
+    file_event_timer: Pin<Box<Sleep>>,
 
     pub count: Option<std::num::NonZeroUsize>,
     pub selected_register: Option<char>,
@@ -1353,6 +1363,7 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
+    FileChanged(Vec<PathBuf>),
     IdleTimer,
     Redraw,
 }
@@ -1421,6 +1432,17 @@ impl Editor {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let file_watcher = if conf.auto_reload {
+            match FileWatcher::new() {
+                Ok(watcher) => Some(watcher),
+                Err(err) => {
+                    log::warn!("failed to initialize file watcher: {err}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -1433,6 +1455,9 @@ impl Editor {
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
+            file_watcher,
+            pending_file_events: HashSet::new(),
+            file_event_timer: Box::pin(sleep(Duration::MAX)),
             count: None,
             selected_register: None,
             macro_recording: None,
@@ -1510,11 +1535,73 @@ impl Editor {
         self.auto_pairs = (&config.auto_pairs).into();
         self.reset_idle_timer();
         self._refresh();
+        let auto_reload_changed = old_config.auto_reload != config.auto_reload;
+        drop(config);
+        if auto_reload_changed {
+            self.sync_file_watches();
+        }
+        let config = self.config();
         helix_event::dispatch(crate::events::ConfigDidChange {
             editor: self,
             old: old_config,
             new: &config,
         })
+    }
+
+    fn sync_file_watches(&mut self) {
+        if !self.config().auto_reload {
+            self.file_watcher = None;
+            self.pending_file_events.clear();
+            self.file_event_timer
+                .as_mut()
+                .reset(Instant::now() + FAR_FUTURE);
+            return;
+        }
+
+        if self.file_watcher.is_none() {
+            self.file_watcher = match FileWatcher::new() {
+                Ok(watcher) => Some(watcher),
+                Err(err) => {
+                    log::warn!("failed to initialize file watcher: {err}");
+                    None
+                }
+            };
+        }
+
+        let paths: Vec<_> = self
+            .documents()
+            .filter_map(|doc| doc.path().map(ToOwned::to_owned))
+            .collect();
+        for path in paths {
+            self.watch_file(path);
+        }
+    }
+
+    fn watch_file(&mut self, path: PathBuf) {
+        if !self.config().auto_reload {
+            return;
+        }
+        if let Some(watcher) = &mut self.file_watcher {
+            if let Err(err) = watcher.watch(&path) {
+                log::warn!("failed to watch {}: {err}", path.display());
+            }
+        }
+    }
+
+    fn unwatch_file(&mut self, path: &Path) {
+        self.pending_file_events.remove(path);
+        if let Some(watcher) = &mut self.file_watcher {
+            watcher.unwatch(path);
+        }
+    }
+
+    fn refresh_file_watch(&mut self, path: &Path) {
+        self.pending_file_events.remove(path);
+        if let Some(watcher) = &mut self.file_watcher {
+            if let Err(err) = watcher.watch(path) {
+                log::warn!("failed to watch {}: {err}", path.display());
+            }
+        }
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -1775,15 +1862,24 @@ impl Editor {
     }
 
     pub fn set_doc_path(&mut self, doc_id: DocumentId, path: &Path) {
-        let doc = doc_mut!(self, &doc_id);
-        let old_path = doc.path();
+        let path = canonicalize(path);
+        let old_path = doc!(self, &doc_id).path().map(ToOwned::to_owned);
 
-        if let Some(old_path) = old_path {
+        if let Some(old_path) = &old_path {
             // sanity check, should not occur but some callers (like an LSP) may
             // create bogus calls
-            if old_path == path {
+            if old_path == &path {
+                self.refresh_file_watch(&path);
                 return;
             }
+        }
+
+        if let Some(old_path) = &old_path {
+            self.unwatch_file(old_path);
+        }
+
+        let doc = doc_mut!(self, &doc_id);
+        if old_path.is_some() {
             // if we are open in LSPs send did_close notification
             for language_server in doc.language_servers() {
                 language_server.text_document_did_close(doc.identifier());
@@ -1794,9 +1890,10 @@ impl Editor {
         // text_document_did_close. Since we called `text_document_did_close`
         // we have fully unregistered this document from its LS
         doc.language_servers.clear();
-        doc.set_path(Some(path));
+        doc.set_path(Some(&path));
         doc.detect_editor_config();
-        self.refresh_doc_language(doc_id)
+        self.refresh_doc_language(doc_id);
+        self.watch_file(path);
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
@@ -2050,7 +2147,12 @@ impl Editor {
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
+        let path = doc.path().map(ToOwned::to_owned);
         self.documents.insert(id, doc);
+
+        if let Some(path) = path {
+            self.watch_file(path);
+        }
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
         self.saves.insert(id, save_sender);
@@ -2162,6 +2264,11 @@ impl Editor {
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
+        let path = doc.path().map(ToOwned::to_owned);
+
+        if let Some(path) = path {
+            self.unwatch_file(&path);
+        }
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
@@ -2246,8 +2353,8 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         let doc_save_future = doc.save(path, force)?;
 
-        // When a file is written to, notify the file event handler.
-        // Note: This can be removed once proper file watching is implemented.
+        // Notify LSP file-event subscriptions explicitly. The editor's file watcher suppresses
+        // notifications caused by Helix's own writes so they are not mistaken for external edits.
         let handler = self.language_servers.file_event_handler.clone();
         let future = async move {
             let res = doc_save_future.await;
@@ -2364,6 +2471,52 @@ impl Editor {
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
         self.documents_mut()
             .find(|doc| doc.path().is_some_and(|p| p == path.as_ref()))
+    }
+
+    /// Reload a document from disk and synchronize every view that has displayed it.
+    /// Returns whether the document's text changed.
+    pub fn reload_document(&mut self, doc_id: DocumentId) -> anyhow::Result<bool> {
+        let scrolloff = self.config().scrolloff;
+        let fallback_view_id = self.tree.focus;
+        let mut view_ids: Vec<_> = doc!(self, &doc_id).selections().keys().copied().collect();
+
+        if view_ids.is_empty() {
+            doc_mut!(self, &doc_id).ensure_view_init(fallback_view_id);
+            view_ids.push(fallback_view_id);
+        }
+
+        let trust_full = self
+            .workspace_trust
+            .query(doc!(self, &doc_id).workspace_root(), TrustQuery::Git)
+            .is_trusted();
+
+        let changed = {
+            let doc = doc_mut!(self, &doc_id);
+            let view = view_mut!(self, view_ids[0]);
+            view.sync_changes(doc);
+            let old_text = doc.text().clone();
+            doc.reload(view, &self.diff_providers, trust_full)?;
+            old_text != *doc.text()
+        };
+
+        let doc = doc_mut!(self, &doc_id);
+        for view_id in view_ids {
+            let view = view_mut!(self, view_id);
+            if view.doc == doc_id {
+                view.sync_changes(doc);
+                view.ensure_cursor_in_view(doc, scrolloff);
+            }
+        }
+
+        if let Some(path) = self
+            .document(doc_id)
+            .and_then(Document::path)
+            .map(Path::to_owned)
+        {
+            self.refresh_file_watch(&path);
+        }
+
+        Ok(changed)
     }
 
     /// Returns all supported diagnostics for the document
@@ -2485,6 +2638,27 @@ impl Editor {
                 }
                 Some(event) = self.debug_adapters.incoming.next() => {
                     return EditorEvent::DebuggerEvent(event)
+                }
+
+                Some(paths) = async {
+                    match &mut self.file_watcher {
+                        Some(watcher) => watcher.recv().await,
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    self.pending_file_events.extend(paths);
+                    self.file_event_timer
+                        .as_mut()
+                        .reset(Instant::now() + FILE_EVENT_DEBOUNCE);
+                }
+
+                _ = &mut self.file_event_timer, if !self.pending_file_events.is_empty() => {
+                    self.file_event_timer
+                        .as_mut()
+                        .reset(Instant::now() + FAR_FUTURE);
+                    let mut paths: Vec<_> = self.pending_file_events.drain().collect();
+                    paths.sort_unstable();
+                    return EditorEvent::FileChanged(paths)
                 }
 
                 _ = helix_event::redraw_requested() => {

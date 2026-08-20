@@ -57,6 +57,7 @@ toml.workspace = true
 log = "~0.4"
 
 parking_lot.workspace = true
+notify.workspace = true
 thiserror.workspace = true
 
 kstring = "2.0"

@@ -48,6 +48,7 @@ unicode-segmentation = "1.13"
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 foldhash = "0.2"
 parking_lot = "0.12"
+notify = "8.2"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 tokio-stream = "0.1.18"
