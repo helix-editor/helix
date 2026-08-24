@@ -149,52 +149,80 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
         assert!(!path.exists());
     }
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().with_config(config.clone()).build()?,
-        Some(&format!("<space>f{}<ret>", picker_path.display())),
-        Some(&|app| assert_open(app, &picker_path)),
+        vec![
+            (Some(&format!("<space>f{}", picker_path.display())), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &picker_path))),
+        ],
         false,
     )
     .await?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().with_config(config.clone()).build()?,
-        Some(&format!("<space>f{}<ret>", relative_picker_path)),
-        Some(&|app| assert_open(app, &relative_picker_absolute_path)),
+        vec![
+            (Some(&format!("<space>f{relative_picker_path}")), None),
+            (
+                Some("<ret>"),
+                Some(&|app| assert_open(app, &relative_picker_absolute_path)),
+            ),
+        ],
         false,
     )
     .await?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().with_config(config.clone()).build()?,
-        Some(&format!("<space>f~/{tilde_name}<ret>")),
-        Some(&|app| assert_open(app, &tilde_path)),
+        vec![
+            (Some(&format!("<space>f~/{tilde_name}")), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &tilde_path))),
+        ],
         false,
     )
     .await?;
 
-    test_key_sequence(
-        &mut AppBuilder::new().with_config(config.clone()).build()?,
-        Some(&format!("<space>f{}<ret>", picker_directory.display())),
-        Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
-        false,
-    )
-    .await?;
-
-    test_key_sequence(
-        &mut AppBuilder::new().with_config(config.clone()).build()?,
-        Some(&format!("<space>f{}<A-ret>", background_path.display())),
-        Some(&|app| assert_open(app, &background_path)),
-        false,
-    )
-    .await?;
-
-    let horizontal_keys = format!("<space>f{}<C-s>", horizontal_path.display());
     test_key_sequences(
         &mut AppBuilder::new().with_config(config.clone()).build()?,
         vec![
             (
-                Some(horizontal_keys.as_str()),
+                Some(&format!("<space>f{}", picker_directory.display())),
+                None,
+            ),
+            (
+                Some("<ret>"),
+                Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(&format!("<space>f{}", background_path.display())),
+                None,
+            ),
+            (
+                Some("<A-ret>"),
+                Some(&|app| assert_open(app, &background_path)),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(&format!("<space>f{}", horizontal_path.display())),
+                None,
+            ),
+            (
+                Some("<C-s>"),
                 Some(&|app| assert_open(app, &horizontal_path)),
             ),
             (Some(":wqa<ret>"), None),
@@ -203,40 +231,52 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     )
     .await?;
 
-    let vertical_keys = format!("<space>f{}<C-v>", vertical_path.display());
     test_key_sequences(
         &mut AppBuilder::new().with_config(config).build()?,
         vec![
-            (
-                Some(vertical_keys.as_str()),
-                Some(&|app| assert_open(app, &vertical_path)),
-            ),
+            (Some(&format!("<space>f{}", vertical_path.display())), None),
+            (Some("<C-v>"), Some(&|app| assert_open(app, &vertical_path))),
             (Some(":wqa<ret>"), None),
         ],
         true,
     )
     .await?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().build()?,
-        Some(&format!("<space>e{}<ret>", explorer_path.display())),
-        Some(&|app| assert_open(app, &explorer_path)),
+        vec![
+            (Some(&format!("<space>e{}", explorer_path.display())), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &explorer_path))),
+        ],
         false,
     )
     .await?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().build()?,
-        Some(&format!("<space>e{}<ret>", relative_explorer_path)),
-        Some(&|app| assert_open(app, &relative_explorer_absolute_path)),
+        vec![
+            (Some(&format!("<space>e{relative_explorer_path}")), None),
+            (
+                Some("<ret>"),
+                Some(&|app| assert_open(app, &relative_explorer_absolute_path)),
+            ),
+        ],
         false,
     )
     .await?;
 
-    test_key_sequence(
+    test_key_sequences(
         &mut AppBuilder::new().build()?,
-        Some(&format!("<space>e{}<ret>", explorer_directory.display())),
-        Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
+        vec![
+            (
+                Some(&format!("<space>e{}", explorer_directory.display())),
+                None,
+            ),
+            (
+                Some("<ret>"),
+                Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
+            ),
+        ],
         false,
     )
     .await?;
