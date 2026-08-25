@@ -4072,6 +4072,8 @@ name = "wren"
 scope = "source.wren"
 injection-regex = "wren"
 file-types = ["wren"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  "}
 
 [[language]]
