@@ -102,7 +102,12 @@ impl TerminaBackend {
         let start = Instant::now();
 
         // HACK: emitting OSC11 / OSC111 seems to break SGR and cause flickering in tmux.
-        capabilities.dynamic_background_color = std::env::var_os("TMUX").is_none();
+        // It also breaks pane transparency in Zellij. (Zellij re-emits the pane background
+        // as explicit cells, which most terminals draw at full opacity, kitty excluded.
+        // Result: transparent panes turn opaque, and, because Helix re-sets the old color
+        // with OSC11 instead of OSC111, panes stay opaque after closing Helix.)
+        capabilities.dynamic_background_color =
+            std::env::var_os("TMUX").is_none() && std::env::var_os("ZELLIJ").is_none();
 
         capabilities.kitty_keyboard = match config.kitty_keyboard_protocol {
             KittyKeyboardProtocolConfig::Disabled => KittyKeyboardSupport::None,
