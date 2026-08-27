@@ -1,4 +1,5 @@
 use helix_term::application::Application;
+use helix_view::document::DocumentLink;
 
 use super::*;
 
@@ -199,6 +200,117 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     .await?;
 
     Ok(())
+}
+
+fn add_document_link(
+    app: &mut Application,
+    start: usize,
+    end: usize,
+    target: Option<helix_lsp::Url>,
+) {
+    let (_, doc) = helix_view::current!(app.editor);
+    doc.document_links.push(DocumentLink {
+        start,
+        end,
+        link: helix_lsp::lsp::DocumentLink {
+            range: Default::default(),
+            target,
+            tooltip: None,
+            data: None,
+        },
+        language_server_id: Default::default(),
+    });
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_goto_file_unresolved_document_link_fallback() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let source = dir.path().join("source.rs");
+    std::fs::write(&source, "missing.rs")?;
+    let mut app = AppBuilder::new()
+        .with_file(&source, None)
+        .with_input_text("#[missing.rs|]#")
+        .build()?;
+    add_document_link(&mut app, 0, 10, None);
+
+    test_key_sequence(
+        &mut app,
+        Some("gf"),
+        Some(&|app| {
+            assert!(app
+                .editor
+                .documents()
+                .any(|doc| doc.path() == Some(dir.path().join("missing.rs").as_path())));
+        }),
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_goto_file_document_link_target_precedence() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let source = dir.path().join("source.rs");
+    std::fs::write(&source, "fallback.rs")?;
+    let target = dir.path().join("target.rs");
+    let mut app = AppBuilder::new()
+        .with_file(&source, None)
+        .with_input_text("#[fallback.rs|]#")
+        .build()?;
+    add_document_link(
+        &mut app,
+        0,
+        11,
+        Some(helix_lsp::Url::from_file_path(&target).unwrap()),
+    );
+
+    test_key_sequence(
+        &mut app,
+        Some("gf"),
+        Some(&|app| {
+            assert!(app
+                .editor
+                .documents()
+                .any(|doc| doc.path() == Some(target.as_path())));
+            assert!(!app
+                .editor
+                .documents()
+                .any(|doc| doc.path() == Some(dir.path().join("fallback.rs").as_path())));
+        }),
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_goto_file_duplicate_document_links_across_selections() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let source = dir.path().join("source.rs");
+    std::fs::write(&source, "target.rs\ntarget.rs")?;
+    let target = dir.path().join("target.rs");
+    let target_url = helix_lsp::Url::from_file_path(&target).unwrap();
+    let mut app = AppBuilder::new()
+        .with_file(&source, None)
+        .with_input_text("#(target.rs|)#\n#[target.rs|]#")
+        .build()?;
+    add_document_link(&mut app, 0, 9, Some(target_url.clone()));
+    add_document_link(&mut app, 10, 19, Some(target_url));
+
+    test_key_sequence(
+        &mut app,
+        Some("gf"),
+        Some(&|app| {
+            assert_eq!(
+                1,
+                app.editor
+                    .documents()
+                    .filter(|doc| doc.path() == Some(target.as_path()))
+                    .count()
+            );
+        }),
+        false,
+    )
+    .await
 }
 
 #[tokio::test(flavor = "multi_thread")]
