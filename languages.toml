@@ -3474,6 +3474,10 @@ file-types = [
   { glob = "/etc/buckconfig" },
   { glob = "/etc/buckconfig.d/*" },
   { glob = "aerc/*.conf" }, # https://aerc-mail.org/
+  { glob = "litecli/config" }, # https://litecli.com/config/
+  { glob = ".myclirc" }, # https://www.mycli.net/config
+  { glob = "mycli/myclirc" },
+  { glob = "pgcli/config" }, # https://www.pgcli.com/config
 ]
 injection-regex = "ini"
 comment-token = "#"
