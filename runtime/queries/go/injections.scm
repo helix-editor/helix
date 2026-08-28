@@ -9,10 +9,11 @@
 ; This is only a partial implementation, which covers only
 ; block comments. For line comments (which are more common),
 ; upstream changes to the grammar are required.
-(
+(source_file
   (comment) @injection.content . (comment)* . [
     (package_clause) ; `package`
     (type_declaration) ; `type`
+    (function_declaration) ; `func`
     (method_declaration) ; `func`
     (var_declaration) ; `var`
     (const_declaration) ; `const`
@@ -20,14 +21,18 @@
     ; 	A = 1
     ; 	B = 2
     ; )
-    (const_spec)
+    (var_spec)
     ; const (
     ; 	A = 1
     ; 	B = 2
     ; )
-    (var_spec)
+    (const_spec)
   ]
   (#set! injection.language "markdown"))
+
+((comment) @injection.content
+ (#match? @injection.content "^//go:generate")
+ (#set! injection.language "bash"))
 
 (call_expression
   (selector_expression) @_function
@@ -35,14 +40,15 @@
   (argument_list
     .
     [
-      (raw_string_literal)
-      (interpreted_string_literal)
-    ] @injection.content
+      (raw_string_literal (raw_string_literal_content) @injection.content)
+      (interpreted_string_literal (interpreted_string_literal_content) @injection.content)
+    ]
     (#set! injection.language "regex")))
 
 ; https://pkg.go.dev/fmt#Printf
 ; https://pkg.go.dev/fmt#Sprintf
 ; https://pkg.go.dev/fmt#Scanf
+; https://pkg.go.dev/fmt#Errorf
 ((call_expression
   function: (selector_expression
     operand: (identifier) @_module
@@ -50,7 +56,7 @@
   arguments: (argument_list
     . (interpreted_string_literal) @injection.content))
   (#eq? @_module "fmt")
-  (#any-of? @_func "Printf" "Sprintf" "Scanf")
+  (#any-of? @_func "Printf" "Sprintf" "Scanf" "Errorf")
   (#set! injection.language "go-format-string"))
 
 ; https://pkg.go.dev/fmt#Fprintf

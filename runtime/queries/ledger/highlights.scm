@@ -12,7 +12,7 @@
 ((account) @variable.other.member)
 ((commodity) @text.literal)
 
-"include" @keyword.local.import
+"include" @keyword.control.import
 
 [
     "account"

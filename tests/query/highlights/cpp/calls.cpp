@@ -1,0 +1,4 @@
+int main() {
+    invokeit();
+//  ^ @function
+}

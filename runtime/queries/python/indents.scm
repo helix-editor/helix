@@ -40,7 +40,7 @@
   "def") @indent @extend
 (ERROR
   (block) @indent @extend
-  (#set! "scope" "all"))
+  )
 
 [
   (if_statement)
@@ -53,6 +53,9 @@
 
   (function_definition)
   (class_definition)
+
+  (except_clause)
+  (finally_clause)
 ] @extend
 
 [
@@ -72,13 +75,19 @@
   "elif" @outdent)
 (else_clause
   "else" @outdent)
+(except_clause
+  "except" @outdent)
+(finally_clause
+  "finally" @outdent)
 
 (parameters
   .
   (identifier) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 (argument_list
   .
   (_) @anchor
-  (#set! "scope" "tail")) @align
+  ) @align
 
+; String bodies (triple-quoted strings span lines) are literal content.
+(string) @opaque

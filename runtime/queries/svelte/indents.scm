@@ -1,18 +1,20 @@
 [
   (element)
-  (if_statement)
-  (each_statement)
-  (await_statement)
-  (script_element)
-  (style_element)
+  (if_block)
+  (else_if_clause)
+  (else_clause)
+  (await_branch)
+  (each_block)
+  (key_block)
+  (snippet_block)
+  (await_block)
+  (expression)
 ] @indent
 
 [
   (end_tag)
-  (else_statement)
-  (if_end_expr)
-  (each_end_expr)
-  (await_end_expr)
-  ">"
-  "/>"
+  (block_end)
+  (else_if_clause)
+  (else_clause)
+  (await_branch)
 ] @outdent

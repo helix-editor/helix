@@ -1,4 +1,3 @@
-; extends
 ; Comments
 (comment) @comment
 
@@ -18,6 +17,7 @@
  "+"
  "="
  (keybind_trigger ">")
+ (chain_operator)
 ] @operator
 
 (":") @punctuation.delimiter
@@ -38,7 +38,7 @@
 (palette_index) @variable.other.member
 
 ; `path_directive`
-(path_directive (property) @keyword.import)
+(path_directive (property) @keyword.control.import)
 (path_directive (path_value (string) @string.special.path ))
 
 
@@ -60,9 +60,13 @@
 [
  (key_qualifier)
  (keybind_modifier)
+ (theme_variant)
+ (command_modifier)
 ] @attribute
 
 [
  (modifier_key)
  (key)
 ] @constant.builtin
+
+(keybind_table) @namespace

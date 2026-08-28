@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use helix_core::command_line::{ExpansionKind, Token, TokenKind, Tokenizer};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 
 use crate::Editor;
 
@@ -31,6 +31,9 @@ pub enum Variable {
     ///
     /// This corresponds to `crate::Document::display_name`.
     BufferName,
+    /// The absolute path of the currently focused document. For scratch buffers this will default
+    /// to the current working directory.
+    FilePathAbsolute,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
     /// Curreng working directory
@@ -52,6 +55,7 @@ impl Variable {
         Self::CursorLine,
         Self::CursorColumn,
         Self::BufferName,
+        Self::FilePathAbsolute,
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
         Self::WorkspaceDirectory,
@@ -66,6 +70,7 @@ impl Variable {
             Self::CursorLine => "cursor_line",
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
+            Self::FilePathAbsolute => "file_path_absolute",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
@@ -81,6 +86,7 @@ impl Variable {
             "cursor_line" => Some(Self::CursorLine),
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
+            "file_path_absolute" => Some(Self::FilePathAbsolute),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
@@ -122,6 +128,7 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
         }
         TokenKind::Expand => expand_inner(editor, token.content),
         TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content),
+        TokenKind::Expansion(ExpansionKind::Register) => expand_register(editor, token.content),
         // Note: see the docs for this variant.
         TokenKind::ExpansionKind => unreachable!(
             "expansion name tokens cannot be emitted when command line validation is enabled"
@@ -175,6 +182,22 @@ pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a
     }
 
     Ok(Cow::Owned(text))
+}
+
+/// Expand a register's contents
+pub fn expand_register<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, str>> {
+    let mut chars = content.chars();
+    let Some(r) = chars.next() else {
+        bail!("Missing register name");
+    };
+    ensure!(
+        chars.next().is_none(),
+        "Invalid register `{content}`: should only be a single character"
+    );
+    match editor.registers.read(r, editor) {
+        Some(values) => Ok(Cow::Owned(values.collect())),
+        None => Ok(Cow::Borrowed("")),
+    }
 }
 
 /// Expand a token's contents recursively.
@@ -243,6 +266,15 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             } else {
                 Ok(Cow::Borrowed(crate::document::SCRATCH_BUFFER_NAME))
             }
+        }
+        Variable::FilePathAbsolute => {
+            let path = match doc.path() {
+                Some(path) => path.to_owned(),
+                None => helix_stdx::env::current_working_dir(),
+            }
+            .to_string_lossy()
+            .to_string();
+            Ok(Cow::Owned(path))
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
         Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(

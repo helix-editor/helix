@@ -10,7 +10,7 @@ use futures_util::FutureExt;
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
 use helix_core::{
-    syntax::{Loader, QueryIterEvent},
+    syntax::{Loader, QueryMatchIterEvent},
     Rope, RopeSlice, Selection, Syntax, Uri,
 };
 use helix_stdx::{
@@ -39,10 +39,13 @@ use super::Context;
 enum TagKind {
     Class,
     Constant,
+    Enum,
+    Field,
     Function,
     Interface,
     Macro,
     Module,
+    Section,
     Struct,
     Type,
 }
@@ -52,10 +55,13 @@ impl TagKind {
         match self {
             Self::Class => "class",
             Self::Constant => "constant",
+            Self::Enum => "enum",
+            Self::Field => "field",
             Self::Function => "function",
             Self::Interface => "interface",
             Self::Macro => "macro",
             Self::Module => "module",
+            Self::Section => "section",
             Self::Struct => "struct",
             Self::Type => "type",
         }
@@ -65,10 +71,13 @@ impl TagKind {
         match name {
             "class" => Some(TagKind::Class),
             "constant" => Some(TagKind::Constant),
+            "enum" => Some(TagKind::Enum),
+            "field" => Some(TagKind::Field),
             "function" => Some(TagKind::Function),
             "interface" => Some(TagKind::Interface),
             "macro" => Some(TagKind::Macro),
             "module" => Some(TagKind::Module),
+            "section" => Some(TagKind::Section),
             "struct" => Some(TagKind::Struct),
             "type" => Some(TagKind::Type),
             _ => None,
@@ -113,35 +122,58 @@ fn tags_iter<'a>(
     let mut tags_iter = syntax.tags(text, loader, ..);
 
     iter::from_fn(move || loop {
-        let QueryIterEvent::Match(mat) = tags_iter.next()? else {
+        let QueryMatchIterEvent::Match(mat) = tags_iter.next()? else {
             continue;
         };
         let query = &loader
             .tag_query(tags_iter.current_language())
             .expect("must have a tags query to emit matches")
             .query;
-        let Some(kind) = query
-            .capture_name(mat.capture)
-            .strip_prefix("definition.")
-            .and_then(TagKind::from_name)
-        else {
+
+        // Find the @definition.* and optional @name captures in this match.
+        let mut def_capture = None::<(TagKind, std::ops::Range<u32>)>;
+        let mut name_range = None::<std::ops::Range<u32>>;
+        let name_capture = query.get_capture("name");
+
+        for node in mat.nodes.iter() {
+            let capture_name = query.capture_name(node.capture);
+            if let Some(kind) = capture_name
+                .strip_prefix("definition.")
+                .and_then(TagKind::from_name)
+            {
+                def_capture = Some((kind, node.node.byte_range()));
+            } else if name_capture == Some(node.capture) {
+                name_range = Some(node.node.byte_range());
+            }
+        }
+
+        let Some((kind, def_byte_range)) = def_capture else {
             continue;
         };
-        let range = mat.node.byte_range();
-        if pattern.is_some_and(|pattern| {
-            !pattern.is_match(text.regex_input_at_bytes(range.start as usize..range.end as usize))
+        let name_byte_range = name_range.unwrap_or_else(|| def_byte_range.clone());
+
+        if pattern.is_some_and(|re| {
+            !re.is_match(
+                text.regex_input_at_bytes(
+                    name_byte_range.start as usize..name_byte_range.end as usize,
+                ),
+            )
         }) {
             continue;
         }
-        let start = text.byte_to_char(range.start as usize);
-        let end = text.byte_to_char(range.end as usize);
+
+        let name_start = text.byte_to_char(name_byte_range.start as usize);
+        let name_end = text.byte_to_char(name_byte_range.end as usize);
+        let def_start = text.byte_to_char(def_byte_range.start as usize);
+        let def_end = text.byte_to_char(def_byte_range.end as usize);
+
         return Some(Tag {
             kind,
-            name: text.slice(start..end).to_string(),
-            start,
-            end,
-            start_line: text.char_to_line(start),
-            end_line: text.char_to_line(end),
+            name: text.slice(name_start..name_end).to_string(),
+            start: def_start,
+            end: def_end,
+            start_line: text.char_to_line(def_start),
+            end_line: text.char_to_line(def_end),
             doc: doc.clone(),
         });
     })
@@ -315,11 +347,13 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
         let pattern = Arc::new(pattern);
         let injector = injector.clone();
         let loader = editor.syn_loader.load();
+
         let documents: HashSet<_> = editor
             .documents()
             .filter_map(Document::path)
-            .cloned()
+            .map(ToOwned::to_owned)
             .collect();
+
         async move {
             let searcher = state.searcher_builder.build();
             state.walk_builder.build_parallel().run(|| {
@@ -335,11 +369,9 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                         Ok(entry) => entry,
                         Err(_) => return WalkState::Continue,
                     };
-                    match entry.file_type() {
-                        Some(entry) if entry.is_file() => {}
-                        // skip everything else
-                        _ => return WalkState::Continue,
-                    };
+                    if !entry.path().is_file() {
+                        return WalkState::Continue;
+                    }
                     let path = entry.path();
                     // If this document is open, skip it because we've already processed it above.
                     if documents.contains(path) {
@@ -428,6 +460,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             Some((tag.start_line, tag.end_line)),
         ))
     })
+    .with_history_register(Some(reg))
     .truncate_start(false);
     cx.push_layer(Box::new(overlaid(picker)));
 }

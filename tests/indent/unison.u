@@ -1,0 +1,4 @@
+process : [Nat] -> Nat
+process xs =
+    total = List.foldLeft (+) 0 xs
+    total

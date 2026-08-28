@@ -39,19 +39,18 @@ pub trait Decoration {
     ///
     /// This function is called after text is rendered so that decorations can collect
     /// horizontal positions on the line (see [`Decoration::decorate_grapheme`]) first and
-    /// use those positions` while rendering
-    /// virtual text.
-    /// That means that setting the forground color
-    /// here is (essentially) useless as the text color is overwritten by the
-    /// rendered text. This -ofcourse- doesn't apply when rendering inside virtual lines
+    /// use those positions while rendering virtual text. That means that setting the foreground
+    /// color here is (essentially) useless as the text color is overwritten by the
+    /// rendered text. This _of course_ doesn't apply when rendering inside virtual lines
     /// below the line reserved by `LineAnnotation`s. e as no text will be rendered here.
     /// **Note**: To avoid overlapping decorations in the virtual lines, each decoration
-    /// must return the number of virtual text lines it has taken up. Each `Decoration` recieves
+    /// must return the number of virtual text lines it has taken up. Each `Decoration` receives
     /// an offset `virt_off` based on these return values where it can render virtual text:
     ///
     /// That means that a `render_line` implementation that returns `X` can render virtual text
     /// in the following area:
-    /// ``` no-compile
+    ///
+    /// ```ignore
     /// let start = inner.y + pos.virtual_line + virt_off;
     /// start .. start + X
     /// ````

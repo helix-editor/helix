@@ -323,13 +323,10 @@ impl Transform {
 
     pub fn apply(&self, mut doc: RopeSlice<'_>, range: Range) -> Tendril {
         let mut buf = Tendril::new();
-        let it = self
-            .regex
-            .captures_iter(doc.regex_input_at(range))
-            .enumerate();
+        let it = self.regex.captures_iter(doc.regex_input_at(range));
         doc = doc.slice(range);
         let mut last_match = 0;
-        for (_, cap) in it {
+        for cap in it {
             // unwrap on 0 is OK because captures only reports matches
             let m = cap.get_group(0).unwrap();
             buf.extend(doc.byte_slice(last_match..m.start).chunks());
@@ -361,7 +358,7 @@ impl Transform {
                         }
                     }
                     FormatItem::Conditional(i, ref if_, ref else_) => {
-                        if cap.get_group(i).map_or(true, |mat| mat.is_empty()) {
+                        if cap.get_group(i).is_none_or(|mat| mat.is_empty()) {
                             buf.push_str(else_)
                         } else {
                             buf.push_str(if_)

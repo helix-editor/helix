@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ; Includes
 [
   "package"
@@ -81,7 +83,6 @@
 (builtin_function) @function.builtin
 
 ; Variables
-(identifier) @variable
 
 ; Types
 (primitive_type) @type.builtin

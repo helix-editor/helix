@@ -42,3 +42,5 @@
   ")"
   "]"
 ] @outdent
+
+(string_literal) @opaque

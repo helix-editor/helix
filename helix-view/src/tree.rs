@@ -1,5 +1,5 @@
 use crate::{graphics::Rect, View, ViewId};
-use slotmap::HopSlotMap;
+use slotmap::SlotMap;
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -11,7 +11,7 @@ pub struct Tree {
     // fullscreen: bool,
     area: Rect,
 
-    nodes: HopSlotMap<ViewId, Node>,
+    nodes: SlotMap<ViewId, Node>,
 
     // used for traversals
     stack: Vec<(ViewId, Rect)>,
@@ -87,7 +87,7 @@ impl Tree {
     pub fn new(area: Rect) -> Self {
         let root = Node::container(Layout::Vertical);
 
-        let mut nodes = HopSlotMap::with_key();
+        let mut nodes = SlotMap::with_key();
         let root = nodes.insert(root);
 
         // root is it's own parent
@@ -441,7 +441,7 @@ impl Tree {
         }
     }
 
-    pub fn traverse(&self) -> Traverse {
+    pub fn traverse(&self) -> Traverse<'_> {
         Traverse::new(self)
     }
 
@@ -957,8 +957,7 @@ mod test {
 
         assert_eq!(10, tree.views().count());
         assert_eq!(
-            std::iter::repeat(7)
-                .take(9)
+            std::iter::repeat_n(7, 9)
                 .chain(Some(8)) // Rounding in `recalculate`.
                 .collect::<Vec<_>>(),
             tree.views()

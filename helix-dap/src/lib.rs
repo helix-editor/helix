@@ -1,19 +1,19 @@
 mod client;
 pub mod registry;
 mod transport;
-mod types;
 
 pub use client::Client;
+pub use helix_dap_types::*;
 pub use transport::{Payload, Response, Transport};
-pub use types::*;
 
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
 
 use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("failed to parse: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(Box<dyn std::error::Error + Send + Sync>),
     #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
     #[error("request {0} timed out")]
@@ -29,15 +29,27 @@ pub enum Error {
 }
 pub type Result<T> = core::result::Result<T, Error>;
 
+impl From<serde_json::Error> for Error {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
+impl From<sonic_rs::Error> for Error {
+    fn from(value: sonic_rs::Error) -> Self {
+        Self::Parse(Box::new(value))
+    }
+}
+
 #[derive(Debug)]
 pub enum Request {
-    RunInTerminal(<requests::RunInTerminal as types::Request>::Arguments),
-    StartDebugging(<requests::StartDebugging as types::Request>::Arguments),
+    RunInTerminal(<requests::RunInTerminal as helix_dap_types::Request>::Arguments),
+    StartDebugging(<requests::StartDebugging as helix_dap_types::Request>::Arguments),
 }
 
 impl Request {
     pub fn parse(command: &str, arguments: Option<serde_json::Value>) -> Result<Self> {
-        use crate::types::Request as _;
+        use helix_dap_types::Request as _;
 
         let arguments = arguments.unwrap_or_default();
         let request = match command {
@@ -64,9 +76,9 @@ pub enum Event {
     LoadedSource(<events::LoadedSource as events::Event>::Body),
     Process(<events::Process as events::Event>::Body),
     Capabilities(<events::Capabilities as events::Event>::Body),
-    // ProgressStart(),
-    // ProgressUpdate(),
-    // ProgressEnd(),
+    ProgressStart(<events::ProgressStart as events::Event>::Body),
+    ProgressUpdate(<events::ProgressUpdate as events::Event>::Body),
+    ProgressEnd(<events::ProgressEnd as events::Event>::Body),
     // Invalidated(),
     Memory(<events::Memory as events::Event>::Body),
 }
@@ -89,6 +101,9 @@ impl Event {
             events::LoadedSource::EVENT => Self::LoadedSource(parse_value(body)?),
             events::Process::EVENT => Self::Process(parse_value(body)?),
             events::Capabilities::EVENT => Self::Capabilities(parse_value(body)?),
+            events::ProgressStart::EVENT => Self::ProgressStart(parse_value(body)?),
+            events::ProgressUpdate::EVENT => Self::ProgressUpdate(parse_value(body)?),
+            events::ProgressEnd::EVENT => Self::ProgressEnd(parse_value(body)?),
             events::Memory::EVENT => Self::Memory(parse_value(body)?),
             _ => return Err(Error::Unhandled),
         };
@@ -103,3 +118,54 @@ where
 {
     serde_json::from_value(value).map_err(|err| err.into())
 }
+
+#[derive(Debug, Clone)]
+pub struct ProgressState {
+    title: String,
+    message: Option<String>,
+    percentage: Option<u8>,
+}
+
+impl ProgressState {
+    pub fn new(title: String, message: Option<String>, percentage: Option<u8>) -> Self {
+        Self {
+            title,
+            message,
+            percentage,
+        }
+    }
+
+    pub fn update(&mut self, message: Option<String>, percentage: Option<u8>) {
+        if let Some(message) = message {
+            self.message = Some(message);
+        }
+        if let Some(percentage) = percentage {
+            self.percentage = Some(percentage);
+        }
+    }
+
+    pub fn status_line(&self) -> String {
+        let mut status = format!("Debug: {}", self.title);
+        if let Some(message) = self.message.as_deref() {
+            status.push_str(" - ");
+            status.push_str(message);
+        }
+        if let Some(percentage) = self.percentage {
+            status.push_str(&format!(" ({}%)", percentage));
+        }
+        status
+    }
+
+    pub fn end_status_line(&self, message: Option<&str>) -> String {
+        let mut status = format!("Debug: {}", self.title);
+        if let Some(message) = message.or(self.message.as_deref()) {
+            status.push_str(" - ");
+            status.push_str(message);
+        } else {
+            status.push_str(" finished");
+        }
+        status
+    }
+}
+
+pub type ProgressMap = HashMap<String, ProgressState>;

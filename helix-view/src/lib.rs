@@ -1,8 +1,8 @@
 #[macro_use]
 pub mod macros;
 
+pub mod action;
 pub mod annotations;
-pub mod base64;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
@@ -27,8 +27,16 @@ pub struct DocumentId(NonZeroUsize);
 
 impl Default for DocumentId {
     fn default() -> DocumentId {
-        // Safety: 1 is non-zero
-        DocumentId(unsafe { NonZeroUsize::new_unchecked(1) })
+        DocumentId(NonZeroUsize::new(1).unwrap())
+    }
+}
+
+#[cfg(test)]
+impl DocumentId {
+    /// Constructs a `DocumentId` with the given non-zero id, for use in tests
+    /// that need several distinct ids without spinning up an `Editor`.
+    pub(crate) fn new(id: usize) -> DocumentId {
+        DocumentId(NonZeroUsize::new(id).expect("document id must be non-zero"))
     }
 }
 

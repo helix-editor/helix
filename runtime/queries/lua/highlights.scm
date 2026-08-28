@@ -53,6 +53,7 @@
 [
  "in"
  "local"
+ "global"
  (break_statement)
  "goto"
 ] @keyword
@@ -144,12 +145,6 @@
 
 (dot_index_expression field: (identifier) @variable.other.member)
 
-(table_constructor
-[
-  "{"
-  "}"
-] @constructor)
-
 ;; Functions
 
 (parameters (identifier) @variable.parameter)
@@ -194,11 +189,11 @@
 
 (function_call
   name: [
-    (identifier) @function.call
+    (identifier) @function
     (dot_index_expression
-      field: (identifier) @function.call)
+      field: (identifier) @function)
     (method_index_expression
-      method: (identifier) @function.method.call)
+      method: (identifier) @function.method)
   ])
 
 ; TODO: incorrectly highlights variable N in `N, nop = 42, function() end`

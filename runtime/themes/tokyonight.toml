@@ -70,7 +70,11 @@ hint = { fg = "hint" }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.background" = { bg = "bg", fg = "fg" }
-"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor" = { fg = "bg", bg = "gray" }
+"ui.cursor.primary" = { fg = "bg", bg = "fg" }
+"ui.cursor.primary.normal" = { fg = "bg", bg = "blue" }
+"ui.cursor.primary.insert" = { fg = "bg", bg = "light-green" }
+"ui.cursor.primary.select" = { fg = "bg", bg = "magenta" }
 "ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
 "ui.cursorline.primary" = { bg = "bg-menu" }
 "ui.help" = { bg = "bg-menu", fg = "fg" }

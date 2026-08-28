@@ -13,7 +13,7 @@
 ; ffi_call and call
 (_ arguments: (_) @indent)
 (assignment right: (_) @indent
- (#set! "scope" "all")
+
 )
 
 [

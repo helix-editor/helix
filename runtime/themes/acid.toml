@@ -1,0 +1,105 @@
+# Author: zyrafal
+
+# Syntax highlighting
+"attribute" = "yellow"
+"type" = "cyan"
+"type.parameter" = "magenta"
+"type.enum.variant" = "yellow"
+"constructor" = "yellow"
+"constant" = "magenta"
+"constant.builtin" = "magenta"
+"constant.builtin.boolean" = "yellow"
+"constant.numeric" = "cyan"
+"constant.character" = "yellow"
+"string" = "green"
+"string.regexp" = "yellow"
+"string.special" = "yellow"
+"comment" = { fg = "light-gray", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "yellow", modifiers = ["italic"] }
+"variable" = "white"
+"variable.builtin" = "red"
+"label" = "purple"
+"punctuation" = "white"
+"keyword" = "red"
+"keyword.directive" = "orange"
+"operator" = "white"
+"function" = "yellow"
+"function.macro" = "orange"
+"function.builtin" = "purple"
+"tag" = "magenta"
+"namespace" = "white"
+"namespace.mod" = "cyan"
+"namespace.mod_type" = "purple"
+"markup.heading" = "green"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "yellow", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = "cyan"
+"markup.link.text" = "yellow"
+"markup.link.label" = "magenta"
+"markup.raw" = "magenta"
+"markup.quote" = "green"
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "yellow"
+
+# Interface
+"ui.background" = { bg = "background" }
+"ui.cursor" = { fg = "background", bg = "cyan" }
+"ui.cursor.primary" = { fg = "background", bg = "orange" }
+"ui.cursor.match" = { fg = "orange", modifiers = ["underlined"] }
+"ui.linenr" = "gray"
+"ui.linenr.selected" = "light-gray"
+"ui.statusline" = { fg = "white", bg = "highlight" }
+"ui.statusline.normal" = { fg = "highlight", bg = "cyan" }
+"ui.statusline.insert" = { fg = "highlight", bg = "yellow" }
+"ui.statusline.select" = { fg = "highlight", bg = "magenta" }
+"ui.cursorline" = { bg = "highlight" }
+"ui.popup" = { fg = "accent", bg = "highlight" }
+"ui.help" = { fg = "accent", bg = "highlight" }
+"ui.window" = "gray"
+"ui.text" = "white"
+"ui.text.focus" = { bg = "gray" }
+"ui.text.info" = "white"
+"ui.virtual.whitespace" = "orange"
+"ui.virtual.ruler" = { bg = "unknown" }
+"ui.virtual.inlay-hint" = { fg = "yellow", bg = "unknown" }
+"ui.menu" = { bg = "highlight" }
+"ui.menu.selected" = { fg = "background", bg = "light-gray" }
+"ui.selection" = { bg = "gray" }
+"warning" = "yellow"
+"error" = { fg = "red", modifiers = ["bold"] }
+"info" = { fg = "cyan", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"diagnostic.hint"= { underline = { color = "green", style = "curl" } }
+"diagnostic.info"= { underline = { color = "cyan", style = "curl" } }
+"diagnostic.warning"= { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error"= { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.bufferline" = { fg = "light-gray", bg = "background" }
+"ui.bufferline.active" = { fg = "white", bg = "gray" }
+"ui.debug" = "orange"
+"ui.highlight.frameline" = { bg = "unknown" }
+"ui.virtual.jump-label" = { fg = "unknown", modifiers = ["italic", "bold"] }
+
+"special" = "orange"
+
+[palette]
+background = "#161e26"
+highlight = "#1e262e"
+accent = "#8080c0"
+gray = "#303840"
+light-gray = "#606870"
+white = "#e0e0e0"
+
+red = "#ff7070"
+orange = "#ffa060"
+yellow = "#ffd080"
+green = "#b0ff80"
+cyan = "#80d0ff"
+magenta = "#f0b0ff"
+purple = "#b090ff"
+
+unknown = "#ff00ff"

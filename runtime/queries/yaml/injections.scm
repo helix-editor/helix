@@ -1,8 +1,8 @@
 ((comment) @injection.content
  (#set! injection.language "comment"))
 
-; The remaining code in this file incorporates work covered by the following
-; copyright and permission notice:
+; The following code in this file until the ";;; END nvim-treesitter LICENSED CODE"
+; marker incorporates work covered by the following copyright and permission notice:
 ;
 ;   Copyright 2023 the nvim-treesitter authors
 ;
@@ -21,23 +21,22 @@
 ; Modified for Helix from https://github.com/nvim-treesitter/nvim-treesitter/blob/master/queries/yaml/injections.scm
 
 ;; GitHub actions: run
-;; Gitlab CI: scripts, before_script, after_script
 ;; Buildkite: command, commands
 (block_mapping_pair
-  key: (flow_node) @_run (#any-of? @_run "run" "script" "before_script" "after_script" "command" "commands")
+  key: (flow_node) @_run (#any-of? @_run "run" "command" "commands")
   value: (flow_node
            (plain_scalar
              (string_scalar) @injection.content)
            (#set! injection.language "bash")))
 
 (block_mapping_pair
-  key: (flow_node) @_run (#any-of? @_run "run" "script" "before_script" "after_script" "command" "commands")
+  key: (flow_node) @_run (#any-of? @_run "run" "command" "commands")
   value: (block_node
            (block_scalar) @injection.content
            (#set! injection.language "bash")))
 
 (block_mapping_pair
-  key: (flow_node) @_run (#any-of? @_run "run" "script" "before_script" "after_script" "command" "commands")
+  key: (flow_node) @_run (#any-of? @_run "run" "command" "commands")
   value: (block_node
            (block_sequence
              (block_sequence_item
@@ -47,10 +46,12 @@
                 (#set! injection.language "bash")))))
 
 (block_mapping_pair
-  key: (flow_node) @_run (#any-of? @_run "run" "script" "before_script" "after_script" "command" "commands")
+  key: (flow_node) @_run (#any-of? @_run "run" "command" "commands")
   value: (block_node
            (block_sequence
              (block_sequence_item
                (block_node
                   (block_scalar) @injection.content
                   (#set! injection.language "bash"))))))
+
+;;; END nvim-treesitter LICENSED CODE

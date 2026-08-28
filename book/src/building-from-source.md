@@ -42,7 +42,7 @@ RUSTFLAGS="-C target-feature=-crt-static"
    # Optimized
    cargo install \
       --profile opt \
-      --config 'build.rustflags="-C target-cpu=native"' \
+      --config 'build.rustflags=["-C", "target-cpu=native"]' \
       --path helix-term \
       --locked
    ```
@@ -57,6 +57,8 @@ RUSTFLAGS="-C target-feature=-crt-static"
 > `hx --grammar build`. This will install them in
 > the `runtime` directory within the user's helix config directory (more
 > [details below](#multiple-runtime-directories)).
+
+> 💡 If you only want to build _some_ grammars, see [`use-grammars`](./languages.md#choosing-grammars)
 
 ### Configuring Helix's runtime files
 

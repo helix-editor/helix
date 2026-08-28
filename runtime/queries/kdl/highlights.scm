@@ -1,5 +1,15 @@
-(single_line_comment) @comment
-(multi_line_comment) @comment
+[
+    (single_line_comment)
+    (multi_line_comment)
+
+    (node_comment)
+    (node_field_comment)
+
+    ; these do not show up as comments in Helix as they are also highlighted as
+    ; normal nodes
+    (node . (node_comment))
+    (node_field . (node_field_comment))
+] @comment
 
 (node
     (identifier) @variable)

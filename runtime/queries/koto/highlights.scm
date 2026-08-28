@@ -105,7 +105,7 @@
   start: (identifier) @function)
 
 (chain
-  lookup: (identifier) @variable.other.member)
+  (lookup (identifier)) @variable.other.member)
 
 (call
   function: (identifier)) @function

@@ -16,13 +16,7 @@
     ...
   }: let
     inherit (nixpkgs) lib;
-    systems = [
-      "x86_64-linux"
-      "aarch64-linux"
-      "x86_64-darwin"
-      "aarch64-darwin"
-    ];
-    eachSystem = lib.genAttrs systems;
+    eachSystem = lib.genAttrs lib.systems.flakeExposed;
     pkgsFor = eachSystem (system:
       import nixpkgs {
         localSystem.system = system;
@@ -69,16 +63,20 @@
           platformRustFlagsEnv = lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
         in
           pkgs.mkShell {
-            inputsFrom = [self.checks.${system}.helix];
+            inputsFrom = [
+              (self.checks.${system}.helix.override {
+                includeGrammarIf = _: false;
+              })
+            ];
             nativeBuildInputs = with pkgs;
               [
                 lld
                 cargo-flamegraph
                 rust-bin.nightly.latest.rust-analyzer
+                mdbook
               ]
               ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
-              ++ (lib.optional stdenv.isLinux lldb)
-              ++ (lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.CoreFoundation);
+              ++ (lib.optional stdenv.isLinux lldb);
             shellHook = ''
               export RUST_BACKTRACE="1"
               export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"

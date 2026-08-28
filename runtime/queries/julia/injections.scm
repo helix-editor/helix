@@ -9,7 +9,6 @@
       (primitive_definition)
       (abstract_definition)
       (struct_definition)
-      (short_function_definition)
       (assignment)
       (const_statement)
     ])
@@ -27,7 +26,7 @@
     (command_literal)
     (prefixed_command_literal)
   ] @injection.content
-  (#set! injection.language "sh"))
+  (#set! injection.language "bash"))
 
 (
   (prefixed_string_literal

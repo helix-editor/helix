@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use helix_core::doc_formatter::{DocumentFormatter, GraphemeSource, TextFormat};
+use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme, GraphemeSource, TextFormat};
 use helix_core::graphemes::Grapheme;
 use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
@@ -158,7 +158,7 @@ pub fn render_text(
 
         let virt = grapheme.is_virtual();
         let grapheme_width = renderer.draw_grapheme(
-            grapheme.raw,
+            &grapheme,
             grapheme_style,
             virt,
             &mut last_line_indent_level,
@@ -214,7 +214,7 @@ impl<'a> TextRenderer<'a> {
         let tab_width = doc.tab_width();
         let tab = if ws_render.tab() == WhitespaceRenderValue::All {
             std::iter::once(ws_chars.tab)
-                .chain(std::iter::repeat(ws_chars.tabpad).take(tab_width - 1))
+                .chain(std::iter::repeat_n(ws_chars.tabpad, tab_width - 1))
                 .collect()
         } else {
             " ".repeat(tab_width)
@@ -258,7 +258,7 @@ impl<'a> TextRenderer<'a> {
             whitespace_style: theme.get("ui.virtual.whitespace"),
             indent_width,
             starting_indent: offset.col / indent_width as usize
-                + (offset.col % indent_width as usize != 0) as usize
+                + !offset.col.is_multiple_of(indent_width as usize) as usize
                 + editor_config.indent_guides.skip_levels as usize,
             indent_guide_style: text_style.patch(
                 theme
@@ -313,7 +313,7 @@ impl<'a> TextRenderer<'a> {
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_grapheme(
         &mut self,
-        grapheme: Grapheme,
+        grapheme: &FormattedGrapheme,
         grapheme_style: GraphemeStyle,
         is_virtual: bool,
         last_indent_level: &mut usize,
@@ -335,6 +335,7 @@ impl<'a> TextRenderer<'a> {
         style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
+        let mut is_tab = false;
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };
         let nnbsp = if is_virtual { " " } else { &self.nnbsp };
@@ -343,13 +344,14 @@ impl<'a> TextRenderer<'a> {
         } else {
             &self.tab
         };
-        let grapheme = match grapheme {
+        let grapheme = match grapheme.raw {
             Grapheme::Tab { width } => {
+                is_tab = true;
                 let grapheme_tab_width = char_to_byte_idx(tab, width);
                 &tab[..grapheme_tab_width]
             }
             // TODO special rendering for other whitespaces?
-            Grapheme::Other { ref g } if g == " " => space,
+            Grapheme::Other { ref g } if g == " " && !grapheme.source.is_eof() => space,
             Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
             Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
             Grapheme::Other { ref g } => g,
@@ -359,12 +361,18 @@ impl<'a> TextRenderer<'a> {
         let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
-            self.surface.set_string(
-                self.viewport.x + (position.col - self.offset.col) as u16,
-                self.viewport.y + position.row as u16,
-                grapheme,
-                style,
-            );
+            let x = self.viewport.x + (position.col - self.offset.col) as u16;
+            let y = self.viewport.y + position.row as u16;
+            if is_tab {
+                // A tab expands to `width` single-column cells; writing them
+                // individually keeps background styles (selection, cursorline)
+                // across the whole tab and avoids the redraw diff clipping
+                // `render-whitespace` pads. A single `set_grapheme` would pack
+                // them into one wide cell and leave the rest unstyled.
+                self.surface.set_tab(x, y, grapheme, style);
+            } else {
+                self.surface.set_grapheme(x, y, grapheme, width, style);
+            }
         } else if cut_off_start != 0 && cut_off_start < width {
             // partially on screen
             let rect = Rect::new(
@@ -414,25 +422,20 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
-    pub fn set_string(&mut self, x: u16, y: u16, string: impl AsRef<str>, style: Style) {
+    pub fn set_string(&mut self, x: u16, y: u16, string: &str, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }
+        let y = y - self.offset.row as u16;
         self.surface
             .set_string(x, y + self.viewport.y, string, style)
     }
 
-    pub fn set_stringn(
-        &mut self,
-        x: u16,
-        y: u16,
-        string: impl AsRef<str>,
-        width: usize,
-        style: Style,
-    ) {
+    pub fn set_stringn(&mut self, x: u16, y: u16, string: &str, width: usize, style: Style) {
         if (y as usize) < self.offset.row {
             return;
         }
+        let y = y - self.offset.row as u16;
         self.surface
             .set_stringn(x, y + self.viewport.y, string, width, style);
     }
@@ -440,8 +443,12 @@ impl<'a> TextRenderer<'a> {
     /// Sets the style of an area **within the text viewport* this accounts
     /// both for the renderers vertical offset and its viewport
     pub fn set_style(&mut self, mut area: Rect, style: Style) {
-        area = area.clip_top(self.offset.row as u16);
-        area.y += self.viewport.y;
+        let offset = self.offset.row as u16;
+        if area.y < offset {
+            area.height = area.height.saturating_sub(offset - area.y);
+            area.y = offset;
+        }
+        area.y = area.y - offset + self.viewport.y;
         self.surface.set_style(area, style);
     }
 
@@ -459,6 +466,7 @@ impl<'a> TextRenderer<'a> {
         if (y as usize) < self.offset.row {
             return (x, y);
         }
+        let y = y - self.offset.row as u16;
         self.surface.set_string_truncated(
             x,
             y + self.viewport.y,

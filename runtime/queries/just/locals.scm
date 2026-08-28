@@ -8,10 +8,13 @@
 ; Definitions
 
 (alias
-  name: (identifier) @local.definition.variable)
+  alias_name: (identifier) @local.definition.variable)
 
 (assignment
   name: (identifier) @local.definition.variable)
+
+(function
+  name: (identifier) @local.definition.function)
 
 (mod
   name: (identifier) @local.definition.namespace)

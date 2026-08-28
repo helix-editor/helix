@@ -228,6 +228,7 @@ impl FromStr for Ini {
                 let glob = GlobBuilder::new(&glob_str)
                     .literal_separator(true)
                     .backslash_escape(true)
+                    .empty_alternates(true)
                     .build()?;
                 ini.sections.push(Section {
                     glob: glob.compile_matcher(),
@@ -326,6 +327,56 @@ mod test {
             EditorConfig {
                 indent_style: Some(IndentStyle::Spaces(4)),
                 insert_final_newline: Some(true),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn empty_alternate_brace_group_test() {
+        // A glob with a brace group followed by a brace group containing an empty
+        // alternate (e.g. `{,.foo}`) must apply to names matching the empty branch.
+        // <https://github.com/helix-editor/helix/issues/15883>
+        let source = r#"
+        [*]
+        indent_size = 4
+
+        [*.{nix,yml}{,.foo}]
+        indent_size = 2
+        "#;
+
+        // The empty alternate branch must match (`flake.nix`, `config.yml`).
+        assert_eq!(
+            editor_config("flake.nix", source),
+            EditorConfig {
+                indent_style: None,
+                tab_width: NonZeroU8::new(2),
+                ..Default::default()
+            }
+        );
+        assert_eq!(
+            editor_config("config.yml", source),
+            EditorConfig {
+                indent_style: None,
+                tab_width: NonZeroU8::new(2),
+                ..Default::default()
+            }
+        );
+        // The non-empty alternate branch must also match (`flake.nix.foo`).
+        assert_eq!(
+            editor_config("flake.nix.foo", source),
+            EditorConfig {
+                indent_style: None,
+                tab_width: NonZeroU8::new(2),
+                ..Default::default()
+            }
+        );
+        // A non-matching extension keeps the catch-all `[*]` value.
+        assert_eq!(
+            editor_config("main.rs", source),
+            EditorConfig {
+                indent_style: None,
+                tab_width: NonZeroU8::new(4),
                 ..Default::default()
             }
         );

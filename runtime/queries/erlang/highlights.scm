@@ -7,7 +7,7 @@
 (variable) @variable
 (atom) @string.special.symbol
 ((atom) @constant.builtin.boolean
- (#match? @constant.builtin.boolean "^(true|false)$"))
+ (#any-of? @constant.builtin.boolean "true" "false"))
 [(string) (sigil)] @string
 (character) @constant.character
 (escape_sequence) @constant.character.escape
@@ -114,16 +114,6 @@
   ] @comment.block.documentation)
  (#any-of? @keyword "doc" "moduledoc"))
 
-; Macros
-(macro
-  "?"+ @keyword.directive
-  name: (_) @keyword.directive)
-
-(macro
-  "?"+ @constant
-  name: (_) @constant
-  !arguments)
-
 ; Parameters
 ; specs
 ((attribute
@@ -131,7 +121,7 @@
    (stab_clause
      pattern: (arguments (variable)? @variable.parameter)
      body: (variable)? @variable.parameter))
- (#match? @keyword "(spec|callback)"))
+ (#any-of? @keyword "spec" "callback"))
 ; functions
 (function_clause pattern: (arguments (variable) @variable.parameter))
 ; anonymous functions
@@ -143,7 +133,7 @@
       (binary_operator
         left: (call (arguments (variable) @variable.parameter))
         operator: "::")))
- (#match? @keyword "(type|opaque)"))
+ (#any-of? @keyword "type" "opaque" "nominal"))
 ; macros
 ((attribute
    name: (atom) @keyword
@@ -163,3 +153,13 @@
 ; Ignored variables
 ((variable) @comment.unused
  (#match? @comment.unused "^_"))
+
+; Macros
+(macro
+  "?"+ @keyword.directive
+  name: (_) @keyword.directive)
+
+(macro
+  "?"+ @constant
+  name: (_) @constant
+  !arguments)

@@ -25,6 +25,10 @@
   "noperspective"
   "invariant"
   "precise"
+  "require"
+  "enable"
+  "warn"
+  "disable"
 ] @keyword
 
 "subroutine" @keyword.function

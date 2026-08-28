@@ -1,0 +1,18 @@
+class Person {
+  name: String
+  age: Int
+}
+
+person = new Person {
+  name = "Alice"
+  address = new {
+    city = "NYC"
+  }
+}
+
+config = new Dynamic {
+  items = new Listing {
+    "a"
+    "b"
+  }
+}

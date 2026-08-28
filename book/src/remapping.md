@@ -8,7 +8,7 @@ There are three kinds of commands that can be used in keymaps:
 
 * Static commands: commands like `move_char_right` which are usually bound to
   keys and used for movement and editing. A list of static commands is
-  available in the [Keymap](./keymap.html) documentation and in the source code
+  available in the [Keymap](./keymap.md) documentation and in the source code
   in [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
   at the invocation of `static_commands!` macro.
 * Typable commands: commands that can be executed from command mode (`:`), for
@@ -89,24 +89,26 @@ Cmd-s = ":write" # Cmd or Win or Meta and 's' to write
 
 Special keys are encoded as follows:
 
-| Key name     | Representation |
-| ---          | ---            |
-| Backspace    | `"backspace"`  |
-| Space        | `"space"`      |
-| Return/Enter | `"ret"`        |
-| Left         | `"left"`       |
-| Right        | `"right"`      |
-| Up           | `"up"`         |
-| Down         | `"down"`       |
-| Home         | `"home"`       |
-| End          | `"end"`        |
-| Page Up      | `"pageup"`     |
-| Page Down    | `"pagedown"`   |
-| Tab          | `"tab"`        |
-| Delete       | `"del"`        |
-| Insert       | `"ins"`        |
-| Null         | `"null"`       |
-| Escape       | `"esc"`        |
+| Key name         | Representation |
+| ---              | ---            |
+| Backspace        | `"backspace"`  |
+| Space            | `"space"`      |
+| Return/Enter     | `"ret"`        |
+| Left             | `"left"`       |
+| Right            | `"right"`      |
+| Up               | `"up"`         |
+| Down             | `"down"`       |
+| Home             | `"home"`       |
+| End              | `"end"`        |
+| Page Up          | `"pageup"`     |
+| Page Down        | `"pagedown"`   |
+| Tab              | `"tab"`        |
+| Delete           | `"del"`        |
+| Insert           | `"ins"`        |
+| Null             | `"null"`       |
+| Escape           | `"esc"`        |
+| Less Than (<)    | `"lt"`         |
+| Greater Than (>) | `"gt"`         |
 
 Keys can be disabled by binding them to the `no_op` command.
 

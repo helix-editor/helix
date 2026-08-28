@@ -66,10 +66,10 @@
 ] @constant.numeric.integer
 
 [
-  (nil)
   (true)
   (false)
-] @constant.builtin
+] @constant.builtin.boolean
+(nil) @constant.builtin
 
 (interpolation
   "#{" @punctuation.special
@@ -103,7 +103,7 @@
  (#match? @constant "^[A-Z\\d_]+$"))
 
 (self) @variable.builtin
-(super) @function.builtin
+(super) @variable.builtin
 
 [(forward_parameter)(forward_argument)] @variable.parameter
 (keyword_parameter name:((_)":" @variable.parameter) @variable.parameter)

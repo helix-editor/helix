@@ -1,7 +1,10 @@
 [
   "[QueryStringParams]"
+  "[Query]"
   "[FormParams]"
+  "[Form]"
   "[MultipartFormData]"
+  "[Multipart]"
   "[Cookies]"
   "[Captures]"
   "[Asserts]"
@@ -20,7 +23,7 @@
 (quoted_string) @string
 (json_string) @string
 (file_value) @string.special.path
-(regex) @string.regex
+(regex) @string.regexp
 
 [
   "\\"
@@ -70,22 +73,13 @@
 (filter) @attribute
 
 (version) @string.special
-[
-  "null"
-  "cacert"
-  "compressed"
-  "location"
-  "insecure"
-  "path-as-is"
-  "proxy"
-  "max-redirs"
-  "retry"
-  "retry-interval"
-  "retry-max-count"
-  (variable_option "variable")
-  "verbose"
-  "very-verbose"
-] @constant.builtin
+"null" @constant.builtin
+
+; Option keys (location, max-time, retry, cert, user, … and the many added in
+; newer hurl): the grammar generalised per-option nodes into boolean/integer/
+; string/duration options with an `option_key` field — capture that field so
+; every option key is covered uniformly instead of listing each by name.
+(_ option_key: _ @constant.builtin)
 
 (boolean) @constant.builtin.boolean
 
@@ -116,6 +110,9 @@
   "isBoolean"
   "isString"
   "isCollection"
+  "isNumber"
+  "isIsoDate"
+  "isEmpty"
 ] @keyword.operator
 
 (integer) @constant.numeric.integer

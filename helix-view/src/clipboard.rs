@@ -143,7 +143,19 @@ mod external {
                     .is_some()
             }
 
-            if env_var_is_set("WAYLAND_DISPLAY")
+            if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get") {
+                Self::Termux
+            } else if env_var_is_set("TMUX") && binary_exists("tmux") {
+                Self::Tmux
+            } else if cfg!(feature = "term")
+                && env_var_is_set("WEZTERM_UNIX_SOCKET")
+                && binary_exists("wezterm")
+            {
+                #[cfg(feature = "term")]
+                return Self::Termcode;
+                #[cfg(not(feature = "term"))]
+                return Self::None;
+            } else if env_var_is_set("WAYLAND_DISPLAY")
                 && binary_exists("wl-copy")
                 && binary_exists("wl-paste")
             {
@@ -156,17 +168,13 @@ mod external {
                 && is_exit_success("xsel", &["-o", "-b"])
             {
                 Self::XSel
-            } else if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get")
-            {
-                Self::Termux
-            } else if env_var_is_set("TMUX") && binary_exists("tmux") {
-                Self::Tmux
             } else if binary_exists("win32yank.exe") {
                 Self::Win32Yank
-            } else if cfg!(feature = "term") {
-                Self::Termcode
             } else {
-                Self::None
+                #[cfg(feature = "term")]
+                return Self::Termcode;
+                #[cfg(not(feature = "term"))]
+                return Self::None;
             }
         }
     }
@@ -193,7 +201,7 @@ mod external {
                 Self::Wayland => builtin_name("wayland", &WL_CLIPBOARD),
                 Self::XClip => builtin_name("x-clip", &XCLIP),
                 Self::XSel => builtin_name("x-sel", &XSEL),
-                Self::Win32Yank => builtin_name("win-32-yank", &WIN32),
+                Self::Win32Yank => builtin_name("win32-yank", &WIN32),
                 Self::Tmux => builtin_name("tmux", &TMUX),
                 Self::Termux => builtin_name("termux", &TERMUX),
                 #[cfg(windows)]
@@ -292,10 +300,17 @@ mod external {
                 },
                 #[cfg(feature = "term")]
                 Self::Termcode => {
-                    crossterm::queue!(
-                        std::io::stdout(),
-                        osc52::SetClipboardCommand::new(content, clipboard_type)
-                    )?;
+                    use std::io::Write;
+                    use termina::escape::osc::{self, Osc};
+                    let selection = match clipboard_type {
+                        ClipboardType::Clipboard => osc::Selection::CLIPBOARD,
+                        ClipboardType::Selection => osc::Selection::PRIMARY,
+                    };
+                    // NOTE: it would be ideal to have the terminal execute this but it _should_
+                    // work to send this over stdout instead.
+                    let mut stdout = std::io::stdout().lock();
+                    write!(stdout, "{}", Osc::SetSelection(selection, content))?;
+                    stdout.flush()?;
                     Ok(())
                 }
                 Self::Custom(command_provider) => match clipboard_type {
@@ -398,43 +413,6 @@ mod external {
         TERMUX,
         yank => "termux-clipboard-get";
         paste => "termux-clipboard-set";
-    }
-
-    #[cfg(feature = "term")]
-    mod osc52 {
-        use {super::ClipboardType, crate::base64};
-
-        pub struct SetClipboardCommand {
-            encoded_content: String,
-            clipboard_type: ClipboardType,
-        }
-
-        impl SetClipboardCommand {
-            pub fn new(content: &str, clipboard_type: ClipboardType) -> Self {
-                Self {
-                    encoded_content: base64::encode(content.as_bytes()),
-                    clipboard_type,
-                }
-            }
-        }
-
-        impl crossterm::Command for SetClipboardCommand {
-            fn write_ansi(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
-                let kind = match &self.clipboard_type {
-                    ClipboardType::Clipboard => "c",
-                    ClipboardType::Selection => "p",
-                };
-                // Send an OSC 52 set command: https://terminalguide.namepad.de/seq/osc-52/
-                write!(f, "\x1b]52;{};{}\x1b\\", kind, &self.encoded_content)
-            }
-            #[cfg(windows)]
-            fn execute_winapi(&self) -> std::result::Result<(), std::io::Error> {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "OSC clipboard codes not supported by winapi.",
-                ))
-            }
-        }
     }
 
     fn execute_command(

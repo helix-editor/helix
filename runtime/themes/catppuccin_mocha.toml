@@ -4,6 +4,7 @@
 "attribute" = "yellow"
 
 "type" = "yellow"
+"type.builtin" = "mauve"
 "type.enum.variant" = "teal"
 
 "constructor" = "sapphire"
@@ -35,7 +36,7 @@
 "operator" = "sky"
 
 "function" = "blue"
-"function.macro" = "mauve"
+"function.macro" = "rosewater"
 
 "tag" = "blue"
 
@@ -54,6 +55,7 @@
 "markup.list.checked" = "green"
 "markup.bold" = { fg = "red", modifiers = ["bold"] }
 "markup.italic" = { fg = "red", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
 "markup.link.text" = "lavender"
 "markup.link.label" = "sapphire"
@@ -122,6 +124,7 @@
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow"

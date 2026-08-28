@@ -1,4 +1,12 @@
-((method) @local.scope
+; Method, class, module and singleton-class bodies don't see locals from the
+; enclosing scope in Ruby, so they must not inherit.
+([
+  (method)
+  (singleton_method)
+  (class)
+  (module)
+  (singleton_class)
+] @local.scope
  (#set! local.scope-inherits false))
 
 [
@@ -18,3 +26,8 @@
 (optional_parameter name: (identifier) @local.definition.variable.parameter)
 
 (identifier) @local.reference
+
+; A method-call name is not a variable reference (the grammar only forms `call`
+; when it's syntactically a call), so a same-named local must not capture it.
+(call
+  method: (identifier) @_)

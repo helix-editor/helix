@@ -1,6 +1,6 @@
 # Helix mode in other software
 
-Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.
+Helix' keymap and interaction model ([Using Helix](./usage.md)) is easier to adopt if it can be used consistently in many editing contexts. Yet, certain use cases cannot easily be addressed directly in Helix. Similar to vim, this leads to the creation of "Helix mode" in various other software products, allowing Helix-style editing for a greater variety of use cases.
 
 "Helix mode" is frequently still in early stages or missing entirely. For such cases, we also link to relevant bugs or discussions.
 
@@ -15,6 +15,8 @@ Helix' keymap and interaction model ([Using Helix](#usage.md)) is easier to adop
 | [Visual Studio Code](https://code.visualstudio.com/) | [Helix for VS Code](https://marketplace.visualstudio.com/items?itemName=jasew.vscode-helix-emulation) extension|
 | [Zed](https://zed.dev/) | native via keybindings ([Bug](https://github.com/zed-industries/zed/issues/4642)) |
 | [CodeMirror](https://codemirror.net/) | [codemirror-helix](https://gitlab.com/_rvidal/codemirror-helix) |
+| [Lite XL](https://lite-xl.com/) | [lite-modal-hx](https://codeberg.org/Mandarancio/lite-modal-hx) |
+| [Lapce](https://lap.dev/lapce/) | | Requested: https://github.com/lapce/lapce/issues/281 |
 
 
 ## Shells

@@ -195,3 +195,69 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_changes_in_splits_jumplist_sync() -> anyhow::Result<()> {
+    // See <https://github.com/helix-editor/helix/issues/9833>
+    // When jumping backwards (<C-o>) switches between two documents, we need to
+    // ensure that the current view has been synced with all changes to the
+    // document that occurred since the last time the view focused this document.
+    // If the view isn't synced then this case panics since we try to form a
+    // selection on "test" (which was deleted in the other view).
+    test((
+        "#[test|]#",
+        "<C-w>sgf<C-w>wd<C-w>w<C-o><C-w>qd",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reload_all_with_split_jumplist() -> anyhow::Result<()> {
+    // See reproduction from <https://github.com/helix-editor/helix/issues/9830>
+    //
+    // The key sequence:
+    // * <C-w>s   Horizontal split: two views on the same document.
+    // * ]<space> Add an empty line below, growing the document.
+    // * %        Select the whole document.
+    // * 2G       Go to line 2. `goto_line` calls `push_jump`, recording a jump
+    //            whose selection is valid at the *current* (grown) revision.
+    // * ms/      Surround-add `/`, growing the document again.
+    // * :rla     reload-all: re-reads the file from disk (shrinking the buffer
+    //            back to its original contents) but only syncs the first view of
+    //            each document, leaving the other split's `doc_revisions` stale.
+    // * %J       Select-all and join, forcing a sync of the stale view.
+    //
+    // On the unfixed code the jumplist entry recorded by `2G` is left ahead of
+    // the stale view's `doc_revisions`; once that view is synced, the entry is
+    // mapped through a changeset whose pre-image predates it and
+    // `ChangeSet::update_positions` panics.
+    use std::io::Write;
+    let mut file = tempfile::NamedTempFile::new()?;
+    // `:reload-all` re-reads from disk, so the file must have on-disk contents
+    // for the reload to shrink the (grown) buffer back down.
+    file.write_all(b"line1\nline2\nline3\n")?;
+    file.flush()?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        // The trailing `<C-w>q` closes the split so a single window remains for
+        // the harness's automatic `:q!` teardown. It also exercises the sync
+        // that runs when a window is closed.
+        Some("<C-w>s]<space>%2Gms/:rla<ret>%J<C-w>q"),
+        Some(&|app| {
+            helpers::assert_status_not_error(&app.editor);
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}

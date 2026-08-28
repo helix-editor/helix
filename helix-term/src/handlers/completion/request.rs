@@ -87,7 +87,7 @@ impl helix_event::AsyncHook for CompletionHandler {
                 if self
                     .trigger
                     .or(self.in_flight)
-                    .map_or(true, |trigger| trigger.doc != doc || trigger.view != view)
+                    .is_none_or(|trigger| trigger.doc != doc || trigger.view != view)
                 {
                     self.trigger = Some(Trigger {
                         pos: trigger_pos,

@@ -21,5 +21,44 @@
 
 (closure_parameters (identifier) @local.definition.variable.parameter)
 
+; Mutable variables
+
+(let_declaration
+  (mutable_specifier)
+  pattern: (identifier) @local.definition.variable.mutable)
+(mut_pattern
+  (mutable_specifier)
+  (identifier) @local.definition.variable.mutable)
+
+(parameter
+  (mutable_specifier)
+  pattern: (identifier) @local.definition.variable.parameter.mutable)
+
+(self_parameter
+  (mutable_specifier)
+  (self) @local.definition.variable.builtin.mutable)
+
 ; References
+(self) @local.reference
 (identifier) @local.reference
+
+; lifetimes / labels
+(lifetime (identifier) @_)
+(label (identifier) @_)
+
+; == scoped function calls and function defs ==
+; avoid coloring functions as variables
+(call_expression
+  function: (scoped_identifier
+    name: (identifier) @_))
+(generic_function
+  function: (scoped_identifier
+    name: (identifier) @_))
+
+(function_item
+  name: (identifier) @_)
+(function_signature_item
+  name: (identifier) @_)
+
+; == other ==
+(enum_variant (identifier) @_)

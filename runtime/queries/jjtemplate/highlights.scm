@@ -12,3 +12,5 @@
 
 [(infix_ops) "++"] @operator
 [(string_literal) (raw_string_literal)] @string
+
+(integer_literal) @constant.numeric.integer

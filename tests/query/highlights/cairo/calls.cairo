@@ -1,0 +1,2 @@
+fn f() { foo(); }
+//       ^ @function

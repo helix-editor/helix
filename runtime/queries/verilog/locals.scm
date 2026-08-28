@@ -6,7 +6,7 @@
   (function_declaration)
   (always_construct)
   (module_declaration)
-] @scope
+] @local.scope
 
 (parameter_declaration
  (list_of_param_assignments

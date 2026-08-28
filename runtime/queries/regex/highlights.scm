@@ -1,4 +1,4 @@
-; upstream: https://github.com/tree-sitter/tree-sitter-regex/blob/e1cfca3c79896ff79842f057ea13e529b66af636/queries/highlights.scm
+; upstream: https://github.com/tree-sitter/tree-sitter-regex/blob/b2ac15e27fce703d2f37a79ccd94a5c0cbe9720b/queries/highlights.scm
 
 [
   "("
@@ -6,21 +6,25 @@
   "(?"
   "(?:"
   "(?<"
+  "(?P<"
+  "(?P="
   ">"
   "["
   "]"
+  "[:"
+  ":]"
   "{"
   "}"
 ] @punctuation.bracket
 
+; `<=`/`<!` lookbehind are now `<` + `=`/`!` (lookahead and lookbehind share
+; the unified lookaround_assertion); the bare `<` is left unhighlighted.
 [
   "*"
   "+"
   "|"
   "="
-  "<="
   "!"
-  "<!"
   "?"
 ] @operator
 
@@ -43,10 +47,20 @@
     "," @punctuation.delimiter
   ])
 
+; Inline flags: `(?i)` / `(?i-s:…)`.
+(inline_flags_group
+  "-"? @operator
+  ":"? @punctuation.delimiter)
+(flags) @constant.character
+
 (character_class
   [
     "^" @operator
     (class_range "-" @operator)
   ])
 
-(class_character) @constant.character
+; POSIX class name (`alpha` in `[[:alpha:]]`) alongside literal class chars.
+[
+  (class_character)
+  (posix_class_name)
+] @constant.character

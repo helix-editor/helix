@@ -88,6 +88,8 @@
 "warning" = "orange"
 "error" = "red"
 
+rainbow = ["rainbow_gold", "rainbow_blue", "rainbow_orange", "rainbow_purple", "rainbow_khaki", "rainbow_turquoise"]
+
 [palette]
 grey00 = "#181818" # Default Background
 grey01 = "#282828" # Lighter Background (Used for status bars, line number and folding marks)
@@ -108,3 +110,11 @@ grey = "#808080"
 darkgreen = "#629755"
 lightblue = "#6897bb"
 blue = "#104158"
+
+# Rainbow bracket colors
+rainbow_gold = "#FFD700"
+rainbow_blue = "#1E90FF"
+rainbow_orange = "#FF8C00"
+rainbow_purple = "#9370DB"
+rainbow_khaki = "#F0E68C"
+rainbow_turquoise = "#00CED1" 

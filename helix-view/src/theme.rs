@@ -35,6 +35,56 @@ pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
 });
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Mode {
+    Dark,
+    Light,
+}
+
+#[cfg(feature = "term")]
+impl From<termina::escape::csi::ThemeMode> for Mode {
+    fn from(mode: termina::escape::csi::ThemeMode) -> Self {
+        match mode {
+            termina::escape::csi::ThemeMode::Dark => Self::Dark,
+            termina::escape::csi::ThemeMode::Light => Self::Light,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+pub enum Config {
+    Constant(String),
+    Adaptive {
+        light: String,
+        dark: String,
+        /// A theme to choose when the terminal did not declare either light or dark mode.
+        /// When not specified the dark theme is preferred.
+        fallback: Option<String>,
+    },
+}
+
+impl Config {
+    pub fn choose(&self, preference: Option<Mode>) -> &str {
+        match self {
+            Config::Constant(theme) => theme,
+            Config::Adaptive {
+                light,
+                dark,
+                fallback,
+            } => match preference {
+                Some(Mode::Light) => light,
+                Some(Mode::Dark) => dark,
+                None => fallback.as_ref().unwrap_or(dark),
+            },
+        }
+    }
+
+    pub fn is_adaptive(&self) -> bool {
+        matches!(self, Self::Adaptive { .. })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Loader {
     /// Theme directories to search from highest to lowest priority
@@ -227,6 +277,9 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    /// Reverse map from scope string to its `Highlight` index. `find_highlight_exact`
+    /// is called many times per frame, so we optimize lookups.
+    scope_index: HashMap<String, Highlight>,
     rainbow_length: usize,
 }
 
@@ -395,10 +448,7 @@ impl Theme {
     }
 
     pub fn find_highlight_exact(&self, scope: &str) -> Option<Highlight> {
-        self.scopes()
-            .iter()
-            .position(|s| s == scope)
-            .map(|idx| Highlight::new(idx as u32))
+        self.scope_index.get(scope).copied()
     }
 
     pub fn find_highlight(&self, mut scope: &str) -> Option<Highlight> {
@@ -439,10 +489,17 @@ impl Theme {
         let (styles, scopes, highlights, rainbow_length, load_errors) =
             build_theme_values(toml_keys);
 
+        let scope_index = scopes
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.clone(), Highlight::new(i as u32)))
+            .collect();
+
         let theme = Self {
             styles,
             scopes,
             highlights,
+            scope_index,
             rainbow_length,
             ..Default::default()
         };
@@ -492,7 +549,7 @@ impl ThemePalette {
 
     pub fn string_to_rgb(s: &str) -> Result<Color, String> {
         if s.starts_with('#') {
-            Self::hex_string_to_rgb(s)
+            Color::from_hex(s).map_err(|e| format!("{e}: {s}"))
         } else {
             Self::ansi_string_to_rgb(s)
         }
@@ -503,20 +560,6 @@ impl ThemePalette {
             return Ok(Color::Indexed(index));
         }
         Err(format!("Malformed ANSI: {}", s))
-    }
-
-    fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
-        if s.len() >= 7 {
-            if let (Ok(red), Ok(green), Ok(blue)) = (
-                u8::from_str_radix(&s[1..3], 16),
-                u8::from_str_radix(&s[3..5], 16),
-                u8::from_str_radix(&s[5..7], 16),
-            ) {
-                return Ok(Color::Rgb(red, green, blue));
-            }
-        }
-
-        Err(format!("Malformed hexcode: {}", s))
     }
 
     fn parse_value_as_str(value: &Value) -> Result<&str, String> {

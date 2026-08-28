@@ -121,17 +121,17 @@
   "else"
   "switch"
   "case"
-  "while"
 ] @keyword.control.conditional
 
 [
+  "while"
   "for"
 ] @keyword.control.repeat
 
 [
   "import"
   "export"
-] @keyword.control.import 
+] @keyword.control.import
 
 [
   "return"
@@ -161,7 +161,7 @@
 ; Function and method definitions
 ;--------------------------------
 
-(function
+(function_expression
   name: (identifier) @function)
 (function_declaration
   name: (identifier) @function)
@@ -172,27 +172,27 @@
 
 (pair
   key: (property_identifier) @function.method
-  value: [(function) (arrow_function)])
+  value: [(function_expression) (arrow_function)])
 (pair
   key: (private_property_identifier) @function.method.private
-  value: [(function) (arrow_function)])
+  value: [(function_expression) (arrow_function)])
 
 (assignment_expression
   left: (member_expression
     property: (property_identifier) @function.method)
-  right: [(function) (arrow_function)])
+  right: [(function_expression) (arrow_function)])
 (assignment_expression
   left: (member_expression
     property: (private_property_identifier) @function.method.private)
-  right: [(function) (arrow_function)])
+  right: [(function_expression) (arrow_function)])
 
 (variable_declarator
   name: (identifier) @function
-  value: [(function) (arrow_function)])
+  value: [(function_expression) (arrow_function)])
 
 (assignment_expression
   left: (identifier) @function
-  right: [(function) (arrow_function)])
+  right: [(function_expression) (arrow_function)])
 
 ; Function and method parameters
 ;-------------------------------
@@ -201,7 +201,7 @@
 ; javascript and typescript grammars without conflicts.
 (arrow_function
   parameter: (identifier) @variable.parameter)
-  
+
 ; Function and method calls
 ;--------------------------
 
@@ -222,11 +222,14 @@
 (super) @variable.builtin
 
 [
-  (true)
-  (false)
   (null)
   (undefined)
 ] @constant.builtin
+
+[
+  (true)
+  (false)
+] @constant.builtin.boolean
 
 (comment) @comment
 
@@ -238,7 +241,15 @@
 (escape_sequence) @constant.character.escape
 
 (regex) @string.regexp
-(number) @constant.numeric.integer
+
+; future-proof fall-back, and `TypedArray` values (looks like float, but is int)
+(number) @constant.numeric
+; https://tc39.es/ecma262/multipage/ecmascript-language-lexical-grammar.html#prod-NumericLiteral
+((number) @constant.numeric.float
+  (#match? @constant.numeric.float "[^n]$"))
+((number) @constant.numeric.integer
+  (#match? @constant.numeric.integer "^[^.][^.\-]*n$"))
+
 
 ; Special identifiers
 ;--------------------
@@ -253,8 +264,21 @@
  ] @constant
  (#match? @constant "^[A-Z_][A-Z\\d_]+$"))
 
+; Built-in constructors / types
+((identifier) @type.builtin
+ (#any-of? @type.builtin
+  "Object" "Function" "Boolean" "Symbol" "Number" "BigInt" "String" "RegExp"
+  "Array" "Map" "Set" "WeakMap" "WeakSet" "WeakRef" "Promise" "Proxy" "Date"
+  "ArrayBuffer" "SharedArrayBuffer" "DataView"
+  "Int8Array" "Uint8Array" "Uint8ClampedArray" "Int16Array" "Uint16Array"
+  "Int32Array" "Uint32Array" "Float32Array" "Float64Array"
+  "BigInt64Array" "BigUint64Array"
+  "Error" "EvalError" "RangeError" "ReferenceError" "SyntaxError" "TypeError"
+  "URIError" "AggregateError")
+ (#is-not? local))
+
 ((identifier) @variable.builtin
- (#match? @variable.builtin "^(arguments|module|console|window|document)$")
+ (#match? @variable.builtin "^(arguments|module|console|window|document|globalThis|Math|JSON|Reflect|Intl)$")
  (#is-not? local))
 
 (call_expression
@@ -283,3 +307,35 @@
   "clearInterval"
   "queueMicrotask")
  (#is-not? local))
+
+; Shebang
+;--------
+
+(hash_bang_line) @keyword.directive
+
+; Labels
+;-------
+
+(statement_identifier) @label
+
+; Decorators
+;-----------
+
+(decorator "@" @attribute)
+(decorator (identifier) @attribute)
+(decorator
+  (call_expression
+    function: (identifier) @attribute))
+(decorator
+  (member_expression
+    property: (property_identifier) @attribute))
+(decorator
+  (call_expression
+    function: (member_expression
+      property: (property_identifier) @attribute)))
+
+; Namespace imports/exports: `import * as ns` / `export * as ns`
+;----------------------------------------------------------------
+
+(namespace_import (identifier) @namespace)
+(namespace_export (identifier) @namespace)

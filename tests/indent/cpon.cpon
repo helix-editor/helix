@@ -1,0 +1,10 @@
+{
+  "name": "helix",
+  "nested": {
+    "enabled": true
+  },
+  "list": [
+    1,
+    2
+  ]
+}

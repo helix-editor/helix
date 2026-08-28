@@ -10,6 +10,100 @@ use helix_view::doc;
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_exit_w_buffer_w_path() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+    // Check for write operation on given path and edited buffer
+    test_key_sequence(
+        &mut app,
+        Some("iBecause of the obvious threat to untold numbers of citizens due to the crisis that is even now developing, this radio station will remain on the air day and night.<ret><esc>:x<ret>"),
+        None,
+        true,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("Because of the obvious threat to untold numbers of citizens due to the crisis that is even now developing, this radio station will remain on the air day and night.\n"),
+        file_content
+    );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_wo_buffer_w_path() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    helpers::run_event_loop_until_idle(&mut app).await;
+
+    file.as_file_mut()
+        .write_all("extremely important content".as_bytes())?;
+    file.as_file_mut().flush()?;
+    file.as_file_mut().sync_all()?;
+
+    test_key_sequence(&mut app, Some(":x<ret>"), None, true).await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.read_to_string(&mut file_content)?;
+    // check that nothing is written to file
+    assert_eq!("extremely important content", file_content);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_wo_buffer_wo_path() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":x<ret>"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        true,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_exit_w_buffer_wo_file() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    test_key_sequence(
+        // try to write without destination
+        &mut AppBuilder::new().build()?,
+        Some("itest<esc>:x<ret>"),
+        None,
+        false,
+    )
+    .await?;
+    test_key_sequence(
+        // try to write with path succeeds
+        &mut AppBuilder::new().build()?,
+        Some(format!("iMicCheck<esc>:x {}<ret>", file.path().to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+        }),
+        true,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("MicCheck"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_fail() -> anyhow::Result<()> {
     let file = helpers::new_readonly_tempfile()?;
     let mut app = helpers::AppBuilder::new()
@@ -24,7 +118,10 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(
+                Some(path::normalize(file.path())),
+                doc.path().map(ToOwned::to_owned)
+            );
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -144,7 +241,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
 
-    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+    test_key_sequence(&mut app, Some("iOverwriteData<esc>:x<ret>"), None, false).await?;
 
     reload_file(&mut file).unwrap();
     let mut file_content = String::new();
@@ -265,13 +362,46 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(file.path())), doc.path());
+            assert_eq!(
+                Some(path::normalize(file.path())),
+                doc.path().map(ToOwned::to_owned)
+            );
         }),
         false,
     )
     .await?;
 
     helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("hello"))?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_scratch_to_new_path_force_creates_file() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let new_path = dir.path().join("new-file.txt");
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(format!("ihello<esc>:w! {}<ret>", new_path.to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(
+                Some(path::normalize(&new_path)),
+                doc.path().map(ToOwned::to_owned)
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    let file_content = std::fs::read_to_string(&new_path)?;
+    assert_eq!(file_content, LineFeedHandling::Native.apply("hello"));
 
     Ok(())
 }
@@ -316,6 +446,56 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
 
     // file still saves
+    helpers::assert_file_has_content(&mut file, "let foo = 0;\n")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_quit_auto_format_exits_after_format() -> anyhow::Result<()> {
+    let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+
+    let lang_conf = indoc! {r#"
+            [[language]]
+            name = "rust"
+            formatter = { command = "bash", args = [ "-c", "echo new content" ] }
+        "#};
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[l|]#et foo = 0;\n")
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
+        .build()?;
+
+    test_key_sequences(&mut app, vec![(Some(":x<ret>"), None)], true).await?;
+
+    // file saves with new content and editor exits after save
+    helpers::assert_file_has_content(&mut file, "new content\n")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_code_actions_on_save_without_server_still_saves() -> anyhow::Result<()> {
+    let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+
+    // Code actions are configured but no language server is attached in tests, so none run. With
+    // auto-format also off the on-save chain has no formatter tail either. The save should still
+    // occur.
+    let lang_conf = indoc! {r#"
+            [[language]]
+            name = "rust"
+            code-actions-on-save = ["source.organizeImports"]
+        "#};
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[l|]#et foo = 0;\n")
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
+        .build()?;
+
+    test_key_sequences(&mut app, vec![(Some(":w --no-format<ret>"), None)], false).await?;
+
     helpers::assert_file_has_content(&mut file, "let foo = 0;\n")?;
 
     Ok(())
@@ -651,7 +831,10 @@ async fn test_symlink_write_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&path::normalize(&symlink_path)), doc.path());
+            assert_eq!(
+                Some(path::normalize(&symlink_path)),
+                doc.path().map(ToOwned::to_owned)
+            );
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -836,6 +1019,23 @@ async fn test_move_file_when_given_dir_only() -> anyhow::Result<()> {
         "Source file '{}' should have been removed",
         source_file.display()
     );
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_open_does_not_panic_on_closed_scratch() -> anyhow::Result<()> {
+    let other = tempfile::NamedTempFile::new()?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().build()?, // scratch buffer
+        Some(format!(":write<ret>:open {}<ret>", other.path().to_string_lossy()).as_ref()),
+        Some(&|app| {
+            assert_eq!(1, app.editor.documents().count());
+        }), // Reaching here at all means the deferred tail did not panic
+        false,
+    )
+    .await?;
 
     Ok(())
 }

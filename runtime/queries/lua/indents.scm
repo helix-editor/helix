@@ -15,6 +15,8 @@
 [
   "end"
   "until"
+  "else"
+  "elseif"
   "}"
   ")"
 ] @outdent
