@@ -2094,13 +2094,13 @@ source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "3e9c4
 
 [[language]]
 name = "mail"
-scope = "text.mail"
-file-types = ["eml"]
+scope = "source.mail"
+file-types = ["eml", "email"]
 injection-regex = "mail|eml|email"
 
 [[grammar]]
 name = "mail"
-source = { git = "https://codeberg.org/ficd/tree-sitter-mail", rev = "5eddbfdbec4c893182c79047499901c196332e78" }
+source = { git = "https://codeberg.org/philocalyst/MailGrammar", rev = "631ce96da3fcf6a817f599d8667ef985438f5d36" }
 
 [[language]]
 name = "markdown"
