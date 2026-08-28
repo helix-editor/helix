@@ -8,16 +8,22 @@ use helix_lsp::{
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
-    align_view, document::{DocumentOpenError, DocumentSavedEventResult}, editor::{ConfigEvent, EditorEvent}, graphics::Rect, theme, tree::Layout, Align, Editor
+    align_view,
+    document::{DocumentOpenError, DocumentSavedEventResult},
+    editor::{ConfigEvent, EditorEvent},
+    graphics::Rect,
+    theme,
+    tree::Layout,
+    Align, Editor,
 };
 use serde_json::json;
-use tui::backend::Backend;
-#[cfg(unix)]
-use tokio::net::UnixListener;
 #[cfg(unix)]
 use tokio::io::AsyncReadExt;
 #[cfg(unix)]
+use tokio::net::UnixListener;
+#[cfg(unix)]
 use tokio::sync::mpsc;
+use tui::backend::Backend;
 
 use crate::{
     args::Args,
@@ -32,7 +38,12 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{borrow::Cow, io::{stdin, IsTerminal}, path::Path, sync::Arc};
+use std::{
+    borrow::Cow,
+    io::{stdin, IsTerminal},
+    path::Path,
+    sync::Arc,
+};
 
 #[cfg_attr(windows, allow(unused_imports))]
 use anyhow::{Context, Error};
@@ -75,9 +86,9 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-    #[cfg(unix)]
-    socket_rx: mpsc::Receiver<String>
     theme_mode: Option<theme::Mode>,
+    #[cfg(unix)]
+    socket_rx: mpsc::Receiver<String>,
 }
 
 #[cfg(feature = "integration")]
@@ -98,12 +109,14 @@ async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
         let path = std::path::PathBuf::from(path);
         // Check if parent folder exists
         if !path.parent().is_some_and(|parent| parent.exists()) {
-            eprintln!("Folder for socket {} does not exists!", path.parent().unwrap().display())
+            eprintln!(
+                "Folder for socket {} does not exists!",
+                path.parent().unwrap().display()
+            )
         }
         path
     } else {
-        let path = std::env::var("XDG_RUNTIME_DIR")
-                .unwrap_or("/tmp".to_string());
+        let path = std::env::var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
         let path = std::path::PathBuf::from(path)
             .join("helix")
             .join("helix.sock");
@@ -112,7 +125,7 @@ async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
         if !parent_folder.exists() {
             if let Err(e) = create_dir(parent_folder.to_path_buf()) {
                 eprintln!("Failed to create socket directory: {}", e);
-                return
+                return;
             }
         }
         path
@@ -122,7 +135,7 @@ async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("Failed to bind listener to socket: {}", e);
-            return
+            return;
         }
     };
 
@@ -138,11 +151,11 @@ async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
                     Ok(n) if n > 0 => {
                         let msg = String::from_utf8_lossy(&buf[..n]).to_string();
                         let _ = tx.send(msg).await;
-                    },
-                    Ok(_) => {},
+                    }
+                    Ok(_) => {}
                     Err(e) => eprintln!("Socket read error: {}", e),
                 }
-            },
+            }
             Err(e) => eprintln!("Socket accept error: {}", e),
         }
     }
@@ -852,26 +865,29 @@ impl Application {
 
         if let Ok(command) = command {
             // command.execute(&mut cx);
-            if let MappableCommand::Typable {name, ..} = &command {
+            if let MappableCommand::Typable { name, .. } = &command {
                 if [
-                    "run-shell-command", 
-                    "write", 
-                    "write!", 
-                    "write-buffet-close", 
-                    "write-buffer-close!", 
-                    "write-quit", 
-                    "write-quit!", 
-                    "write-all", 
-                    "write-all!", 
-                    "write-quit-all", 
-                    "write-quit-all!"
-                    ].contains(&name.as_str()) {
-                        let severity = Severity::Error;
-                        let err_string = Cow::from(format!("Running command {name} is forbidden from socket"));
-                        self.editor.status_msg = Some((err_string, severity));
-                        helix_event::request_redraw();
-                        return;
-                    }
+                    "run-shell-command",
+                    "write",
+                    "write!",
+                    "write-buffet-close",
+                    "write-buffer-close!",
+                    "write-quit",
+                    "write-quit!",
+                    "write-all",
+                    "write-all!",
+                    "write-quit-all",
+                    "write-quit-all!",
+                ]
+                .contains(&name.as_str())
+                {
+                    let severity = Severity::Error;
+                    let err_string =
+                        Cow::from(format!("Running command {name} is forbidden from socket"));
+                    self.editor.status_msg = Some((err_string, severity));
+                    helix_event::request_redraw();
+                    return;
+                }
             }
             let mut cx = crate::commands::Context {
                 editor: &mut self.editor,
@@ -879,7 +895,7 @@ impl Application {
                 register: None,
                 callback: Vec::new(),
                 on_next_key_callback: None,
-                jobs: &mut self.jobs
+                jobs: &mut self.jobs,
             };
             command.execute(&mut cx);
         }
