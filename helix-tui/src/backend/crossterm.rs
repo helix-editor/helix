@@ -15,7 +15,7 @@ use crossterm::{
     Command,
 };
 use helix_view::graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle};
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 use std::{
     fmt,
     io::{self, Write},
@@ -99,7 +99,7 @@ pub struct CrosstermBackend<W: Write> {
     buffer: W,
     config: Config,
     capabilities: Capabilities,
-    supports_keyboard_enhancement_protocol: OnceCell<bool>,
+    supports_keyboard_enhancement_protocol: OnceLock<bool>,
     mouse_capture_enabled: bool,
     supports_bracketed_paste: bool,
 }
@@ -117,7 +117,7 @@ where
             buffer,
             capabilities: Capabilities::from_env_or_default(&config),
             config,
-            supports_keyboard_enhancement_protocol: OnceCell::new(),
+            supports_keyboard_enhancement_protocol: OnceLock::new(),
             mouse_capture_enabled: false,
             supports_bracketed_paste: true,
         }

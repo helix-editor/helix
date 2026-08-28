@@ -6,7 +6,7 @@ use std::{
     sync::RwLock,
 };
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 // We keep the CWD as a static so that we can access it in places where we don't have access to the Editor
 static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
@@ -71,7 +71,7 @@ pub fn which<T: AsRef<OsStr>>(
 fn find_brace_end(src: &[u8]) -> Option<usize> {
     use regex_automata::meta::Regex;
 
-    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::builder().build("[{}]").unwrap());
+    static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::builder().build("[{}]").unwrap());
     let mut depth = 0;
     for mat in REGEX.find_iter(src) {
         let pos = mat.start();
@@ -88,7 +88,7 @@ fn find_brace_end(src: &[u8]) -> Option<usize> {
 fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>) -> Cow<'_, OsStr> {
     use regex_automata::meta::Regex;
 
-    static REGEX: Lazy<Regex> = Lazy::new(|| {
+    static REGEX: LazyLock<Regex> = LazyLock::new(|| {
         Regex::builder()
             .build_many(&[
                 r"\$\{([^\}:]+):-",

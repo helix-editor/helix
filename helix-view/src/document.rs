@@ -16,7 +16,7 @@ use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 use thiserror;
 
 use ::parking_lot::Mutex;
@@ -160,12 +160,12 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
-    relative_path: OnceCell<Option<PathBuf>>,
+    relative_path: OnceLock<Option<PathBuf>>,
     /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
     /// `.svn` / `.jj` / `.helix`). Avoids per-call `find_workspace_in` ancestor walks for hot
     /// consumers like the statusline trust indicator, LSP launch, and DAP launch. Taken in
     /// `set_path` so save-as recomputes.
-    workspace_root: OnceCell<PathBuf>,
+    workspace_root: OnceLock<PathBuf>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -734,8 +734,8 @@ impl Document {
             id: DocumentId::default(),
             active_snippet: None,
             path: None,
-            relative_path: OnceCell::new(),
-            workspace_root: OnceCell::new(),
+            relative_path: OnceLock::new(),
+            workspace_root: OnceLock::new(),
             encoding,
             has_bom,
             text,
