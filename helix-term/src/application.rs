@@ -84,7 +84,7 @@ pub struct Application {
     lsp_progress: LspProgressMap,
     theme_mode: Option<theme::Mode>,
     #[cfg(unix)]
-    socket_rx: mpsc::Receiver<String>,
+    socket_rx: mpsc::UnboundedReceiver<String>,
     #[cfg(unix)]
     socket_listener: Option<tokio::task::JoinHandle<()>>,
     #[cfg(unix)]
@@ -255,7 +255,7 @@ impl Application {
         .context("build signal handler")?;
 
         #[cfg(unix)]
-        let (socket_tx, socket_rx) = mpsc::channel::<String>(10);
+        let (socket_tx, socket_rx) = mpsc::unbounded_channel::<String>();
         #[cfg(unix)]
         let (socket_listener, socket_path) = if crate::remote::should_listen(args.socket.is_some())
         {

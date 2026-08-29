@@ -4,10 +4,12 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream as StdUnixStream;
 use std::path::{Path, PathBuf};
 
-use tokio::io::AsyncReadExt;
-use tokio::net::UnixListener;
+use tokio::io::{AsyncBufRead, BufReader};
+use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+
+use super::protocol::{ClientMessage, ClientOp, MAX_LINE, PROTOCOL_V};
 
 #[derive(Debug)]
 pub enum BindError {
@@ -50,7 +52,10 @@ pub fn bind_socket(path: &Path) -> Result<UnixListener, BindError> {
 
 /// Bind `path` and spawn the accept loop. Returns `None` if bind failed or the
 /// path is already in use (does not steal a live sock).
-pub fn spawn(path: PathBuf, tx: mpsc::Sender<String>) -> Option<(JoinHandle<()>, PathBuf)> {
+pub fn spawn(
+    path: PathBuf,
+    tx: mpsc::UnboundedSender<String>,
+) -> Option<(JoinHandle<()>, PathBuf)> {
     let listener = match bind_socket(&path) {
         Ok(listener) => listener,
         Err(BindError::InUse) => {
@@ -69,23 +74,123 @@ pub fn spawn(path: PathBuf, tx: mpsc::Sender<String>) -> Option<(JoinHandle<()>,
     Some((handle, path))
 }
 
-async fn accept_loop(listener: UnixListener, tx: mpsc::Sender<String>) {
+async fn accept_loop(listener: UnixListener, tx: mpsc::UnboundedSender<String>) {
     loop {
         match listener.accept().await {
-            Ok((mut socket, _)) => {
-                let mut buf = vec![0; 1024];
-                match socket.read(&mut buf).await {
-                    Ok(n) if n > 0 => {
-                        let msg = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = tx.send(msg).await;
-                    }
-                    Ok(_) => {}
-                    Err(e) => log::error!("Socket read error: {e}"),
-                }
+            Ok((socket, _)) => {
+                let tx = tx.clone();
+                tokio::spawn(connection_task(socket, tx));
             }
             Err(e) => log::error!("Socket accept error: {e}"),
         }
     }
+}
+
+async fn connection_task(socket: UnixStream, tx: mpsc::UnboundedSender<String>) {
+    let (read, _write) = socket.into_split();
+    let mut reader = BufReader::new(read);
+    loop {
+        match read_line_capped(&mut reader, MAX_LINE).await {
+            Ok(None) => break,
+            Ok(Some(line)) => handle_inbound_line(&line, &tx),
+            Err(ReadLineError::Oversize) => {
+                log::error!("remote connection closed: line exceeded {MAX_LINE} bytes");
+                break;
+            }
+            Err(ReadLineError::Io(e)) => {
+                if e.kind() != io::ErrorKind::InvalidData {
+                    log::error!("Socket read error: {e}");
+                } else {
+                    log::error!("remote connection closed: invalid UTF-8");
+                }
+                break;
+            }
+        }
+    }
+}
+
+fn handle_inbound_line(line: &str, tx: &mpsc::UnboundedSender<String>) {
+    if line.is_empty() {
+        return;
+    }
+    if line.starts_with('{') {
+        let msg: ClientMessage = match serde_json::from_str(line) {
+            Ok(msg) => msg,
+            Err(err) => {
+                log::error!("invalid remote JSON: {err}");
+                return;
+            }
+        };
+        if msg.v != PROTOCOL_V {
+            log::error!("unsupported remote protocol version {}", msg.v);
+            return;
+        }
+        match msg.op {
+            ClientOp::Command { cmd } => {
+                let _ = tx.send(cmd);
+            }
+            ClientOp::Subscribe { .. } | ClientOp::Status => {}
+        }
+        return;
+    }
+    let _ = tx.send(line.to_string());
+}
+
+enum ReadLineError {
+    Oversize,
+    Io(io::Error),
+}
+
+impl From<io::Error> for ReadLineError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+/// Read one newline-delimited line, capped at `cap` bytes. A final line without
+/// a trailing newline is returned on EOF. `Ok(None)` is clean EOF.
+pub(super) async fn read_line_capped<R>(
+    reader: &mut R,
+    cap: usize,
+) -> Result<Option<String>, ReadLineError>
+where
+    R: AsyncBufRead + Unpin,
+{
+    let mut buf = Vec::new();
+    loop {
+        let available = reader.fill_buf().await?;
+        if available.is_empty() {
+            if buf.is_empty() {
+                return Ok(None);
+            }
+            break;
+        }
+        if let Some(i) = available.iter().position(|&b| b == b'\n') {
+            if buf.len() + i + 1 > cap {
+                return Err(ReadLineError::Oversize);
+            }
+            buf.extend_from_slice(&available[..=i]);
+            reader.consume(i + 1);
+            break;
+        }
+        if buf.len() + available.len() > cap {
+            return Err(ReadLineError::Oversize);
+        }
+        let n = available.len();
+        buf.extend_from_slice(available);
+        reader.consume(n);
+    }
+
+    if buf.last() == Some(&b'\n') {
+        buf.pop();
+    }
+    if buf.last() == Some(&b'\r') {
+        buf.pop();
+    }
+
+    String::from_utf8(buf)
+        .map(Some)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err).into())
 }
 
 #[cfg(test)]
