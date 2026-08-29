@@ -27,7 +27,7 @@ use crate::{
     config::Config,
     handlers,
     job::Jobs,
-    keymap::{Keymaps, MappableCommand},
+    keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
 
@@ -35,7 +35,6 @@ use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
 use std::{
-    borrow::Cow,
     io::{stdin, IsTerminal},
     path::{Path, PathBuf},
     sync::Arc,
@@ -378,7 +377,7 @@ impl Application {
                     helix_event::request_redraw();
                 }
                 Some(msg) = self.socket_rx.recv() => {
-                    self.handle_socket_command(msg.parse::<MappableCommand>()).await
+                    self.handle_socket_command(msg).await
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback) {
@@ -811,50 +810,54 @@ impl Application {
         }
     }
 
-    pub async fn handle_socket_command(&mut self, command: anyhow::Result<MappableCommand>) {
-        if let Err(msg) = &command {
-            let severity = Severity::Error;
-            let err_string = Cow::from(msg.to_string());
-            self.editor.status_msg = Some((err_string, severity));
-            helix_event::request_redraw();
+    pub async fn handle_socket_command(&mut self, line: String) {
+        let line = line.trim_end_matches('\r').trim();
+        if line.is_empty() {
             return;
         }
+        let line = line.strip_prefix(':').unwrap_or(line);
 
-        if let Ok(command) = command {
-            // command.execute(&mut cx);
-            if let MappableCommand::Typable { name, .. } = &command {
-                if [
-                    "run-shell-command",
-                    "write",
-                    "write!",
-                    "write-buffet-close",
-                    "write-buffer-close!",
-                    "write-quit",
-                    "write-quit!",
-                    "write-all",
-                    "write-all!",
-                    "write-quit-all",
-                    "write-quit-all!",
-                ]
-                .contains(&name.as_str())
-                {
-                    let severity = Severity::Error;
-                    let err_string =
-                        Cow::from(format!("Running command {name} is forbidden from socket"));
-                    self.editor.status_msg = Some((err_string, severity));
-                    helix_event::request_redraw();
-                    return;
-                }
+        const DENYLIST: &[&str] = &[
+            "run-shell-command",
+            "write",
+            "write!",
+            "write-buffer-close",
+            "write-buffer-close!",
+            "write-quit",
+            "write-quit!",
+            "write-all",
+            "write-all!",
+            "write-quit-all",
+            "write-quit-all!",
+        ];
+
+        let (name, _, _) = helix_core::command_line::split(line);
+        if let Some(cmd) = crate::commands::typed::TYPABLE_COMMAND_MAP.get(name) {
+            if DENYLIST.contains(&cmd.name) {
+                self.editor
+                    .set_error(format!("Running command {} is forbidden from socket", cmd.name));
+                helix_event::request_redraw();
+                return;
             }
-            let mut cx = crate::commands::Context {
+        }
+
+        {
+            let mut cx = crate::compositor::Context {
                 editor: &mut self.editor,
-                count: None,
-                register: None,
-                callback: Vec::new(),
-                on_next_key_callback: None,
                 jobs: &mut self.jobs,
+                scroll: None,
             };
-            command.execute(&mut cx);
+            if let Err(err) = crate::commands::typed::execute_command_line(
+                &mut cx,
+                line,
+                crate::ui::PromptEvent::Validate,
+            ) {
+                cx.editor.set_error(err.to_string());
+            }
+        }
+
+        if !self.editor.should_close() {
+            self.render().await;
         }
     }
 
