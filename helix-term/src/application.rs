@@ -18,10 +18,6 @@ use helix_view::{
 };
 use serde_json::json;
 #[cfg(unix)]
-use tokio::io::AsyncReadExt;
-#[cfg(unix)]
-use tokio::net::UnixListener;
-#[cfg(unix)]
 use tokio::sync::mpsc;
 use tui::backend::Backend;
 
@@ -98,67 +94,6 @@ fn setup_integration_logging() {
         .unwrap_or(log::LevelFilter::Info);
 
     crate::logging::init_stdout(level);
-}
-
-#[cfg(unix)]
-async fn start_unix_socket_listener(tx: mpsc::Sender<String>) {
-    use std::fs::{create_dir, set_permissions, Permissions};
-    use std::os::unix::fs::PermissionsExt;
-
-    let path = if let Ok(path) = std::env::var("HELIX_SOCKET_PATH") {
-        let path = std::path::PathBuf::from(path);
-        // Check if parent folder exists
-        if !path.parent().is_some_and(|parent| parent.exists()) {
-            eprintln!(
-                "Folder for socket {} does not exists!",
-                path.parent().unwrap().display()
-            )
-        }
-        path
-    } else {
-        let path = std::env::var("XDG_RUNTIME_DIR").unwrap_or("/tmp".to_string());
-        let path = std::path::PathBuf::from(path)
-            .join("helix")
-            .join("helix.sock");
-        // We unwrap, as any of variants will have parent folder
-        let parent_folder = path.parent().unwrap();
-        if !parent_folder.exists() {
-            if let Err(e) = create_dir(parent_folder.to_path_buf()) {
-                eprintln!("Failed to create socket directory: {}", e);
-                return;
-            }
-        }
-        path
-    };
-
-    let listener = match UnixListener::bind(&path) {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!("Failed to bind listener to socket: {}", e);
-            return;
-        }
-    };
-
-    if let Err(e) = set_permissions(&path, Permissions::from_mode(0o600)) {
-        eprintln!("Failed to set permissions for file: {e}")
-    }
-
-    loop {
-        match listener.accept().await {
-            Ok((mut socket, _)) => {
-                let mut buf = vec![0; 1024];
-                match socket.read(&mut buf).await {
-                    Ok(n) if n > 0 => {
-                        let msg = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = tx.send(msg).await;
-                    }
-                    Ok(_) => {}
-                    Err(e) => eprintln!("Socket read error: {}", e),
-                }
-            }
-            Err(e) => eprintln!("Socket accept error: {}", e),
-        }
-    }
 }
 
 impl Application {
@@ -318,7 +253,15 @@ impl Application {
         #[cfg(unix)]
         let (socket_tx, socket_rx) = mpsc::channel::<String>(10);
         #[cfg(unix)]
-        tokio::spawn(start_unix_socket_listener(socket_tx));
+        if crate::remote::should_listen(args.socket.is_some()) {
+            let path = crate::remote::resolve(
+                args.socket.as_deref(),
+                config.load().editor.socket_path.as_deref(),
+            );
+            tokio::spawn(crate::remote::listen(path, socket_tx));
+        } else {
+            drop(socket_tx);
+        }
 
         let app = Self {
             socket_rx,
