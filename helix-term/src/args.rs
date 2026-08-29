@@ -20,6 +20,8 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
+    /// Unix-domain socket path. Presence also enables listening on a TUI process.
+    pub socket: Option<PathBuf>,
 }
 
 impl Args {
@@ -76,6 +78,10 @@ impl Args {
                 "--log" => match argv.next().as_deref() {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
+                },
+                "--socket" => match argv.next().as_deref() {
+                    Some(path) => args.socket = Some(path.into()),
+                    None => anyhow::bail!("--socket must specify a path"),
                 },
                 "-w" | "--working-dir" => match argv.next().as_deref() {
                     Some(path) => {
