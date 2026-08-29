@@ -3,7 +3,7 @@ use std::env;
 mod listen;
 mod path;
 
-pub use listen::listen;
+pub use listen::{bind_socket, spawn, BindError};
 pub use path::{resolve, resolve_from, PathSources};
 
 /// Whether a TUI Helix process should bind a remote socket.

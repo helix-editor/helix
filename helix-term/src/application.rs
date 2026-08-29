@@ -37,7 +37,7 @@ use std::io::stdout;
 use std::{
     borrow::Cow,
     io::{stdin, IsTerminal},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -85,6 +85,10 @@ pub struct Application {
     theme_mode: Option<theme::Mode>,
     #[cfg(unix)]
     socket_rx: mpsc::Receiver<String>,
+    #[cfg(unix)]
+    socket_listener: Option<tokio::task::JoinHandle<()>>,
+    #[cfg(unix)]
+    socket_path: Option<PathBuf>,
 }
 
 #[cfg(feature = "integration")]
@@ -253,18 +257,28 @@ impl Application {
         #[cfg(unix)]
         let (socket_tx, socket_rx) = mpsc::channel::<String>(10);
         #[cfg(unix)]
-        if crate::remote::should_listen(args.socket.is_some()) {
+        let (socket_listener, socket_path) = if crate::remote::should_listen(args.socket.is_some())
+        {
             let path = crate::remote::resolve(
                 args.socket.as_deref(),
                 config.load().editor.socket_path.as_deref(),
             );
-            tokio::spawn(crate::remote::listen(path, socket_tx));
+            match crate::remote::spawn(path, socket_tx) {
+                Some((handle, path)) => (Some(handle), Some(path)),
+                None => (None, None),
+            }
         } else {
             drop(socket_tx);
-        }
+            (None, None)
+        };
 
         let app = Self {
+            #[cfg(unix)]
             socket_rx,
+            #[cfg(unix)]
+            socket_listener,
+            #[cfg(unix)]
+            socket_path,
             compositor,
             terminal,
             editor,
@@ -1430,6 +1444,18 @@ impl Application {
         }
 
         self.editor.close_language_servers(None).await;
+
+        #[cfg(unix)]
+        {
+            if let Some(handle) = self.socket_listener.take() {
+                handle.abort();
+            }
+            if let Some(path) = self.socket_path.take() {
+                if let Err(err) = std::fs::remove_file(&path) {
+                    log::debug!("Failed to unlink socket {}: {err}", path.display());
+                }
+            }
+        }
 
         errs
     }

@@ -1,38 +1,74 @@
-use std::path::PathBuf;
+use std::fs::{self, Permissions};
+use std::io;
+use std::os::unix::fs::PermissionsExt;
+use std::os::unix::net::UnixStream as StdUnixStream;
+use std::path::{Path, PathBuf};
 
 use tokio::io::AsyncReadExt;
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
-/// Bind `path` and forward each accepted connection's first read to `tx`.
+pub enum BindError {
+    /// Another process is already accepting on this path.
+    InUse,
+    Io(io::Error),
+}
+
+impl From<io::Error> for BindError {
+    fn from(error: io::Error) -> Self {
+        Self::Io(error)
+    }
+}
+
+/// Create the parent directory, replace a stale sock file, bind, and chmod 0600.
 ///
-/// Connections are dropped after a single 1024-byte read. Framing and
-/// keep-alive are a later change.
-pub async fn listen(path: PathBuf, tx: mpsc::Sender<String>) {
-    use std::fs::{create_dir, set_permissions, Permissions};
-    use std::os::unix::fs::PermissionsExt;
-
-    if let Some(parent_folder) = path.parent() {
-        if !parent_folder.exists() {
-            if let Err(e) = create_dir(parent_folder) {
-                log::error!("Failed to create socket directory: {e}");
-                return;
-            }
+/// If `path` exists and `connect()` succeeds, another Helix owns it: return
+/// [`BindError::InUse`] and do not unlink. `chmod 0700` applies only to a
+/// directory this call created, never to a pre-existing `XDG_RUNTIME_DIR`.
+pub fn bind_socket(path: &Path) -> Result<UnixListener, BindError> {
+    if let Some(parent) = path.parent() {
+        let existed = parent.exists();
+        fs::create_dir_all(parent)?;
+        if !existed {
+            fs::set_permissions(parent, Permissions::from_mode(0o700))?;
         }
     }
 
-    let listener = match UnixListener::bind(&path) {
-        Ok(l) => l,
-        Err(e) => {
+    if path.exists() {
+        match StdUnixStream::connect(path) {
+            Ok(_) => return Err(BindError::InUse),
+            Err(_) => fs::remove_file(path)?,
+        }
+    }
+
+    let listener = UnixListener::bind(path)?;
+    fs::set_permissions(path, Permissions::from_mode(0o600))?;
+    Ok(listener)
+}
+
+/// Bind `path` and spawn the accept loop. Returns `None` if bind failed or the
+/// path is already in use (does not steal a live sock).
+pub fn spawn(path: PathBuf, tx: mpsc::Sender<String>) -> Option<(JoinHandle<()>, PathBuf)> {
+    let listener = match bind_socket(&path) {
+        Ok(listener) => listener,
+        Err(BindError::InUse) => {
+            log::error!(
+                "socket {} is already in use; not binding",
+                path.display()
+            );
+            return None;
+        }
+        Err(BindError::Io(e)) => {
             log::error!("Failed to bind listener to socket: {e}");
-            return;
+            return None;
         }
     };
+    let handle = tokio::spawn(accept_loop(listener, tx));
+    Some((handle, path))
+}
 
-    if let Err(e) = set_permissions(&path, Permissions::from_mode(0o600)) {
-        log::error!("Failed to set permissions for file: {e}");
-    }
-
+async fn accept_loop(listener: UnixListener, tx: mpsc::Sender<String>) {
     loop {
         match listener.accept().await {
             Ok((mut socket, _)) => {
