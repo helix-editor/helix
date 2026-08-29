@@ -9,6 +9,7 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
+#[derive(Debug)]
 pub enum BindError {
     /// Another process is already accepting on this path.
     InUse,
@@ -86,3 +87,62 @@ async fn accept_loop(listener: UnixListener, tx: mpsc::Sender<String>) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn stale_sock_is_replaced() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("helix.sock");
+        std::fs::write(&path, b"").unwrap();
+        bind_socket(&path).expect("stale path should bind");
+        assert!(path.exists());
+    }
+
+    #[tokio::test]
+    async fn live_sock_is_not_stolen() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("helix.sock");
+        let _first = bind_socket(&path).unwrap();
+        match bind_socket(&path) {
+            Err(BindError::InUse) => {}
+            other => panic!("expected InUse, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn sock_is_0600() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("helix.sock");
+        let _listener = bind_socket(&path).unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+
+    #[tokio::test]
+    async fn created_dir_is_0700() {
+        let dir = TempDir::new().unwrap();
+        let parent = dir.path().join("helix");
+        let path = parent.join("helix.sock");
+        let _listener = bind_socket(&path).unwrap();
+        let mode = std::fs::metadata(&parent).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700);
+    }
+
+    #[tokio::test]
+    async fn preexisting_dir_mode_unchanged() {
+        let dir = TempDir::new().unwrap();
+        let parent = dir.path().join("helix");
+        std::fs::create_dir(&parent).unwrap();
+        std::fs::set_permissions(&parent, Permissions::from_mode(0o755)).unwrap();
+        let path = parent.join("helix.sock");
+        let _listener = bind_socket(&path).unwrap();
+        let mode = std::fs::metadata(&parent).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755);
+    }
+}
+
