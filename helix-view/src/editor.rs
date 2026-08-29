@@ -1312,6 +1312,10 @@ pub struct Editor {
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
 
+    // Horizontal scroll offset (in columns) of the bufferline, when there
+    // are more open bufferr that fit in the available width.
+    pub bufferline_scroll: u16,
+
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
 
@@ -1453,6 +1457,7 @@ impl Editor {
             ))),
             status_msg: None,
             autoinfo: None,
+            bufferline_scroll: 0,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
