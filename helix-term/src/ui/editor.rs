@@ -19,7 +19,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
-    unicode::width::UnicodeWidthStr,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -660,7 +660,7 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+    pub fn render_bufferline(editor: &mut Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
@@ -680,9 +680,11 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
+        // Lay each tab out on an unbounded virtual strip: (doc id, label, start, end).
+        let mut tabs = Vec::new();
+        let mut cursor = 0u32;
         for doc in editor.documents() {
             let fname = doc
                 .path()
@@ -691,24 +693,66 @@ impl EditorView {
                 .unwrap_or_default()
                 .to_str()
                 .unwrap_or_default();
+            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let width = text.width() as u32;
+            let start = cursor;
+            cursor += width;
+            tabs.push((doc.id(), text, start, cursor));
+        }
 
-            let style = if current_doc == doc.id() {
+        if tabs.is_empty() {
+            return;
+        }
+
+        let total_width = cursor;
+        let viewport_width = viewport.width as u32;
+        // Furthest we're allowed to scroll: beyond this, the last tab would
+        // end before the right edge, leaving a dead gap. Clamping here is what
+        // keeps the last tab flush against the edge once we're scrolled to it.
+        let max_scroll = total_width.saturating_sub(viewport_width);
+
+        let (active_start, active_end) = tabs
+            .iter()
+            .find(|(id, ..)| *id == current_doc)
+            .map(|(_, _, start, end)| (*start, *end))
+            .unwrap_or((0, 0));
+
+        let mut scroll = (editor.bufferline_scroll as u32).min(max_scroll);
+        if active_start < scroll {
+            scroll = active_start; // active tab fell of the left: pull in into view
+        }
+        if active_end > scroll + viewport_width {
+            scroll = active_end - viewport_width; // active tab fell off the right
+        }
+        scroll = scroll.min(max_scroll);
+
+        editor.bufferline_scroll = scroll as u16;
+
+        let mut x = viewport.x;
+        for (id, text, start, end) in &tabs {
+            if *end <= scroll {
+                continue; // fully scrolled past the left edge
+            }
+            if x >= surface.area.right() {
+                break;
+            }
+
+            let style = if *id == current_doc {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            let visible_text = if *start < scroll {
+                skip_columns(text, scroll - start)
+            } else {
+                text.as_str()
+            };
 
+            let rem_width = surface.area.right().saturating_sub(x);
             x = surface
-                .set_stringn(x, viewport.y, &text, rem_width as usize, style)
+                .set_stringn(x, viewport.y, visible_text, rem_width as usize, style)
                 .0;
-
-            if x >= surface.area.right() {
-                break;
-            }
         }
     }
 
@@ -1758,4 +1802,20 @@ fn canonicalize_key(key: &mut KeyEvent) {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
+}
+
+// Drop leading graphemes from `text` until `skip` columns have been consumed.
+fn skip_columns(text: &str, skip: u32) -> &str {
+    if skip == 0 {
+        return text;
+    }
+
+    let mut skipped = 0u32;
+    for (idx, g) in text.grapheme_indices(true) {
+        if skipped >= skip {
+            return &text[idx..];
+        }
+        skipped += g.width() as u32;
+    }
+    ""
 }
