@@ -129,14 +129,13 @@ fn handle_inbound_line(line: &str, tx: &mpsc::UnboundedSender<String>) {
             ClientOp::Command { cmd } => {
                 let _ = tx.send(cmd);
             }
-            ClientOp::Subscribe { .. } | ClientOp::Status => {}
         }
         return;
     }
     let _ = tx.send(line.to_string());
 }
 
-enum ReadLineError {
+pub(super) enum ReadLineError {
     Oversize,
     Io(io::Error),
 }
@@ -198,6 +197,7 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 
     #[tokio::test]
     async fn stale_sock_is_replaced() {
@@ -249,5 +249,66 @@ mod tests {
         let mode = std::fs::metadata(&parent).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o755);
     }
-}
 
+    async fn spawn_conn(server: UnixStream) -> mpsc::UnboundedReceiver<String> {
+        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
+        tokio::spawn(super::connection_task(server, cmd_tx));
+        cmd_rx
+    }
+
+    #[tokio::test]
+    async fn framing_splits_lines() {
+        let (client, server) = UnixStream::pair().unwrap();
+        let mut cmd_rx = spawn_conn(server).await;
+        let mut client = client;
+        client.write_all(b":open a\n:open b\n").await.unwrap();
+        client.shutdown().await.unwrap();
+        assert_eq!(cmd_rx.recv().await.unwrap(), ":open a");
+        assert_eq!(cmd_rx.recv().await.unwrap(), ":open b");
+    }
+
+    #[tokio::test]
+    async fn eof_without_newline() {
+        let (client, server) = UnixStream::pair().unwrap();
+        let mut cmd_rx = spawn_conn(server).await;
+        let mut client = client;
+        client.write_all(b":open a").await.unwrap();
+        client.shutdown().await.unwrap();
+        assert_eq!(cmd_rx.recv().await.unwrap(), ":open a");
+    }
+
+    #[tokio::test]
+    async fn json_command_unwraps_cmd() {
+        let (client, server) = UnixStream::pair().unwrap();
+        let mut cmd_rx = spawn_conn(server).await;
+        let mut client = client;
+        client
+            .write_all(br#"{"v":1,"op":"command","cmd":":open /abs/foo.rs:12"}"#)
+            .await
+            .unwrap();
+        client.write_all(b"\n").await.unwrap();
+        client.shutdown().await.unwrap();
+        assert_eq!(cmd_rx.recv().await.unwrap(), ":open /abs/foo.rs:12");
+    }
+
+    #[tokio::test]
+    async fn oversize_closes_only_that_connection() {
+        let (c1, s1) = UnixStream::pair().unwrap();
+        let (c2, s2) = UnixStream::pair().unwrap();
+        let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel();
+        tokio::spawn(super::connection_task(s1, cmd_tx.clone()));
+        tokio::spawn(super::connection_task(s2, cmd_tx));
+
+        let mut oversized = vec![b'x'; MAX_LINE + 1];
+        oversized.push(b'\n');
+        let mut c1 = c1;
+        c1.write_all(&oversized).await.unwrap();
+        c1.shutdown().await.unwrap();
+
+        let mut c2 = c2;
+        c2.write_all(b":ok\n").await.unwrap();
+        c2.shutdown().await.unwrap();
+        assert_eq!(cmd_rx.recv().await.unwrap(), ":ok");
+        assert!(cmd_rx.try_recv().is_err());
+    }
+}

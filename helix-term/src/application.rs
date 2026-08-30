@@ -33,6 +33,7 @@ use crate::{
 
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
+#[cfg_attr(not(feature = "integration"), allow(unused_imports))]
 use std::io::stdout;
 use std::{
     io::{stdin, IsTerminal},
@@ -256,10 +257,9 @@ impl Application {
         #[cfg(unix)]
         let (socket_tx, socket_rx) = mpsc::unbounded_channel::<String>();
         #[cfg(unix)]
-        let (socket_listener, socket_path) = if crate::remote::should_listen(args.socket.is_some())
-        {
+        let (socket_listener, socket_path) = if crate::remote::should_listen(args.socket) {
             let path = crate::remote::resolve(
-                args.socket.as_deref(),
+                args.socket_path.as_deref(),
                 config.load().editor.socket_path.as_deref(),
             );
             match crate::remote::spawn(path, socket_tx) {

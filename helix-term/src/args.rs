@@ -20,8 +20,12 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
-    /// Unix-domain socket path. Presence also enables listening on a TUI process.
-    pub socket: Option<PathBuf>,
+    /// `--socket` was passed. Enables listening on a TUI process.
+    pub socket: bool,
+    /// Optional path after `--socket`. Unset → env / config / default.
+    pub socket_path: Option<PathBuf>,
+    /// `--remote CMD`. Client mode: write one command and exit.
+    pub remote: Option<String>,
 }
 
 impl Args {
@@ -79,9 +83,15 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
-                "--socket" => match argv.next().as_deref() {
-                    Some(path) => args.socket = Some(path.into()),
-                    None => anyhow::bail!("--socket must specify a path"),
+                "--socket" => {
+                    args.socket = true;
+                    args.socket_path = argv
+                        .next_if(|opt| !opt.starts_with('-'))
+                        .map(PathBuf::from);
+                }
+                "--remote" => match argv.next() {
+                    Some(cmd) => args.remote = Some(cmd),
+                    None => anyhow::bail!("--remote must specify a command"),
                 },
                 "-w" | "--working-dir" => match argv.next().as_deref() {
                     Some(path) => {
@@ -138,6 +148,10 @@ impl Args {
         }
 
         Ok(args)
+    }
+
+    pub fn client_mode(&self) -> bool {
+        self.remote.is_some()
     }
 }
 
