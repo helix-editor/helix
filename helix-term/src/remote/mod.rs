@@ -3,11 +3,15 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 mod client;
+mod inbound;
 mod listen;
 mod path;
 mod protocol;
 
 pub use client::{client_remote, normalize_remote_command};
+pub use inbound::{deny_inbound_command, InboundDeny};
+#[cfg(test)]
+pub(crate) use listen::connection_task;
 pub use listen::{bind_socket, spawn, BindError};
 pub use path::{resolve, resolve_from, PathSources};
 pub use protocol::{ClientMessage, ClientOp, MAX_LINE, PROTOCOL_V};
@@ -17,10 +21,7 @@ pub use protocol::{ClientMessage, ClientOp, MAX_LINE, PROTOCOL_V};
 /// True when `--socket` was passed (path optional) or `HELIX_SOCKET_PATH` is
 /// set and non-empty. Config `editor.socket-path` never enables listening.
 pub fn should_listen(cli_socket: bool) -> bool {
-    should_listen_from(
-        cli_socket,
-        env::var_os("HELIX_SOCKET_PATH").as_deref(),
-    )
+    should_listen_from(cli_socket, env::var_os("HELIX_SOCKET_PATH").as_deref())
 }
 
 pub fn should_listen_from(cli_socket: bool, env_socket: Option<&OsStr>) -> bool {

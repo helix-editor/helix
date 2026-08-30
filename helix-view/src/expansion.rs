@@ -104,6 +104,17 @@ impl Variable {
 /// Note that the lifetime of the expanded variable is only bound to the input token and not the
 /// `Editor`. See `expand_variable` below for more discussion of lifetimes.
 pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
+    expand_with(editor, token, true)
+}
+
+/// Like [`expand`], but `allow_shell` controls whether `%sh{…}` runs.
+///
+/// Socket-originated commands pass `false` so `expand_shell` is never invoked.
+pub fn expand_with<'a>(
+    editor: &Editor,
+    token: Token<'a>,
+    allow_shell: bool,
+) -> Result<Cow<'a, str>> {
     // Note: see the `TokenKind` documentation for more details on how each branch should expand.
     match token.kind {
         TokenKind::Unquoted | TokenKind::Quoted(_) => Ok(token.content),
@@ -126,8 +137,13 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
                 ))
             }
         }
-        TokenKind::Expand => expand_inner(editor, token.content),
-        TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content),
+        TokenKind::Expand => expand_inner(editor, token.content, allow_shell),
+        TokenKind::Expansion(ExpansionKind::Shell) => {
+            if !allow_shell {
+                bail!("shell expansion is forbidden");
+            }
+            expand_shell(editor, token.content)
+        }
         TokenKind::Expansion(ExpansionKind::Register) => expand_register(editor, token.content),
         // Note: see the docs for this variant.
         TokenKind::ExpansionKind => unreachable!(
@@ -141,7 +157,7 @@ pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a
     use std::process::{Command, Stdio};
 
     // Recursively expand the expansion's content before executing the shell command.
-    let content = expand_inner(editor, content)?;
+    let content = expand_inner(editor, content, true)?;
 
     let config = editor.config();
     let shell = &config.shell;
@@ -201,7 +217,11 @@ pub fn expand_register<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow
 }
 
 /// Expand a token's contents recursively.
-fn expand_inner<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, str>> {
+fn expand_inner<'a>(
+    editor: &Editor,
+    content: Cow<'a, str>,
+    allow_shell: bool,
+) -> Result<Cow<'a, str>> {
     let mut escaped = String::new();
     let mut start = 0;
 
@@ -223,7 +243,7 @@ fn expand_inner<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, st
                 .unwrap()
                 .map_err(|err| anyhow!("{err}"))?;
             // expand it (this is the recursive part),
-            let expanded = expand(editor, token)?;
+            let expanded = expand_with(editor, token, allow_shell)?;
             escaped.push_str(expanded.as_ref());
             // and move forward to the end of the expansion.
             start = idx + tokenizer.pos();

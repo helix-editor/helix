@@ -4126,6 +4126,7 @@ pub(crate) fn execute_command_line(
     cx: &mut compositor::Context,
     input: &str,
     event: PromptEvent,
+    allow_shell: bool,
 ) -> anyhow::Result<()> {
     let (command, rest, _) = command_line::split(input);
     if command.is_empty() {
@@ -4135,11 +4136,11 @@ pub(crate) fn execute_command_line(
     // If command is numeric, interpret as line number and go there.
     if command.parse::<usize>().is_ok() && rest.trim().is_empty() {
         let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
-        return execute_command(cx, cmd, command, event);
+        return execute_command(cx, cmd, command, event, allow_shell);
     }
 
     match typed::TYPABLE_COMMAND_MAP.get(command) {
-        Some(cmd) => execute_command(cx, cmd, rest, event),
+        Some(cmd) => execute_command(cx, cmd, rest, event, allow_shell),
         None if event == PromptEvent::Validate => Err(anyhow!("no such command: '{command}'")),
         None => Ok(()),
     }
@@ -4150,10 +4151,11 @@ pub(super) fn execute_command(
     cmd: &TypableCommand,
     args: &str,
     event: PromptEvent,
+    allow_shell: bool,
 ) -> anyhow::Result<()> {
     let args = if event == PromptEvent::Validate {
         Args::parse(args, cmd.signature, true, |token| {
-            expansion::expand(cx.editor, token).map_err(|err| err.into())
+            expansion::expand_with(cx.editor, token, allow_shell).map_err(|err| err.into())
         })
         .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     } else {
@@ -4171,7 +4173,7 @@ pub(super) fn command_mode(cx: &mut Context) {
         Some(':'),
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if let Err(err) = execute_command_line(cx, input, event) {
+            if let Err(err) = execute_command_line(cx, input, event, true) {
                 cx.editor.set_error(err.to_string());
             }
         },

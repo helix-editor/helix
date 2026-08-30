@@ -348,6 +348,11 @@ impl Application {
 
             use futures_util::StreamExt;
 
+            #[cfg(unix)]
+            let socket_recv = self.socket_rx.recv();
+            #[cfg(not(unix))]
+            let socket_recv = std::future::pending::<Option<String>>();
+
             tokio::select! {
                 biased;
 
@@ -376,8 +381,7 @@ impl Application {
                     self.editor.status_msg = Some((msg.message, severity));
                     helix_event::request_redraw();
                 }
-                #[cfg(unix)]
-                Some(msg) = self.socket_rx.recv() => {
+                Some(msg) = socket_recv => {
                     self.handle_socket_command(msg).await
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
@@ -819,28 +823,10 @@ impl Application {
         }
         let line = line.strip_prefix(':').unwrap_or(line);
 
-        const DENYLIST: &[&str] = &[
-            "run-shell-command",
-            "write",
-            "write!",
-            "write-buffer-close",
-            "write-buffer-close!",
-            "write-quit",
-            "write-quit!",
-            "write-all",
-            "write-all!",
-            "write-quit-all",
-            "write-quit-all!",
-        ];
-
-        let (name, _, _) = helix_core::command_line::split(line);
-        if let Some(cmd) = crate::commands::typed::TYPABLE_COMMAND_MAP.get(name) {
-            if DENYLIST.contains(&cmd.name) {
-                self.editor
-                    .set_error(format!("Running command {} is forbidden from socket", cmd.name));
-                helix_event::request_redraw();
-                return;
-            }
+        if let Some(deny) = crate::remote::deny_inbound_command(line) {
+            self.editor.set_error(deny.message());
+            helix_event::request_redraw();
+            return;
         }
 
         {
@@ -853,6 +839,7 @@ impl Application {
                 &mut cx,
                 line,
                 crate::ui::PromptEvent::Validate,
+                false,
             ) {
                 cx.editor.set_error(err.to_string());
             }
@@ -862,6 +849,9 @@ impl Application {
             self.render().await;
         }
     }
+
+    #[cfg(not(unix))]
+    async fn handle_socket_command(&mut self, _line: String) {}
 
     pub async fn handle_language_server_message(
         &mut self,
