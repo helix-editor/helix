@@ -10,8 +10,6 @@ mod protocol;
 
 pub use client::{client_remote, normalize_remote_command};
 pub use inbound::{deny_inbound_command, InboundDeny};
-#[cfg(test)]
-pub(crate) use listen::connection_task;
 pub use listen::{bind_socket, spawn, BindError};
 pub use path::{resolve, resolve_from, PathSources};
 pub use protocol::{ClientMessage, ClientOp, MAX_LINE, PROTOCOL_V};

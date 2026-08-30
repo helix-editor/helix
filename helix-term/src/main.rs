@@ -107,6 +107,11 @@ FLAGS:
         return Ok(0);
     }
 
+    #[cfg(not(unix))]
+    if args.socket {
+        anyhow::bail!("remote sockets are not supported on this platform");
+    }
+
     if args.client_mode() {
         #[cfg(not(unix))]
         anyhow::bail!("remote sockets are not supported on this platform");
