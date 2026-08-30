@@ -376,6 +376,7 @@ impl Application {
                     self.editor.status_msg = Some((msg.message, severity));
                     helix_event::request_redraw();
                 }
+                #[cfg(unix)]
                 Some(msg) = self.socket_rx.recv() => {
                     self.handle_socket_command(msg).await
                 }
@@ -810,6 +811,7 @@ impl Application {
         }
     }
 
+    #[cfg(unix)]
     pub async fn handle_socket_command(&mut self, line: String) {
         let line = line.trim_end_matches('\r').trim();
         if line.is_empty() {
