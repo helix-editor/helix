@@ -3,9 +3,11 @@ use std::ffi::OsStr;
 
 mod listen;
 mod path;
+mod protocol;
 
 pub use listen::{bind_socket, spawn, BindError};
 pub use path::{resolve, resolve_from, PathSources};
+pub use protocol::{ClientMessage, ClientOp, MAX_LINE, PROTOCOL_V};
 
 /// Whether a TUI Helix process should bind a remote socket.
 ///
