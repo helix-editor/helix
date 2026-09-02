@@ -26,6 +26,7 @@
 | cairo | ✓ | ✓ | ✓ |  |  | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |  |  |
 | cel | ✓ |  |  |  |  |  |
+| chordpro | ✓ |  |  |  |  | `chordsketch-lsp` |
 | chuck | ✓ |  |  |  |  |  |
 | circom | ✓ |  |  |  |  | `circom-lsp` |
 | clarity | ✓ | ✓ | ✓ | ✓ | ✓ | `clarinet` |
