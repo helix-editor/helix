@@ -23,6 +23,7 @@ buck2 = { command = "buck2", args = ["lsp"] }
 buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
 c3-lsp = { command = "c3-lsp" }
 cairo-language-server = { command = "cairo-language-server", args = [] }
+chordsketch-lsp = { command = "chordsketch-lsp" }
 circom-lsp = { command = "circom-lsp" }
 cl-lsp = { command = "cl-lsp" }
 clangd = { command = "clangd" }
@@ -5655,3 +5656,16 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "chordpro"
+scope = "source.chordpro"
+injection-regex = "chordpro|chopro"
+file-types = ["cho", "chordpro", "chopro"]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["chordsketch-lsp"]
+
+[[grammar]]
+name = "chordpro"
+source = { git = "https://github.com/koedame/chordsketch", rev = "4f55d7fec852b87cd2ef0b7f52d3da8c5f4707bb", subpath = "packages/tree-sitter-chordpro" }
