@@ -60,6 +60,10 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Minimum height of the picker list/prompt area when the preview is
 /// rendered below it instead of to the side.
 pub const MIN_AREA_HEIGHT_FOR_HORIZONTAL_PREVIEW: u16 = 10;
+/// Below this width, the preview defaults to being rendered below the
+/// picker instead of to the side, unless the orientation was toggled
+/// explicitly.
+pub const MIN_AREA_WIDTH_FOR_SIDE_PREVIEW_DEFAULT: u16 = 100;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PreviewOrientation {
@@ -265,8 +269,10 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     /// Whether to show the preview panel (default true)
     show_preview: bool,
-    /// Whether the preview panel is rendered to the side or below the picker
-    preview_orientation: PreviewOrientation,
+    /// Whether the preview panel is rendered to the side or below the
+    /// picker. `None` means it hasn't been toggled explicitly, so it is
+    /// derived from the area width instead.
+    preview_orientation: Option<PreviewOrientation>,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
@@ -398,7 +404,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             query,
             truncate_start: true,
             show_preview: true,
-            preview_orientation: PreviewOrientation::RightSide,
+            preview_orientation: None,
             callback_fn: Box::new(callback_fn),
             default_action: Action::Replace,
             completion_height: 0,
@@ -538,18 +544,30 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self.show_preview = !self.show_preview;
     }
 
-    pub fn toggle_preview_orientation(&mut self) {
-        self.preview_orientation = match self.preview_orientation {
+    pub fn toggle_preview_orientation(&mut self, area: Rect) {
+        self.preview_orientation = Some(match self.effective_preview_orientation(area) {
             PreviewOrientation::RightSide => PreviewOrientation::Below,
             PreviewOrientation::Below => PreviewOrientation::RightSide,
-        };
+        });
+    }
+
+    /// The orientation to use for the given area: the explicitly toggled
+    /// orientation if any, otherwise a default based on the area's width.
+    fn effective_preview_orientation(&self, area: Rect) -> PreviewOrientation {
+        self.preview_orientation.unwrap_or_else(|| {
+            if area.width < MIN_AREA_WIDTH_FOR_SIDE_PREVIEW_DEFAULT {
+                PreviewOrientation::Below
+            } else {
+                PreviewOrientation::RightSide
+            }
+        })
     }
 
     fn render_preview_enabled(&self, area: Rect) -> bool {
         if !self.show_preview || self.file_fn.is_none() {
             return false;
         }
-        match self.preview_orientation {
+        match self.effective_preview_orientation(area) {
             PreviewOrientation::RightSide => area.width > MIN_AREA_WIDTH_FOR_PREVIEW,
             PreviewOrientation::Below => area.height > MIN_AREA_HEIGHT_FOR_HORIZONTAL_PREVIEW,
         }
@@ -1070,7 +1088,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         let (picker_area, preview_area) = if !render_preview {
             (area, None)
         } else {
-            match self.preview_orientation {
+            match self.effective_preview_orientation(area) {
                 PreviewOrientation::RightSide => {
                     let picker_width = area.width / 2;
                     (
@@ -1207,7 +1225,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 self.toggle_preview();
             }
             alt!('t') => {
-                self.toggle_preview_orientation();
+                self.toggle_preview_orientation(ctx.editor.tree.area());
             }
             _ => {
                 self.prompt_handle_event(event, ctx);
@@ -1225,7 +1243,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         // prompt area
         let render_preview = self.render_preview_enabled(area);
 
-        let picker_width = if render_preview && self.preview_orientation == PreviewOrientation::RightSide {
+        let picker_width = if render_preview
+            && self.effective_preview_orientation(area) == PreviewOrientation::RightSide
+        {
             area.width / 2
         } else {
             area.width
