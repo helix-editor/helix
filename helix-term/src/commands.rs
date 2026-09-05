@@ -3565,7 +3565,7 @@ fn changed_file_picker(cx: &mut Context) {
         .workspace_trust
         .query(
             &helix_loader::find_workspace_in(&cwd).0,
-            helix_loader::workspace_trust::TrustQuery::Git,
+            helix_loader::workspace_trust::TrustQuery::Vcs,
         )
         .is_trusted();
     cx.editor

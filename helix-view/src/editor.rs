@@ -2120,7 +2120,7 @@ impl Editor {
 
             let trust_full = self
                 .workspace_trust
-                .query(doc.workspace_root(), TrustQuery::Git)
+                .query(doc.workspace_root(), TrustQuery::Vcs)
                 .is_trusted();
             if let Some(diff_base) = self.diff_providers.get_diff_base(&path, trust_full) {
                 doc.set_diff_base(diff_base);
