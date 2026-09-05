@@ -6,6 +6,7 @@ Helix has several features that can execute arbitrary code:
 - Debug adapters (DAP)
 - Local workspace configuration (`.helix/config.toml`, `.helix/languages.toml`)
 - Git integration (filters and other commands in a repository's `.git/config`)
+- Sapling integration (`sl` commands, which can load repository-local hooks and extensions)
 
 To protect against malicious projects (a checked-out PR, a freshly cloned
 repository, etc.) Helix gates these behind explicit per-workspace trust.
@@ -173,3 +174,17 @@ Helix forces this trust level explicitly rather than letting gix infer it
 from `.git` directory ownership — a malicious `.git/config` in a directory
 you happen to own is still treated as untrusted until you run
 `:workspace-trust`.
+
+## Sapling trust
+
+Sapling integration requires a trusted workspace and the `sl` executable on `PATH`.
+Helix invokes `sl` to obtain committed file contents, changed files, and the active
+bookmark (or a short commit ID when no bookmark is active). Sapling can load
+repository-local extensions and hooks, so Helix does not invoke it in untrusted
+workspaces. Use `:workspace-trust` to enable the integration.
+
+Sapling repositories with a `.sl` directory are detected automatically. Legacy
+`.hg` directories are also detected, but require a Sapling build that supports
+that repository format. The `sapling` Cargo feature is enabled in default builds; custom
+builds using `--no-default-features` can enable it with `--features sapling`.
+This provider uses `sl`; it does not fall back to the Mercurial `hg` executable.
