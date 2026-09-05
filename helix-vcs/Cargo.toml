@@ -25,6 +25,7 @@ log = "0.4"
 
 [features]
 git = ["gix"]
+sapling = []
 
 [dev-dependencies]
 tempfile.workspace = true
