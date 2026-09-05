@@ -31,10 +31,11 @@ assets = [
 ]
 
 [features]
-default = ["git"]
+default = ["git", "sapling"]
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
+sapling = ["helix-vcs/sapling"]
 
 [[bin]]
 name = "hx"

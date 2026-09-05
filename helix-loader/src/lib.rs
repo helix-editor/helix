@@ -251,7 +251,7 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 /// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
 ///
 /// This function starts searching the FS upward from the CWD
-/// and returns the first directory that contains either `.git`, `.svn`, `.jj` or `.helix`.
+/// and returns the first directory that contains `.git`, `.svn`, `.jj`, `.sl`, `.hg` or `.helix`.
 /// If no workspace was found returns (CWD, true).
 /// Otherwise (workspace, false) is returned
 pub fn find_workspace() -> (PathBuf, bool) {
@@ -265,6 +265,8 @@ pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
         if ancestor.join(".git").exists()
             || ancestor.join(".svn").exists()
             || ancestor.join(".jj").exists()
+            || ancestor.join(".sl").exists()
+            || ancestor.join(".hg").exists()
             || ancestor.join(".helix").exists()
         {
             return (ancestor.to_owned(), false);
@@ -276,6 +278,17 @@ pub fn find_workspace_in(dir: impl AsRef<Path>) -> (PathBuf, bool) {
 
 fn default_config_file() -> PathBuf {
     config_dir().join("config.toml")
+}
+
+#[test]
+fn sapling_workspace_from_subdirectory() {
+    let temp = tempfile::tempdir().unwrap();
+    for marker in [".sl", ".hg"] {
+        let root = temp.path().join(marker.trim_start_matches('.'));
+        std::fs::create_dir_all(root.join(marker)).unwrap();
+        std::fs::create_dir_all(root.join("src/nested")).unwrap();
+        assert_eq!(find_workspace_in(root.join("src/nested")), (root, false));
+    }
 }
 
 fn ensure_parent_dir(path: &Path) {
