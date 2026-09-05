@@ -60,8 +60,8 @@ pub enum TrustQuery {
     Dap,
     /// Query whether `.helix/` config can be loaded
     LocalConfig,
-    /// Query whether git integration can trust the .git/config
-    Git,
+    /// Query whether VCS integration can use repository-local config and run commands.
+    Vcs,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -780,7 +780,7 @@ mod test {
             trust.query(&trusted, TrustQuery::LocalConfig),
             TrustStatus::Trusted
         );
-        assert_eq!(trust.query(&trusted, TrustQuery::Git), TrustStatus::Trusted);
+        assert_eq!(trust.query(&trusted, TrustQuery::Vcs), TrustStatus::Trusted);
         assert!(!trust.workspace_restricted(&trusted));
 
         // A non-matching path (no `dir/*` segment match: it has a deeper component) still trusts
