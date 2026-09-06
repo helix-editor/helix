@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use helix_core::unicode::width::UnicodeWidthStr;
 
-use crate::{Document, DocumentId, document::SCRATCH_BUFFER_NAME};
+use crate::{document::SCRATCH_BUFFER_NAME, Document, DocumentId};
 
 #[derive(Default)]
 pub struct BufferLineTabs {
@@ -13,7 +13,7 @@ pub struct BufferLineTabs {
 
 pub struct Tab {
     pub document_id: DocumentId,
-    pub document_name: String, // I feel like this could just be a reference
+    pub document_name: String,
     pub modified: bool,
     pub start: u32,
     pub end: u32,
