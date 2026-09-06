@@ -1312,10 +1312,9 @@ pub struct Editor {
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
-    pub bufferline_tabs: Option<BufferLineTabs>,
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
-
+    pub bufferline_tabs: BufferLineTabs,
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
@@ -1454,7 +1453,7 @@ impl Editor {
             ))),
             status_msg: None,
             autoinfo: None,
-            bufferline_tabs: None,
+            bufferline_tabs: BufferLineTabs::default(),
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
@@ -1976,6 +1975,7 @@ impl Editor {
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+                    self.bufferline_tabs.remove_tab(&id);
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
@@ -2052,6 +2052,8 @@ impl Editor {
         self.next_document_id =
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
+
+        self.bufferline_tabs.add_tab(&doc);
         self.documents.insert(id, doc);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -2205,6 +2207,7 @@ impl Editor {
         }
 
         let doc = self.documents.remove(&doc_id).unwrap();
+        self.bufferline_tabs.remove_tab(&doc_id);
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view

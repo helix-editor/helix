@@ -6,32 +6,33 @@ use crate::{
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
-        document::{render_document, LinePos, TextRenderer},
+        Completion, ProgressSpinners,
+        document::{LinePos, TextRenderer, render_document},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, ProgressSpinners,
     },
 };
 
 use helix_core::{
+    Change, Position, Range, Selection, Transaction,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block,
 };
 use helix_view::{
+    Document, Editor, Theme, View,
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, ops, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -661,7 +662,8 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &mut Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        let bufferline_tabs = &mut editor.bufferline_tabs;
+
         surface.clear_with(
             viewport,
             editor
@@ -669,6 +671,10 @@ impl EditorView {
                 .try_get("ui.bufferline.background")
                 .unwrap_or_else(|| editor.theme.get("ui.statusline")),
         );
+
+        if bufferline_tabs.tabs.is_empty() {
+            return;
+        }
 
         let bufferline_active = editor
             .theme
@@ -682,42 +688,25 @@ impl EditorView {
 
         let current_doc = view!(editor).doc;
 
-        // Lay each tab out on an unbounded virtual strip: (doc id, label, start, end).
-        let mut tabs = Vec::new();
-        let mut cursor = 0u32;
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let width = text.width() as u32;
-            let start = cursor;
-            cursor += width;
-            tabs.push((doc.id(), text, start, cursor));
+        for doc in editor.documents.values() {
+            bufferline_tabs.set_modified(doc.id(), doc.is_modified());
         }
 
-        if tabs.is_empty() {
-            return;
-        }
-
-        let total_width = cursor;
         let viewport_width = viewport.width as u32;
         // Furthest we're allowed to scroll: beyond this, the last tab would
         // end before the right edge, leaving a dead gap. Clamping here is what
         // keeps the last tab flush against the edge once we're scrolled to it.
-        let max_scroll = total_width.saturating_sub(viewport_width);
+        let max_scroll = bufferline_tabs.total_width.saturating_sub(viewport_width);
 
-        let (active_start, active_end) = tabs
+        let (active_start, active_end) = bufferline_tabs
+            .tabs
             .iter()
-            .find(|(id, ..)| *id == current_doc)
-            .map(|(_, _, start, end)| (*start, *end))
+            .find(|t| (**t).document_id == current_doc)
+            .map(|t| ((*t).start, (*t).end))
             .unwrap_or((0, 0));
 
-        let mut scroll = (editor.bufferline_scroll as u32).min(max_scroll);
+        let mut scroll = (bufferline_tabs.scroll as u32).min(max_scroll);
+
         if active_start < scroll {
             scroll = active_start; // active tab fell of the left: pull in into view
         }
@@ -726,27 +715,29 @@ impl EditorView {
         }
         scroll = scroll.min(max_scroll);
 
-        editor.bufferline_scroll = scroll as u16;
+        bufferline_tabs.scroll = scroll as u16;
 
         let mut x = viewport.x;
-        for (id, text, start, end) in &tabs {
-            if *end <= scroll {
+        for tab in &bufferline_tabs.tabs {
+            if tab.end <= scroll {
                 continue; // fully scrolled past the left edge
             }
             if x >= surface.area.right() {
                 break;
             }
 
-            let style = if *id == current_doc {
+            let style = if tab.document_id == current_doc {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let visible_text = if *start < scroll {
-                skip_columns(text, scroll - start)
+            let label = tab.label();
+
+            let visible_text = if tab.start < scroll {
+                skip_columns(&label, scroll - tab.start)
             } else {
-                text.as_str()
+                &label
             };
 
             let rem_width = surface.area.right().saturating_sub(x);
