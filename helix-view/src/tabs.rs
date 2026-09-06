@@ -8,6 +8,7 @@ use crate::{Document, DocumentId, document::SCRATCH_BUFFER_NAME};
 pub struct BufferLineTabs {
     pub tabs: Vec<Tab>,
     pub scroll: u16,
+    pub total_width: u32,
 }
 
 pub struct Tab {
@@ -15,13 +16,12 @@ pub struct Tab {
     pub document_name: String, // I feel like this could just be a reference
     pub modified: bool,
     pub start: u32,
-    pub cursor: u32,
+    pub end: u32,
 }
 
 impl BufferLineTabs {
     pub fn add_tab(&mut self, document: &Document) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME);
-        let mut cursor = self.tabs.last().map_or(0u32, |tab| tab.cursor);
 
         let file_name = document
             .path()
@@ -30,17 +30,15 @@ impl BufferLineTabs {
             .unwrap_or_default()
             .to_str()
             .unwrap_or_default();
-        let width = file_name.width() as u32;
-        let start = cursor;
-        cursor += width;
 
         self.tabs.push(Tab {
             document_id: document.id(),
             document_name: file_name.to_string(),
-            modified: false,
-            start,
-            cursor,
+            modified: document.is_modified(),
+            start: 0,
+            end: 0,
         });
+        self.recalculate_tabs(self.tabs.len() - 1);
     }
 
     pub fn remove_tab(&mut self, document_id: &DocumentId) {
@@ -69,18 +67,20 @@ impl BufferLineTabs {
         let mut cursor = starting_index
             .checked_sub(1)
             .and_then(|i| self.tabs.get(i))
-            .map_or(0u32, |t| t.cursor);
+            .map_or(0u32, |t| t.end);
 
         for tab in &mut self.tabs[starting_index..] {
             tab.start = cursor;
             cursor += tab.label().width() as u32;
-            tab.cursor = cursor;
+            tab.end = cursor;
         }
+
+        self.total_width = cursor;
     }
 }
 
 impl Tab {
-    fn label(&self) -> String {
+    pub fn label(&self) -> String {
         format!(
             " {}{} ",
             self.document_name,
