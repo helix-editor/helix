@@ -6,30 +6,31 @@ use crate::{
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
-        document::{render_document, LinePos, TextRenderer},
+        Completion, ProgressSpinners,
+        document::{LinePos, TextRenderer, render_document},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, ProgressSpinners,
     },
 };
 
 use helix_core::{
+    Change, Position, Range, Selection, Transaction,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block,
 };
 use helix_view::{
+    Document, Editor, Theme, View,
     annotations::diagnostics::DiagnosticFilter,
     document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
 };
 use std::{mem::take, num::NonZeroUsize, ops, rc::Rc};
 
@@ -687,22 +688,19 @@ impl EditorView {
 
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents.values() {
-            bufferline_tabs.set_modified(doc.id(), doc.is_modified());
-        }
+        bufferline_tabs.sync_modified(&editor.documents);
 
         let viewport_width = viewport.width as u32;
         // Furthest we're allowed to scroll: beyond this, the last tab would
         // end before the right edge, leaving a dead gap. Clamping here is what
         // keeps the last tab flush against the edge once we're scrolled to it.
-        let max_scroll = bufferline_tabs.total_width.saturating_sub(viewport_width);
+        let max_scroll = bufferline_tabs.total_width().saturating_sub(viewport_width);
 
         let (active_start, active_end) = bufferline_tabs
             .tabs
             .iter()
-            .find(|t| (**t).document_id == current_doc)
-            .map(|t| ((*t).start, (*t).end))
-            .unwrap_or((0, 0));
+            .find(|t| t.document_id == current_doc)
+            .map_or((0, 0), |t| (t.start, t.end));
 
         let mut scroll = (bufferline_tabs.scroll as u32).min(max_scroll);
 
