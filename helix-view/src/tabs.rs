@@ -1,14 +1,13 @@
-use std::path::PathBuf;
+use std::collections::BTreeMap;
 
 use helix_core::unicode::width::UnicodeWidthStr;
 
-use crate::{document::SCRATCH_BUFFER_NAME, Document, DocumentId};
+use crate::{Document, DocumentId, document::SCRATCH_BUFFER_NAME};
 
 #[derive(Default)]
 pub struct BufferLineTabs {
     pub tabs: Vec<Tab>,
     pub scroll: u16,
-    pub total_width: u32,
 }
 
 pub struct Tab {
@@ -19,21 +18,20 @@ pub struct Tab {
     pub end: u32,
 }
 
+fn tab_name(document: &Document) -> String {
+    document
+        .path()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or(SCRATCH_BUFFER_NAME)
+        .to_string()
+}
+
 impl BufferLineTabs {
     pub fn add_tab(&mut self, document: &Document) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME);
-
-        let file_name = document
-            .path()
-            .unwrap_or(&scratch)
-            .file_name()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
-
         self.tabs.push(Tab {
             document_id: document.id(),
-            document_name: file_name.to_string(),
+            document_name: tab_name(document),
             modified: document.is_modified(),
             start: 0,
             end: 0,
@@ -41,29 +39,55 @@ impl BufferLineTabs {
         self.recalculate_tabs(self.tabs.len() - 1);
     }
 
-    pub fn remove_tab(&mut self, document_id: &DocumentId) {
-        if let Some(index) = self.tabs.iter().position(|t| t.document_id == *document_id) {
+    pub fn rename_tab(&mut self, document: &Document) {
+        let Some(index) = self.index_of(document.id()) else {
+            return;
+        };
+        let name = tab_name(document);
+        if self.tabs[index].document_name == name {
+            return;
+        }
+        self.tabs[index].document_name = name;
+        self.recalculate_tabs(index);
+    }
+
+    pub fn remove_tab(&mut self, document_id: DocumentId) {
+        if let Some(index) = self.tabs.iter().position(|t| t.document_id == document_id) {
             self.tabs.remove(index);
             self.recalculate_tabs(index);
         }
     }
 
-    pub fn set_modified(&mut self, document_id: DocumentId, modified: bool) {
-        let Some(index) = self
-            .tabs
-            .iter()
-            .position(|tab| tab.document_id == document_id)
-        else {
-            return;
-        };
-        if self.tabs[index].modified == modified {
-            return;
+    pub fn sync_modified(&mut self, documents: &BTreeMap<DocumentId, Document>) {
+        let mut first_changed = None;
+
+        for (index, tab) in self.tabs.iter_mut().enumerate() {
+            let Some(doc) = documents.get(&tab.document_id) else {
+                continue;
+            };
+
+            let modified = doc.is_modified();
+
+            if tab.modified != modified {
+                tab.modified = modified;
+                first_changed.get_or_insert(index);
+            }
         }
-        self.tabs[index].modified = modified;
-        self.recalculate_tabs(index);
+
+        if let Some(index) = first_changed {
+            self.recalculate_tabs(index);
+        }
     }
 
-    pub fn recalculate_tabs(&mut self, starting_index: usize) {
+    pub fn total_width(&self) -> u32 {
+        self.tabs.last().map_or(0, |t| t.end)
+    }
+
+    fn index_of(&self, document_id: DocumentId) -> Option<usize> {
+        self.tabs.iter().position(|t| t.document_id == document_id)
+    }
+
+    fn recalculate_tabs(&mut self, starting_index: usize) {
         let mut cursor = starting_index
             .checked_sub(1)
             .and_then(|i| self.tabs.get(i))
@@ -74,8 +98,6 @@ impl BufferLineTabs {
             cursor += tab.label().width() as u32;
             tab.end = cursor;
         }
-
-        self.total_width = cursor;
     }
 }
 
