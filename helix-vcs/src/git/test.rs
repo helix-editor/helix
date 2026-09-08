@@ -54,7 +54,7 @@ fn missing_file() {
     let file = temp_git.path().join("file.txt");
     File::create(&file).unwrap().write_all(b"foo").unwrap();
 
-    assert!(git::get_diff_base(&file, true).is_err());
+    assert!(git::get_diff_base(&file, "HEAD", true).is_err());
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn unmodified_file() {
     File::create(&file).unwrap().write_all(contents).unwrap();
     create_commit(temp_git.path(), true);
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
         Vec::from(contents)
     );
 }
@@ -80,7 +80,7 @@ fn modified_file() {
     File::create(&file).unwrap().write_all(b"bar").unwrap();
 
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
         Vec::from(contents)
     );
 }
@@ -101,7 +101,7 @@ fn directory() {
 
     std::fs::remove_dir_all(&dir).unwrap();
     File::create(&dir).unwrap().write_all(b"bar").unwrap();
-    assert!(git::get_diff_base(&dir, true).is_err());
+    assert!(git::get_diff_base(&dir, "HEAD", true).is_err());
 }
 
 /// Test that `get_diff_base` resolves symlinks so that the same diff base is
@@ -128,8 +128,16 @@ fn symlink() {
     symlink("file.txt", &file_link).unwrap();
     create_commit(temp_git.path(), true);
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(
+        git::get_diff_base(&file_link, "HEAD", true)
+            .unwrap()
+            .content,
+        contents
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        contents
+    );
 }
 
 /// Test that `get_diff_base` returns content when the file is a symlink to
@@ -153,6 +161,118 @@ fn symlink_to_git_repo() {
     let file_link = temp_dir.path().join("file_link.txt");
     symlink(&file, &file_link).unwrap();
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(
+        git::get_diff_base(&file_link, "HEAD", true)
+            .unwrap()
+            .content,
+        contents
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        contents
+    );
+}
+
+/// Writes `contents` to `file` and commits it, so tests can build up a history.
+fn commit_file(repo: &Path, file: &Path, contents: &[u8]) {
+    File::create(file).unwrap().write_all(contents).unwrap();
+    create_commit(repo, true);
+}
+
+#[test]
+fn diff_base_at_revision() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"first");
+    commit_file(temp_git.path(), &file, b"second");
+
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD~1", true).unwrap().content,
+        b"first".to_vec()
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        b"second".to_vec()
+    );
+}
+
+#[test]
+fn diff_base_at_branch() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"on main");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    commit_file(temp_git.path(), &file, b"on feature");
+
+    assert_eq!(
+        git::get_diff_base(&file, "main", true).unwrap().content,
+        b"on main".to_vec()
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        b"on feature".to_vec()
+    );
+}
+
+/// A trailing `...` must diff against the merge base rather than the tip, so that commits
+/// landed on the base branch *after* branching don't show up as changes of your own.
+#[test]
+fn diff_base_merge_base() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    let other = temp_git.path().join("other.txt");
+
+    // A (merge base) on main, then C on main and E on the feature branch.
+    commit_file(temp_git.path(), &file, b"base");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    exec_git_cmd("checkout main", temp_git.path());
+    commit_file(temp_git.path(), &file, b"moved on after branching");
+    // Touch a second file so `main` and `feature` really have diverged.
+    commit_file(temp_git.path(), &other, b"unrelated");
+    exec_git_cmd("checkout feature", temp_git.path());
+    commit_file(temp_git.path(), &file, b"my change");
+
+    // Tip of `main` includes the commits made after the branch point ...
+    assert_eq!(
+        git::get_diff_base(&file, "main", true).unwrap().content,
+        b"moved on after branching".to_vec()
+    );
+    // ... while the merge base does not.
+    assert_eq!(
+        git::get_diff_base(&file, "main...", true).unwrap().content,
+        b"base".to_vec()
+    );
+}
+
+#[test]
+fn unresolvable_revision_falls_back_to_head() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    commit_file(temp_git.path(), &file, b"foo");
+
+    let diff_base = git::get_diff_base(&file, "no-such-revision", true).unwrap();
+    assert_eq!(diff_base.content, b"foo".to_vec());
+    assert!(diff_base.used_fallback);
+}
+
+#[test]
+fn revisions() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    commit_file(temp_git.path(), &file, b"foo");
+    exec_git_cmd("branch feature", temp_git.path());
+    exec_git_cmd("tag v1", temp_git.path());
+    // `refs/stash` is not a plausible diff base and must not be offered.
+    File::create(&file).unwrap().write_all(b"bar").unwrap();
+    exec_git_cmd("stash", temp_git.path());
+
+    let revisions = git::get_revisions(temp_git.path(), true).unwrap();
+
+    assert!(revisions.contains(&"HEAD".to_string()));
+    assert!(revisions.contains(&"main".to_string()));
+    assert!(revisions.contains(&"feature".to_string()));
+    assert!(revisions.contains(&"v1".to_string()));
+    assert!(!revisions.iter().any(|rev| rev.contains("stash")));
 }

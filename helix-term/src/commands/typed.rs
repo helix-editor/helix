@@ -2685,6 +2685,30 @@ fn run_shell_command(
     Ok(())
 }
 
+/// Show or set the git revision that the diff gutter is computed against.
+fn diff_base(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(revision) = args.first() else {
+        let revision = cx.editor.config().diff_base.clone();
+        cx.editor.set_status(format!("diff base: {revision}"));
+        return Ok(());
+    };
+
+    // Route through the config event rather than mutating the editor directly, so that the
+    // gutters are refreshed by the same `Editor::refresh_config` path as `:set diff-base`.
+    let mut config = Box::new(cx.editor.config().deref().clone());
+    config.diff_base = revision.to_string();
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3973,6 +3997,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "diff-base",
+        aliases: &[],
+        doc: "Set the git revision that the diff gutter is computed against, or show the current one if no revision is given. Append `...` to diff against the merge base with HEAD instead of the revision itself, for example `main...`.",
+        fun: diff_base,
+        completer: CommandCompleter::positional(&[completers::git_revision]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "reset-diff-change",

@@ -427,6 +427,7 @@ pub mod completers {
     use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::config::LanguageServerFeature;
+    use helix_loader::workspace_trust::TrustQuery;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
@@ -555,6 +556,29 @@ pub mod completers {
         fuzzy_match(input, language_ids, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.to_owned().into()))
+            .collect()
+    }
+
+    pub fn git_revision(editor: &Editor, input: &str) -> Vec<Completion> {
+        let doc = doc!(editor);
+        // Repository lookup walks upwards from here, so the workspace root works whether or not
+        // the focused document has been written to disk yet.
+        let workspace = doc.workspace_root();
+        let trust_full = editor
+            .workspace_trust
+            .query(workspace, TrustQuery::Git)
+            .is_trusted();
+
+        // Unlike `setting` this can't be cached in a `Lazy`: the answer depends on the
+        // repository, and refs change while the editor is running.
+        let revisions = editor
+            .diff_providers
+            .get_revisions(workspace, trust_full)
+            .unwrap_or_default();
+
+        fuzzy_match(input, revisions, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 

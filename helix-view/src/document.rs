@@ -1310,8 +1310,11 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path, trust_full) {
-            Some(diff_base) => self.set_diff_base(diff_base),
+        // `used_fallback` is deliberately ignored: an unresolvable `editor.diff-base` is a
+        // config problem rather than a reload problem, it is already logged by the provider, and
+        // `Editor` (not `Document`) owns user-visible status.
+        match provider_registry.get_diff_base(&path, &self.config.load().diff_base, trust_full) {
+            Some(diff_base) => self.set_diff_base(diff_base.content),
             None => self.diff_handle = None,
         }
 
@@ -2000,6 +2003,11 @@ impl Document {
         } else {
             self.diff_handle = None;
         }
+    }
+
+    /// Drops the differ for this document, removing its diff gutter.
+    pub fn clear_diff_base(&mut self) {
+        self.diff_handle = None;
     }
 
     pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {

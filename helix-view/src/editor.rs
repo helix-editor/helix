@@ -434,6 +434,10 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// The git revision that the diff gutter and change navigation are computed against. A
+    /// trailing `...` selects the merge base with `HEAD` instead of the revision itself, so
+    /// `"main..."` shows only the current branch's own changes. Defaults to `"HEAD"`.
+    pub diff_base: String,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -1240,6 +1244,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            diff_base: String::from("HEAD"),
         }
     }
 }
@@ -1509,12 +1514,60 @@ impl Editor {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
         self.reset_idle_timer();
+        if old_config.diff_base != config.diff_base {
+            self.refresh_diff_bases();
+        }
         self._refresh();
         helix_event::dispatch(crate::events::ConfigDidChange {
             editor: self,
             old: old_config,
             new: &config,
         })
+    }
+
+    /// Status message for an `editor.diff-base` revision that git could not resolve.
+    fn unresolved_diff_base(revision: &str) -> String {
+        format!("could not resolve diff base '{revision}', using HEAD")
+    }
+
+    /// Recomputes every open document's diff base against `editor.diff-base`.
+    ///
+    /// This is the single refresh path shared by `:diff-base`, `:set diff-base`,
+    /// `:config-reload` and edits to `config.toml`, all of which arrive as a config change.
+    fn refresh_diff_bases(&mut self) {
+        let revision = self.config().diff_base.clone();
+        let diff_providers = self.diff_providers.clone();
+        let doc_ids: Vec<DocumentId> = self.documents.keys().copied().collect();
+        // The revision is the same for every document, so report a bad `diff-base` once rather
+        // than once per open file.
+        let mut used_fallback = false;
+
+        for doc_id in doc_ids {
+            let doc = &self.documents[&doc_id];
+            let Some(path) = doc.path().map(PathBuf::from) else {
+                continue;
+            };
+            let trust_full = self
+                .workspace_trust
+                .query(doc.workspace_root(), TrustQuery::Git)
+                .is_trusted();
+
+            let diff_base = diff_providers.get_diff_base(&path, &revision, trust_full);
+            let doc = doc_mut!(self, &doc_id);
+            match diff_base {
+                Some(diff_base) => {
+                    used_fallback |= diff_base.used_fallback;
+                    doc.set_diff_base(diff_base.content);
+                }
+                // The file isn't in the new base at all, so the old hunks no longer mean
+                // anything.
+                None => doc.clear_diff_base(),
+            }
+        }
+
+        if used_fallback {
+            self.set_error(Self::unresolved_diff_base(&revision));
+        }
     }
 
     pub fn clear_idle_timer(&mut self) {
@@ -2122,8 +2175,14 @@ impl Editor {
                 .workspace_trust
                 .query(doc.workspace_root(), TrustQuery::Git)
                 .is_trusted();
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path, trust_full) {
-                doc.set_diff_base(diff_base);
+            let revision = self.config().diff_base.clone();
+            let mut used_fallback = false;
+            if let Some(diff_base) = self
+                .diff_providers
+                .get_diff_base(&path, &revision, trust_full)
+            {
+                used_fallback = diff_base.used_fallback;
+                doc.set_diff_base(diff_base.content);
             }
             doc.set_version_control_head(
                 self.diff_providers.get_current_head_name(&path, trust_full),
@@ -2136,6 +2195,10 @@ impl Editor {
                 editor: self,
                 doc: id,
             });
+
+            if used_fallback {
+                self.set_error(Self::unresolved_diff_base(&revision));
+            }
 
             id
         };

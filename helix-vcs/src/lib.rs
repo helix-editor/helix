@@ -20,6 +20,15 @@ mod status;
 
 pub use status::FileChange;
 
+/// A document's diff base: the contents of the file at the base revision.
+pub struct DiffBase {
+    pub content: Vec<u8>,
+    /// Whether the requested revision could not be resolved, in which case `content` was read
+    /// from `HEAD` instead. Reporting this is left to the caller, which knows what the user
+    /// asked for.
+    pub used_fallback: bool,
+}
+
 /// Contains all active diff providers. Diff providers are compiled in via features. Currently
 /// only `git` is supported.
 #[derive(Clone)]
@@ -28,16 +37,34 @@ pub struct DiffProviderRegistry {
 }
 
 impl DiffProviderRegistry {
-    /// Get the given file from the VCS. This provides the unedited document as a "base"
-    /// for a diff to be created.
-    pub fn get_diff_base(&self, file: &Path, trust_full: bool) -> Option<Vec<u8>> {
-        self.providers
-            .iter()
-            .find_map(|provider| match provider.get_diff_base(file, trust_full) {
+    /// Get the given file from the VCS at `revision`. This provides the unedited document as a
+    /// "base" for a diff to be created.
+    ///
+    /// `revision` is a git revision such as `HEAD`, `main` or `origin/main`. A trailing `...`
+    /// selects the merge base of that revision and `HEAD` instead of the revision itself.
+    pub fn get_diff_base(&self, file: &Path, revision: &str, trust_full: bool) -> Option<DiffBase> {
+        self.providers.iter().find_map(|provider| {
+            match provider.get_diff_base(file, revision, trust_full) {
                 Ok(res) => Some(res),
                 Err(err) => {
                     log::debug!("{err:#?}");
                     log::debug!("failed to open diff base for {}", file.display());
+                    None
+                }
+            }
+        })
+    }
+
+    /// Names of the revisions that can be used as a diff base in the repository containing
+    /// `cwd`, for completing `:diff-base`.
+    pub fn get_revisions(&self, cwd: &Path, trust_full: bool) -> Option<Vec<String>> {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.get_revisions(cwd, trust_full) {
+                Ok(res) => Some(res),
+                Err(err) => {
+                    log::debug!("{err:#?}");
+                    log::debug!("failed to list revisions in {}", cwd.display());
                     None
                 }
             })
@@ -107,10 +134,18 @@ enum DiffProvider {
 }
 
 impl DiffProvider {
-    fn get_diff_base(&self, file: &Path, trust_full: bool) -> Result<Vec<u8>> {
+    fn get_diff_base(&self, file: &Path, revision: &str, trust_full: bool) -> Result<DiffBase> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git => git::get_diff_base(file, trust_full),
+            Self::Git => git::get_diff_base(file, revision, trust_full),
+            Self::None => bail!("No diff support compiled in"),
+        }
+    }
+
+    fn get_revisions(&self, cwd: &Path, trust_full: bool) -> Result<Vec<String>> {
+        match self {
+            #[cfg(feature = "git")]
+            Self::Git => git::get_revisions(cwd, trust_full),
             Self::None => bail!("No diff support compiled in"),
         }
     }

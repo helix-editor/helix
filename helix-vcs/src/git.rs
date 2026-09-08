@@ -17,7 +17,7 @@ use gix::status::{
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::FileChange;
+use crate::{DiffBase, FileChange};
 
 #[cfg(test)]
 mod test;
@@ -27,7 +27,7 @@ fn get_repo_dir(file: &Path) -> Result<&Path> {
     file.parent().context("file has no parent directory")
 }
 
-pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
+pub fn get_diff_base(file: &Path, revision: &str, trust_full: bool) -> Result<DiffBase> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
@@ -38,8 +38,17 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     let repo = open_repo(repo_dir, trust_full)
         .context("failed to open git repo")?
         .to_thread_local();
-    let head = repo.head_commit()?;
-    let file_oid = find_file_in_commit(&repo, &head, &file)?;
+
+    // Fall back to `HEAD` rather than dropping the diff entirely: a typo in
+    // `editor.diff-base` should not look like "this file has no changes".
+    let (base, used_fallback) = match resolve_diff_base(&repo, revision) {
+        Ok(commit) => (commit, false),
+        Err(err) => {
+            log::warn!("failed to resolve diff base revision {revision:?}: {err:#}");
+            (repo.head_commit()?, true)
+        }
+    };
+    let file_oid = find_file_in_commit(&repo, &base, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
     let data = file_object.detach().data;
@@ -59,10 +68,63 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
             pipeline.convert_to_worktree(&data, rela_path.as_ref(), Delay::Forbid)?;
         let mut buf = Vec::with_capacity(data.len());
         worktree_outcome.read_to_end(&mut buf)?;
-        Ok(buf)
+        Ok(DiffBase {
+            content: buf,
+            used_fallback,
+        })
     } else {
-        Ok(data)
+        Ok(DiffBase {
+            content: data,
+            used_fallback,
+        })
     }
+}
+
+/// Resolves the configured diff base revision to a commit.
+///
+/// A trailing `...` selects the merge base of the revision and `HEAD` instead of the
+/// revision itself, mirroring `git diff <rev>...HEAD`.
+fn resolve_diff_base<'a>(repo: &'a Repository, revision: &str) -> Result<Commit<'a>> {
+    // Keep the default free of revspec parsing so it costs exactly what it used to.
+    if revision == "HEAD" {
+        return Ok(repo.head_commit()?);
+    }
+
+    let (spec, merge_base) = match revision.strip_suffix("...") {
+        Some(spec) => (spec, true),
+        None => (revision, false),
+    };
+    // Git reads an omitted side of a range as `HEAD`, so `...` alone means `HEAD...HEAD`.
+    let spec = if spec.is_empty() { "HEAD" } else { spec };
+
+    let id = repo.rev_parse_single(spec)?;
+    let id = if merge_base {
+        repo.merge_base(repo.head_id()?, id)?
+    } else {
+        id
+    };
+
+    Ok(id.object()?.peel_to_commit()?)
+}
+
+/// Names of the revisions that can be used as a diff base, as git would display them:
+/// local branches, remote-tracking branches and tags, plus `HEAD`.
+pub fn get_revisions(cwd: &Path, trust_full: bool) -> Result<Vec<String>> {
+    let repo = open_repo(cwd, trust_full)
+        .context("failed to open git repo")?
+        .to_thread_local();
+
+    let mut revisions = vec!["HEAD".to_string()];
+    let platform = repo.references()?;
+    // Deliberately not `all()`, which would also list `refs/stash`, `refs/notes/*` and
+    // whatever else happens to be in the repository.
+    for prefix in ["refs/heads/", "refs/remotes/", "refs/tags/"] {
+        for reference in platform.prefixed(prefix)?.filter_map(Result::ok) {
+            revisions.push(reference.name().shorten().to_string());
+        }
+    }
+
+    Ok(revisions)
 }
 
 pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
