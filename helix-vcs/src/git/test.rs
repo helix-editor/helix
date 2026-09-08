@@ -40,6 +40,12 @@ fn create_commit(repo: &Path, add_modified: bool) {
     exec_git_cmd("commit -m message", repo);
 }
 
+/// Writes `contents` to `file` and commits it, so tests can build up a history.
+fn commit_file(repo: &Path, file: &Path, contents: &[u8]) {
+    File::create(file).unwrap().write_all(contents).unwrap();
+    create_commit(repo, true);
+}
+
 fn empty_git_repo() -> TempDir {
     let tmp = tempfile::tempdir().expect("create temp dir for git testing");
     exec_git_cmd("init", tmp.path());
@@ -54,7 +60,7 @@ fn missing_file() {
     let file = temp_git.path().join("file.txt");
     File::create(&file).unwrap().write_all(b"foo").unwrap();
 
-    assert!(git::get_diff_base(&file, true).is_err());
+    assert!(git::get_diff_base(&file, "HEAD", true).is_err());
 }
 
 #[test]
@@ -65,7 +71,7 @@ fn unmodified_file() {
     File::create(&file).unwrap().write_all(contents).unwrap();
     create_commit(temp_git.path(), true);
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
         Vec::from(contents)
     );
 }
@@ -80,7 +86,7 @@ fn modified_file() {
     File::create(&file).unwrap().write_all(b"bar").unwrap();
 
     assert_eq!(
-        git::get_diff_base(&file, true).unwrap(),
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
         Vec::from(contents)
     );
 }
@@ -101,7 +107,7 @@ fn directory() {
 
     std::fs::remove_dir_all(&dir).unwrap();
     File::create(&dir).unwrap().write_all(b"bar").unwrap();
-    assert!(git::get_diff_base(&dir, true).is_err());
+    assert!(git::get_diff_base(&dir, "HEAD", true).is_err());
 }
 
 /// Test that `get_diff_base` resolves symlinks so that the same diff base is
@@ -128,8 +134,16 @@ fn symlink() {
     symlink("file.txt", &file_link).unwrap();
     create_commit(temp_git.path(), true);
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(
+        git::get_diff_base(&file_link, "HEAD", true)
+            .unwrap()
+            .content,
+        contents
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        contents
+    );
 }
 
 /// Test that `get_diff_base` returns content when the file is a symlink to
@@ -153,6 +167,200 @@ fn symlink_to_git_repo() {
     let file_link = temp_dir.path().join("file_link.txt");
     symlink(&file, &file_link).unwrap();
 
-    assert_eq!(git::get_diff_base(&file_link, true).unwrap(), contents);
-    assert_eq!(git::get_diff_base(&file, true).unwrap(), contents);
+    assert_eq!(
+        git::get_diff_base(&file_link, "HEAD", true)
+            .unwrap()
+            .content,
+        contents
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        contents
+    );
+}
+
+#[test]
+fn diff_base_at_revision() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"first");
+    commit_file(temp_git.path(), &file, b"second");
+
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD~1", true).unwrap().content,
+        b"first".to_vec()
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        b"second".to_vec()
+    );
+}
+
+#[test]
+fn diff_base_at_branch() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"on main");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    commit_file(temp_git.path(), &file, b"on feature");
+
+    assert_eq!(
+        git::get_diff_base(&file, "main", true).unwrap().content,
+        b"on main".to_vec()
+    );
+    assert_eq!(
+        git::get_diff_base(&file, "HEAD", true).unwrap().content,
+        b"on feature".to_vec()
+    );
+}
+
+/// A trailing `...` must diff against the merge base rather than the tip, so that commits
+/// landed on the base branch *after* branching don't show up as changes of your own.
+#[test]
+fn diff_base_merge_base() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    let other = temp_git.path().join("other.txt");
+
+    // A (merge base) on main, then C on main and E on the feature branch.
+    commit_file(temp_git.path(), &file, b"base");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    exec_git_cmd("checkout main", temp_git.path());
+    commit_file(temp_git.path(), &file, b"moved on after branching");
+    // Touch a second file so `main` and `feature` really have diverged.
+    commit_file(temp_git.path(), &other, b"unrelated");
+    exec_git_cmd("checkout feature", temp_git.path());
+    commit_file(temp_git.path(), &file, b"my change");
+
+    // Tip of `main` includes the commits made after the branch point ...
+    assert_eq!(
+        git::get_diff_base(&file, "main", true).unwrap().content,
+        b"moved on after branching".to_vec()
+    );
+    // ... while the merge base does not.
+    assert_eq!(
+        git::get_diff_base(&file, "main...", true).unwrap().content,
+        b"base".to_vec()
+    );
+}
+
+/// An annotated tag resolves to a tag object rather than a commit, so the merge-base form has
+/// to peel it first. A lightweight tag (as used by `revisions` below) would not catch this.
+#[test]
+fn diff_base_merge_base_with_annotated_tag() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"tagged");
+    exec_git_cmd("tag -a v1 -m release", temp_git.path());
+    commit_file(temp_git.path(), &file, b"later");
+
+    assert_eq!(
+        git::get_diff_base(&file, "v1", true).unwrap().content,
+        b"tagged".to_vec()
+    );
+    let diff_base = git::get_diff_base(&file, "v1...", true).unwrap();
+    assert_eq!(diff_base.content, b"tagged".to_vec());
+    assert!(!diff_base.used_fallback, "should not have fallen back");
+}
+
+/// `<rev>..` is git's two-dot form; with the working tree as the other side it means the same
+/// as `<rev>`. `...<rev>` is the other spelling of the merge-base form.
+#[test]
+fn diff_base_range_spellings() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+
+    commit_file(temp_git.path(), &file, b"base");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    exec_git_cmd("checkout main", temp_git.path());
+    commit_file(temp_git.path(), &file, b"moved on after branching");
+    exec_git_cmd("checkout feature", temp_git.path());
+    commit_file(temp_git.path(), &file, b"my change");
+
+    for spec in ["main", "main.."] {
+        let diff_base = git::get_diff_base(&file, spec, true).unwrap();
+        assert_eq!(
+            diff_base.content,
+            b"moved on after branching".to_vec(),
+            "{spec} should resolve to the tip of main"
+        );
+        assert!(!diff_base.used_fallback, "{spec} should not fall back");
+    }
+
+    let diff_base = git::get_diff_base(&file, "main...", true).unwrap();
+    assert_eq!(
+        diff_base.content,
+        b"base".to_vec(),
+        "main... should resolve to the merge base"
+    );
+    assert!(!diff_base.used_fallback, "main... should not fall back");
+
+    // `...main` picks the same merge base, but in git it means "what main did since
+    // diverging" — the opposite of what the gutter shows. Rejecting it beats silently
+    // reinterpreting it.
+    assert!(
+        git::get_diff_base(&file, "...main", true)
+            .unwrap()
+            .used_fallback,
+        "...main should not be silently accepted"
+    );
+}
+
+/// A file added on the branch is absent from the merge base, but `git diff main...HEAD` still
+/// shows it as an addition. An empty base reproduces that instead of dropping the gutter.
+#[test]
+fn diff_base_file_added_on_branch() {
+    let temp_git = empty_git_repo();
+    let existing = temp_git.path().join("existing.txt");
+    let added = temp_git.path().join("added.txt");
+
+    commit_file(temp_git.path(), &existing, b"base");
+    exec_git_cmd("checkout -b feature", temp_git.path());
+    commit_file(temp_git.path(), &added, b"brand new");
+
+    // Tracked in HEAD but not in the base revision: empty base, so the whole file is an add.
+    assert_eq!(
+        git::get_diff_base(&added, "main", true).unwrap().content,
+        Vec::<u8>::new()
+    );
+
+    // Genuinely untracked files still produce no diff base at all, as against HEAD.
+    let untracked = temp_git.path().join("untracked.txt");
+    File::create(&untracked).unwrap().write_all(b"x").unwrap();
+    assert!(git::get_diff_base(&untracked, "main", true).is_err());
+    assert!(git::get_diff_base(&untracked, "HEAD", true).is_err());
+}
+
+#[test]
+fn unresolvable_revision_falls_back_to_head() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    commit_file(temp_git.path(), &file, b"foo");
+
+    let diff_base = git::get_diff_base(&file, "no-such-revision", true).unwrap();
+    assert_eq!(diff_base.content, b"foo".to_vec());
+    assert!(diff_base.used_fallback);
+}
+
+#[test]
+fn revisions() {
+    let temp_git = empty_git_repo();
+    let file = temp_git.path().join("file.txt");
+    commit_file(temp_git.path(), &file, b"foo");
+    exec_git_cmd("branch feature", temp_git.path());
+    exec_git_cmd("tag v1", temp_git.path());
+    // `refs/stash` is not a plausible diff base and must not be offered.
+    File::create(&file).unwrap().write_all(b"bar").unwrap();
+    exec_git_cmd("stash", temp_git.path());
+
+    let revisions = git::get_revisions(temp_git.path(), true).unwrap();
+
+    assert!(revisions.contains(&"HEAD".to_string()));
+    assert!(revisions.contains(&"main".to_string()));
+    assert!(revisions.contains(&"feature".to_string()));
+    assert!(revisions.contains(&"v1".to_string()));
+    assert!(!revisions.iter().any(|rev| rev.contains("stash")));
 }

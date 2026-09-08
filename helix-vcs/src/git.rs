@@ -17,7 +17,7 @@ use gix::status::{
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::FileChange;
+use crate::{DiffBase, FileChange};
 
 #[cfg(test)]
 mod test;
@@ -27,7 +27,7 @@ fn get_repo_dir(file: &Path) -> Result<&Path> {
     file.parent().context("file has no parent directory")
 }
 
-pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
+pub fn get_diff_base(file: &Path, revision: &str, trust_full: bool) -> Result<DiffBase> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
@@ -38,8 +38,33 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     let repo = open_repo(repo_dir, trust_full)
         .context("failed to open git repo")?
         .to_thread_local();
-    let head = repo.head_commit()?;
-    let file_oid = find_file_in_commit(&repo, &head, &file)?;
+
+    // Fall back to `HEAD` rather than dropping the diff entirely: a typo in
+    // `editor.diff-base` should not look like "this file has no changes".
+    let (base, used_fallback) = match resolve_diff_base_commit(&repo, revision) {
+        Ok(commit) => (commit, false),
+        Err(err) => {
+            log::warn!("failed to resolve diff base revision {revision:?}: {err:#}");
+            (repo.head_commit()?, true)
+        }
+    };
+    let file_oid = match find_file_in_commit(&repo, &base, &file)? {
+        Some(file_oid) => file_oid,
+        // The file is not in the base revision. If the base *is* HEAD then the file is simply
+        // untracked, so there is no diff to show. If it is in HEAD but not in the base, it was
+        // added on this branch: compare against an empty base so the whole file reads as new,
+        // which is what `git diff <base>...HEAD` shows.
+        None => {
+            let head = repo.head_commit()?;
+            if head.id == base.id || find_file_in_commit(&repo, &head, &file)?.is_none() {
+                bail!("file is untracked");
+            }
+            return Ok(DiffBase {
+                content: Vec::new(),
+                used_fallback,
+            });
+        }
+    };
 
     let file_object = repo.find_object(file_oid)?;
     let data = file_object.detach().data;
@@ -59,10 +84,100 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
             pipeline.convert_to_worktree(&data, rela_path.as_ref(), Delay::Forbid)?;
         let mut buf = Vec::with_capacity(data.len());
         worktree_outcome.read_to_end(&mut buf)?;
-        Ok(buf)
+        Ok(DiffBase {
+            content: buf,
+            used_fallback,
+        })
     } else {
-        Ok(data)
+        Ok(DiffBase {
+            content: data,
+            used_fallback,
+        })
     }
+}
+
+/// Resolves the configured diff base revision to a commit.
+///
+/// A trailing `...` selects the merge base of the revision and `HEAD` instead of the
+/// revision itself, mirroring `git diff <rev>...HEAD`.
+fn resolve_diff_base_commit<'a>(repo: &'a Repository, revision: &str) -> Result<Commit<'a>> {
+    // Keep the default free of revspec parsing so it costs exactly what it used to.
+    if revision == "HEAD" {
+        return Ok(repo.head_commit()?);
+    }
+
+    // `<rev>...` is git's merge-base range with the right side left implicit, and `<rev>..` the
+    // two-dot form; since a diff base's other side is always the working tree, the latter is
+    // just `<rev>`. A ref name can neither end in a dot nor contain `..`, so stripping these is
+    // unambiguous.
+    //
+    // The mirrored `...<rev>` spelling is deliberately *not* accepted. It picks the same merge
+    // base, but in git it means "what <rev> did since diverging", the opposite of what helix
+    // would show; quietly inverting that is worse than rejecting it.
+    let (spec, merge_base) = match revision.strip_suffix("...") {
+        // A bare `...` or `..` leaves nothing behind; git reads the missing side as `HEAD`.
+        Some("") => ("HEAD", true),
+        Some(spec) => (spec, true),
+        None => match revision.strip_suffix("..") {
+            Some("") => ("HEAD", false),
+            Some(spec) => (spec, false),
+            None => (revision, false),
+        },
+    };
+
+    // Peel before taking the merge base. `rev_parse_single` returns the id a ref points at
+    // without peeling it, so an annotated tag resolves to the tag object, and `merge_base`
+    // silently finds nothing for a non-commit.
+    let commit = repo.rev_parse_single(spec)?.object()?.peel_to_commit()?;
+    if merge_base {
+        let id = repo.merge_base(repo.head_id()?, commit.id)?;
+        Ok(id.object()?.peel_to_commit()?)
+    } else {
+        Ok(commit)
+    }
+}
+
+/// [`resolve_diff_base_commit`] for callers that have a path rather than an open repository,
+/// and only want to know whether the revision resolves at all.
+pub fn validate_diff_base_revision(cwd: &Path, revision: &str, trust_full: bool) -> Result<()> {
+    // No repository here means there is nothing to check the revision against, not that the
+    // revision is bad. Accept it: the setting is global, and other buffers may well be in a
+    // repository where it resolves. Refusing here would make even `:diff-base HEAD`
+    // impossible from a buffer outside a repository, leaving no way to undo the setting.
+    let Ok(repo) = open_repo(cwd, trust_full) else {
+        return Ok(());
+    };
+    resolve_diff_base_commit(&repo.to_thread_local(), revision)?;
+    Ok(())
+}
+
+/// Names of the revisions that can be used as a diff base, as git would display them:
+/// local branches, remote-tracking branches and tags, plus `HEAD`.
+pub fn get_revisions(cwd: &Path, trust_full: bool) -> Result<Vec<String>> {
+    let repo = open_repo(cwd, trust_full)
+        .context("failed to open git repo")?
+        .to_thread_local();
+
+    let mut revisions = Vec::new();
+    let references = repo.references()?;
+    // `prefixed` iterates only the refs under the given namespace. Taking the three namespaces
+    // separately rather than `all()` keeps out `refs/stash`, `refs/notes/*` and anything else
+    // that happens to live in the repository but makes no sense as a diff base.
+    for prefix in ["refs/heads/", "refs/remotes/", "refs/tags/"] {
+        for reference in references.prefixed(prefix)?.filter_map(Result::ok) {
+            revisions.push(reference.name().shorten().to_string());
+        }
+    }
+
+    // A branch and a tag can share a short name, and both shorten to it. Sorting is `unstable`
+    // only in the sense that equal elements may be reordered, which cannot matter for strings
+    // that compare equal.
+    revisions.sort_unstable();
+    revisions.dedup();
+    // Listed first because it is the default, and because sorting would otherwise bury it.
+    revisions.insert(0, "HEAD".to_string());
+
+    Ok(revisions)
 }
 
 pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
@@ -220,19 +335,26 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
 }
 
 /// Finds the object that contains the contents of a file at a specific commit.
-fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Result<ObjectId> {
+///
+/// Returns `Ok(None)` when the commit simply has no entry for the file, which callers need to
+/// tell apart from a lookup that failed.
+fn find_file_in_commit(
+    repo: &Repository,
+    commit: &Commit,
+    file: &Path,
+) -> Result<Option<ObjectId>> {
     let repo_dir = repo.workdir().context("repo has no worktree")?;
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
-    let tree_entry = tree
-        .lookup_entry_by_path(rel_path)?
-        .context("file is untracked")?;
+    let Some(tree_entry) = tree.lookup_entry_by_path(rel_path)? else {
+        return Ok(None);
+    };
     match tree_entry.mode().kind() {
         // not a file, everything is new, do not show diff
         mode @ (EntryKind::Tree | EntryKind::Commit | EntryKind::Link) => {
             bail!("entry at {} is not a file but a {mode:?}", file.display())
         }
         // found a file
-        EntryKind::Blob | EntryKind::BlobExecutable => Ok(tree_entry.object_id()),
+        EntryKind::Blob | EntryKind::BlobExecutable => Ok(Some(tree_entry.object_id())),
     }
 }
