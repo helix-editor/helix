@@ -2685,6 +2685,42 @@ fn run_shell_command(
     Ok(())
 }
 
+/// Show or set the git revision that the diff gutter is computed against.
+fn diff_base(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(revision) = args.first() else {
+        let revision = cx.editor.config().diff_base_revision.clone();
+        cx.editor.set_status(format!("diff base: {revision}"));
+        return Ok(());
+    };
+
+    // Reject a bad revision before it reaches the config, the way `:theme` refuses to set a
+    // theme that fails to load. Otherwise the value sticks and every later `:open` re-reports
+    // it. `:set diff-base` remains the unchecked escape hatch.
+    let trust_full = doc_trust_full(cx.editor);
+    let workspace = doc!(cx.editor).workspace_root().to_path_buf();
+    // `{err:#}` because `execute_command` only prints the outermost context, which would
+    // otherwise reduce every cause to the same opaque message.
+    cx.editor
+        .diff_providers
+        .validate_diff_base_revision(&workspace, revision, trust_full)
+        .map_err(|err| anyhow!("could not use `{revision}` as a diff base: {err:#}"))?;
+
+    // Route through the config event rather than mutating the editor directly, so that the
+    // gutters are refreshed by the same `Editor::refresh_config` path as `:set diff-base`.
+    let mut config = Box::new(cx.editor.config().deref().clone());
+    config.diff_base_revision = revision.to_string();
+    cx.editor
+        .config_events
+        .0
+        .send(ConfigEvent::Update(config))?;
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3973,6 +4009,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: run_shell_command,
         completer: SHELL_COMPLETER,
         signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
+        name: "diff-base",
+        aliases: &[],
+        doc: "Set the git revision that the diff gutter is computed against, or show it if no revision is given.\nAppend `...` to diff against the merge base with HEAD, e.g. `main...`.",
+        fun: diff_base,
+        completer: CommandCompleter::positional(&[completers::git_revision]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            ..Signature::DEFAULT
+        },
     },
     TypableCommand {
         name: "reset-diff-change",

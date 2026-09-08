@@ -427,12 +427,16 @@ pub mod completers {
     use helix_core::command_line::{self, Tokenizer};
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::config::LanguageServerFeature;
+    use helix_loader::workspace_trust::TrustQuery;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
+    use std::path::PathBuf;
+    use std::sync::{Mutex, PoisonError};
+    use std::time::{Duration, Instant};
     use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
@@ -555,6 +559,77 @@ pub mod completers {
         fuzzy_match(input, language_ids, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.to_owned().into()))
+            .collect()
+    }
+
+    pub fn git_revision(editor: &Editor, input: &str) -> Vec<Completion> {
+        /// Listing refs means opening the repository, which on Windows also locates the `git`
+        /// binary to read its bundled config (see `open_repo` in helix-vcs). That is far too
+        /// much to redo on every keystroke, and unlike `setting` the answer can't live in a
+        /// `Lazy` because it depends on the repository and changes while the editor runs. A
+        /// short time-to-live keeps typing responsive while still picking up new branches.
+        struct Cached {
+            /// Both the repository the revisions came from and, with `trust_full`, the
+            /// conditions under which they were read.
+            workspace: PathBuf,
+            trust_full: bool,
+            refreshed: Instant,
+            revisions: Vec<String>,
+        }
+        static CACHE: Mutex<Option<Cached>> = Mutex::new(None);
+        const TTL: Duration = Duration::from_secs(5);
+
+        let doc = doc!(editor);
+        // Repository lookup walks upwards from here, so the workspace root works whether or not
+        // the focused document has been written to disk yet.
+        let workspace = doc.workspace_root();
+        // Part of the cache key: granting trust changes what the repository will hand back.
+        let trust_full = editor
+            .workspace_trust
+            .query(workspace, TrustQuery::Git)
+            .is_trusted();
+
+        // A panic while the guard is held would otherwise poison the mutex and make every
+        // later completion panic too, which takes the editor down.
+        let mut cache = CACHE.lock().unwrap_or_else(PoisonError::into_inner);
+        let revisions = match &*cache {
+            Some(cached)
+                if cached.workspace == workspace
+                    && cached.trust_full == trust_full
+                    && cached.refreshed.elapsed() < TTL =>
+            {
+                &cached.revisions
+            }
+            _ => {
+                let revisions = editor
+                    .diff_providers
+                    .get_revisions(workspace, trust_full)
+                    .unwrap_or_default();
+                &cache
+                    .insert(Cached {
+                        workspace: workspace.to_path_buf(),
+                        trust_full,
+                        refreshed: Instant::now(),
+                        revisions,
+                    })
+                    .revisions
+            }
+        };
+
+        // `main...` is the headline syntax, but the trailing dots match no ref, which would
+        // empty the completion list exactly when the user is doing the interesting thing.
+        // Rank on the revision itself and put the dots back on the completion.
+        let (prefix, suffix) = if let Some(prefix) = input.strip_suffix("...") {
+            (prefix, "...")
+        } else if let Some(prefix) = input.strip_suffix("..") {
+            (prefix, "..")
+        } else {
+            (input, "")
+        };
+
+        fuzzy_match(prefix, revisions, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), format!("{name}{suffix}").into()))
             .collect()
     }
 

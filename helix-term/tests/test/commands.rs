@@ -2,6 +2,8 @@ use helix_term::application::Application;
 
 use super::*;
 
+#[cfg(feature = "git")]
+mod diff_base;
 mod insert;
 mod movement;
 mod reverse_selection_contents;

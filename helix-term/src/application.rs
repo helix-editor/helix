@@ -211,11 +211,15 @@ impl Application {
                 if nr_of_files == 0 {
                     editor.new_file(Action::VerticalSplit);
                 } else {
-                    editor.set_status(format!(
-                        "Loaded {} file{}.",
-                        nr_of_files,
-                        if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
-                    ));
+                    // Don't bury an error raised while opening the files (a diff base that
+                    // could not be resolved, say) under the informational load message.
+                    if !editor.is_err() {
+                        editor.set_status(format!(
+                            "Loaded {} file{}.",
+                            nr_of_files,
+                            if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
+                        ));
+                    }
                     // align the view to center after all files are loaded,
                     // does not affect views without pos since it is at the top
                     let (view, doc) = current!(editor);

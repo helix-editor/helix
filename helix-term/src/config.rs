@@ -161,6 +161,20 @@ mod tests {
         }
     }
 
+    /// The Rust field is `diff_base_revision` to keep it distinct from the base *contents*
+    /// that `diff_base` means elsewhere, but the user-facing key stays `diff-base`.
+    #[test]
+    fn parsing_diff_base_config_key() {
+        let config = Config::load_test(
+            r#"
+            [editor]
+            diff-base = "main..."
+        "#,
+        );
+        assert_eq!(config.editor.diff_base_revision, "main...");
+        assert_eq!(Config::default().editor.diff_base_revision, "HEAD");
+    }
+
     #[test]
     fn parsing_keymaps_config_file() {
         use crate::keymap;

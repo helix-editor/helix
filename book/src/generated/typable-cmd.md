@@ -87,6 +87,7 @@
 | `:pipe`, `:\|` | Pipe each selection to the shell command. |
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh`, `:!` | Run a shell command |
+| `:diff-base` | Set the git revision that the diff gutter is computed against, or show it if no revision is given.<br>Append `...` to diff against the merge base with HEAD, e.g. `main...`. |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:set-register` | Set contents of the given register. |
