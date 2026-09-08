@@ -45,10 +45,10 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         let new_value = value.saturating_add(amount as i128);
 
         let format_length = match (value.is_negative(), new_value.is_negative()) {
-            (true, false) => number.len() - 1,
-            (false, true) => number.len() + 1,
+            (true, false) => number.len().saturating_sub(1),
+            (false, true) => number.len().saturating_add(1),
             _ => number.len(),
-        } - separator_rtl_indexes.len();
+        };
 
         if number.starts_with('0') || number.starts_with("-0") {
             format!("{:01$}", new_value, format_length)
@@ -58,8 +58,11 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     } else {
         let number = &word[2..];
         let value = u128::from_str_radix(number, radix).ok()?;
-        let new_value = (value as i128).saturating_add(amount as i128);
-        let new_value = if new_value < 0 { 0 } else { new_value };
+        let new_value = if amount >= 0 {
+            value.saturating_add(amount as u128)
+        } else {
+            value.saturating_sub(amount.unsigned_abs() as u128)
+        };
         let format_length = selected_text.len() - 2 - separator_rtl_indexes.len();
 
         match radix {
@@ -100,11 +103,13 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
             _ => separator_rtl_indexes[0],
         };
 
-        let prefix_length = if radix == 10 { 0 } else { 2 };
-        if let Some(mut index) = new_text.find(SEPARATOR) {
-            while index - prefix_length > spacing {
-                index -= spacing;
-                new_text.insert(index, SEPARATOR);
+        if spacing > 0 {
+            let prefix_length = if radix == 10 { 0 } else { 2 };
+            if let Some(mut index) = new_text.find(SEPARATOR) {
+                while index - prefix_length > spacing {
+                    index -= spacing;
+                    new_text.insert(index, SEPARATOR);
+                }
             }
         }
     }
@@ -219,6 +224,7 @@ mod test {
             ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
+            ("000_001", 1, "000_002"),
         ];
 
         for (original, amount, expected) in tests {
@@ -231,5 +237,32 @@ mod test {
         assert_eq!(increment("9_", 1), None);
         assert_eq!(increment("_9", 1), None);
         assert_eq!(increment("_9_", 1), None);
+    }
+
+    #[test]
+    fn test_increment_consecutive_separators() {
+        assert_eq!(increment("9__99", 1).unwrap(), "10__00");
+        assert_eq!(increment("9__99", -1).unwrap(), "9__98");
+        assert_eq!(increment("9___9", 1).unwrap(), "10___0");
+    }
+
+    #[test]
+    fn test_increment_large_hexadecimal() {
+        assert_eq!(
+            increment("0xffffffffffffffffffffffffffffffff", -1).unwrap(),
+            "0xfffffffffffffffffffffffffffffffe"
+        );
+        assert_eq!(
+            increment("0xfffffffffffffffffffffffffffffffe", 1).unwrap(),
+            "0xffffffffffffffffffffffffffffffff"
+        );
+        assert_eq!(
+            increment("0xffffffffffffffffffffffffffffffff", 1).unwrap(),
+            "0xffffffffffffffffffffffffffffffff"
+        );
+        assert_eq!(
+            increment("0x80000000000000000000000000000000", -1).unwrap(),
+            "0x7fffffffffffffffffffffffffffffff"
+        );
     }
 }
