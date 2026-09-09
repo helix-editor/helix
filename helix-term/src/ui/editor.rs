@@ -691,10 +691,6 @@ impl EditorView {
         bufferline_tabs.sync_modified(&editor.documents);
 
         let viewport_width = viewport.width as u32;
-        // Furthest we're allowed to scroll: beyond this, the last tab would
-        // end before the right edge, leaving a dead gap. Clamping here is what
-        // keeps the last tab flush against the edge once we're scrolled to it.
-        let max_scroll = bufferline_tabs.total_width().saturating_sub(viewport_width);
 
         let (active_start, active_end) = bufferline_tabs
             .tabs
@@ -702,7 +698,7 @@ impl EditorView {
             .find(|t| t.document_id == current_doc)
             .map_or((0, 0), |t| (t.start, t.end));
 
-        let mut scroll = (bufferline_tabs.scroll as u32).min(max_scroll);
+        let mut scroll = bufferline_tabs.scroll as u32;
 
         if active_start < scroll {
             scroll = active_start; // active tab fell of the left: pull in into view
@@ -710,7 +706,6 @@ impl EditorView {
         if active_end > scroll + viewport_width {
             scroll = active_end - viewport_width; // active tab fell off the right
         }
-        scroll = scroll.min(max_scroll);
 
         bufferline_tabs.scroll = scroll as u16;
 
@@ -730,7 +725,6 @@ impl EditorView {
             };
 
             let label = tab.label();
-
             let visible_text = if tab.start < scroll {
                 skip_columns(&label, scroll - tab.start)
             } else {

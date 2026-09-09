@@ -5,7 +5,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use crate::{Document, DocumentId, document::SCRATCH_BUFFER_NAME};
 
 #[derive(Default)]
-pub struct BufferLineTabs {
+pub struct BufferTabs {
     pub tabs: Vec<Tab>,
     pub scroll: u16,
 }
@@ -18,16 +18,7 @@ pub struct Tab {
     pub end: u32,
 }
 
-fn tab_name(document: &Document) -> String {
-    document
-        .path()
-        .and_then(|p| p.file_name())
-        .and_then(|n| n.to_str())
-        .unwrap_or(SCRATCH_BUFFER_NAME)
-        .to_string()
-}
-
-impl BufferLineTabs {
+impl BufferTabs {
     pub fn add_tab(&mut self, document: &Document) {
         self.tabs.push(Tab {
             document_id: document.id(),
@@ -52,7 +43,7 @@ impl BufferLineTabs {
     }
 
     pub fn remove_tab(&mut self, document_id: DocumentId) {
-        if let Some(index) = self.tabs.iter().position(|t| t.document_id == document_id) {
+        if let Some(index) = self.index_of(document_id) {
             self.tabs.remove(index);
             self.recalculate_tabs(index);
         }
@@ -99,6 +90,15 @@ impl BufferLineTabs {
             tab.end = cursor;
         }
     }
+}
+
+fn tab_name(document: &Document) -> String {
+    document
+        .path()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or(SCRATCH_BUFFER_NAME)
+        .to_string()
 }
 
 impl Tab {

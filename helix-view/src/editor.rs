@@ -1,6 +1,7 @@
 use crate::{
     Document, DocumentId, View, ViewId,
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    buffer_tabs::BufferTabs,
     clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
@@ -11,7 +12,6 @@ use crate::{
     info::Info,
     input::KeyEvent,
     register::Registers,
-    tabs::BufferLineTabs,
     theme::{self, Theme},
     tree::{self, Tree},
 };
@@ -1314,7 +1314,7 @@ pub struct Editor {
     pub autoinfo: Option<Info>,
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
-    pub bufferline_tabs: BufferLineTabs,
+    pub buffer_tabs: BufferTabs,
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
@@ -1453,7 +1453,7 @@ impl Editor {
             ))),
             status_msg: None,
             autoinfo: None,
-            bufferline_tabs: BufferLineTabs::default(),
+            buffer_tabs: BufferTabs::default(),
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
@@ -1797,7 +1797,7 @@ impl Editor {
         doc.language_servers.clear();
         doc.set_path(Some(path));
         doc.detect_editor_config();
-        self.bufferline_tabs.rename_tab(doc);
+        self.buffer_tabs.rename_tab(doc);
         self.refresh_doc_language(doc_id)
     }
 
@@ -1976,7 +1976,7 @@ impl Editor {
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
-                    self.bufferline_tabs.remove_tab(id);
+                    self.buffer_tabs.remove_tab(id);
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
@@ -2054,7 +2054,7 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
 
-        self.bufferline_tabs.add_tab(&doc);
+        self.buffer_tabs.add_tab(&doc);
         self.documents.insert(id, doc);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -2208,7 +2208,8 @@ impl Editor {
         }
 
         let doc = self.documents.remove(&doc_id).unwrap();
-        self.bufferline_tabs.remove_tab(doc_id);
+
+        self.buffer_tabs.remove_tab(doc_id);
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
