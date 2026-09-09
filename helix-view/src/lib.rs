@@ -3,6 +3,7 @@ pub mod macros;
 
 pub mod action;
 pub mod annotations;
+pub mod buffer_tabs;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
@@ -15,7 +16,6 @@ pub mod info;
 pub mod input;
 pub mod keyboard;
 pub mod register;
-pub mod tabs;
 pub mod theme;
 pub mod tree;
 pub mod view;
