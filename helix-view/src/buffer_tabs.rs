@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use helix_core::unicode::width::UnicodeWidthStr;
 
-use crate::{Document, DocumentId, document::SCRATCH_BUFFER_NAME};
+use crate::{document::SCRATCH_BUFFER_NAME, Document, DocumentId};
 
 #[derive(Default)]
 pub struct BufferTabs {
