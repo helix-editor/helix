@@ -58,8 +58,13 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     } else {
         let number = &word[2..];
         let value = u128::from_str_radix(number, radix).ok()?;
-        let new_value = (value as i128).saturating_add(amount as i128);
-        let new_value = if new_value < 0 { 0 } else { new_value };
+        // Stay in u128: casting a value above i128::MAX to i128 wraps to a
+        // negative number, so decrementing e.g. 0xfff...f produced 0.
+        let new_value = if amount >= 0 {
+            value.saturating_add(amount as u128)
+        } else {
+            value.saturating_sub(amount.unsigned_abs() as u128)
+        };
         let format_length = selected_text.len() - 2 - separator_rtl_indexes.len();
 
         match radix {
@@ -101,10 +106,13 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         };
 
         let prefix_length = if radix == 10 { 0 } else { 2 };
-        if let Some(mut index) = new_text.find(SEPARATOR) {
-            while index - prefix_length > spacing {
-                index -= spacing;
-                new_text.insert(index, SEPARATOR);
+        // Consecutive separators yield spacing = 0 and would loop forever.
+        if spacing > 0 {
+            if let Some(mut index) = new_text.find(SEPARATOR) {
+                while index - prefix_length > spacing {
+                    index -= spacing;
+                    new_text.insert(index, SEPARATOR);
+                }
             }
         }
     }
@@ -231,5 +239,23 @@ mod test {
         assert_eq!(increment("9_", 1), None);
         assert_eq!(increment("_9", 1), None);
         assert_eq!(increment("_9_", 1), None);
+    }
+
+    #[test]
+    fn test_consecutive_separators_do_not_hang() {
+        assert_eq!(increment("9__99", 1), Some("10__00".into()));
+        assert_eq!(increment("0x0__ff", 1), Some("0x1__00".into()));
+    }
+
+    #[test]
+    fn test_decrement_max_u128_hex_does_not_wrap_to_zero() {
+        assert_eq!(
+            increment("0xffffffffffffffffffffffffffffffff", -1),
+            Some("0xfffffffffffffffffffffffffffffffe".into())
+        );
+        assert_eq!(
+            increment("0xffffffffffffffffffffffffffffffff", 1),
+            Some("0xffffffffffffffffffffffffffffffff".into())
+        );
     }
 }
