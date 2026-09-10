@@ -5655,3 +5655,20 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "asn1"
+scope = "source.asn1"
+injection-regex = "asn1"
+file-types = ["asn1", "asn"]
+comment-tokens = "--"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = " " }
+language-servers = ["asn1-lsp"]
+
+[[grammar]]
+name = "asn1"
+source = { git = "https://github.com/JonathanWilbur/tree-sitter-asn1", rev = "485ae82bf7193c018ba5d216e52fec14f308edc3" }
+
+[language-server.asn1-lsp]
+command = "asn1-lsp"
