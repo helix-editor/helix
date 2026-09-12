@@ -5668,7 +5668,7 @@ language-servers = ["asn1-lsp"]
 
 [[grammar]]
 name = "asn1"
-source = { git = "https://github.com/JonathanWilbur/tree-sitter-asn1", rev = "485ae82bf7193c018ba5d216e52fec14f308edc3" }
+source = { git = "https://github.com/JonathanWilbur/tree-sitter-asn1", rev = "dfd961784b1eaa91fd4ceea87d7476542057d476" }
 
 [language-server.asn1-lsp]
 command = "asn1-lsp"
