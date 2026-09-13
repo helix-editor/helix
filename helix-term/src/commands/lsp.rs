@@ -916,10 +916,10 @@ impl Display for ApplyEditErrorKind {
 /// When multiple language servers respond to the same request with the same location, the
 /// duplicates may still differ in the servers' offset encodings. Locations which share an
 /// offset encoding are compared directly. Comparing `character` offsets across different
-/// offset encodings however requires the text they point into. To keep I/O to a minimum the
-/// text is only looked up when two locations could actually be duplicates of one another -
-/// when they point to the same lines of the same file (line numbers are the same in every
-/// offset encoding) - and each file's text is fetched at most once.
+/// offset encodings however requires the text they point into, so those are only compared
+/// when `text_for_uri` provides the text - i.e. when the document is already open. Files
+/// are never read from disk just to deduplicate: a goto request can easily return hundreds
+/// of locations and showing the occasional duplicate is cheaper than reading all of them.
 fn deduplicate_locations(
     locations: &mut Vec<Location>,
     mut text_for_uri: impl FnMut(&Uri) -> Option<Rope>,
@@ -942,7 +942,6 @@ fn deduplicate_locations(
             .push(index);
     }
 
-    let mut texts: HashMap<&Uri, Option<Rope>> = HashMap::new();
     let mut duplicates = HashSet::new();
     for ((uri, _, _), group) in groups {
         let offset_encoding = locations[group[0]].offset_encoding;
@@ -952,17 +951,13 @@ fn deduplicate_locations(
         {
             continue;
         }
-        let Some(text) = texts
-            .entry(uri)
-            .or_insert_with(|| text_for_uri(uri))
-            .as_ref()
-        else {
+        let Some(text) = text_for_uri(uri) else {
             continue;
         };
         let mut ranges = HashSet::new();
         for &index in &group {
             let location = &locations[index];
-            let Some(range) = lsp_range_to_range(text, location.range, location.offset_encoding)
+            let Some(range) = lsp_range_to_range(&text, location.range, location.offset_encoding)
             else {
                 continue;
             };
@@ -985,20 +980,8 @@ fn deduplicate_locations(
 /// Precondition: `locations` should be non-empty.
 fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, mut locations: Vec<Location>) {
     deduplicate_locations(&mut locations, |uri| {
-        let path = uri.as_path()?;
-        if let Some(doc) = editor.document_by_path(path) {
-            return Some(doc.text().clone());
-        }
-        match std::fs::read_to_string(path) {
-            Ok(text) => Some(Rope::from(text)),
-            Err(err) => {
-                log::warn!(
-                    "skipping deduplication of locations in {}: {err}",
-                    path.display()
-                );
-                None
-            }
-        }
+        let doc = editor.document_by_path(uri.as_path()?)?;
+        Some(doc.text().clone())
     });
 
     let cwdir = helix_stdx::env::current_working_dir();
@@ -1669,7 +1652,7 @@ mod tests {
     }
 
     #[test]
-    fn compares_locations_across_offset_encodings_by_text() {
+    fn compares_locations_across_offset_encodings_by_text_of_open_document() {
         // 'é' is two UTF-8 code units and one UTF-16 code unit, so both ranges
         // point at "foo".
         let text = Rope::from("é foo\n");
@@ -1677,12 +1660,7 @@ mod tests {
             location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6)),
             location("/foo.rs", OffsetEncoding::Utf16, (0, 2), (0, 5)),
         ];
-        let mut reads = 0;
-        deduplicate_locations(&mut locations, |_| {
-            reads += 1;
-            Some(text.clone())
-        });
-        assert_eq!(reads, 1, "the text should be fetched at most once");
+        deduplicate_locations(&mut locations, |_| Some(text.clone()));
         assert_eq!(
             locations,
             vec![location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6))]
@@ -1703,7 +1681,9 @@ mod tests {
     }
 
     #[test]
-    fn keeps_locations_whose_text_is_unavailable() {
+    fn keeps_locations_in_documents_which_are_not_open() {
+        // Different offset encodings can only be compared through the text,
+        // which is not read from disk. Duplicates are acceptable here.
         let mut locations = vec![
             location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6)),
             location("/foo.rs", OffsetEncoding::Utf16, (0, 3), (0, 6)),
