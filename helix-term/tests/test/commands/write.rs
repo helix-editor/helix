@@ -1039,3 +1039,233 @@ async fn test_write_then_open_does_not_panic_on_closed_scratch() -> anyhow::Resu
 
     Ok(())
 }
+
+// A `:write` bound in the same key sequence as a shell command must reach the disk
+// before the command runs: https://github.com/helix-editor/helix/issues/13572
+#[cfg(unix)]
+async fn test_write_then_shell_command(
+    path: &std::path::Path,
+    command: &str,
+    test_fn: &dyn Fn(&Application),
+) -> anyhow::Result<()> {
+    let mut config = test_config();
+    config.keys = toml::from_str(&format!("normal.C-j = [':write', '{command}']"))?;
+
+    let mut app = AppBuilder::new()
+        .with_file(path, None)
+        .with_config(config)
+        .build()?;
+
+    test_key_sequence(&mut app, Some("ihello<esc>%<C-j>"), Some(test_fn), false).await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_insert_output() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    test_write_then_shell_command(
+        &path,
+        &format!(":insert-output cat {}", path.display()),
+        &|app| {
+            helpers::assert_status_not_error(&app.editor);
+            assert_eq!("hello\nhello\n", doc!(app.editor).text());
+        },
+    )
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_append_output() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    test_write_then_shell_command(
+        &path,
+        &format!(":append-output cat {}", path.display()),
+        &|app| {
+            helpers::assert_status_not_error(&app.editor);
+            assert_eq!("hello\nhello\n", doc!(app.editor).text());
+        },
+    )
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_pipe() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    test_write_then_shell_command(&path, &format!(":pipe cat {} -", path.display()), &|app| {
+        helpers::assert_status_not_error(&app.editor);
+        assert_eq!("hello\nhello\n", doc!(app.editor).text());
+    })
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_pipe_to() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    test_write_then_shell_command(
+        &path,
+        &format!(":pipe-to cp {0} {0}.copy", path.display()),
+        &|app| {
+            helpers::assert_status_not_error(&app.editor);
+            let copy = std::fs::read_to_string(path.with_extension("copy")).unwrap();
+            assert_eq!("hello\n", copy);
+        },
+    )
+    .await
+}
+
+// `%sh{}` runs while the arguments are parsed, before the command itself.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_shell_expansion() -> anyhow::Result<()> {
+    // Double quoted arguments are expanded recursively, through a different code path.
+    for quoted in [false, true] {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("file");
+        let expansion = format!("%sh{{cat {}}}", path.display());
+        let command = if quoted {
+            format!(":echo \"{expansion}\"")
+        } else {
+            format!(":echo {expansion}")
+        };
+
+        test_write_then_shell_command(&path, &command, &|app| {
+            let (status, severity) = app.editor.get_status().unwrap();
+            assert_eq!(&Severity::Info, severity);
+            assert_eq!("hello", status.as_ref());
+        })
+        .await?;
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_error_then_shell_command() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let file = helpers::new_readonly_tempfile_in_dir(&dir)?;
+
+    test_write_then_shell_command(file.path(), ":insert-output echo other", &|app| {
+        assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+        assert_eq!("hello\n", doc!(app.editor).text());
+    })
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_shell_command_reports_written() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    test_write_then_shell_command(&path, ":pipe-to true", &|app| {
+        let (status, severity) = app.editor.get_status().unwrap();
+        assert_eq!(&Severity::Info, severity);
+        assert!(status.contains("written"), "status: {status}");
+    })
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_new_path_then_shell_command() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    let mut config = test_config();
+    config.keys = toml::from_str(&format!(
+        "normal.C-j = [':write {0}', ':insert-output cat {0}']",
+        path.display()
+    ))?;
+    let mut app = AppBuilder::new().with_config(config).build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>%<C-j>"),
+        Some(&|app| {
+            helpers::assert_status_not_error(&app.editor);
+            let doc = doc!(app.editor);
+            assert_eq!("hello\nhello\n", doc.text());
+            assert_eq!(
+                Some(path::normalize(&path)),
+                doc.path().map(ToOwned::to_owned)
+            );
+        }),
+        false,
+    )
+    .await
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_all_then_shell_command() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path1 = dir.path().join("file1");
+    let path2 = dir.path().join("file2");
+
+    let mut config = test_config();
+    config.keys = toml::from_str(&format!(
+        "normal.C-j = [':write-all', ':insert-output cat {} {}']",
+        path1.display(),
+        path2.display()
+    ))?;
+    let mut app = AppBuilder::new()
+        .with_file(&path1, None)
+        .with_config(config)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(&format!(
+            "ione<esc>:o {}<ret>itwo<esc>%<C-j>",
+            path2.display()
+        )),
+        Some(&|app| {
+            helpers::assert_status_not_error(&app.editor);
+            assert_eq!("one\ntwo\ntwo\n", doc!(app.editor).text());
+        }),
+        false,
+    )
+    .await
+}
+
+// A single quoted argument is a literal: it skips expansion entirely, so the flush before
+// running the shell command is the only one covering it.
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_then_shell_command_with_quoted_argument() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("file");
+
+    let mut config = test_config();
+    config.keys = toml::from_str(&format!(
+        "normal.C-j = [\":write\", \":insert-output 'cat {}'\"]",
+        path.display()
+    ))?;
+    let mut app = AppBuilder::new()
+        .with_file(&path, None)
+        .with_config(config)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>%<C-j>"),
+        Some(&|app| {
+            helpers::assert_status_not_error(&app.editor);
+            assert_eq!("hello\nhello\n", doc!(app.editor).text());
+        }),
+        false,
+    )
+    .await
+}

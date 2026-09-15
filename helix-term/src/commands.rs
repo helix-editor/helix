@@ -47,7 +47,6 @@ use helix_core::{
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
-    expansion,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -6653,6 +6652,13 @@ async fn shell_impl_async(
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
+    // A `:write` earlier in the same key sequence has only queued its save, and the
+    // command may read the file.
+    if let Err(err) = cx.block_try_flush_writes() {
+        cx.editor.set_error(err.to_string());
+        return;
+    }
+
     let pipe = match behavior {
         ShellBehavior::Replace | ShellBehavior::Ignore => true,
         ShellBehavior::Insert | ShellBehavior::Append => false,
@@ -6747,7 +6753,7 @@ where
                 return;
             }
             match Args::parse(input, SHELL_SIGNATURE, true, |token| {
-                expansion::expand(cx.editor, token).map_err(|err| err.into())
+                typed::expand_arg(cx, token)
             }) {
                 Ok(args) => callback_fn(cx, args),
                 Err(err) => cx.editor.set_error(err.to_string()),
