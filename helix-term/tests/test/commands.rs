@@ -907,6 +907,36 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn macro_replay_clears_pending_count() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/15125>
+    let mut app = helpers::AppBuilder::new().build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("Q123456Qq"),
+        Some(&|app| assert_eq!(None, app.editor.count)),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn macro_replay_isolates_repeated_iterations() -> anyhow::Result<()> {
+    test(("#[a|]#bcde", "Ql2Qgh2q", "ab#[c|]#de\n")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn nested_macro_can_supply_count_to_outer_macro() -> anyhow::Result<()> {
+    test(("#[o|]#ne two", r#""bQ2Q"aQ"bqlQgh"aq"#, "on#[e|]# two\n")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn global_search_with_multibyte_chars() -> anyhow::Result<()> {
     // Assert that `helix_term::commands::global_search` handles multibyte characters correctly.
     test((
