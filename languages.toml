@@ -1709,6 +1709,7 @@ file-types = [
   { glob = ".stylelintrc" },  # https://stylelint.io/user-guide/configure/
   { glob = ".puppeteerrc" },  # https://pptr.dev/guides/configuration
   { glob = ".bundle/config" },  # https://bundler.io/v4.0/man/bundle-config.1.html
+  { glob = "pixi.lock" },  # https://pixi.prefix.dev/v0.81.0/workspace/lock_file/
 ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
