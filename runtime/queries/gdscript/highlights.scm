@@ -110,7 +110,7 @@
 ; Built-in types
 ((identifier) @type.builtin
 	(#any-of? @type.builtin
-		"bool" "float" "int"
+		"bool" "float" "int" "void"
 
 		"AABB" "AESContext" "AStar2D" "AStar3D" "AStarGrid2D" "AcceptDialog" "AimModifier3D"
 		"AnimatableBody2D" "AnimatableBody3D" "AnimatedSprite2D" "AnimatedSprite3D" "AnimatedTexture"
