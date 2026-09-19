@@ -4559,7 +4559,7 @@ fn doc_trust_full(editor: &helix_view::Editor) -> bool {
 
 fn trust_workspace(
     cx: &mut compositor::Context,
-    args: Args<'_>,
+    _args: Args<'_>,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -4569,9 +4569,11 @@ fn trust_workspace(
     let workspace = current_workspace(cx);
     cx.editor.workspace_trust.trust(&workspace);
 
+    // Refreshing reloads the language config (merging in the now-trusted `.helix/languages.toml`)
+    // and refreshes the language servers of open documents with the merged config. `:lsp-restart`
+    // can't be used here: it would read the stale pre-trust language config.
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
-    // Restart any LSPs that didn't start because trust was missing.
-    lsp_restart(cx, args, event)
+    Ok(())
 }
 
 fn untrust_workspace(
