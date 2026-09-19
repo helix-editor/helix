@@ -112,6 +112,60 @@ fn test_treesitter_indent_rust_helix() {
 }
 
 #[test]
+fn test_treesitter_indent_new_line_incomplete_documents() {
+    // A construct whose body is a following sibling (a yaml key without a
+    // value, a go case without statements, a python def without a body) is a
+    // complete node that ends exactly where the newline is typed, so plain
+    // scope containment misses it. Pressing Enter after it must still indent.
+    assert_eq!(new_line_indent("source.yaml", "hello:\n", 0), "  ");
+    // still typing: blank line and comment below don't extend the pair
+    assert_eq!(new_line_indent("source.yaml", "hello:\n\n# c\n", 0), "  ");
+    assert_eq!(
+        new_line_indent("source.yaml", "top:\n  hello:\n", 1),
+        "    "
+    );
+
+    // Go: the case body goes one level under the case.
+    assert_eq!(
+        new_line_indent(
+            "source.go",
+            "package main\n\nfunc f(num int) {\n\tswitch num {\n",
+            3
+        ),
+        "\t"
+    );
+    assert_eq!(
+        new_line_indent(
+            "source.go",
+            "package main\n\nfunc f(num int) {\n\tswitch num {\n\tcase 1:\n",
+            4,
+        ),
+        "\t\t"
+    );
+    assert_eq!(
+        new_line_indent(
+            "source.go",
+            "package main\n\nfunc f(num int) {\n\tswitch num {\n\tdefault:\n",
+            4,
+        ),
+        "\t\t"
+    );
+    // a complete case keeps its body contained without any extension
+    assert_eq!(
+        new_line_indent(
+            "source.go",
+            "package main\n\nfunc f(num int) {\n\tswitch num {\n\tcase 1:\n\t\treturn b\n",
+            5,
+        ),
+        "\t\t"
+    );
+    // auto-pairs disabled: a lone opening brace still indents
+    assert_eq!(new_line_indent("source.go", "func f() {\n", 0), "\t");
+
+    assert_eq!(new_line_indent("source.python", "def foo():\n", 0), "    ");
+}
+
+#[test]
 fn test_indent_level_for_line_with_spaces() {
     let tab_width: usize = 4;
     let indent_width: usize = 4;
@@ -148,6 +202,38 @@ fn indent_tests_dir() -> PathBuf {
     let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     test_dir.push("tests/data/indent");
     test_dir
+}
+
+/// Compute the indent for a line inserted after `line` (0-indexed), as the
+/// editor does when Enter is pressed at the end of that line.
+fn new_line_indent(lang_scope: &str, source: &str, line: usize) -> String {
+    let loader = Loader::new(indent_tests_config()).unwrap();
+    let mut runtime = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    runtime.push("../runtime");
+    std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+
+    let language = loader.language_for_scope(lang_scope).unwrap();
+    let language_config = loader.language(language).config();
+    let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
+    let doc = Rope::from_str(source);
+    let text = doc.slice(..);
+    let syntax = Syntax::new(text, language, &loader).unwrap();
+    let indent_query = loader.indent_query(language).unwrap();
+    let tab_width: usize = 4;
+
+    treesitter_indent_for_pos(
+        indent_query,
+        &syntax,
+        &loader,
+        tab_width,
+        indent_style.indent_width(tab_width),
+        text,
+        line,
+        text.line_to_char(line + 1) - 1,
+        true,
+    )
+    .unwrap()
+    .to_string(&indent_style, tab_width)
 }
 
 fn indent_tests_config() -> Configuration {

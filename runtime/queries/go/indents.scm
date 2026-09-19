@@ -34,6 +34,15 @@
     (#not-kind-eq? @outer "expression_switch_statement")
 )
 
+; A case whose body doesn't exist yet ends at its colon; @extend opens its
+; scope onto the line typed right after it (gofmt indents case bodies).
+[
+  (expression_case ":" .)
+  (default_case ":" .)
+  (type_case ":" .)
+  (communication_case ":" .)
+] @indent @extend
+
 ; Handle ERROR nodes for when auto-pairs is disabled.
 ; Typing an opening delimiter without a closing one produces an ERROR node.
 (ERROR "{") @indent @extend
