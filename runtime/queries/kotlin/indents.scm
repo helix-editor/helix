@@ -37,6 +37,15 @@
   (function_value_parameters)
 ] @indent
 
+; The enclosing if already indents both bodies. A second scope would stack
+; when the else body starts on a later line.
+(if_expression (control_structure_body) @outdent)
+(if_expression "else" @outdent)
+
+; An else-if continues the enclosing conditional's indentation level.
+(if_expression
+  alternative: (control_structure_body (if_expression) @outdent))
+
 [
   "}"
   ")"
