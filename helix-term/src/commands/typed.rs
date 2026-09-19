@@ -4129,6 +4129,10 @@ fn execute_command_line(
 ) -> anyhow::Result<()> {
     let (command, rest, _) = command_line::split(input);
     if command.is_empty() {
+        if event != PromptEvent::Validate {
+            let cmd = TYPABLE_COMMAND_MAP.get("goto").unwrap();
+            return execute_command(cx, cmd, "", event);
+        }
         return Ok(());
     }
 
