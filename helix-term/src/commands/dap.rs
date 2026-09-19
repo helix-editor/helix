@@ -6,7 +6,10 @@ use crate::{
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::config::{DebugConfigCompletion, DebugTemplate};
-use helix_dap::{self as dap, requests::TerminateArguments};
+use helix_dap::{
+    self as dap,
+    requests::{DisconnectArguments, TerminateArguments},
+};
 use helix_lsp::block_on;
 use helix_view::editor::Breakpoint;
 
@@ -595,26 +598,49 @@ pub fn dap_variables(cx: &mut Context) {
     cx.replace_or_push_layer("dap-variables", popup);
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum TerminationStrategy {
+    Terminate,
+    Disconnect { terminate_debuggee: Option<bool> },
+}
+
+fn termination_strategy(caps: Option<&dap::DebuggerCapabilities>) -> TerminationStrategy {
+    if caps.is_some_and(|caps| caps.supports_terminate_request.unwrap_or_default()) {
+        TerminationStrategy::Terminate
+    } else {
+        TerminationStrategy::Disconnect {
+            terminate_debuggee: caps
+                .and_then(|caps| caps.support_terminate_debuggee)
+                .unwrap_or_default()
+                .then_some(true),
+        }
+    }
+}
+
 pub fn dap_terminate(cx: &mut Context) {
     cx.editor.set_status("Terminating debug session...");
     let debugger = debugger!(cx.editor);
 
-    if debugger
-        .caps
-        .as_ref()
-        .is_some_and(|c| c.supports_terminate_request.unwrap_or_default())
-    {
-        let terminate_arguments = Some(TerminateArguments {
-            restart: Some(false),
-        });
-
-        let request = debugger.terminate(terminate_arguments);
-        dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
-            // editor.set_error(format!("Failed to disconnect: {}", e));
-            editor.debug_adapters.unset_active_client();
-        });
-    } else {
-        cx.editor.debug_adapters.unset_active_client();
+    match termination_strategy(debugger.caps.as_ref()) {
+        TerminationStrategy::Terminate => {
+            let request = debugger.terminate(Some(TerminateArguments {
+                restart: Some(false),
+            }));
+            dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+                editor.debug_adapters.unset_active_client();
+            });
+        }
+        TerminationStrategy::Disconnect { terminate_debuggee } => {
+            // Adapters may terminate a debuggee through disconnect without supporting terminate.
+            let request = debugger.disconnect(Some(DisconnectArguments {
+                restart: Some(false),
+                terminate_debuggee,
+                suspend_debuggee: None,
+            }));
+            dap_callback(cx.jobs, request, |editor, _compositor, _response: ()| {
+                editor.debug_adapters.unset_active_client();
+            });
+        }
     }
 }
 
@@ -791,4 +817,43 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         })
     });
     cx.push_layer(Box::new(picker))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn capabilities(json: serde_json::Value) -> dap::DebuggerCapabilities {
+        serde_json::from_value(json).unwrap()
+    }
+
+    #[test]
+    fn chooses_the_supported_termination_request() {
+        let terminate = capabilities(serde_json::json!({
+            "supportsTerminateRequest": true,
+            "supportTerminateDebuggee": true,
+        }));
+        assert_eq!(
+            termination_strategy(Some(&terminate)),
+            TerminationStrategy::Terminate,
+        );
+
+        let disconnect_and_terminate = capabilities(serde_json::json!({
+            "supportTerminateDebuggee": true,
+        }));
+        assert_eq!(
+            termination_strategy(Some(&disconnect_and_terminate)),
+            TerminationStrategy::Disconnect {
+                terminate_debuggee: Some(true),
+            },
+        );
+
+        let plain_disconnect = capabilities(serde_json::json!({}));
+        assert_eq!(
+            termination_strategy(Some(&plain_disconnect)),
+            TerminationStrategy::Disconnect {
+                terminate_debuggee: None,
+            },
+        );
+    }
 }
