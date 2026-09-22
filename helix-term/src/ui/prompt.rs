@@ -79,6 +79,19 @@ fn is_word_sep(c: char) -> bool {
     c == std::path::MAIN_SEPARATOR || c.is_whitespace()
 }
 
+fn display_grapheme(grapheme: &str) -> &str {
+    match grapheme {
+        "\n" | "\r\n" => "⏎",
+        _ => grapheme,
+    }
+}
+
+fn display_width(text: &str) -> usize {
+    text.graphemes(true)
+        .map(|g| display_grapheme(g).width())
+        .sum()
+}
+
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
@@ -524,12 +537,26 @@ impl Prompt {
             self.anchor = 0;
             // Show the most recently entered value as a suggestion.
             if let Some(suggestion) = self.first_history_completion(cx.editor) {
-                surface.set_string(
-                    self.line_area.x,
-                    self.line_area.y,
-                    &suggestion,
-                    suggestion_color,
-                );
+                if self.language.is_none() {
+                    surface.set_graphemes_anchored(
+                        self.line_area.x,
+                        self.line_area.y,
+                        false,
+                        false,
+                        suggestion
+                            .grapheme_indices(true)
+                            .map(|(i, g)| (i, display_grapheme(g))),
+                        self.line_area.width as usize,
+                        |_| suggestion_color,
+                    );
+                } else {
+                    surface.set_string(
+                        self.line_area.x,
+                        self.line_area.y,
+                        &suggestion,
+                        suggestion_color,
+                    );
+                }
             }
         } else if let Some((language, loader)) = self.language.as_ref() {
             let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
@@ -544,7 +571,7 @@ impl Prompt {
         } else {
             let line_width = self.line_area.width as usize;
 
-            if self.line.width() < line_width {
+            if display_width(&self.line) < line_width {
                 self.anchor = 0;
             } else if self.cursor <= self.anchor {
                 // Ensure the grapheme under the cursor is in view.
@@ -553,14 +580,14 @@ impl Prompt {
                     .next_back()
                     .map(|(i, _)| i)
                     .unwrap_or_default();
-            } else if self.line[self.anchor..self.cursor].width() > line_width {
+            } else if display_width(&self.line[self.anchor..self.cursor]) > line_width {
                 // Set the anchor to the last grapheme cluster before the width is exceeded.
                 let mut width = 0;
                 self.anchor = self.line[..self.cursor]
                     .grapheme_indices(true)
                     .rev()
                     .find_map(|(idx, g)| {
-                        width += g.width();
+                        width += display_grapheme(g).width();
                         if width > line_width {
                             Some(idx + g.len())
                         } else {
@@ -571,16 +598,18 @@ impl Prompt {
             }
 
             self.truncate_start = self.anchor > 0;
-            self.truncate_end = self.line[self.anchor..].width() > line_width;
+            self.truncate_end = display_width(&self.line[self.anchor..]) > line_width;
 
             // if we keep inserting characters just before the end elipsis, we move the anchor
             // so that those new characters are displayed
-            if self.truncate_end && self.line[self.anchor..self.cursor].width() >= line_width {
+            if self.truncate_end
+                && display_width(&self.line[self.anchor..self.cursor]) >= line_width
+            {
                 // Move the anchor forward by one non-zero-width grapheme.
                 self.anchor += self.line[self.anchor..]
                     .grapheme_indices(true)
                     .find_map(|(idx, g)| {
-                        if g.width() > 0 {
+                        if display_grapheme(g).width() > 0 {
                             Some(idx + g.len())
                         } else {
                             None
@@ -589,12 +618,14 @@ impl Prompt {
                     .unwrap();
             }
 
-            surface.set_string_anchored(
+            surface.set_graphemes_anchored(
                 self.line_area.x,
                 self.line_area.y,
                 self.truncate_start,
                 self.truncate_end,
-                &self.line.as_str()[self.anchor..],
+                self.line[self.anchor..]
+                    .grapheme_indices(true)
+                    .map(|(i, g)| (i, display_grapheme(g))),
                 line_width,
                 |_| prompt_color,
             );
@@ -770,15 +801,26 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let cursor_kind = editor.config().cursor_shape.from_mode(Mode::Insert);
+        if self.language.is_none() && self.line_area.width == 0 {
+            return (None, cursor_kind);
+        }
+        let width = |text: &str| {
+            if self.language.is_none() {
+                display_width(text)
+            } else {
+                text.width()
+            }
+        };
         let area = area
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
+        let mut col = area.left() as usize + width(&self.line[self.anchor..self.cursor]);
 
         // ensure the cursor does not go beyond elipses
         if self.truncate_end
-            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
+            && width(&self.line[self.anchor..self.cursor]) >= self.line_area.width as usize
         {
             col -= 1;
         }
@@ -787,14 +829,18 @@ impl Component for Prompt {
             col += self.line[self.cursor..]
                 .graphemes(true)
                 .next()
-                .map_or(0, |g| g.width());
+                .map_or(0, width);
+        }
+
+        if self.language.is_none() {
+            col = col.min(self.line_area.right() as usize);
         }
 
         let line = area.height as usize - 1;
 
         (
             Some(Position::new(area.y as usize + line, col)),
-            editor.config().cursor_shape.from_mode(Mode::Insert),
+            cursor_kind,
         )
     }
 }
