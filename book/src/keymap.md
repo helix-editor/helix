@@ -127,8 +127,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `;`                      | Collapse selection onto a single cursor                           | `collapse_selection`                 |
 | `Alt-;`                  | Flip selection cursor and anchor                                  | `flip_selections`                    |
 | `Alt-:`                  | Ensures the selection is in forward direction                     | `ensure_selections_forward`          |
-| `,`                      | Keep only the primary selection                                   | `keep_primary_selection`             |
-| `Alt-,`                  | Remove the primary selection                                      | `remove_primary_selection`           |
+| `,`                      | Keep only the main selection                                      | `keep_primary_selection`             |
+| `Alt-,`                  | Remove the main selection                                         | `remove_primary_selection`           |
 | `C`                      | Copy selection onto the next line (Add cursor below)              | `copy_selection_on_next_line`        |
 | `Alt-C`                  | Copy selection onto the previous line (Add cursor above)          | `copy_selection_on_prev_line`        |
 | `(`                      | Rotate main selection backward                                    | `rotate_selections_backward`         |
