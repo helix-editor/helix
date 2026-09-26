@@ -31,7 +31,7 @@ assets = [
 ]
 
 [features]
-default = ["git", "steel"] # Add steel here for development
+default = ["git"] # Add steel here for development
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
