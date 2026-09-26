@@ -60,6 +60,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => move_line_down,
             "." => goto_last_modification,
             "w" => goto_word,
+            ";" => flash_forward,
+            ":" => flash_backward,
+            "'" => flash_forward_till,
+            "\"" => flash_backward_till,
         },
         ":" => command_mode,
 
@@ -376,6 +380,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "k" => extend_line_up,
             "j" => extend_line_down,
             "w" => extend_to_word,
+            ";" => extend_flash_forward,
+            ":" => extend_flash_backward,
+            "'" => extend_flash_forward_till,
+            "\"" => extend_flash_backward_till,
         },
     }));
     let insert = keymap!({ "Insert mode"
