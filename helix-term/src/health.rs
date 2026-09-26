@@ -332,23 +332,28 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     probe_protocols(
         "language server",
         lang.language_servers.iter().filter_map(|ls| {
-            syn_loader_conf
-                .language_server
-                .get(&ls.name)
-                .map(|config| (ls.name.as_str(), config.command.as_str()))
+            syn_loader_conf.language_server.get(&ls.name).map(|config| {
+                (
+                    ls.name.as_str(),
+                    config.command.as_str(),
+                    config.args.as_slice(),
+                )
+            })
         }),
     )?;
 
     probe_protocol(
         "debug adapter",
-        lang.debugger.as_ref().map(|dap| dap.command.to_string()),
+        lang.debugger
+            .as_ref()
+            .map(|dap| (dap.command.as_str(), &[][..])),
     )?;
 
     probe_protocol(
         "formatter",
         lang.formatter
             .as_ref()
-            .map(|formatter| formatter.command.to_string()),
+            .map(|formatter| (formatter.command.as_str(), formatter.args.as_slice())),
     )?;
 
     probe_parser(lang.grammar.as_ref().unwrap_or(&lang.language_id))?;
@@ -373,7 +378,7 @@ fn probe_parser(grammar_name: &str) -> std::io::Result<()> {
 }
 
 /// Display diagnostics about multiple LSPs and DAPs.
-fn probe_protocols<'a, I: Iterator<Item = (&'a str, &'a str)> + 'a>(
+fn probe_protocols<'a, I: Iterator<Item = (&'a str, &'a str, &'a [String])> + 'a>(
     protocol_name: &str,
     server_cmds: I,
 ) -> std::io::Result<()> {
@@ -388,34 +393,43 @@ fn probe_protocols<'a, I: Iterator<Item = (&'a str, &'a str)> + 'a>(
     }
     writeln!(stdout)?;
 
-    for (name, cmd) in server_cmds {
+    for (name, cmd, args) in server_cmds {
         let (diag, icon) = match helix_stdx::env::which(cmd) {
             Ok(path) => (path.display().to_string().green(), "✓".green()),
             Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
         };
         writeln!(stdout, "  {} {}: {}", icon, name, diag)?;
+        if !args.is_empty() {
+            writeln!(stdout, "    Arguments: {args:?}")?;
+        }
     }
 
     Ok(())
 }
 
 /// Display diagnostics about LSP and DAP.
-fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::Result<()> {
+fn probe_protocol(
+    protocol_name: &str,
+    server_cmd: Option<(&str, &[String])>,
+) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
     write!(stdout, "Configured {}:", protocol_name)?;
-    let Some(cmd) = server_cmd else {
+    let Some((cmd, args)) = server_cmd else {
         writeln!(stdout, "{}", " None".yellow())?;
         return Ok(());
     };
     writeln!(stdout)?;
 
-    let (diag, icon) = match helix_stdx::env::which(&cmd) {
+    let (diag, icon) = match helix_stdx::env::which(cmd) {
         Ok(path) => (path.display().to_string().green(), "✓".green()),
         Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
     };
     writeln!(stdout, "  {} {}", icon, diag)?;
+    if !args.is_empty() {
+        writeln!(stdout, "    Arguments: {args:?}")?;
+    }
 
     Ok(())
 }
