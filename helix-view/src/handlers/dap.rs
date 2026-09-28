@@ -231,13 +231,6 @@ impl Editor {
                     }
                     Event::Thread(thread) => {
                         self.set_status(format!("Thread {}: {}", thread.thread_id, thread.reason));
-                        let debugger = match self.debug_adapters.get_client_mut(id) {
-                            Some(debugger) => debugger,
-                            None => return false,
-                        };
-
-                        debugger.thread_id = Some(thread.thread_id);
-                        // set the stack frame for the thread
                     }
                     Event::Breakpoint(events::BreakpointBody { reason, breakpoint }) => {
                         match &reason[..] {
