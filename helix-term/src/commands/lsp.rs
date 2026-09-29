@@ -265,6 +265,9 @@ fn diag_picker(
                 .into()
             },
         ),
+        ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
+            item.diag.message.as_str().into()
+        }),
         ui::PickerColumn::new("source", |item: &PickerDiagnostic, _| {
             item.diag.source.as_deref().unwrap_or("").into()
         }),
@@ -274,9 +277,6 @@ fn diag_picker(
                 Some(NumberOrString::String(s)) => s.as_str().into(),
                 None => "".into(),
             }
-        }),
-        ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
-            item.diag.message.as_str().into()
         }),
     ];
     let mut primary_column = 3; // message
