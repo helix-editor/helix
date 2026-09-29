@@ -25,6 +25,8 @@ jobs:
     name: Check (msrv)
     runs-on: ubuntu-latest
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    env:
+      HELIX_DISABLE_AUTO_GRAMMAR_BUILD: true
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -70,6 +72,8 @@ jobs:
     name: Lints
     runs-on: ubuntu-latest
     if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
+    env:
+      HELIX_DISABLE_AUTO_GRAMMAR_BUILD: true
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
