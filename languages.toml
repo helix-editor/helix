@@ -108,6 +108,7 @@ oxfmt-language-server = { command = "oxfmt", args = ["--lsp"] }
 oxlint-language-server = { command = "oxlint", args = ["--lsp"] }
 omnisharp = { command = "OmniSharp", args = [ "--languageserver" ] }
 openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
+package-version-server = { command = "package-version-server" }  # https://github.com/zed-industries/package-version-server/
 pasls = { command = "pasls", args = [] }
 pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
@@ -5655,3 +5656,19 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "package-json"
+scope = "source.package-json"
+injection-regex = "package.json"
+file-types = [ {glob = "package.json"} ]
+grammar = "json"
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
+# Have package-version-server before vscode-json-language-server
+# to have its hover action response have priority, as it is more
+# relevant when used package dependencies.
+language-servers = [
+  "package-version-server",
+  "vscode-json-language-server",
+]

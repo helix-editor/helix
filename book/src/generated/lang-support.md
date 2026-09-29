@@ -211,6 +211,7 @@
 | openscad | ✓ |  |  |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |  |  |
 | p | ✓ |  |  |  |  |  |
+| package-json | ✓ | ✓ | ✓ |  | ✓ | `package-version-server`, `vscode-json-language-server` |
 | pascal | ✓ | ✓ |  |  |  | `pasls` |
 | passwd | ✓ |  |  |  |  |  |
 | pem | ✓ |  |  |  |  |  |
