@@ -79,6 +79,7 @@ impl From<DocumentId> for PathOrId<'_> {
 }
 
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
+type QueryItemCallback<T> = Box<dyn Fn(&str) -> Option<T>>;
 
 /// File path and range of lines (used to align and highlight lines)
 pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
@@ -258,6 +259,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
+    query_item_fn: Option<QueryItemCallback<T>>,
     default_action: Action,
 
     pub truncate_start: bool,
@@ -386,6 +388,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
+            query_item_fn: None,
             default_action: Action::Replace,
             completion_height: 0,
             widths,
@@ -427,6 +430,21 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     pub fn with_history_register(mut self, history_register: Option<char>) -> Self {
         self.prompt.with_history_register(history_register);
         self
+    }
+
+    pub fn with_query_item(mut self, query_item_fn: impl Fn(&str) -> Option<T> + 'static) -> Self {
+        self.query_item_fn = Some(Box::new(query_item_fn));
+        self
+    }
+
+    fn call_callback(&self, ctx: &mut Context, action: Action) {
+        if let Some(option) = self.selection() {
+            (self.callback_fn)(ctx, option, action);
+        } else if let Some(query_item_fn) = &self.query_item_fn {
+            if let Some(option) = query_item_fn(&self.primary_query()) {
+                (self.callback_fn)(ctx, &option, action);
+            }
+        }
     }
 
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
@@ -1107,9 +1125,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, self.default_action);
-                }
+                self.call_callback(ctx, self.default_action);
             }
             key!(Enter) => {
                 // If the prompt has a history completion and is empty, use enter to accept
@@ -1131,9 +1147,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
-                    if let Some(option) = self.selection() {
-                        (self.callback_fn)(ctx, option, self.default_action);
-                    }
+                    self.call_callback(ctx, self.default_action);
                     if let Some(history_register) = self.prompt.history_register() {
                         if let Err(err) = ctx
                             .editor
@@ -1147,15 +1161,11 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 }
             }
             ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::HorizontalSplit);
-                }
+                self.call_callback(ctx, Action::HorizontalSplit);
                 return close_fn(self);
             }
             ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::VerticalSplit);
-                }
+                self.call_callback(ctx, Action::VerticalSplit);
                 return close_fn(self);
             }
             ctrl!('t') => {

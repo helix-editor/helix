@@ -121,6 +121,179 @@ async fn test_selection_duplication() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
+    let temp_dir = tempfile::tempdir()?;
+    let picker_path = temp_dir.path().join("file-picker-buffer");
+    let picker_directory = temp_dir.path().join("file-picker-directory");
+    let explorer_path = temp_dir.path().join("file-explorer-buffer");
+    let explorer_directory = temp_dir.path().to_path_buf();
+    let background_path = temp_dir.path().join("file-picker-background-buffer");
+    let horizontal_path = temp_dir.path().join("file-picker-horizontal-buffer");
+    let vertical_path = temp_dir.path().join("file-picker-vertical-buffer");
+    let workspace_root = helix_loader::find_workspace().0;
+    let relative_picker_path = "helix-term/file-picker-relative-buffer";
+    let relative_explorer_path = "helix-term/file-explorer-relative-buffer";
+    let relative_picker_absolute_path = workspace_root.join(relative_picker_path);
+    let relative_explorer_absolute_path = workspace_root.join(relative_explorer_path);
+    let tilde_name = format!(
+        "file-picker-tilde-{}",
+        temp_dir.path().file_name().unwrap().to_string_lossy()
+    );
+    let tilde_path = helix_stdx::path::home_dir()?.join(&tilde_name);
+    std::fs::create_dir(&picker_directory)?;
+    let mut config = Config::default();
+    config.editor.file_picker.max_depth = Some(0);
+
+    fn assert_open(app: &Application, path: &std::path::Path) {
+        let path = helix_stdx::path::canonicalize(path);
+        let open_paths: Vec<_> = app
+            .editor
+            .documents()
+            .filter_map(|doc| doc.path())
+            .collect();
+        assert!(
+            open_paths.contains(&path.as_path()),
+            "expected {path:?}; open paths: {open_paths:?}"
+        );
+        assert!(!path.exists());
+    }
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (Some(&format!("<space>f{}", picker_path.display())), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &picker_path))),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (Some(&format!("<space>f{relative_picker_path}")), None),
+            (
+                Some("<ret>"),
+                Some(&|app| assert_open(app, &relative_picker_absolute_path)),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (Some(&format!("<space>f~/{tilde_name}")), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &tilde_path))),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(&format!("<space>f{}", picker_directory.display())),
+                None,
+            ),
+            (
+                Some("<ret>"),
+                Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(&format!("<space>f{}", background_path.display())),
+                None,
+            ),
+            (
+                Some("<A-ret>"),
+                Some(&|app| assert_open(app, &background_path)),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config.clone()).build()?,
+        vec![
+            (
+                Some(&format!("<space>f{}", horizontal_path.display())),
+                None,
+            ),
+            (
+                Some("<C-s>"),
+                Some(&|app| assert_open(app, &horizontal_path)),
+            ),
+            (Some(":wqa<ret>"), None),
+        ],
+        true,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().with_config(config).build()?,
+        vec![
+            (Some(&format!("<space>f{}", vertical_path.display())), None),
+            (Some("<C-v>"), Some(&|app| assert_open(app, &vertical_path))),
+            (Some(":wqa<ret>"), None),
+        ],
+        true,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().build()?,
+        vec![
+            (Some(&format!("<space>e{}", explorer_path.display())), None),
+            (Some("<ret>"), Some(&|app| assert_open(app, &explorer_path))),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().build()?,
+        vec![
+            (Some(&format!("<space>e{relative_explorer_path}")), None),
+            (
+                Some("<ret>"),
+                Some(&|app| assert_open(app, &relative_explorer_absolute_path)),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    test_key_sequences(
+        &mut AppBuilder::new().build()?,
+        vec![
+            (
+                Some(&format!("<space>e{}", explorer_directory.display())),
+                None,
+            ),
+            (
+                Some("<ret>"),
+                Some(&|app| assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status())),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_goto_file_impl() -> anyhow::Result<()> {
     let file = tempfile::NamedTempFile::new()?;
 
