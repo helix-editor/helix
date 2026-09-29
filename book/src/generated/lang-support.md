@@ -159,6 +159,7 @@
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
 | kdl | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| kerml | ✓ | ✓ | ✓ | ✓ | ✓ | `sysml-lsp` |
 | klog | ✓ |  |  |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ | ✓ | `kotlin-language-server` |
@@ -287,6 +288,7 @@
 | svelte | ✓ | ✓ | ✓ | ✓ | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ |  |  | `forc` |
 | swift | ✓ | ✓ | ✓ | ✓ | ✓ | `sourcekit-lsp` |
+| sysml | ✓ | ✓ | ✓ | ✓ | ✓ | `sysml-lsp` |
 | systemd | ✓ |  |  | ✓ |  | `systemd-lsp` |
 | systemverilog | ✓ |  |  |  |  | `svlangserver`, `verible-verilog-ls` |
 | t32 | ✓ |  |  |  |  |  |
