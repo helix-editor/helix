@@ -15,17 +15,14 @@ class Example(private val value: Int) {
             2 -> b
             else -> 0
         }
-        // Known limitation (documented, not checked): else / catch / finally
+        if (a > b) {
+            println("gt")
+        } else {
+            println("le")
+        }
+        // Known limitation (documented, not checked): catch / finally
         // bodies over-indent by one level because the block begins on a different
-        // line than the enclosing if / try, so the two indents do not collapse.
-        // The brace-less if-body additionally has no public grammar node to indent
-        // against, so this needs a grammar change rather than a query fix. The
-        // cases are left here, commented out, to document the edge.
-        // if (a > b) {
-        //     println("gt")
-        // } else {
-        //     println("le")
-        // }
+        // line than the enclosing try, so the two indents do not collapse.
         // try {
         //     return result
         // } catch (e: Exception) {
@@ -41,3 +38,60 @@ val multi = """
 unindented
     indented
 """
+
+fun conditionals(a: Int, b: Int) {
+    if (a > b)
+        println("gt")
+    else if (a == b)
+        println("eq")
+    else
+        println("lt")
+
+    if (
+        a > b
+    ) {
+        println("gt")
+    } else if (
+        a == b
+    ) {
+        println("eq")
+    } else {
+        if (a > 0) {
+            println("positive")
+        } else {
+            println("nonpositive")
+        }
+    }
+
+    if (a > b) {
+        if (b > 0) {
+            println("positive")
+        } else {
+            println("nonpositive")
+        }
+    } else {
+        println("le")
+    }
+
+    val braced = if (a > b) {
+        a
+    } else {
+        b
+    }
+    val unbraced = if (a > b)
+        a
+    else
+        b
+    val continued =
+        if (a > b) {
+            a
+        } else {
+            b
+        }
+    var assigned = a
+    assigned = if (a > b) {
+        a
+    } else {
+        b
+    }
+}
