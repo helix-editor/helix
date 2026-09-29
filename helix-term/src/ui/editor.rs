@@ -19,19 +19,19 @@ use helix_core::{
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
-    unicode::width::UnicodeWidthStr,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::Mode,
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{mem::take, num::NonZeroUsize, ops, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -660,8 +660,9 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+    pub fn render_bufferline(editor: &mut Editor, viewport: Rect, surface: &mut Surface) {
+        let buffer_tabs = &mut editor.buffer_tabs;
+
         surface.clear_with(
             viewport,
             editor
@@ -669,6 +670,10 @@ impl EditorView {
                 .try_get("ui.bufferline.background")
                 .unwrap_or_else(|| editor.theme.get("ui.statusline")),
         );
+
+        if buffer_tabs.tabs.is_empty() {
+            return;
+        }
 
         let bufferline_active = editor
             .theme
@@ -680,35 +685,55 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+        buffer_tabs.sync_modified(&editor.documents);
 
-            let style = if current_doc == doc.id() {
+        let viewport_width = viewport.width as u32;
+
+        let (active_start, active_end) = buffer_tabs
+            .tabs
+            .iter()
+            .find(|t| t.document_id == current_doc)
+            .map_or((0, 0), |t| (t.start, t.end));
+
+        let mut scroll = buffer_tabs.scroll as u32;
+
+        if active_start < scroll {
+            scroll = active_start; // active tab fell of the left: pull in into view
+        }
+        if active_end > scroll + viewport_width {
+            scroll = active_end - viewport_width; // active tab fell off the right
+        }
+
+        buffer_tabs.scroll = scroll as u16;
+
+        let mut x = viewport.x;
+        for tab in &buffer_tabs.tabs {
+            if tab.end <= scroll {
+                continue; // fully scrolled past the left edge
+            }
+            if x >= surface.area.right() {
+                break;
+            }
+
+            let style = if tab.document_id == current_doc {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            let label = tab.label();
+            let visible_text = if tab.start < scroll {
+                skip_columns(&label, scroll - tab.start)
+            } else {
+                &label
+            };
 
+            let rem_width = surface.area.right().saturating_sub(x);
             x = surface
-                .set_stringn(x, viewport.y, &text, rem_width as usize, style)
+                .set_stringn(x, viewport.y, visible_text, rem_width as usize, style)
                 .0;
-
-            if x >= surface.area.right() {
-                break;
-            }
         }
     }
 
@@ -1758,4 +1783,20 @@ fn canonicalize_key(key: &mut KeyEvent) {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
+}
+
+// Drop leading graphemes from `text` until `skip` columns have been consumed.
+fn skip_columns(text: &str, skip: u32) -> &str {
+    if skip == 0 {
+        return text;
+    }
+
+    let mut skipped = 0u32;
+    for (idx, g) in text.grapheme_indices(true) {
+        if skipped >= skip {
+            return &text[idx..];
+        }
+        skipped += g.width() as u32;
+    }
+    ""
 }

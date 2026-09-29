@@ -3,6 +3,7 @@ pub mod macros;
 
 pub mod action;
 pub mod annotations;
+pub mod buffer_tabs;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
