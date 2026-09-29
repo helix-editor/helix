@@ -218,6 +218,10 @@ fn handle_insert_whitespace(
         return None;
     }
 
+    if pair.open != '(' && pair.open != '{' {
+        return None;
+    }
+
     let whitespace_pair = Pair {
         open: ch,
         close: ch,

@@ -13,6 +13,7 @@ use helix_lsp::{lsp, LanguageServerId};
 use helix_view::document::Mode;
 use helix_view::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerInitialized,
+    WorkspaceDidChange,
 };
 use helix_view::handlers::diagnostics::DiagnosticEvent;
 use helix_view::handlers::lsp::{PullAllDocumentsDiagnosticsEvent, PullDiagnosticsEvent};
@@ -89,6 +90,16 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
+        let doc_ids: Vec<_> = event.editor.documents.keys().copied().collect();
+
+        for doc_id in doc_ids {
+            request_document_diagnostics(event.editor, doc_id);
+        }
+
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut WorkspaceDidChange<'_>| {
         let doc_ids: Vec<_> = event.editor.documents.keys().copied().collect();
 
         for doc_id in doc_ids {
