@@ -6,7 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
-use helix_core::command_line::{Args, Flag, Signature, Token, TokenKind};
+use helix_core::command_line::{Args, ExpansionKind, Flag, Signature, Token, TokenKind};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::line_ending;
@@ -4152,16 +4152,30 @@ pub(super) fn execute_command(
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let args = if event == PromptEvent::Validate {
-        Args::parse(args, cmd.signature, true, |token| {
-            expansion::expand(cx.editor, token).map_err(|err| err.into())
-        })
-        .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
+        Args::parse(args, cmd.signature, true, |token| expand_arg(cx, token))
+            .map_err(|err| anyhow!("'{}': {err}", cmd.name))?
     } else {
         Args::parse(args, cmd.signature, false, |token| Ok(token.content))
             .expect("arg parsing cannot fail when validation is turned off")
     };
 
     (cmd.fun)(cx, args, event).map_err(|err| anyhow!("'{}': {err}", cmd.name))
+}
+
+// A `:write` earlier in the same key sequence has only queued its save, and `%sh{}` may read
+// the file.
+pub(super) fn expand_arg<'a>(
+    cx: &mut compositor::Context,
+    token: Token<'a>,
+) -> Result<Cow<'a, str>, Box<dyn std::error::Error>> {
+    // Double-quoted arguments are expanded recursively and may contain `%sh{}`.
+    if matches!(
+        token.kind,
+        TokenKind::Expansion(ExpansionKind::Shell) | TokenKind::Expand
+    ) {
+        cx.block_try_flush_writes()?;
+    }
+    expansion::expand(cx.editor, token).map_err(|err| err.into())
 }
 
 #[allow(clippy::unnecessary_unwrap)]
