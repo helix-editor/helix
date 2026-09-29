@@ -1,5 +1,13 @@
 const SEPARATOR: char = '_';
 
+/// Whether the text contains two (or more) separators in a row, e.g. `9__99`.
+fn has_adjacent_separators(selected_text: &str) -> bool {
+    selected_text
+        .chars()
+        .zip(selected_text.chars().skip(1))
+        .any(|(a, b)| a == SEPARATOR && b == SEPARATOR)
+}
+
 /// Increment an integer.
 ///
 /// Supported bases:
@@ -15,6 +23,9 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     if selected_text.is_empty()
         || selected_text.ends_with(SEPARATOR)
         || selected_text.starts_with(SEPARATOR)
+        // Adjacent separators carry no grouping information and would make
+        // the separator re-insertion below loop forever: bail out instead.
+        || has_adjacent_separators(selected_text)
     {
         return None;
     }
@@ -231,5 +242,14 @@ mod test {
         assert_eq!(increment("9_", 1), None);
         assert_eq!(increment("_9", 1), None);
         assert_eq!(increment("_9_", 1), None);
+    }
+
+    #[test]
+    fn test_adjacent_separators_arent_a_match() {
+        // Adjacent separators used to hang the separator re-insertion loop.
+        assert_eq!(increment("9__99", 1), None);
+        assert_eq!(increment("9__99", -1), None);
+        assert_eq!(increment("0x00__ff", 1), None);
+        assert_eq!(increment("1___000", 1), None);
     }
 }
