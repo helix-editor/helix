@@ -856,7 +856,7 @@ impl std::ops::Deref for CursorShapeConfig {
 
 impl Default for CursorShapeConfig {
     fn default() -> Self {
-        Self([CursorKind::Block; 3])
+        Self([CursorKind::default(); 3])
     }
 }
 

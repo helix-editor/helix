@@ -296,7 +296,8 @@ where
 
     fn show_cursor(&mut self, kind: CursorKind) -> io::Result<()> {
         let shape = match kind {
-            CursorKind::Block => SetCursorStyle::SteadyBlock,
+            CursorKind::Block => unreachable!(),
+            CursorKind::TerminalBlock => SetCursorStyle::SteadyBlock,
             CursorKind::Bar => SetCursorStyle::SteadyBar,
             CursorKind::Underline => SetCursorStyle::SteadyUnderScore,
             CursorKind::Hidden => unreachable!(),

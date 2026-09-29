@@ -541,7 +541,8 @@ impl EditorView {
         let primary_idx = selection.primary_index();
 
         let cursorkind = cursor_shape_config.from_mode(mode);
-        let cursor_is_block = cursorkind == CursorKind::Block;
+        let cursor_is_block =
+            cursorkind == CursorKind::Block || cursorkind == CursorKind::TerminalBlock;
 
         let selection_scope = theme
             .find_highlight_exact("ui.selection")
@@ -1735,18 +1736,7 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        match editor.cursor() {
-            // all block cursors are drawn manually
-            (pos, CursorKind::Block) => {
-                if self.terminal_focused {
-                    (pos, CursorKind::Hidden)
-                } else {
-                    // use terminal cursor when terminal loses focus
-                    (pos, CursorKind::Underline)
-                }
-            }
-            cursor => cursor,
-        }
+        editor.cursor()
     }
 }
 

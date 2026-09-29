@@ -112,7 +112,7 @@ where
                 Buffer::empty(options.viewport.area),
             ],
             current: 0,
-            cursor_kind: CursorKind::Block,
+            cursor_kind: CursorKind::default(),
             viewport: options.viewport,
             force_clear: false,
         })
@@ -210,7 +210,7 @@ where
         }
 
         match cursor_kind {
-            CursorKind::Hidden => self.hide_cursor()?,
+            CursorKind::Hidden | CursorKind::Block => self.hide_cursor()?,
             kind => self.show_cursor(kind)?,
         }
 
