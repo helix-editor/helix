@@ -165,6 +165,15 @@ pub fn line_numbers<'doc>(
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
     let line_number = editor.config().line_number;
+    let wrap_indicator = editor
+        .config()
+        .soft_wrap
+        .wrap_indicator
+        .as_ref()
+        .map_or_else(
+            || "↪".into(),
+            |indicator| indicator.clone().chars().take(width).collect::<String>(),
+        );
     let mode = editor.mode;
 
     Box::new(
@@ -195,10 +204,10 @@ pub fn line_numbers<'doc>(
                 if first_visual_line {
                     write!(out, "{:>1$}", display_num, width).unwrap();
                 } else {
-                    write!(out, "{:>1$}", " ", width).unwrap();
+                    write!(out, "{:>1$}", wrap_indicator, width).unwrap();
                 }
 
-                first_visual_line.then_some(style)
+                Some(style)
             }
         },
     )
