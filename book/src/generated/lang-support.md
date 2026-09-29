@@ -158,7 +158,7 @@
 | just | ✓ | ✓ | ✓ | ✓ |  | `just-lsp` |
 | kcl | ✓ |  |  |  |  | `kcl-language-server` |
 | kconfig | ✓ |  | ✓ |  |  |  |
-| kdl | ✓ | ✓ | ✓ | ✓ | ✓ |  |
+| kdl | ✓ | ✓ | ✓ | ✓ | ✓ | `kdl-lsp` |
 | klog | ✓ |  |  |  |  |  |
 | koka | ✓ |  | ✓ |  |  | `koka` |
 | kotlin | ✓ | ✓ | ✓ | ✓ | ✓ | `kotlin-language-server` |
