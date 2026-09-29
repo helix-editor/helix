@@ -807,6 +807,7 @@ fn init_indent_query<'a, 'b>(
 ) -> Option<(
     Node<'a>,
     HashMap<usize, Vec<IndentCapture<'b>>>,
+    HashMap<usize, Vec<ExtendCapture>>,
     Vec<std::ops::Range<u32>>,
 )> {
     // The innermost tree-sitter node which is considered for the indent
@@ -882,7 +883,12 @@ fn init_indent_query<'a, 'b>(
             );
         }
     }
-    Some((node, query_result.indent_captures, opaque_ranges))
+    Some((
+        node,
+        query_result.indent_captures,
+        extend_captures,
+        opaque_ranges,
+    ))
 }
 
 /// Use the syntax tree to determine the indentation for a given position.
@@ -1044,7 +1050,9 @@ pub fn treesitter_indent_for_pos<'a>(
 /// spanning the lines after its start up to its end. The indent level of a line
 /// is the number of such scopes containing it (collapsing scopes that open on the
 /// same physical line to one level), minus any `@outdent` whose token begins the line.
-/// `@align`/`@extend`/`@opaque` are kept as overlays.
+/// `@align`/`@extend`/`@opaque` are kept as overlays, except that for a newly
+/// typed line an `@extend` scope ending on the previous line counts as open (see
+/// `extends_onto_new_line` below).
 #[allow(clippy::too_many_arguments)]
 fn containment_accounting<'a>(
     query: &IndentQuery,
@@ -1060,7 +1068,7 @@ fn containment_accounting<'a>(
     // Reuse the standard setup: this applies @extend repositioning / body-descent
     // and returns the per-node capture map (all ancestors of the cursor intersect
     // the query range, so their captures are present).
-    let (start_node, captures, opaque_ranges) = init_indent_query(
+    let (start_node, captures, extend_captures, opaque_ranges) = init_indent_query(
         query,
         root,
         text,
@@ -1133,9 +1141,21 @@ fn containment_accounting<'a>(
             } else {
                 node_start
             };
+            // An `@extend` scope that ends on the typed line (at/before the cursor)
+            // opens onto the line inserted after it. A construct whose body is a
+            // following sibling (`hello:` in yaml, `case 1:` in go, `def foo():` in
+            // python) is a *complete* node ending exactly at the newline while the
+            // body doesn't exist yet, so the containment check below would miss it.
+            let extends_onto_new_line = new_line_byte_pos.is_some_and(|pos| {
+                node.end_byte() <= pos
+                    && text.byte_to_line(node.end_byte() as usize) == line
+                    && extend_captures
+                        .get(&node.id())
+                        .is_some_and(|caps| caps.iter().any(|c| matches!(c, ExtendCapture::Extend)))
+            });
             // A scope contains the target line if it opens before it and closes on
             // or after it.
-            let contains = start < target_line && target_line <= end;
+            let contains = start < target_line && (target_line <= end || extends_onto_new_line);
             // A token-style outdent (`}`, `else`, `case`) sits on the line it
             // dedents.
             let opens_target = node_start == target_line;
