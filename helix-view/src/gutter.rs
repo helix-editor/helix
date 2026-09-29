@@ -42,7 +42,13 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
-            GutterType::CodeActionHint => 1,
+            GutterType::CodeActionHint => {
+                if doc.code_action_hints(view.id) {
+                    1
+                } else {
+                    0
+                }
+            }
         }
     }
 }
@@ -382,6 +388,30 @@ mod tests {
         assert_eq!(view.gutters.layout[2].width(&view, &doc), 3);
         assert_eq!(view.gutters.layout[3].width(&view, &doc), 1);
         assert_eq!(view.gutters.layout[4].width(&view, &doc), 1);
+    }
+
+    #[test]
+    fn test_code_action_hint_gutter_width_resizes() {
+        let gutters = GutterConfig {
+            layout: vec![GutterType::CodeActionHint],
+            ..Default::default()
+        };
+
+        let mut view = View::new(DocumentId::default(), gutters);
+        view.area = Rect::new(40, 40, 40, 40);
+
+        let rope = Rope::from_str("abc\n\tdef");
+        let mut doc = Document::from(
+            rope,
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 0);
+
+        doc.set_code_action_hints(view.id);
+        assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
     }
 
     #[test]
