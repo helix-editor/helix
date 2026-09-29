@@ -20,7 +20,7 @@ use helix_core::{
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block, Assoc, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
@@ -127,10 +127,11 @@ impl EditorView {
             &text_annotations,
         ));
 
-        if doc
-            .language_config()
-            .and_then(|config| config.rainbow_brackets)
-            .unwrap_or(config.rainbow_brackets)
+        if !doc.syntax_highlight_stale()
+            && doc
+                .language_config()
+                .and_then(|config| config.rainbow_brackets)
+                .unwrap_or(config.rainbow_brackets)
         {
             if let Some(overlay) =
                 Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
@@ -301,13 +302,22 @@ impl EditorView {
         loader: &'editor syntax::Loader,
     ) -> Option<syntax::Highlighter<'editor>> {
         let syntax = doc.syntax()?;
-        let text = doc.text().slice(..);
-        let row = text.char_to_line(anchor.min(text.len_chars()));
+        let (text, anchor) = if doc.syntax_highlight_stale() {
+            let snapshot = doc.syntax_text_snapshot().slice(..);
+            let anchor = doc
+                .syntax_pending_changes()
+                .invert(doc.syntax_text_snapshot())
+                .map_pos(anchor.min(doc.text().len_chars()), Assoc::Before);
+            (snapshot, anchor.min(snapshot.len_chars()))
+        } else {
+            let text = doc.text().slice(..);
+            (text, anchor.min(text.len_chars()))
+        };
+        let row = text.char_to_line(anchor);
         let range = Self::viewport_byte_range(text, row, height);
         let range = range.start as u32..range.end as u32;
 
-        let highlighter = syntax.highlighter(text, loader, range);
-        Some(highlighter)
+        Some(syntax.highlighter(text, loader, range))
     }
 
     pub fn overlay_syntax_highlights(

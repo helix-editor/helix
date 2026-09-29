@@ -736,7 +736,6 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 
@@ -912,7 +911,6 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -943,7 +941,6 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
         assert_eq!(
@@ -968,7 +965,6 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 
@@ -1053,7 +1049,6 @@ mod tests {
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         doc.ensure_view_init(view.id);
 
@@ -1203,10 +1198,9 @@ mod tests {
     #[test]
     fn jumplist_push_keeps_doc_revisions_in_sync() {
         let config = Arc::new(ArcSwap::new(Arc::new(Config::default())));
-        let loader = Arc::new(ArcSwap::from_pointee(syntax::Loader::default()));
 
         // Revision 0: a short document.
-        let mut doc = Document::from(Rope::from_str("ab"), None, config, loader);
+        let mut doc = Document::from(Rope::from_str("ab"), None, config);
 
         let mut view1 = View::new(doc.id(), GutterConfig::default());
         let mut view2 = View::new(doc.id(), GutterConfig::default());

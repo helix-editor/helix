@@ -5,7 +5,7 @@ use helix_core::graphemes::Grapheme;
 use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::{self, HighlightEvent, Highlighter, OverlayHighlights};
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_core::{visual_offset_from_block, Assoc, ChangeSet, Position, RopeSlice};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
@@ -78,7 +78,7 @@ pub fn render_text(
     let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, anchor);
     let mut syntax_highlighter =
-        SyntaxHighlighter::new(syntax_highlighter, text, theme, renderer.text_style);
+        SyntaxHighlighter::new(syntax_highlighter, theme, renderer.text_style, renderer.doc);
     let mut overlay_highlighter = OverlayHighlighter::new(overlay_highlights, theme);
 
     let mut last_line_pos = LinePos {
@@ -132,8 +132,10 @@ pub fn render_text(
         }
 
         // acquire the correct grapheme style
-        while grapheme.char_idx >= syntax_highlighter.pos {
-            syntax_highlighter.advance();
+        if let Some(highlight_char) = syntax_highlighter.highlight_char_idx(grapheme.char_idx) {
+            while highlight_char >= syntax_highlighter.pos {
+                syntax_highlighter.advance();
+            }
         }
         while grapheme.char_idx >= overlay_highlighter.pos {
             overlay_highlighter.advance();
@@ -149,8 +151,9 @@ pub fn render_text(
                 overlay_style: Style::default(),
             }
         } else {
+            let syntax_style = syntax_highlighter.style_at(grapheme.char_idx);
             GraphemeStyle {
-                syntax_style: syntax_highlighter.style,
+                syntax_style,
                 overlay_style: overlay_highlighter.style,
             }
         };
@@ -174,6 +177,7 @@ pub fn render_text(
 
 #[derive(Debug)]
 pub struct TextRenderer<'a> {
+    doc: &'a Document,
     surface: &'a mut Surface,
     pub text_style: Style,
     pub whitespace_style: Style,
@@ -200,7 +204,7 @@ pub struct GraphemeStyle {
 impl<'a> TextRenderer<'a> {
     pub fn new(
         surface: &'a mut Surface,
-        doc: &Document,
+        doc: &'a Document,
         theme: &Theme,
         offset: Position,
         viewport: Rect,
@@ -247,6 +251,7 @@ impl<'a> TextRenderer<'a> {
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
 
         TextRenderer {
+            doc,
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
             newline,
@@ -479,34 +484,92 @@ impl<'a> TextRenderer<'a> {
     }
 }
 
-struct SyntaxHighlighter<'h, 'r, 't> {
+struct SyntaxHighlighter<'h, 'd, 't> {
     inner: Option<Highlighter<'h>>,
-    text: RopeSlice<'r>,
+    text: RopeSlice<'d>,
     /// The character index of the next highlight event, or `usize::MAX` if the highlighter is
     /// finished.
     pos: usize,
     theme: &'t Theme,
     text_style: Style,
     style: Style,
+    stale: Option<StaleHighlightMapper<'d>>,
 }
 
-impl<'h, 'r, 't> SyntaxHighlighter<'h, 'r, 't> {
+struct StaleHighlightMapper<'d> {
+    inverse: ChangeSet,
+    snapshot: RopeSlice<'d>,
+    live: RopeSlice<'d>,
+}
+
+impl<'d> StaleHighlightMapper<'d> {
+    fn snapshot_char(&self, live_char: usize) -> Option<usize> {
+        if live_char >= self.live.len_chars() {
+            return None;
+        }
+        let snap = self
+            .inverse
+            .map_pos(live_char, Assoc::Before)
+            .min(self.snapshot.len_chars());
+        if snap >= self.snapshot.len_chars() {
+            return None;
+        }
+        if self.live.char(live_char) == self.snapshot.char(snap) {
+            Some(snap)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'h, 'd, 't> SyntaxHighlighter<'h, 'd, 't> {
     fn new(
         inner: Option<Highlighter<'h>>,
-        text: RopeSlice<'r>,
         theme: &'t Theme,
         text_style: Style,
+        doc: &'d Document,
     ) -> Self {
+        let live = doc.text().slice(..);
+        let snapshot = doc.syntax_text_snapshot().slice(..);
+        let stale = doc.syntax_highlight_stale().then(|| StaleHighlightMapper {
+            inverse: doc
+                .syntax_pending_changes()
+                .invert(doc.syntax_text_snapshot()),
+            snapshot,
+            live,
+        });
+        let highlight_text = if stale.is_some() { snapshot } else { live };
         let mut highlighter = Self {
             inner,
-            text,
+            text: highlight_text,
             pos: 0,
             theme,
             style: text_style,
             text_style,
+            stale,
         };
         highlighter.update_pos();
         highlighter
+    }
+
+    fn highlight_char_idx(&self, live_char: usize) -> Option<usize> {
+        if let Some(mapper) = &self.stale {
+            mapper.snapshot_char(live_char)
+        } else {
+            Some(live_char)
+        }
+    }
+
+    fn style_at(&self, live_char: usize) -> Style {
+        if self
+            .stale
+            .as_ref()
+            .is_some_and(|mapper| mapper.snapshot_char(live_char).is_none())
+        {
+            self.text_style
+        } else {
+            self.style
+        }
     }
 
     fn update_pos(&mut self) {

@@ -25,6 +25,7 @@ mod document_links;
 mod prompt;
 mod signature_help;
 mod snippet;
+mod syntax;
 mod workspace_trust;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
@@ -37,6 +38,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let document_colors = DocumentColorsHandler::default().spawn();
     let document_links = DocumentLinksHandler::default().spawn();
     let word_index = word_index::Handler::spawn();
+    syntax::spawn();
     let pull_diagnostics = PullDiagnosticsHandler::default().spawn();
     let pull_all_documents_diagnostics = PullAllDocumentsDiagnosticHandler::default().spawn();
 

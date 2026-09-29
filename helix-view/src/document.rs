@@ -229,11 +229,8 @@ pub struct Document {
     pub code_action_controllers: HashMap<ViewId, TaskController>,
     pub pull_diagnostic_controller: TaskController,
     pub document_link_controller: TaskController,
-
-    // NOTE: this field should eventually go away - we should use the Editor's syn_loader instead
-    // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
-    // `ArcSwap` directly.
-    syn_loader: Arc<ArcSwap<syntax::Loader>>,
+    syntax_text_snapshot: Rope,
+    syntax_pending: ChangeSet,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -723,12 +720,13 @@ impl Document {
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
-        syn_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+        let syntax_text_snapshot = text.clone();
+        let syntax_pending = ChangeSet::new(text.slice(..));
 
         Self {
             id: DocumentId::default(),
@@ -772,20 +770,18 @@ impl Document {
             color_swatch_controller: TaskController::new(),
             document_highlight_controllers: HashMap::new(),
             code_action_controllers: HashMap::new(),
-            syn_loader,
+            syntax_text_snapshot,
+            syntax_pending,
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
         }
     }
 
-    pub fn default(
-        config: Arc<dyn DynAccess<Config>>,
-        syn_loader: Arc<ArcSwap<syntax::Loader>>,
-    ) -> Self {
+    pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config, syn_loader)
+        Self::from(text, None, config)
     }
 
     // TODO: async fn?
@@ -823,7 +819,7 @@ impl Document {
         };
 
         let loader = syn_loader.load();
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config, syn_loader);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -1375,6 +1371,28 @@ impl Document {
                 })
                 .ok()
         });
+        self.reset_syntax_snapshot_state();
+    }
+
+    fn reset_syntax_snapshot_state(&mut self) {
+        self.syntax_text_snapshot = self.text.clone();
+        self.syntax_pending = ChangeSet::new(self.text.slice(..));
+    }
+
+    pub fn syntax_text_snapshot(&self) -> &Rope {
+        &self.syntax_text_snapshot
+    }
+
+    pub fn syntax_highlight_stale(&self) -> bool {
+        self.syntax.is_some() && !self.syntax_pending.is_empty()
+    }
+
+    pub fn syntax_pending_changes(&self) -> &ChangeSet {
+        &self.syntax_pending
+    }
+
+    pub fn commit_syntax_text_snapshot(&mut self) {
+        self.reset_syntax_snapshot_state();
     }
 
     /// Set the programming language for the file if you know the language but don't have the
@@ -1480,6 +1498,14 @@ impl Document {
         self.modified_since_accessed = true;
         self.version += 1;
 
+        // update tree-sitter syntax tree
+        if self.syntax.is_some() {
+            self.syntax_pending = self
+                .syntax_pending
+                .clone()
+                .compose(transaction.changes().clone());
+        }
+
         for selection in self.selections.values_mut() {
             *selection = selection
                 .clone()
@@ -1508,20 +1534,6 @@ impl Document {
                     }
                     None => false,
                 })
-        }
-
-        // update tree-sitter syntax tree
-        if let Some(syntax) = &mut self.syntax {
-            let loader = self.syn_loader.load();
-            if let Err(err) = syntax.update(
-                old_doc.slice(..),
-                self.text.slice(..),
-                transaction.changes(),
-                &loader,
-            ) {
-                log::error!("TS parser failed, disabling TS for the current buffer: {err}");
-                self.syntax = None;
-            }
         }
 
         // TODO: all of that should likely just be hooks
@@ -2543,7 +2555,6 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
@@ -2582,7 +2593,6 @@ mod test {
             text,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
         );
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
@@ -2696,10 +2706,7 @@ mod test {
     #[test]
     fn test_line_ending() {
         assert_eq!(
-            Document::default(
-                Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-                Arc::new(ArcSwap::from_pointee(syntax::Loader::default()))
-            )
+            Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
             .text()
             .to_string(),
             helix_core::NATIVE_LINE_ENDING.as_str()
