@@ -452,6 +452,38 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_auto_format_uses_editor_default() -> anyhow::Result<()> {
+    for (language_auto_format, expected) in
+        [(None, "new content\n"), (Some(false), "let foo = 0;\n")]
+    {
+        let mut file = tempfile::Builder::new().suffix(".toml").tempfile()?;
+        let auto_format = language_auto_format
+            .map(|value| format!("auto-format = {value}"))
+            .unwrap_or_default();
+        let lang_conf = format!(
+            r#"
+                [[language]]
+                name = "toml"
+                {auto_format}
+                formatter = {{ command = "bash", args = [ "-c", "echo new content" ] }}
+            "#
+        );
+
+        let mut app = helpers::AppBuilder::new()
+            .with_file(file.path(), None)
+            .with_input_text("#[l|]#et foo = 0;\n")
+            .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf)))
+            .build()?;
+
+        test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
+
+        helpers::assert_file_has_content(&mut file, expected)?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_quit_auto_format_exits_after_format() -> anyhow::Result<()> {
     let mut file = tempfile::Builder::new().suffix(".rs").tempfile()?;
 
