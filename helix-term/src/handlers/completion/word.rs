@@ -18,7 +18,7 @@ pub(super) fn completion(
     trigger: Trigger,
     handle: TaskHandle,
     savepoint: Arc<SavePoint>,
-) -> Option<impl FnOnce() -> CompletionResponse> {
+) -> Option<impl FnOnce() -> CompletionResponse + use<>> {
     if !doc!(editor).word_completion_enabled() {
         return None;
     }

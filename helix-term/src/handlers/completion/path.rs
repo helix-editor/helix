@@ -19,7 +19,7 @@ pub(crate) fn path_completion(
     doc: &Document,
     handle: TaskHandle,
     savepoint: Arc<SavePoint>,
-) -> Option<impl FnOnce() -> CompletionResponse> {
+) -> Option<impl FnOnce() -> CompletionResponse + use<>> {
     if !doc.path_completion_enabled() {
         return None;
     }
