@@ -1,3 +1,4 @@
+use helix_core::conflict::ConflictRegion;
 use helix_core::diagnostic::Severity;
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
@@ -126,10 +127,14 @@ pub struct InlineDiagnosticAccumulator<'a> {
     pub config: InlineDiagnosticsConfig,
     cursor: usize,
     cursor_line: bool,
+    /// Conflict regions in the document, pre-computed to suppress diagnostics
+    /// that fall inside a conflict block.
+    conflicts: Vec<ConflictRegion>,
 }
 
 impl<'a> InlineDiagnosticAccumulator<'a> {
     pub fn new(cursor: usize, doc: &'a Document, config: InlineDiagnosticsConfig) -> Self {
+        let conflicts = doc.conflicts().to_vec();
         InlineDiagnosticAccumulator {
             idx: 0,
             doc,
@@ -137,6 +142,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
             config,
             cursor,
             cursor_line: false,
+            conflicts,
         }
     }
 
@@ -202,6 +208,15 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         for diag in &self.doc.diagnostics[self.idx..] {
             if diag.range.start != grapheme.char_idx {
                 break;
+            }
+            // Skip diagnostics that overlap any conflict region.
+            if self
+                .conflicts
+                .iter()
+                .any(|c| diag.range.start < c.end && diag.range.end > c.start)
+            {
+                self.idx += 1;
+                continue;
             }
             self.stack.push((diag, anchor_col as u16));
             self.idx += 1;

@@ -23,7 +23,7 @@ use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
 use serde::Serialize;
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::future::Future;
@@ -34,6 +34,7 @@ use std::sync::{Arc, Weak};
 use std::time::SystemTime;
 
 use helix_core::{
+    conflict::{conflict_at, find_conflicts, ConflictCache, ConflictRefineEntry, ConflictRegion},
     editor_config::EditorConfig,
     encoding,
     history::{History, State, UndoKind},
@@ -234,6 +235,14 @@ pub struct Document {
     // of storing a copy on every doc. Then we can remove the surrounding `Arc` and use the
     // `ArcSwap` directly.
     syn_loader: Arc<ArcSwap<syntax::Loader>>,
+
+    /// Cached conflict regions, eagerly recomputed on every edit.
+    conflict_regions: Vec<ConflictRegion>,
+
+    /// Per-conflict refine state keyed by [`ConflictRegion::start`].
+    /// Cleared on every edit; the pair setting is preserved when the cursor
+    /// was inside a conflict before the edit.
+    pub conflict_cache: RefCell<ConflictCache>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -729,6 +738,7 @@ impl Document {
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+        let conflict_regions = find_conflicts(&text);
 
         Self {
             id: DocumentId::default(),
@@ -776,6 +786,8 @@ impl Document {
             previous_diagnostic_ids: HashMap::new(),
             pull_diagnostic_controller: TaskController::new(),
             document_link_controller: TaskController::new(),
+            conflict_regions,
+            conflict_cache: RefCell::new(ConflictCache::default()),
         }
     }
 
@@ -1042,7 +1054,9 @@ impl Document {
                     if force {
                         std::fs::DirBuilder::new().recursive(true).create(parent)?;
                     } else {
-                        bail!("can't save file, parent directory does not exist (use :w! to create it)");
+                        bail!(
+                            "can't save file, parent directory does not exist (use :w! to create it)"
+                        );
                     }
                 }
             }
@@ -1256,12 +1270,18 @@ impl Document {
                 Ok(metadata) => match metadata.modified() {
                     Ok(mtime) => mtime,
                     Err(err) => {
-                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                        log::debug!(
+                            "Could not fetch file system's mtime, falling back to current system time: {}",
+                            err
+                        );
                         SystemTime::now()
                     }
                 },
                 Err(err) => {
-                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                    log::debug!(
+                        "Could not fetch file system's mtime, falling back to current system time: {}",
+                        err
+                    );
                     SystemTime::now()
                 }
             },
@@ -1458,6 +1478,18 @@ impl Document {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
+
+        // Save refine pair for the cursor's conflict before the edit.
+        let saved_pair = self
+            .selections
+            .get(&view_id)
+            .and_then(|sel| {
+                let cursor = sel.primary().cursor(old_doc.slice(..));
+                let conflicts = find_conflicts(&old_doc);
+                conflict_at(&conflicts, cursor).map(|idx| conflicts[idx].start)
+            })
+            .and_then(|key| self.conflict_cache.borrow().get(&key).map(|e| e.pair));
+
         let changes = transaction.changes();
         if !changes.apply(&mut self.text) {
             return false;
@@ -1487,6 +1519,24 @@ impl Document {
                 .map(transaction.changes())
                 // Ensure all selections across all views still adhere to invariants.
                 .ensure_invariants(self.text.slice(..));
+        }
+
+        // Eagerly recompute conflict regions; clear refine cache.
+        self.conflict_regions = find_conflicts(self.text());
+        {
+            let mut cache = self.conflict_cache.borrow_mut();
+            cache.clear();
+            if let Some(pair) = saved_pair {
+                let cursor = self
+                    .selection(view_id)
+                    .primary()
+                    .cursor(self.text().slice(..));
+                if let Some(idx) = conflict_at(&self.conflict_regions, cursor) {
+                    cache
+                        .entry(self.conflict_regions[idx].start)
+                        .or_insert_with(|| ConflictRefineEntry { pair, diffs: None });
+                }
+            }
         }
 
         for view_data in self.view_data.values_mut() {
@@ -2072,6 +2122,12 @@ impl Document {
     #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
+    }
+
+    /// Returns eagerly-computed conflict regions, re-computed on
+    /// every document edit.
+    pub fn conflicts(&self) -> &[ConflictRegion] {
+        &self.conflict_regions
     }
 
     #[inline]
