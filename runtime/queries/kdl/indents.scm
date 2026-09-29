@@ -1,3 +1,13 @@
-(node_children) @indent
+(node_children) @indent.begin
 
- "}" @outdent
+"}" @indent.end
+
+[
+  "{"
+  "}"
+] @indent.branch
+
+[
+  "("
+  ")"
+] @indent.branch

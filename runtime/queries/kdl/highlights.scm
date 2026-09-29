@@ -1,32 +1,69 @@
-[
-    (single_line_comment)
-    (multi_line_comment)
+; Variables
+(identifier) @variable
 
-    (node_comment)
-    (node_field_comment)
-
-    ; these do not show up as comments in Helix as they are also highlighted as
-    ; normal nodes
-    (node . (node_comment))
-    (node_field . (node_field_comment))
-] @comment
-
+; Nodes
 (node
-    (identifier) @variable)
+  name: (identifier) @tag)
+(node
+  name: (identifier
+    (string) @tag))
 
-(prop (identifier) @attribute)
+; Types
+(type) @type
+(type
+  name: (identifier) @type)
+; Reserved type annotations are advisory in the spec, not syntax.
+((type
+  name: (identifier) @type.builtin)
+  (#any-of? @type.builtin
+    "base64" "base85" "country-2" "country-3" "country-subdivision" "currency" "date" "date-time" "decimal" "decimal64"
+    "decimal128" "duration" "email" "f32" "f64" "hostname" "i8" "i16" "i32" "i64" "i128" "idn-email" "idn-hostname"
+    "ipv4" "ipv6" "irl" "irl-reference" "isize" "regex" "time" "u8" "u16" "u32" "u64" "u128" "url" "url-reference"
+    "url-template" "usize" "uuid"))
 
-(type (_) @type) @punctuation.bracket
+; Properties
+(prop
+  key: (identifier) @property)
 
-(keyword) @keyword
-
-(string) @string
-(number) @constant.numeric
-(boolean) @constant.builtin.boolean
-
-"." @punctuation.delimiter
-
+; Operators
 "=" @operator
 
-"{" @punctuation.bracket
-"}" @punctuation.bracket
+; Literals
+[
+  "null"
+  "#null"
+] @constant.builtin
+(boolean) @constant.builtin.boolean
+(multi_line_string) @string
+(escape) @string.escape
+(escaped_whitespace) @string.escape
+(keyword_number) @constant.numeric
+(number) @constant.numeric.integer
+(number
+  (decimal) @constant.numeric.float)
+(number
+  (exponent) @constant.numeric)
+(string) @string
+(string_fragment) @string
+
+; Punctuation
+[
+  "{"
+  "}"
+] @punctuation.bracket
+[
+  "("
+  ")"
+] @punctuation.bracket
+";" @punctuation.delimiter
+
+; Comments
+[
+    (multi_line_comment)
+    (node_children_comment)
+    (node_comment)
+    (node_field_comment)
+    (single_line_comment)
+    (version)
+] @comment
+

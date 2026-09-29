@@ -3257,7 +3257,7 @@ formatter = { command = "kdlfmt", args = ["format", "-"] }
 
 [[grammar]]
 name = "kdl"
-source = { git = "https://github.com/amaanq/tree-sitter-kdl", rev = "b37e3d58e5c5cf8d739b315d6114e02d42e66664" }
+source = { git = "https://github.com/amaanq/tree-sitter-kdl", rev = "e8ff98a113e175b84b92ec2096820517c1e10a66" }
 
 [[language]]
 name = "xml"
