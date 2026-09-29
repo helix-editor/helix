@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
@@ -2433,6 +2434,84 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
     Ok(())
 }
 
+fn string_compare(a: &Tendril, b: &Tendril, insensitive: bool) -> Ordering {
+    if insensitive {
+        a.to_lowercase().cmp(&b.to_lowercase())
+    } else {
+        a.cmp(b)
+    }
+}
+
+/// Parses the leading numeric prefix of a fragment, mirroring GNU `sort -n`:
+/// leading whitespace is skipped, then an optional minus sign, digits and at
+/// most one decimal point are consumed. Fragments without a numeric prefix
+/// yield `None`. The prefix is returned as sign, integer and fraction digits
+/// so that prefixes of any magnitude compare exactly, with no floating-point
+/// rounding.
+fn numeric_prefix(fragment: &str) -> Option<(bool, &str, &str)> {
+    let fragment = fragment.trim_start();
+    let mut end = 0;
+    let mut seen_digit = false;
+    let mut seen_point = false;
+    for (i, c) in fragment.char_indices() {
+        match c {
+            '-' if i == 0 => end = 1,
+            '.' if !seen_point => {
+                seen_point = true;
+                end = i + 1;
+            }
+            c if c.is_ascii_digit() => {
+                seen_digit = true;
+                end = i + 1;
+            }
+            _ => break,
+        }
+    }
+    if !seen_digit {
+        return None;
+    }
+    let prefix = &fragment[..end];
+    let digits = prefix.strip_prefix('-').unwrap_or(prefix);
+    let (int, frac) = digits.split_once('.').unwrap_or((digits, ""));
+    let int = int.trim_start_matches('0');
+    let int = if int.is_empty() { "0" } else { int };
+    let frac = frac.trim_end_matches('0');
+    // A negative zero is equal to zero.
+    let negative = prefix.starts_with('-') && !(int == "0" && frac.is_empty());
+    Some((negative, int, frac))
+}
+
+/// Compares two numeric prefixes exactly: negatives sort before positives, then
+/// larger magnitude is a longer integer part, then the integer and fraction
+/// digits in order.
+fn compare_numeric_prefixes(x: (bool, &str, &str), y: (bool, &str, &str)) -> Ordering {
+    match (x.0, y.0) {
+        (true, false) => return Ordering::Less,
+        (false, true) => return Ordering::Greater,
+        _ => {}
+    }
+    let ordering =
+        x.1.len()
+            .cmp(&y.1.len())
+            .then_with(|| x.1.cmp(y.1))
+            .then_with(|| x.2.cmp(y.2));
+    if x.0 {
+        ordering.reverse()
+    } else {
+        ordering
+    }
+}
+
+/// Compares two fragments by their leading numeric prefix, like GNU `sort -n`.
+/// A fragment without a numeric prefix counts as zero; equal prefixes and
+/// non-numeric pairs fall back to a regular string compare.
+fn numeric_compare(a: &Tendril, b: &Tendril, insensitive: bool) -> Ordering {
+    const ZERO: (bool, &str, &str) = (false, "0", "");
+    let x = numeric_prefix(a).unwrap_or(ZERO);
+    let y = numeric_prefix(b).unwrap_or(ZERO);
+    compare_numeric_prefixes(x, y).then_with(|| string_compare(a, b, insensitive))
+}
+
 fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -2453,14 +2532,22 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    fragments.sort_by(
-        match (args.has_flag("insensitive"), args.has_flag("reverse")) {
-            (true, true) => |a: &Tendril, b: &Tendril| b.to_lowercase().cmp(&a.to_lowercase()),
-            (true, false) => |a: &Tendril, b: &Tendril| a.to_lowercase().cmp(&b.to_lowercase()),
-            (false, true) => |a: &Tendril, b: &Tendril| b.cmp(a),
-            (false, false) => |a: &Tendril, b: &Tendril| a.cmp(b),
-        },
-    );
+    let insensitive = args.has_flag("insensitive");
+    let numeric = args.has_flag("numeric");
+    let reverse = args.has_flag("reverse");
+
+    fragments.sort_by(|a: &Tendril, b: &Tendril| {
+        let ordering = if numeric {
+            numeric_compare(a, b, insensitive)
+        } else {
+            string_compare(a, b, insensitive)
+        };
+        if reverse {
+            ordering.reverse()
+        } else {
+            ordering
+        }
+    });
 
     let transaction = Transaction::change(
         doc.text(),
@@ -3862,6 +3949,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                     name: "reverse",
                     alias: Some('r'),
                     doc: "sort ranges in reverse order",
+                    ..Flag::DEFAULT
+                },
+                Flag {
+                    name: "numeric",
+                    alias: Some('n'),
+                    doc: "sort ranges numerically by their leading number (like `sort -n`)",
                     ..Flag::DEFAULT
                 },
             ],

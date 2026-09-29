@@ -949,3 +949,65 @@ async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_sort_numeric() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/4153>
+
+    // Baseline: without --numeric the sort stays lexicographic ("10" < "2").
+    test((
+        "#[2|]#\n10\n3\nlast",
+        "%<A-s>:sort<ret>",
+        "#[10|]#\n#(2|)#\n#(3|)#\n#(last|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // Numeric sort compares the leading numeric prefix of each fragment.
+    test((
+        "#[1|]#0\n2\n3\nlast",
+        "%<A-s>:sort --numeric<ret>",
+        "#[last|]#\n#(2|)#\n#(3|)#\n#(10|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // Signs and decimals are part of the numeric prefix, and like GNU
+    // `sort -n` a fragment without a number counts as zero.
+    test((
+        "#[1|]#0\n-2\n1.5\nlast",
+        "%<A-s>:sort --numeric<ret>",
+        "#[-2|]#\n#(last|)#\n#(1.5|)#\n#(10|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // --numeric composes with --reverse.
+    test((
+        "#[1|]#0\n-2\n1.5\nlast",
+        "%<A-s>:sort --numeric --reverse<ret>",
+        "#[10|]#\n#(1.5|)#\n#(last|)#\n#(-2|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // A leading plus is not numeric to GNU `sort -n`, so "+5" counts as zero.
+    test((
+        "#[+|]#5\n-1",
+        "%<A-s>:sort --numeric<ret>",
+        "#[-1|]#\n#(+5|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // Prefixes compare exactly, with no floating-point rounding.
+    test((
+        "#[1|]#0000000000000000001\n9999999999999999999",
+        "%<A-s>:sort --numeric<ret>",
+        "#[9999999999999999999|]#\n#(10000000000000000001|)#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}
