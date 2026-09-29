@@ -437,25 +437,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    fn call_callback(&mut self, ctx: &mut Context, action: Action) -> bool {
-        let query = self.primary_query();
-        let query_item_pending = self.query_item_fn.is_some()
-            && !query.is_empty()
-            && (self.matcher.active_injectors() != 0 || self.matcher.tick(0).running);
-
-        if query_item_pending && self.selection().is_none() {
-            return true;
-        }
-
+    fn call_callback(&self, ctx: &mut Context, action: Action) {
         if let Some(option) = self.selection() {
             (self.callback_fn)(ctx, option, action);
         } else if let Some(query_item_fn) = &self.query_item_fn {
-            if let Some(option) = query_item_fn(&query) {
+            if let Some(option) = query_item_fn(&self.primary_query()) {
                 (self.callback_fn)(ctx, &option, action);
             }
         }
-
-        false
     }
 
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
@@ -1158,9 +1147,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
-                    if self.call_callback(ctx, self.default_action) {
-                        return EventResult::Consumed(None);
-                    }
+                    self.call_callback(ctx, self.default_action);
                     if let Some(history_register) = self.prompt.history_register() {
                         if let Err(err) = ctx
                             .editor
@@ -1174,14 +1161,12 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 }
             }
             ctrl!('s') => {
-                if !self.call_callback(ctx, Action::HorizontalSplit) {
-                    return close_fn(self);
-                }
+                self.call_callback(ctx, Action::HorizontalSplit);
+                return close_fn(self);
             }
             ctrl!('v') => {
-                if !self.call_callback(ctx, Action::VerticalSplit) {
-                    return close_fn(self);
-                }
+                self.call_callback(ctx, Action::VerticalSplit);
+                return close_fn(self);
             }
             ctrl!('t') => {
                 self.toggle_preview();
