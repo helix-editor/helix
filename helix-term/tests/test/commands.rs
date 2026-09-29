@@ -145,7 +145,16 @@ async fn file_pickers_open_nonexistent_paths() -> anyhow::Result<()> {
     config.editor.file_picker.max_depth = Some(0);
 
     fn assert_open(app: &Application, path: &std::path::Path) {
-        assert!(app.editor.documents().any(|doc| doc.path() == Some(path)));
+        let path = helix_stdx::path::canonicalize(path);
+        let open_paths: Vec<_> = app
+            .editor
+            .documents()
+            .filter_map(|doc| doc.path())
+            .collect();
+        assert!(
+            open_paths.contains(&path.as_path()),
+            "expected {path:?}; open paths: {open_paths:?}"
+        );
         assert!(!path.exists());
     }
 
