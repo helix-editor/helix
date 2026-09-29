@@ -1,7 +1,7 @@
 use helix_event::status::StatusMessage;
 use helix_event::{runtime_local, send_blocking};
 use helix_view::Editor;
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 
 use crate::compositor::Compositor;
 
@@ -14,7 +14,7 @@ pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 pub type EditorCallbackFollowup = Box<dyn FnOnce(&mut Editor) -> Option<Job> + Send>;
 
 runtime_local! {
-    static JOB_QUEUE: OnceCell<Sender<Callback>> = OnceCell::new();
+    static JOB_QUEUE: OnceLock<Sender<Callback>> = OnceLock::new();
 }
 
 pub async fn dispatch_callback(job: Callback) {

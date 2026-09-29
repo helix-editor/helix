@@ -33,7 +33,6 @@ unicode-width = "=0.1.12"
 unicode-general-category = "1.1"
 slotmap.workspace = true
 tree-house.workspace = true
-once_cell = "1.21"
 arc-swap = "1"
 regex = "1"
 bitflags.workspace = true
