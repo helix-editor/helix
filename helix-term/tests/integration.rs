@@ -19,5 +19,6 @@ mod test {
     mod command_line;
     mod commands;
     mod movement;
+    mod prompt;
     mod splits;
 }
