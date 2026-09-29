@@ -17,6 +17,16 @@ use super::Handlers;
 
 pub struct DocumentColorsEvent(pub DocumentId);
 pub struct DocumentLinksEvent(pub DocumentId);
+pub enum InlayHintsEvent {
+    RefreshVisibleViews,
+    RefreshDocument {
+        document_id: DocumentId,
+    },
+    RefreshView {
+        document_id: DocumentId,
+        view_id: ViewId,
+    },
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {

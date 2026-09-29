@@ -8,6 +8,7 @@ use crate::config::Config;
 use crate::events;
 use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::diagnostics::PullDiagnosticsHandler;
+use crate::handlers::inlay_hints::InlayHintsHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
 pub use helix_view::handlers::{word_index, Handlers};
@@ -22,6 +23,7 @@ pub mod diagnostics;
 mod document_colors;
 mod document_highlight;
 mod document_links;
+mod inlay_hints;
 mod prompt;
 mod signature_help;
 mod snippet;
@@ -34,6 +36,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     let signature_hints = SignatureHelpHandler::new().spawn();
     let auto_save = AutoSaveHandler::new().spawn();
     let code_action_hint = code_action_hint::Handler::default().spawn();
+    let inlay_hints = InlayHintsHandler.spawn();
     let document_colors = DocumentColorsHandler::default().spawn();
     let document_links = DocumentLinksHandler::default().spawn();
     let word_index = word_index::Handler::spawn();
@@ -44,6 +47,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
         completions: helix_view::handlers::completion::CompletionHandler::new(event_tx),
         signature_hints,
         auto_save,
+        inlay_hints,
         document_colors,
         document_links,
         word_index,
@@ -57,6 +61,7 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     signature_help::register_hooks(&handlers);
     document_highlight::register_hooks(&handlers);
     code_action_hint::register_hooks(&handlers);
+    inlay_hints::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);
     diagnostics::register_hooks(&handlers);
     snippet::register_hooks(&handlers);
