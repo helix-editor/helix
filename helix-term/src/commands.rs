@@ -3515,6 +3515,22 @@ fn changed_file_picker(cx: &mut Context) {
         }),
         PickerColumn::new("path", |change: &FileChange, data: &FileChangeData| {
             let display_path = |path: &PathBuf| {
+                // In a Git worktree, the path to into the original repository
+                // may be absolute or relative. By default, it is absolute,
+                // but it can be made relative with `git worktree add
+                // --relative-paths`. If the worktree's path is relative, then
+                // changes may be reported containing extraneous "../" path
+                // segments. Therefore, we canonicalize the path to the file
+                // first, to avoid showing a strange, long, relative path in
+                // the picker.
+                let canonical_path;
+                let path = match path.canonicalize() {
+                    Ok(cp) => {
+                        canonical_path = cp;
+                        &canonical_path
+                    }
+                    Err(_) => path,
+                };
                 path.strip_prefix(&data.cwd)
                     .unwrap_or(path)
                     .display()
