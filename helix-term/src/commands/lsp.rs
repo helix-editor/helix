@@ -15,7 +15,7 @@ use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
-    text_annotations::InlineAnnotation, Selection, Uri,
+    text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -34,7 +34,7 @@ use crate::{
 };
 
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fmt::Display,
     future::Future,
     path::Path,
@@ -64,7 +64,7 @@ macro_rules! language_server_with_feature {
 
 /// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
 /// the server's  offset encoding.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Location {
     uri: Uri,
     range: lsp::Range,
@@ -911,8 +911,79 @@ impl Display for ApplyEditErrorKind {
     }
 }
 
+/// Removes duplicate locations, keeping the rest in their original order.
+///
+/// When multiple language servers respond to the same request with the same location, the
+/// duplicates may still differ in the servers' offset encodings. Locations which share an
+/// offset encoding are compared directly. Comparing `character` offsets across different
+/// offset encodings however requires the text they point into, so those are only compared
+/// when `text_for_uri` provides the text - i.e. when the document is already open. Files
+/// are never read from disk just to deduplicate: a goto request can easily return hundreds
+/// of locations and showing the occasional duplicate is cheaper than reading all of them.
+fn deduplicate_locations(
+    locations: &mut Vec<Location>,
+    mut text_for_uri: impl FnMut(&Uri) -> Option<Rope>,
+) {
+    // Exact duplicates.
+    let mut seen = HashSet::new();
+    locations.retain(|location| seen.insert(location.clone()));
+
+    // Only locations which point to the same lines of the same file with different offset
+    // encodings can still be duplicates of each other.
+    let mut groups: HashMap<(&Uri, u32, u32), Vec<usize>> = HashMap::new();
+    for (index, location) in locations.iter().enumerate() {
+        groups
+            .entry((
+                &location.uri,
+                location.range.start.line,
+                location.range.end.line,
+            ))
+            .or_default()
+            .push(index);
+    }
+
+    let mut duplicates = HashSet::new();
+    for ((uri, _, _), group) in groups {
+        let offset_encoding = locations[group[0]].offset_encoding;
+        if group[1..]
+            .iter()
+            .all(|&index| locations[index].offset_encoding == offset_encoding)
+        {
+            continue;
+        }
+        let Some(text) = text_for_uri(uri) else {
+            continue;
+        };
+        let mut ranges = HashSet::new();
+        for &index in &group {
+            let location = &locations[index];
+            let Some(range) = lsp_range_to_range(&text, location.range, location.offset_encoding)
+            else {
+                continue;
+            };
+            if !ranges.insert((range.anchor, range.head)) {
+                duplicates.insert(index);
+            }
+        }
+    }
+
+    if !duplicates.is_empty() {
+        let mut index = 0;
+        locations.retain(|_| {
+            let keep = !duplicates.contains(&index);
+            index += 1;
+            keep
+        });
+    }
+}
+
 /// Precondition: `locations` should be non-empty.
-fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Location>) {
+fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, mut locations: Vec<Location>) {
+    deduplicate_locations(&mut locations, |uri| {
+        let doc = editor.document_by_path(uri.as_path()?)?;
+        Some(doc.text().clone())
+    });
+
     let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
@@ -1514,4 +1585,110 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn location(
+        path: &str,
+        offset_encoding: OffsetEncoding,
+        (start_line, start_character): (u32, u32),
+        (end_line, end_character): (u32, u32),
+    ) -> Location {
+        Location {
+            uri: PathBuf::from(path).into(),
+            range: lsp::Range {
+                start: lsp::Position {
+                    line: start_line,
+                    character: start_character,
+                },
+                end: lsp::Position {
+                    line: end_line,
+                    character: end_character,
+                },
+            },
+            offset_encoding,
+        }
+    }
+
+    #[test]
+    fn removes_exact_duplicates_without_reading_text() {
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 4), (0, 10)),
+            location("/bar.rs", OffsetEncoding::Utf16, (1, 0), (1, 5)),
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 4), (0, 10)),
+        ];
+        deduplicate_locations(&mut locations, |_| panic!("must not look at file contents"));
+        assert_eq!(
+            locations,
+            vec![
+                location("/foo.rs", OffsetEncoding::Utf16, (0, 4), (0, 10)),
+                location("/bar.rs", OffsetEncoding::Utf16, (1, 0), (1, 5)),
+            ]
+        );
+    }
+
+    #[test]
+    fn does_not_read_text_for_locations_on_different_lines() {
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf8, (0, 4), (0, 10)),
+            location("/foo.rs", OffsetEncoding::Utf16, (1, 4), (1, 10)),
+        ];
+        deduplicate_locations(&mut locations, |_| panic!("must not look at file contents"));
+        assert_eq!(locations.len(), 2);
+    }
+
+    #[test]
+    fn does_not_read_text_when_offset_encodings_match() {
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 4), (0, 10)),
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 12), (0, 18)),
+        ];
+        deduplicate_locations(&mut locations, |_| panic!("must not look at file contents"));
+        assert_eq!(locations.len(), 2);
+    }
+
+    #[test]
+    fn compares_locations_across_offset_encodings_by_text_of_open_document() {
+        // 'é' is two UTF-8 code units and one UTF-16 code unit, so both ranges
+        // point at "foo".
+        let text = Rope::from("é foo\n");
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6)),
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 2), (0, 5)),
+        ];
+        deduplicate_locations(&mut locations, |_| Some(text.clone()));
+        assert_eq!(
+            locations,
+            vec![location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6))]
+        );
+    }
+
+    #[test]
+    fn does_not_treat_equal_ranges_in_different_offset_encodings_as_duplicates() {
+        // Because of the multi-byte 'é' the same character offset resolves to
+        // different positions in different offset encodings.
+        let text = Rope::from("é foo\n");
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 3)),
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 3), (0, 3)),
+        ];
+        deduplicate_locations(&mut locations, |_| Some(text.clone()));
+        assert_eq!(locations.len(), 2);
+    }
+
+    #[test]
+    fn keeps_locations_in_documents_which_are_not_open() {
+        // Different offset encodings can only be compared through the text,
+        // which is not read from disk. Duplicates are acceptable here.
+        let mut locations = vec![
+            location("/foo.rs", OffsetEncoding::Utf8, (0, 3), (0, 6)),
+            location("/foo.rs", OffsetEncoding::Utf16, (0, 3), (0, 6)),
+        ];
+        deduplicate_locations(&mut locations, |_| None);
+        assert_eq!(locations.len(), 2);
+    }
 }
