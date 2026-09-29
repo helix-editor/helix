@@ -5655,3 +5655,15 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "structured_text"
+scope = "source.structured_text"
+injection-regex = "structured_text"
+file-types = ["st", "struct", "gvl", "enum", "itf", "meth"]
+comment-tokens = ["//", "///"]
+block-comment-tokens = { start = "(*", end = "*)" }
+
+[[grammar]]
+name = "structured_text"
+source = { git = "https://github.com/tanj/tree-sitter-structured-text", rev = "3431648181f6e2dd25f1238c9124dbaaa0172d72" }
