@@ -6,7 +6,7 @@ use std::{
 
 use helix_event::register_hook;
 use helix_loader::workspace_trust::TrustStatus;
-use helix_view::{events::DocumentDidOpen, handlers::Handlers, DocumentId};
+use helix_view::{events::DocumentDidOpen, handlers::Handlers};
 
 use crate::{compositor::Compositor, job, ui};
 
@@ -95,10 +95,10 @@ fn select(workspace: PathBuf) -> ui::Select<TrustChoice> {
             match option {
                 TrustChoice::Trust => {
                     editor.workspace_trust.trust(&workspace);
-                    let documents: Vec<DocumentId> = editor.documents.keys().cloned().collect();
-                    for document_id in documents.iter() {
-                        editor.launch_language_servers(*document_id);
-                    }
+                    // Refreshing reloads the language config (merging in the now-trusted
+                    // `.helix/languages.toml`) and refreshes the language servers of open
+                    // documents with the merged config. Launching the servers here instead
+                    // would use the stale pre-trust language config.
                     let _ = editor
                         .config_events
                         .0
