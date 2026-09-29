@@ -6986,9 +6986,15 @@ fn replay_macro(cx: &mut Context) {
 
     let count = cx.count();
     cx.callback.push(Box::new(move |compositor, cx| {
+        let outermost = cx.editor.macro_replaying.len() == 1;
         for _ in 0..count {
             for &key in keys.iter() {
                 compositor.handle_event(&compositor::Event::Key(key), cx);
+            }
+            // Keep counts produced by nested macros available to their caller, but don't let an
+            // unfinished count escape an outermost replay iteration or compound into the next.
+            if outermost {
+                cx.editor.count = None;
             }
         }
         // The macro under replay is cleared at the end of the callback, not in the
