@@ -167,7 +167,7 @@ pub fn find_nth_pairs_pos(
     if text.len_chars() < 2 {
         return Err(Error::PairNotFound);
     }
-    if range.to() >= text.len_chars() {
+    if range.to() > text.len_chars() {
         return Err(Error::RangeExceedsText);
     }
 
@@ -332,7 +332,7 @@ pub fn get_surround_pos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Range;
+    use crate::{Range, Transaction};
 
     use ropey::Rope;
     use smallvec::SmallVec;
@@ -349,6 +349,43 @@ mod test {
         assert_eq!(
             get_surround_pos(None, doc.slice(..), &selection, Some('('), 1).unwrap(),
             expectations
+        );
+    }
+
+    #[test]
+    fn test_get_surround_pos_full_range_ending_at_eof_can_be_deleted() {
+        let mut doc = Rope::from("(hello world)");
+        let selection = Selection::single(0, doc.len_chars());
+
+        let change_pos = get_surround_pos(None, doc.slice(..), &selection, Some('('), 1).unwrap();
+
+        assert_eq!(change_pos, [0, doc.len_chars() - 1]);
+
+        let transaction =
+            Transaction::change(&doc, change_pos.into_iter().map(|pos| (pos, pos + 1, None)));
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "hello world");
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_rejects_range_beyond_eof() {
+        let doc = Rope::from("(hello world)");
+        let range = Range::new(0, doc.len_chars() + 1);
+
+        assert_eq!(
+            find_nth_pairs_pos(None, doc.slice(..), '(', range, 1),
+            Err(Error::RangeExceedsText)
+        );
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_accepts_range_within_text() {
+        let doc = Rope::from("(hello world)");
+        let range = Range::new(1, doc.len_chars() - 1);
+
+        assert_eq!(
+            find_nth_pairs_pos(None, doc.slice(..), '(', range, 1),
+            Ok((0, doc.len_chars() - 1))
         );
     }
 
