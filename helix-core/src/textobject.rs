@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use ropey::RopeSlice;
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::chars::{char_is_whitespace, CharCategory, WordChars};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
@@ -10,7 +10,13 @@ use crate::syntax;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+fn find_word_boundary(
+    slice: RopeSlice,
+    mut pos: usize,
+    direction: Direction,
+    long: bool,
+    word_chars: &WordChars,
+) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -24,13 +30,13 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
 
     let mut prev_category = match direction {
         Direction::Forward if pos == 0 => Whitespace,
-        Direction::Forward => categorize_char(slice.char(pos - 1)),
+        Direction::Forward => word_chars.categorize(slice.char(pos - 1)),
         Direction::Backward if pos == slice.len_chars() => Whitespace,
-        Direction::Backward => categorize_char(slice.char(pos)),
+        Direction::Backward => word_chars.categorize(slice.char(pos)),
     };
 
     for ch in iter {
-        match categorize_char(ch) {
+        match word_chars.categorize(ch) {
             Eol | Whitespace => return pos,
             category => {
                 if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
@@ -74,13 +80,14 @@ pub fn textobject_word(
     textobject: TextObject,
     _count: usize,
     long: bool,
+    word_chars: &WordChars,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
-    let word_end = match slice.get_char(pos).map(categorize_char) {
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, long, word_chars);
+    let word_end = match slice.get_char(pos).map(|ch| word_chars.categorize(ch)) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long, word_chars),
     };
 
     // Special case.
@@ -395,6 +402,7 @@ mod test {
                 vec![(19, Inside, (17, 20)), (19, Around, (16, 20))],
             ),
         ];
+        let word_chars = WordChars::default();
 
         for (sample, scenario) in tests {
             let doc = Rope::from(*sample);
@@ -403,7 +411,7 @@ mod test {
                 let (pos, objtype, expected_range) = case;
                 // cursor is a single width selection
                 let range = Range::new(pos, pos + 1);
-                let result = textobject_word(slice, range, objtype, 1, false);
+                let result = textobject_word(slice, range, objtype, 1, false, &word_chars);
                 assert_eq!(
                     result,
                     expected_range.into(),

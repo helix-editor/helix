@@ -1,4 +1,4 @@
-use crate::{auto_pairs::AutoPairs, diagnostic::Severity, Language};
+use crate::{auto_pairs::AutoPairs, chars::WordChars, diagnostic::Severity, Language};
 
 use helix_stdx::rope;
 use serde::{ser::SerializeSeq as _, Deserialize, Serialize};
@@ -66,6 +66,14 @@ pub struct LanguageConfiguration {
     pub path_completion: Option<bool>,
     /// If set, overrides `editor.word-completion`.
     pub word_completion: Option<WordCompletion>,
+
+    #[serde(
+        default,
+        rename = "extra-word-characters",
+        skip_serializing,
+        deserialize_with = "deserialize_word_chars"
+    )]
+    pub word_chars: WordChars,
 
     #[serde(default)]
     pub diagnostic_severity: Severity,
@@ -648,6 +656,13 @@ where
     D: serde::Deserializer<'de>,
 {
     Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
+}
+
+pub fn deserialize_word_chars<'de, D>(deserializer: D) -> Result<WordChars, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    String::deserialize(deserializer).map(WordChars::from)
 }
 
 fn default_timeout() -> u64 {

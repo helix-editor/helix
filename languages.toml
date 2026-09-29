@@ -231,6 +231,7 @@ constantValues = true
 functionTypeParameters = true
 parameterNames = true
 rangeVariableTypes = true
+extra-word-characters = "-"
 
 [language-server.golangci-lint-lsp]
 command = "golangci-lint-langserver"
@@ -432,6 +433,7 @@ file-types = [
 comment-token = "#"
 language-servers = [ "taplo", "tombi" ]
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = "-"
 
 [[grammar]]
 name = "toml"
@@ -499,6 +501,7 @@ roots = ["mix.exs", "mix.lock"]
 comment-token = "#"
 language-servers = [ "elixir-ls", "expert" ]
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = "!?"
 
 [[grammar]]
 name = "elixir"
@@ -529,6 +532,7 @@ language-servers = ["fish-lsp"]
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
 formatter = { command = "fish_indent" }
+extra-word-characters = "@-."
 
 [[grammar]]
 name = "fish"
@@ -1093,6 +1097,7 @@ block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = "-"
 
 [[grammar]]
 name = "css"
@@ -1215,6 +1220,7 @@ block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "nil", "nixd" ]
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "nixfmt" }
+extra-word-characters = "-"
 
 [[grammar]]
 name = "nix"
@@ -1606,6 +1612,7 @@ indent = { tab-width = 1, unit = " " }
 grammar = "scheme"
 auto-format = true
 formatter = { command = "dune", args = ["format-dune-file"] }
+extra-word-characters = "#?./"
 
 [language.auto-pairs]
 '(' = ')'
@@ -1801,6 +1808,7 @@ comment-tokens = ["//", "///", "//!"]
 language-servers = [ "zls" ]
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
+extra-word-characters = "@"
 
 [language.debugger]
 name = "lldb-dap"
@@ -1952,6 +1960,7 @@ shebangs = ["perl"]
 comment-token = "#"
 language-servers = [ "perlnavigator" ]
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = ":"
 
 [[grammar]]
 name = "perl"
@@ -1989,6 +1998,7 @@ indent = { tab-width = 2, unit = "  " }
 block-comment-tokens = { start = "#|", end = "|#" }
 language-servers = [ "racket" ]
 grammar = "scheme"
+extra-word-characters = "@!#-'*-:<-~^"
 
 [[language]]
 name = "common-lisp"
@@ -1999,6 +2009,7 @@ comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "cl-lsp" ]
 grammar = "commonlisp"
+extra-word-characters = "+-*/%<=>:$?!@^"
 
 [[grammar]]
 name = "commonlisp"
@@ -2341,6 +2352,7 @@ language-servers = [ "graphql-language-service" ]
 comment-token = "#"
 block-comment-tokens = { start = "\"\"\"", end = "\"\"\"" }
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = "$@"
 
 [[grammar]]
 name = "graphql"
@@ -2538,6 +2550,7 @@ shebangs = ["r", "R"]
 comment-tokens = ["#", "#'"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "r" ]
+extra-word-characters = "@."
 
 [[grammar]]
 name = "r"
@@ -2553,6 +2566,7 @@ indent = { tab-width = 2, unit = "  " }
 grammar = "markdown"
 block-comment-tokens = { start = "<!--", end = "-->" }
 language-servers = [ "r" ]
+extra-word-characters = "@."
 
 [[language]]
 name = "swift"
@@ -2824,6 +2838,7 @@ shebangs = ["scheme", "guile", "chicken"]
 comment-token = ";"
 block-comment-tokens = { start = "#|", end = "|#" }
 indent = { tab-width = 2, unit = "  " }
+extra-word-characters = "!#$%&'*+-./:<=>?@^~"
 
 [language.auto-pairs]
 '(' = ')'
@@ -2938,6 +2953,7 @@ comment-token = ";"
 language-servers = [ "clojure-lsp" ]
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "cljfmt", args = ["fix", "-"] }
+extra-word-characters = "?-*!+/=<>.:$%&|"
 
 [[grammar]]
 name = "clojure"
@@ -3178,6 +3194,7 @@ file-types = ["astro"]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "astro-ls" ]
+extra-word-characters = "-$%"
 
 [[grammar]]
 name = "astro"
@@ -3203,6 +3220,7 @@ comment-token = ";;"
 block-comment-tokens = { start = "(;", end = ";)" }
 file-types = ["wat"]
 language-servers = ["wasm-language-tools"]
+extra-word-characters = "$./"
 
 [[grammar]]
 name = "wat"
@@ -3864,6 +3882,7 @@ comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 language-servers = ["just-lsp"]
 formatter = { command = "just", args = ["--fmt", "--justfile", "-"] }
+extra-word-characters = "-"
 
 [[grammar]]
 name = "just"
@@ -3905,6 +3924,7 @@ file-types = ["fs", "forth", "fth", "4th"]
 comment-token = "\\"
 language-servers = [ "forth-lsp" ]
 indent = { tab-width = 3, unit = "   " }
+extra-word-characters = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿"
 
 [[grammar]]
 name = "forth"
@@ -4083,6 +4103,7 @@ shebangs = []
 auto-format = false
 comment-token = "--"
 indent = { tab-width = 4, unit = "    " }
+extra-word-characters = "!'"
 
 [language.auto-pairs]
 '(' = ')'
@@ -4320,6 +4341,7 @@ shebangs = [ "pwsh", "powershell" ]
 comment-token = '#'
 block-comment-tokens = { start = "<#", end = "#>" }
 indent = { tab-width = 4, unit = "    " }
+extra-word-characters = "-"
 
 [[grammar]]
 name = "powershell"
@@ -5120,6 +5142,7 @@ scope = "source.pip-requirements"
 injection-regex = "(pip-)?requirements(\\.txt)?"
 grammar = "requirements"
 file-types = [{ glob = "requirements.txt" }, { glob = "constraints.txt" }]
+extra-word-characters = "-"
 
 [[grammar]]
 name = "requirements"

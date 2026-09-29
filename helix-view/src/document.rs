@@ -4,7 +4,7 @@ use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
-use helix_core::chars::char_is_word;
+use helix_core::chars::{WordChars, DEFAULT_WORD_CHARS};
 use helix_core::command_line::Token;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
@@ -1926,6 +1926,22 @@ impl Document {
         self.version
     }
 
+    pub fn word_chars(&self) -> &WordChars {
+        self.language_config()
+            .map(|config| &config.word_chars)
+            .unwrap_or(&DEFAULT_WORD_CHARS)
+    }
+
+    pub fn word_chars_at<'a>(
+        &'a self,
+        loader: &'a syntax::Loader,
+        byte_pos: usize,
+    ) -> &'a WordChars {
+        self.language_config_at(loader, byte_pos)
+            .map(|config| &config.word_chars)
+            .unwrap_or(&DEFAULT_WORD_CHARS)
+    }
+
     pub fn word_completion_enabled(&self) -> bool {
         self.language_config()
             .and_then(|lang_config| lang_config.word_completion.and_then(|c| c.enable))
@@ -2230,9 +2246,19 @@ impl Document {
             Vec::new()
         };
 
-        let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
-        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
+        let word_chars = language_config
+            .map(|config| &config.word_chars)
+            .unwrap_or(&DEFAULT_WORD_CHARS);
+
+        let ends_at_word = start != end
+            && end != 0
+            && text
+                .get_char(end - 1)
+                .is_some_and(|ch| word_chars.is_word(ch));
+        let starts_at_word = start != end
+            && text
+                .get_char(start)
+                .is_some_and(|ch| word_chars.is_word(ch));
 
         Some(Diagnostic {
             range: Range { start, end },

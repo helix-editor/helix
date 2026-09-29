@@ -21,7 +21,7 @@ pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
-    chars::char_is_word,
+    chars::{char_is_word, WordChars, DEFAULT_WORD_CHARS},
     command_line::{self, Args},
     comment,
     doc_formatter::TextFormat,
@@ -1192,7 +1192,7 @@ fn goto_window_bottom(cx: &mut Context) {
     goto_window(cx, Align::Bottom)
 }
 
-fn move_word_impl<F>(cx: &mut Context, move_fn: F)
+fn move_word_impl<F>(cx: &mut Context, move_fn: F, behaviour: Movement)
 where
     F: Fn(RopeSlice, Range, usize) -> Range,
 {
@@ -1200,59 +1200,90 @@ where
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| move_fn(text, range, count));
+    let selection = match behaviour {
+        Movement::Move => doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| move_fn(text, range, count)),
+        Movement::Extend => doc.selection(view.id).clone().transform(|range| {
+            let word = move_fn(text, range, count);
+            let pos = word.cursor(text);
+            range.put_cursor(text, pos, true)
+        }),
+    };
+
+    doc.set_selection(view.id, selection);
+}
+
+fn move_language_word_impl<F>(cx: &mut Context, move_fn: F, behaviour: Movement)
+where
+    F: Fn(RopeSlice, Range, usize, &WordChars) -> Range,
+{
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let loader = cx.editor.syn_loader.load();
+
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let byte_pos = text.char_to_byte(range.cursor(text));
+        let word_chars = doc.word_chars_at(&loader, byte_pos);
+        let word = move_fn(text, range, count, word_chars);
+
+        match behaviour {
+            Movement::Move => word,
+            Movement::Extend => range.put_cursor(text, word.cursor(text), true),
+        }
+    });
+
     doc.set_selection(view.id, selection);
 }
 
 fn move_next_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_word_start)
+    move_language_word_impl(cx, movement::move_next_word_start, Movement::Move)
 }
 
 fn move_prev_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_word_start)
+    move_language_word_impl(cx, movement::move_prev_word_start, Movement::Move)
 }
 
 fn move_prev_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_word_end)
+    move_language_word_impl(cx, movement::move_prev_word_end, Movement::Move)
 }
 
 fn move_next_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_word_end)
+    move_language_word_impl(cx, movement::move_next_word_end, Movement::Move)
 }
 
 fn move_next_long_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_long_word_start)
+    move_word_impl(cx, movement::move_next_long_word_start, Movement::Move)
 }
 
 fn move_prev_long_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_long_word_start)
+    move_word_impl(cx, movement::move_prev_long_word_start, Movement::Move)
 }
 
 fn move_prev_long_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_long_word_end)
+    move_word_impl(cx, movement::move_prev_long_word_end, Movement::Move)
 }
 
 fn move_next_long_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_long_word_end)
+    move_word_impl(cx, movement::move_next_long_word_end, Movement::Move)
 }
 
 fn move_next_sub_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_sub_word_start)
+    move_word_impl(cx, movement::move_next_sub_word_start, Movement::Move)
 }
 
 fn move_prev_sub_word_start(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_sub_word_start)
+    move_word_impl(cx, movement::move_prev_sub_word_start, Movement::Move)
 }
 
 fn move_prev_sub_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_prev_sub_word_end)
+    move_word_impl(cx, movement::move_prev_sub_word_end, Movement::Move)
 }
 
 fn move_next_sub_word_end(cx: &mut Context) {
-    move_word_impl(cx, movement::move_next_sub_word_end)
+    move_word_impl(cx, movement::move_next_sub_word_end, Movement::Move)
 }
 
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
@@ -1585,68 +1616,52 @@ fn should_open_url_externally(url: &Url) -> bool {
     matches!(is_binary, Ok(true))
 }
 
-fn extend_word_impl<F>(cx: &mut Context, extend_fn: F)
-where
-    F: Fn(RopeSlice, Range, usize) -> Range,
-{
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let word = extend_fn(text, range, count);
-        let pos = word.cursor(text);
-        range.put_cursor(text, pos, true)
-    });
-    doc.set_selection(view.id, selection);
-}
-
 fn extend_next_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_word_start)
+    move_language_word_impl(cx, movement::move_next_word_start, Movement::Extend)
 }
 
 fn extend_prev_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_word_start)
+    move_language_word_impl(cx, movement::move_prev_word_start, Movement::Extend)
 }
 
 fn extend_next_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_word_end)
+    move_language_word_impl(cx, movement::move_next_word_end, Movement::Extend)
 }
 
 fn extend_prev_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_word_end)
+    move_language_word_impl(cx, movement::move_prev_word_end, Movement::Extend)
 }
 
 fn extend_next_long_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_long_word_start)
+    move_word_impl(cx, movement::move_next_long_word_start, Movement::Extend)
 }
 
 fn extend_prev_long_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_long_word_start)
+    move_word_impl(cx, movement::move_prev_long_word_start, Movement::Extend)
 }
 
 fn extend_prev_long_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_long_word_end)
+    move_word_impl(cx, movement::move_prev_long_word_end, Movement::Extend)
 }
 
 fn extend_next_long_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_long_word_end)
+    move_word_impl(cx, movement::move_next_long_word_end, Movement::Extend)
 }
 
 fn extend_next_sub_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_sub_word_start)
+    move_word_impl(cx, movement::move_next_sub_word_start, Movement::Extend)
 }
 
 fn extend_prev_sub_word_start(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_sub_word_start)
+    move_word_impl(cx, movement::move_prev_sub_word_start, Movement::Extend)
 }
 
 fn extend_prev_sub_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_prev_sub_word_end)
+    move_word_impl(cx, movement::move_prev_sub_word_end, Movement::Extend)
 }
 
 fn extend_next_sub_word_end(cx: &mut Context) {
-    extend_word_impl(cx, movement::move_next_sub_word_end)
+    move_word_impl(cx, movement::move_next_sub_word_end, Movement::Extend)
 }
 
 /// Separate branch to find_char designed only for `<ret>` char.
@@ -4740,10 +4755,12 @@ pub mod insert {
 
     pub fn delete_word_backward(cx: &mut Context) {
         let count = cx.count();
+        let word_chars = doc!(cx.editor).word_chars().clone();
         delete_by_selection_insert_mode(
             cx,
             |text, range| {
-                let anchor = movement::move_prev_word_start(text, *range, count).from();
+                let anchor =
+                    movement::move_prev_word_start(text, *range, count, &word_chars).from();
                 let next = Range::new(anchor, range.cursor(text));
                 let range = exclude_cursor(text, next, *range);
                 (range.from(), range.to())
@@ -4754,10 +4771,11 @@ pub mod insert {
 
     pub fn delete_word_forward(cx: &mut Context) {
         let count = cx.count();
+        let word_chars = doc!(cx.editor).word_chars().clone();
         delete_by_selection_insert_mode(
             cx,
             |text, range| {
-                let head = movement::move_next_word_end(text, *range, count).to();
+                let head = movement::move_next_word_end(text, *range, count, &word_chars).to();
                 (range.cursor(text), head)
             },
             Direction::Forward,
@@ -6301,9 +6319,15 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 };
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
+                    let byte_pos = text.char_to_byte(range.cursor(text));
+                    let word_chars = doc.word_chars_at(&loader, byte_pos);
                     match ch {
-                        'w' => textobject::textobject_word(text, range, objtype, count, false),
-                        'W' => textobject::textobject_word(text, range, objtype, count, true),
+                        'w' => textobject::textobject_word(
+                            text, range, objtype, count, false, word_chars,
+                        ),
+                        'W' => textobject::textobject_word(
+                            text, range, objtype, count, true, word_chars,
+                        ),
                         't' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
                         'a' => textobject_treesitter("parameter", range),
@@ -7111,6 +7135,8 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);
 
+    let word_chars = &DEFAULT_WORD_CHARS;
+
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
     let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
@@ -7121,12 +7147,12 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let mut cursor_fwd = Range::point(cursor);
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
-        let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
+        let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1, word_chars);
         //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
-        let cursor_word_start = movement::move_prev_word_start(text, cursor_rev, 1);
+        let cursor_word_start = movement::move_prev_word_start(text, cursor_rev, 1, word_chars);
         if cursor_word_start.anchor == next_grapheme_boundary(text, cursor) {
             cursor_rev = cursor_word_start;
         }
@@ -7134,7 +7160,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     'outer: loop {
         let mut changed = false;
         while cursor_fwd.head < end {
-            cursor_fwd = movement::move_next_word_end(text, cursor_fwd, 1);
+            cursor_fwd = movement::move_next_word_end(text, cursor_fwd, 1, word_chars);
             // The cursor is on a word that is atleast two graphemes long and
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
@@ -7143,7 +7169,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
                 .slice(..cursor_fwd.head)
                 .graphemes_rev()
                 .take(2)
-                .take_while(|g| g.chars().all(char_is_word))
+                .take_while(|g| g.chars().all(|ch| word_chars.is_word(ch)))
                 .count()
                 == 2;
             if !add_label {
@@ -7153,7 +7179,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // skip any leading whitespace
             cursor_fwd.anchor += text
                 .chars_at(cursor_fwd.anchor)
-                .take_while(|&c| !char_is_word(c))
+                .take_while(|&c| !word_chars.is_word(c))
                 .count();
             words.push(cursor_fwd);
             if words.len() == jump_label_limit {
@@ -7162,7 +7188,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             break;
         }
         while cursor_rev.head > start {
-            cursor_rev = movement::move_prev_word_start(text, cursor_rev, 1);
+            cursor_rev = movement::move_prev_word_start(text, cursor_rev, 1, word_chars);
             // The cursor is on a word that is atleast two graphemes long and
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
@@ -7171,7 +7197,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
                 .slice(cursor_rev.head..)
                 .graphemes()
                 .take(2)
-                .take_while(|g| g.chars().all(char_is_word))
+                .take_while(|g| g.chars().all(|ch| word_chars.is_word(ch)))
                 .count()
                 == 2;
             if !add_label {
@@ -7181,7 +7207,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             cursor_rev.anchor -= text
                 .chars_at(cursor_rev.anchor)
                 .reversed()
-                .take_while(|&c| !char_is_word(c))
+                .take_while(|&c| !word_chars.is_word(c))
                 .count();
             words.push(cursor_rev);
             if words.len() == jump_label_limit {

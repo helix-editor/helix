@@ -1,6 +1,51 @@
 //! Utility functions to categorize a `char`.
 
+use std::borrow::Cow;
+
 use crate::LineEnding;
+
+pub static DEFAULT_WORD_CHARS: WordChars = WordChars::new("");
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WordChars(Cow<'static, str>);
+
+impl WordChars {
+    pub const fn new(chars: &'static str) -> Self {
+        Self(Cow::Borrowed(chars))
+    }
+
+    #[inline]
+    pub fn is_word(&self, ch: char) -> bool {
+        char_is_word(ch) || self.0.contains(ch)
+    }
+
+    #[inline]
+    pub fn categorize(&self, ch: char) -> CharCategory {
+        if char_is_line_ending(ch) {
+            CharCategory::Eol
+        } else if ch.is_whitespace() {
+            CharCategory::Whitespace
+        } else if self.is_word(ch) {
+            CharCategory::Word
+        } else if char_is_punctuation(ch) {
+            CharCategory::Punctuation
+        } else {
+            CharCategory::Unknown
+        }
+    }
+}
+
+impl Default for WordChars {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
+impl From<String> for WordChars {
+    fn from(value: String) -> Self {
+        Self(Cow::Owned(value))
+    }
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CharCategory {
@@ -13,17 +58,7 @@ pub enum CharCategory {
 
 #[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
-    if char_is_line_ending(ch) {
-        CharCategory::Eol
-    } else if ch.is_whitespace() {
-        CharCategory::Whitespace
-    } else if char_is_word(ch) {
-        CharCategory::Word
-    } else if char_is_punctuation(ch) {
-        CharCategory::Punctuation
-    } else {
-        CharCategory::Unknown
-    }
+    DEFAULT_WORD_CHARS.categorize(ch)
 }
 
 /// Determine whether a character is a line ending.

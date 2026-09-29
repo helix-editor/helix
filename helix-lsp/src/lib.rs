@@ -79,9 +79,10 @@ pub enum OffsetEncoding {
 
 pub mod util {
     use super::*;
+    use helix_core::chars::WordChars;
     use helix_core::line_ending::{line_end_byte_index, line_end_char_index};
     use helix_core::snippets::{RenderedSnippet, Snippet, SnippetRenderCtx};
-    use helix_core::{chars, RopeSlice};
+    use helix_core::RopeSlice;
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
@@ -287,18 +288,23 @@ pub mod util {
     /// If the LS did not provide a range for the completion or the range of the
     /// primary cursor can not be used for the secondary cursor, this function
     /// can be used to find the completion range for a cursor
-    fn find_completion_range(text: RopeSlice, replace_mode: bool, cursor: usize) -> (usize, usize) {
+    fn find_completion_range(
+        text: RopeSlice,
+        replace_mode: bool,
+        cursor: usize,
+        word_chars: &WordChars,
+    ) -> (usize, usize) {
         let start = cursor
             - text
                 .chars_at(cursor)
                 .reversed()
-                .take_while(|ch| chars::char_is_word(*ch))
+                .take_while(|ch| word_chars.is_word(*ch))
                 .count();
         let mut end = cursor;
         if replace_mode {
             end += text
                 .chars_at(cursor)
-                .take_while(|ch| chars::char_is_word(*ch))
+                .take_while(|ch| word_chars.is_word(*ch))
                 .count();
         }
         (start, end)
@@ -308,6 +314,7 @@ pub mod util {
         edit_offset: Option<(i128, i128)>,
         replace_mode: bool,
         cursor: usize,
+        word_chars: &WordChars,
     ) -> Option<(usize, usize)> {
         let res = match edit_offset {
             Some((start_offset, end_offset)) => {
@@ -321,7 +328,7 @@ pub mod util {
                 }
                 (start_offset as usize, end_offset as usize)
             }
-            None => find_completion_range(text, replace_mode, cursor),
+            None => find_completion_range(text, replace_mode, cursor, word_chars),
         };
         Some(res)
     }
@@ -334,6 +341,7 @@ pub mod util {
         edit_offset: Option<(i128, i128)>,
         replace_mode: bool,
         new_text: String,
+        word_chars: &WordChars,
     ) -> Transaction {
         let replacement: Option<Tendril> = if new_text.is_empty() {
             None
@@ -347,6 +355,7 @@ pub mod util {
             edit_offset,
             replace_mode,
             selection.primary().cursor(text),
+            word_chars,
         )
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
@@ -356,9 +365,11 @@ pub mod util {
             selection,
             |range| {
                 let cursor = range.cursor(text);
-                completion_range(text, edit_offset, replace_mode, cursor)
+                completion_range(text, edit_offset, replace_mode, cursor, word_chars)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
-                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+                    .unwrap_or_else(|| {
+                        find_completion_range(text, replace_mode, cursor, word_chars)
+                    })
             },
             |_, _| replacement.clone(),
         );
@@ -378,6 +389,7 @@ pub mod util {
         replace_mode: bool,
         snippet: Snippet,
         cx: &mut SnippetRenderCtx,
+        word_chars: &WordChars,
     ) -> (Transaction, RenderedSnippet) {
         let text = doc.slice(..);
         let (removed_start, removed_end) = completion_range(
@@ -385,6 +397,7 @@ pub mod util {
             edit_offset,
             replace_mode,
             selection.primary().cursor(text),
+            word_chars,
         )
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
@@ -393,9 +406,11 @@ pub mod util {
             selection,
             |range| {
                 let cursor = range.cursor(text);
-                completion_range(text, edit_offset, replace_mode, cursor)
+                completion_range(text, edit_offset, replace_mode, cursor, word_chars)
                     .filter(|(start, end)| text.slice(start..end) == removed_text)
-                    .unwrap_or_else(|| find_completion_range(text, replace_mode, cursor))
+                    .unwrap_or_else(|| {
+                        find_completion_range(text, replace_mode, cursor, word_chars)
+                    })
             },
             cx,
         );

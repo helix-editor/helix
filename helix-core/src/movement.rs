@@ -4,7 +4,7 @@ use ropey::iter::Chars;
 
 use crate::{
     char_idx_at_visual_offset,
-    chars::{categorize_char, char_is_line_ending, CharCategory},
+    chars::{categorize_char, char_is_line_ending, CharCategory, WordChars},
     doc_formatter::TextFormat,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
@@ -165,20 +165,60 @@ pub fn move_vertically(
     new_range
 }
 
-pub fn move_next_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextWordStart)
+pub fn move_next_word_start(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    word_chars: &WordChars,
+) -> Range {
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::NextWordStart(word_chars),
+    )
 }
 
-pub fn move_next_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::NextWordEnd)
+pub fn move_next_word_end(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    word_chars: &WordChars,
+) -> Range {
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::NextWordEnd(word_chars),
+    )
 }
 
-pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordStart)
+pub fn move_prev_word_start(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    word_chars: &WordChars,
+) -> Range {
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::PrevWordStart(word_chars),
+    )
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+pub fn move_prev_word_end(
+    slice: RopeSlice,
+    range: Range,
+    count: usize,
+    word_chars: &WordChars,
+) -> Range {
+    word_move(
+        slice,
+        range,
+        count,
+        WordMotionTarget::PrevWordEnd(word_chars),
+    )
 }
 
 pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
@@ -216,10 +256,10 @@ pub fn move_prev_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> R
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
     let is_prev = matches!(
         target,
-        WordMotionTarget::PrevWordStart
+        WordMotionTarget::PrevWordStart(_)
             | WordMotionTarget::PrevLongWordStart
             | WordMotionTarget::PrevSubWordStart
-            | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::PrevWordEnd(_)
             | WordMotionTarget::PrevLongWordEnd
             | WordMotionTarget::PrevSubWordEnd
     );
@@ -389,11 +429,11 @@ where
 
 /// Possible targets of a word motion
 #[derive(Copy, Clone, Debug)]
-pub enum WordMotionTarget {
-    NextWordStart,
-    NextWordEnd,
-    PrevWordStart,
-    PrevWordEnd,
+pub enum WordMotionTarget<'a> {
+    NextWordStart(&'a WordChars),
+    NextWordEnd(&'a WordChars),
+    PrevWordStart(&'a WordChars),
+    PrevWordEnd(&'a WordChars),
     // A "Long word" (also known as a WORD in Vim/Kakoune) is strictly
     // delimited by whitespace, and can consist of punctuation as well
     // as alphanumerics.
@@ -420,10 +460,10 @@ impl CharHelpers for Chars<'_> {
     fn range_to_target(&mut self, target: WordMotionTarget, origin: Range) -> Range {
         let is_prev = matches!(
             target,
-            WordMotionTarget::PrevWordStart
+            WordMotionTarget::PrevWordStart(_)
                 | WordMotionTarget::PrevLongWordStart
                 | WordMotionTarget::PrevSubWordStart
-                | WordMotionTarget::PrevWordEnd
+                | WordMotionTarget::PrevWordEnd(_)
                 | WordMotionTarget::PrevLongWordEnd
                 | WordMotionTarget::PrevSubWordEnd
         );
@@ -489,8 +529,8 @@ impl CharHelpers for Chars<'_> {
     }
 }
 
-fn is_word_boundary(a: char, b: char) -> bool {
-    categorize_char(a) != categorize_char(b)
+fn is_word_boundary(a: char, b: char, word_chars: &WordChars) -> bool {
+    word_chars.categorize(a) != word_chars.categorize(b)
 }
 
 fn is_long_word_boundary(a: char, b: char) -> bool {
@@ -523,12 +563,12 @@ fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
 
 fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> bool {
     match target {
-        WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
-            is_word_boundary(prev_ch, next_ch)
+        WordMotionTarget::NextWordStart(word_chars) | WordMotionTarget::PrevWordEnd(word_chars) => {
+            is_word_boundary(prev_ch, next_ch, word_chars)
                 && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
         }
-        WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
-            is_word_boundary(prev_ch, next_ch)
+        WordMotionTarget::NextWordEnd(word_chars) | WordMotionTarget::PrevWordStart(word_chars) => {
+            is_word_boundary(prev_ch, next_ch, word_chars)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
         WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
@@ -979,19 +1019,37 @@ mod test {
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_movement_attempt_in_debug_mode() {
-        move_next_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        let word_chars = WordChars::default();
+        move_next_word_start(
+            Rope::from("Sample").slice(..),
+            Range::point(99999999),
+            1,
+            &word_chars,
+        );
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_forward_to_end_movement_attempt_in_debug_mode() {
-        move_next_word_end(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        let word_chars = WordChars::default();
+        move_next_word_end(
+            Rope::from("Sample").slice(..),
+            Range::point(99999999),
+            1,
+            &word_chars,
+        );
     }
 
     #[test]
     #[should_panic]
     fn nonsensical_ranges_panic_on_backwards_movement_attempt_in_debug_mode() {
-        move_prev_word_start(Rope::from("Sample").slice(..), Range::point(99999999), 1);
+        let word_chars = WordChars::default();
+        move_prev_word_start(
+            Rope::from("Sample").slice(..),
+            Range::point(99999999),
+            1,
+            &word_chars,
+        );
     }
 
     #[test]
@@ -1071,10 +1129,12 @@ mod test {
                     (1, Range::new(0, 0), Range::new(0, 6)),
                 ]),
         ];
+        let word_chars = WordChars::default();
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_word_start(Rope::from(sample).slice(..), begin, count);
+                let range =
+                    move_next_word_start(Rope::from(sample).slice(..), begin, count, &word_chars);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1412,10 +1472,12 @@ mod test {
                     (1, Range::new(0, 6), Range::new(6, 0)),
                 ]),
         ];
+        let word_chars = WordChars::default();
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_word_start(Rope::from(sample).slice(..), begin, count);
+                let range =
+                    move_prev_word_start(Rope::from(sample).slice(..), begin, count, &word_chars);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1679,10 +1741,12 @@ mod test {
                     (1, Range::new(0, 0), Range::new(0, 5)),
                 ]),
         ];
+        let word_chars = WordChars::default();
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_next_word_end(Rope::from(sample).slice(..), begin, count);
+                let range =
+                    move_next_word_end(Rope::from(sample).slice(..), begin, count, &word_chars);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1761,10 +1825,12 @@ mod test {
                     (1, Range::new(0, 10), Range::new(10, 4)),
                 ]),
         ];
+        let word_chars = WordChars::default();
 
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
-                let range = move_prev_word_end(Rope::from(sample).slice(..), begin, count);
+                let range =
+                    move_prev_word_end(Rope::from(sample).slice(..), begin, count, &word_chars);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }

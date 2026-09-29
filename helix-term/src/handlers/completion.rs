@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use helix_core::chars::char_is_word;
 use helix_core::completion::CompletionProvider;
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_event::{register_hook, TaskHandle};
@@ -153,13 +152,14 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
         return;
     }
 
+    let word_chars = doc.word_chars();
     let is_auto_trigger = !trigger_char_only
         && doc
             .text()
             .chars_at(cursor)
             .reversed()
             .take(config.completion_trigger_len as usize)
-            .all(char_is_word);
+            .all(|ch| word_chars.is_word(ch));
 
     if is_auto_trigger {
         handler.event(CompletionEvent::AutoTrigger {
@@ -172,10 +172,11 @@ pub fn trigger_auto_completion(editor: &Editor, trigger_char_only: bool) {
 
 fn update_completion_filter(cx: &mut commands::Context, c: Option<char>) {
     cx.callback.push(Box::new(move |compositor, cx| {
+        let word_chars = doc!(cx.editor).word_chars();
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
-            if completion.is_empty() || c.is_some_and(|c| !char_is_word(c)) {
+            if completion.is_empty() || c.is_some_and(|c| !word_chars.is_word(c)) {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)

@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
-use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
+use helix_core::{self as core, fuzzy::MATCHER, Change, Transaction};
 use helix_lsp::{lsp, util, OffsetEncoding};
 use helix_view::{
     editor::CompleteAction,
@@ -297,10 +297,11 @@ impl Completion {
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
+        let word_chars = doc.word_chars();
         let offset = text
             .chars_at(cursor)
             .reversed()
-            .take_while(|ch| chars::char_is_word(*ch))
+            .take_while(|&ch| word_chars.is_word(ch))
             .count();
         let start_offset = cursor.saturating_sub(offset);
 
@@ -590,6 +591,7 @@ fn lsp_item_to_transaction(
     let selection = doc.selection(view_id);
     let text = doc.text().slice(..);
     let primary_cursor = selection.primary().cursor(text);
+    let word_chars = doc.word_chars();
 
     let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
         let edit = match edit {
@@ -642,6 +644,7 @@ fn lsp_item_to_transaction(
             replace_mode,
             snippet,
             &mut doc.snippet_ctx(),
+            word_chars,
         );
         (transaction, Some(snippet))
     } else {
@@ -651,6 +654,7 @@ fn lsp_item_to_transaction(
             edit_offset,
             replace_mode,
             new_text,
+            word_chars,
         );
         (transaction, None)
     }
