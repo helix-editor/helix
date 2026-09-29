@@ -750,23 +750,33 @@ fn code_action_on_save_step(
         let doc = doc!(editor, &doc_id);
         let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());
-        let Some((request, ls_id)) = code_actions_for_range(
+        let requests = code_actions_for_range(
             doc,
             full_range,
             Some(vec![kind.clone()]),
             CodeActionTriggerKind::INVOKED,
-        )
-        .into_iter()
-        .next() else {
-            // No server offers this kind for the document: skip to the next.
+        );
+        if requests.is_empty() {
+            // No server supports code actions for the document: skip to the next kind.
             return code_action_on_save_step(doc_id, kinds, tail);
-        };
+        }
 
         let future = async move {
-            let actions = request.await?;
+            // The requests were sent while building the list above. Await them in configured
+            // server order so edits from multiple servers are later applied in that same order.
+            let mut responses = Vec::with_capacity(requests.len());
+            for (request, ls_id) in requests {
+                match request.await {
+                    Ok(Some(actions)) => responses.push((ls_id, actions)),
+                    Ok(None) => {}
+                    Err(err) => {
+                        log::error!("code-actions-on-save: request failed: {err:?}");
+                    }
+                }
+            }
             let resolve = move |editor: &mut Editor| -> Option<Job> {
                 resolve_and_apply_code_actions_of_kind(
-                    editor, doc_id, version, ls_id, kind, kinds, tail, actions,
+                    editor, doc_id, version, kind, kinds, tail, responses,
                 )
             };
             Ok(Callback::Followup(Box::new(resolve)))
@@ -800,8 +810,8 @@ fn code_action_kind_matches(action: &CodeAction, requested: &CodeActionKind) -> 
 type ResolveFuture =
     std::pin::Pin<Box<dyn Future<Output = Result<lsp::CodeAction, helix_lsp::Error>> + Send>>;
 enum ResolveStep {
-    Ready(lsp::WorkspaceEdit),
-    Resolve(ResolveFuture),
+    Ready(OffsetEncoding, lsp::WorkspaceEdit),
+    Resolve(OffsetEncoding, ResolveFuture),
 }
 
 /// Resolve (off the event loop) and apply the actions matching `kind`, then
@@ -811,51 +821,64 @@ fn resolve_and_apply_code_actions_of_kind(
     editor: &mut Editor,
     doc_id: DocumentId,
     version: i32,
-    ls_id: LanguageServerId,
     kind: CodeActionKind,
     kinds: VecDeque<CodeActionKind>,
     tail: Option<Job>,
-    actions: Option<Vec<CodeActionOrCommand>>,
+    responses: Vec<(LanguageServerId, Vec<CodeActionOrCommand>)>,
 ) -> Option<Job> {
-    // Build the matching actions, in order, while holding the language-server
-    // borrow, resolving only those the server left incomplete.
-    let prepared = (|| -> Option<(OffsetEncoding, Vec<ResolveStep>)> {
-        let actions = actions?;
-        if editor.documents.get(&doc_id)?.version() != version {
-            log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
-            return None;
-        }
-        let ls = editor.language_server_by_id(ls_id)?;
-        let steps = actions
-            .iter()
-            .filter_map(|action| match action {
-                CodeActionOrCommand::CodeAction(ca) if ca.disabled.is_none() => Some(ca),
-                _ => None,
-            })
-            .filter(|ca| code_action_kind_matches(ca, &kind))
-            .filter_map(|ca| {
-                // Resolve only when the server left out the edit or command.
-                if ca.edit.is_none() || ca.command.is_none() {
-                    if let Some(future) = ls.resolve_code_action(ca) {
-                        return Some(ResolveStep::Resolve(Box::pin(future)));
-                    }
-                }
-                ca.edit.clone().map(ResolveStep::Ready)
-            })
-            .collect();
-        Some((ls.offset_encoding(), steps))
-    })();
-    let Some((offset_encoding, steps)) = prepared else {
+    if editor
+        .documents
+        .get(&doc_id)
+        .is_none_or(|doc| doc.version() != version)
+    {
+        log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
         return code_action_on_save_step(doc_id, kinds, tail);
-    };
+    }
+
+    // Build the matching actions in configured server order, resolving only
+    // those each server left incomplete.
+    let mut steps = Vec::new();
+    for (ls_id, actions) in responses {
+        let Some(ls) = editor.language_server_by_id(ls_id) else {
+            continue;
+        };
+        let offset_encoding = ls.offset_encoding();
+        steps.extend(
+            actions
+                .iter()
+                .filter_map(|action| match action {
+                    CodeActionOrCommand::CodeAction(ca) if ca.disabled.is_none() => Some(ca),
+                    _ => None,
+                })
+                .filter(|ca| code_action_kind_matches(ca, &kind))
+                .filter_map(|ca| {
+                    // Resolve only when the server left out the edit or command.
+                    if ca.edit.is_none() || ca.command.is_none() {
+                        if let Some(future) = ls.resolve_code_action(ca) {
+                            return Some(ResolveStep::Resolve(offset_encoding, Box::pin(future)));
+                        }
+                    }
+                    ca.edit
+                        .clone()
+                        .map(|edit| ResolveStep::Ready(offset_encoding, edit))
+                }),
+        );
+    }
 
     let future = async move {
         let mut edits = Vec::new();
         for step in steps {
             match step {
-                ResolveStep::Ready(edit) => edits.push(edit),
-                ResolveStep::Resolve(future) => match future.await {
-                    Ok(resolved) => edits.extend(resolved.edit),
+                ResolveStep::Ready(offset_encoding, edit) => {
+                    edits.push((offset_encoding, edit));
+                }
+                ResolveStep::Resolve(offset_encoding, future) => match future.await {
+                    Ok(resolved) => edits.extend(
+                        resolved
+                            .edit
+                            .into_iter()
+                            .map(|edit| (offset_encoding, edit)),
+                    ),
                     Err(err) => log::error!("code-actions-on-save: resolve failed: {err:?}"),
                 },
             }
@@ -869,8 +892,8 @@ fn resolve_and_apply_code_actions_of_kind(
                 .get(&doc_id)
                 .is_some_and(|doc| doc.version() == version)
             {
-                for edit in &edits {
-                    if let Err(err) = editor.apply_workspace_edit(offset_encoding, edit) {
+                for (offset_encoding, edit) in &edits {
+                    if let Err(err) = editor.apply_workspace_edit(*offset_encoding, edit) {
                         log::error!("code-actions-on-save: failed to apply edit: {err:?}");
                     }
                 }
