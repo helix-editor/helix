@@ -1,0 +1,221 @@
+# Author: Stefanie Jane <https://github.com/hyperb1iss>
+# SilkCircuit Dawn: one palette shared across Neovim, VS Code, Chrome, and terminals.
+# Source: https://github.com/hyperb1iss/silkcircuit (extras/helix). Changes are
+# synced from there, so please open theme fixes against that repository.
+
+# Syntax
+
+"attribute" = { fg = "purple" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow_bright" }
+"type.parameter" = { fg = "yellow" }
+"type.enum.variant" = { fg = "coral" }
+"constructor" = { fg = "cyan" }
+
+"constant" = { fg = "coral" }
+"constant.builtin" = { fg = "coral" }
+"constant.builtin.boolean" = { fg = "pink" }
+"constant.character" = { fg = "coral" }
+"constant.character.escape" = { fg = "coral" }
+"constant.numeric" = { fg = "coral" }
+
+"string" = { fg = "pink_soft" }
+"string.regexp" = { fg = "cyan_bright" }
+"string.special" = { fg = "coral" }
+"string.special.path" = { fg = "cyan" }
+"string.special.symbol" = { fg = "cyan" }
+"string.special.url" = { fg = "cyan", underline = { style = "line" } }
+
+"comment" = { fg = "purple_muted", modifiers = ["italic"] }
+"comment.line" = { fg = "purple_muted", modifiers = ["italic"] }
+"comment.block" = { fg = "purple_muted", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "purple_muted", modifiers = ["italic"] }
+
+"variable" = { fg = "fg" }
+"variable.builtin" = { fg = "pink" }
+"variable.parameter" = { fg = "fg" }
+"variable.other.member" = { fg = "cyan_bright" }
+
+"label" = { fg = "pink" }
+"punctuation" = { fg = "fg_dark" }
+"punctuation.delimiter" = { fg = "fg_dark" }
+"punctuation.bracket" = { fg = "fg" }
+"punctuation.special" = { fg = "purple" }
+
+"keyword" = { fg = "purple" }
+"keyword.control" = { fg = "purple" }
+"keyword.control.conditional" = { fg = "purple" }
+"keyword.control.repeat" = { fg = "purple" }
+"keyword.control.import" = { fg = "purple" }
+"keyword.control.return" = { fg = "purple" }
+"keyword.control.exception" = { fg = "purple" }
+"keyword.directive" = { fg = "pink_bright" }
+"keyword.function" = { fg = "purple" }
+"keyword.operator" = { fg = "purple" }
+"keyword.storage" = { fg = "purple" }
+"keyword.storage.type" = { fg = "purple" }
+"keyword.storage.modifier" = { fg = "purple" }
+"operator" = { fg = "fg_dark" }
+
+"function" = { fg = "cyan" }
+"function.builtin" = { fg = "cyan_bright" }
+"function.method" = { fg = "cyan" }
+"function.macro" = { fg = "green_bright" }
+"function.special" = { fg = "green_bright" }
+
+"tag" = { fg = "pink" }
+"tag.builtin" = { fg = "pink_bright" }
+"namespace" = { fg = "purple" }
+"special" = { fg = "coral" }
+
+# Markup
+
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "purple_muted" }
+"markup.heading.1" = { fg = "purple", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "pink", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "cyan", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "coral", modifiers = ["bold"] }
+"markup.list" = { fg = "pink" }
+"markup.list.numbered" = { fg = "pink" }
+"markup.list.unnumbered" = { fg = "pink" }
+"markup.list.checked" = { fg = "green" }
+"markup.list.unchecked" = { fg = "fg_dark" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "cyan", underline = { style = "line" } }
+"markup.link.label" = { fg = "cyan_bright" }
+"markup.link.text" = { fg = "pink_soft" }
+"markup.quote" = { fg = "purple_muted", modifiers = ["italic"] }
+"markup.raw" = { fg = "green" }
+"markup.raw.inline" = { fg = "green" }
+"markup.raw.block" = { fg = "green" }
+
+# Diff
+
+"diff.plus" = { fg = "git_add" }
+"diff.plus.gutter" = { fg = "git_add" }
+"diff.minus" = { fg = "git_delete" }
+"diff.minus.gutter" = { fg = "git_delete" }
+"diff.delta" = { fg = "git_change" }
+"diff.delta.gutter" = { fg = "git_change" }
+
+# Diagnostics
+
+"diagnostic" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
+"diagnostic.info" = { underline = { color = "info", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "hint", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"error" = { fg = "error" }
+"warning" = { fg = "warning" }
+"info" = { fg = "info" }
+"hint" = { fg = "hint" }
+
+# Interface
+
+"ui.background" = { fg = "fg", bg = "bg" }
+"ui.background.separator" = { fg = "fg_gutter" }
+"ui.text" = { fg = "fg" }
+"ui.text.focus" = { fg = "fg_light", bg = "bg_highlight", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "purple_muted" }
+"ui.text.info" = { fg = "fg_dark" }
+"ui.text.directory" = { fg = "purple" }
+
+# The cursor is cyan in every SilkCircuit target, mode included.
+"ui.cursor" = { fg = "bg", bg = "cyan" }
+"ui.cursor.primary" = { fg = "bg", bg = "cyan" }
+"ui.cursor.normal" = { fg = "bg", bg = "cyan" }
+"ui.cursor.insert" = { fg = "bg", bg = "cyan" }
+"ui.cursor.select" = { fg = "bg", bg = "cyan" }
+"ui.cursor.primary.normal" = { fg = "bg", bg = "cyan" }
+"ui.cursor.primary.insert" = { fg = "bg", bg = "cyan" }
+"ui.cursor.primary.select" = { fg = "bg", bg = "cyan" }
+"ui.cursor.match" = { fg = "pink", bg = "bg_visual", modifiers = ["bold"] }
+
+"ui.cursorline.primary" = { bg = "bg_highlight" }
+"ui.cursorline.secondary" = { bg = "bg_highlight" }
+"ui.cursorcolumn.primary" = { bg = "bg_highlight" }
+"ui.cursorcolumn.secondary" = { bg = "bg_highlight" }
+
+"ui.selection" = { bg = "bg_visual" }
+"ui.selection.primary" = { bg = "bg_visual" }
+"ui.highlight" = { bg = "bg_highlight", modifiers = ["bold"] }
+"ui.highlight.frameline" = { bg = "bg_visual" }
+"tabstop" = { bg = "bg_visual" }
+
+"ui.linenr" = { fg = "fg_gutter" }
+"ui.linenr.selected" = { fg = "fg_light", modifiers = ["bold"] }
+"ui.gutter" = { bg = "bg" }
+"ui.gutter.selected" = { bg = "bg_highlight" }
+
+"ui.statusline" = { fg = "fg_dark", bg = "bg_dark" }
+"ui.statusline.inactive" = { fg = "purple_muted", bg = "bg_dark" }
+"ui.statusline.normal" = { fg = "bg", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg", bg = "pink", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "border" }
+
+"ui.bufferline" = { fg = "purple_muted", bg = "bg_dark" }
+"ui.bufferline.active" = { fg = "fg_light", bg = "bg_highlight", modifiers = ["bold"] }
+"ui.bufferline.background" = { bg = "bg_dark" }
+
+"ui.popup" = { fg = "fg", bg = "bg_float" }
+"ui.popup.info" = { fg = "fg_dark", bg = "bg_float" }
+"ui.window" = { fg = "border" }
+"ui.help" = { fg = "fg", bg = "bg_float" }
+"ui.menu" = { fg = "fg", bg = "bg_float" }
+"ui.menu.selected" = { fg = "bg", bg = "purple", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "fg_gutter", bg = "bg_highlight" }
+"ui.picker.header" = { fg = "cyan", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "fg_dark" }
+"ui.picker.header.column.active" = { fg = "pink", modifiers = ["bold"] }
+
+"ui.virtual.ruler" = { bg = "bg_highlight" }
+"ui.virtual.whitespace" = { fg = "fg_gutter" }
+"ui.virtual.indent-guide" = { fg = "bg_visual" }
+"ui.virtual.inlay-hint" = { fg = "purple_muted", bg = "bg_highlight" }
+"ui.virtual.inlay-hint.parameter" = { fg = "purple_muted", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "yellow_bright", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "bg", bg = "yellow", modifiers = ["bold"] }
+"ui.virtual.wrap" = { fg = "fg_gutter" }
+
+"ui.debug.breakpoint" = { fg = "red" }
+"ui.debug.active" = { fg = "yellow" }
+
+[palette]
+bg = "#faf8ff"
+bg_dark = "#f4f0ff"
+bg_float = "#e8dffd"
+bg_highlight = "#f7f4ff"
+bg_visual = "#d4c8f0"
+border = "#006388"
+coral = "#b42a74"
+cyan = "#006e72"
+cyan_bright = "#006388"
+error = "#c1272d"
+fg = "#2b2540"
+fg_dark = "#5a4d6e"
+fg_gutter = "#877aa6"
+fg_light = "#1a1318"
+git_add = "#1d6e46"
+git_change = "#1454dc"
+git_delete = "#c1272d"
+green = "#1d6e46"
+green_bright = "#247148"
+hint = "#006e72"
+info = "#1454dc"
+pink = "#b40077"
+pink_bright = "#b02f7a"
+pink_soft = "#9e4087"
+purple = "#7e2bd5"
+purple_muted = "#7353a9"
+red = "#c1272d"
+warning = "#796100"
+yellow = "#796100"
+yellow_bright = "#7f5f00"
