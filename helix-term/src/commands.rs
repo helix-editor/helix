@@ -611,13 +611,9 @@ impl MappableCommand {
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
-        flash_forward, "Jump forward with a flash",
         extend_flash_forward, "Extend forward with a flash",
-        flash_backward, "Jump backward with a flash",
         extend_flash_backward, "Extend backward with a flash",
-        flash_forward_till, "Jump forward with a flash till a char",
         extend_flash_forward_till, "Extend forward with a flash till a char",
-        flash_backward_till, "Jump backward with a flash till a char",
         extend_flash_backward_till, "Extend backward with a flash till a char",
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
@@ -7473,16 +7469,6 @@ fn flash_impl_rec(
     });
 }
 
-fn flash_forward(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    if doc.selection(view.id).ranges().len() > 1 {
-        find_next_char(cx);
-    } else {
-        flash_impl_rec(cx, Movement::Move, "", None, true, true, true);
-    }
-}
-
 fn extend_flash_forward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -7490,16 +7476,6 @@ fn extend_flash_forward(cx: &mut Context) {
         extend_next_char(cx);
     } else {
         flash_impl_rec(cx, Movement::Extend, "", None, true, true, true);
-    }
-}
-
-fn flash_backward(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    if doc.selection(view.id).ranges().len() > 1 {
-        find_prev_char(cx);
-    } else {
-        flash_impl_rec(cx, Movement::Move, "", None, true, false, true);
     }
 }
 
@@ -7513,16 +7489,6 @@ fn extend_flash_backward(cx: &mut Context) {
     }
 }
 
-fn flash_forward_till(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    if doc.selection(view.id).ranges().len() > 1 {
-        find_till_char(cx);
-    } else {
-        flash_impl_rec(cx, Movement::Move, "", None, true, true, false);
-    }
-}
-
 fn extend_flash_forward_till(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -7530,16 +7496,6 @@ fn extend_flash_forward_till(cx: &mut Context) {
         extend_till_char(cx);
     } else {
         flash_impl_rec(cx, Movement::Extend, "", None, true, true, false);
-    }
-}
-
-fn flash_backward_till(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
-
-    if doc.selection(view.id).ranges().len() > 1 {
-        till_prev_char(cx);
-    } else {
-        flash_impl_rec(cx, Movement::Move, "", None, true, false, false);
     }
 }
 
