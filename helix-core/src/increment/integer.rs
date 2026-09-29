@@ -58,8 +58,13 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     } else {
         let number = &word[2..];
         let value = u128::from_str_radix(number, radix).ok()?;
-        let new_value = (value as i128).saturating_add(amount as i128);
-        let new_value = if new_value < 0 { 0 } else { new_value };
+        // Stay in the unsigned domain: casting values near u128::MAX to i128
+        // wraps them negative, so decrementing clamped the result to zero.
+        let new_value = if amount >= 0 {
+            value.saturating_add(amount as u128)
+        } else {
+            value.saturating_sub(amount.unsigned_abs() as u128)
+        };
         let format_length = selected_text.len() - 2 - separator_rtl_indexes.len();
 
         match radix {
@@ -200,6 +205,41 @@ mod test {
                 "0b1111111111111111111111111111111111111111111111111111111111111111",
                 -1,
                 "0b1111111111111111111111111111111111111111111111111111111111111110",
+            ),
+        ];
+
+        for (original, amount, expected) in tests {
+            assert_eq!(increment(original, amount).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_decrement_large_non_decimal_numbers() {
+        // Values near u128::MAX used to wrap negative through an i128 cast,
+        // so decrementing clamped the result to zero.
+        let tests = [
+            (
+                "0xffffffffffffffffffffffffffffffff",
+                -1,
+                "0xfffffffffffffffffffffffffffffffe",
+            ),
+            (
+                "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                -1,
+                "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE",
+            ),
+            // Incrementing past the maximum saturates instead of wrapping.
+            (
+                "0xffffffffffffffffffffffffffffffff",
+                1,
+                "0xffffffffffffffffffffffffffffffff",
+            ),
+            // Decrementing past zero still clamps to zero.
+            ("0x0005", -10, "0x0000"),
+            (
+                "0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+                -1,
+                "0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110",
             ),
         ];
 
