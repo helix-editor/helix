@@ -54,7 +54,7 @@ pub struct LanguageConfiguration {
     pub soft_wrap: Option<SoftWrap>,
 
     #[serde(default)]
-    pub auto_format: bool,
+    pub auto_format: Option<bool>,
 
     #[serde(default)]
     pub code_actions_on_save: Option<Vec<String>>,
