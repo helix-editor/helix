@@ -1070,7 +1070,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 if picker.matcher.snapshot().item_count() > 1_000_000 {
                     Box::new(|compositor: &mut Compositor, _ctx| {
                         // remove the layer
-                        compositor.pop();
+                        compositor.remove(ID);
                     })
                 } else {
                     // stop streaming in new items in the background, really we should
@@ -1080,7 +1080,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     picker.version.fetch_add(1, atomic::Ordering::Relaxed);
                     Box::new(|compositor: &mut Compositor, _ctx| {
                         // remove the layer
-                        compositor.last_picker = compositor.pop();
+                        compositor.last_picker = compositor.remove(ID);
                     })
                 };
             EventResult::Consumed(Some(callback))
