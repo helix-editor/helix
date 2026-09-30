@@ -3,6 +3,21 @@ use super::*;
 use helix_stdx::path;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_keymap_sequence_stops_after_closing_last_view() -> anyhow::Result<()> {
+    let mut config = helpers::test_config();
+    let raw_config: helix_term::config::ConfigRaw = toml::from_str(
+        r#"
+        [keys.insert]
+        C-q = ["wclose", "normal_mode"]
+        "#,
+    )?;
+    config.keys = raw_config.keys.unwrap();
+
+    let mut app = helpers::AppBuilder::new().with_config(config).build()?;
+    test_key_sequence(&mut app, Some("i<C-q>"), None, true).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_all() -> anyhow::Result<()> {
     let mut file1 = tempfile::NamedTempFile::new()?;
     let mut file2 = tempfile::NamedTempFile::new()?;

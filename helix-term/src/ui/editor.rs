@@ -964,6 +964,7 @@ impl EditorView {
             }
 
             last_mode = current_mode;
+            cxt.editor.should_close()
         };
 
         match &key_result {
@@ -973,7 +974,9 @@ impl EditorView {
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    execute_command(command);
+                    if execute_command(command) {
+                        break;
+                    }
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
