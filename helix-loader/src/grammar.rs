@@ -477,6 +477,11 @@ where
 {
     let output = Command::new("git")
         .args(args)
+        // `GIT_TERMINAL_PROMPT`:
+        //      If this Boolean environment variable is set to false, git will
+        //      not prompt on the terminal (e.g., when asking for HTTP authentication).
+        // https://git-scm.com/docs/git.html#Documentation/git.txt-GITTERMINALPROMPT
+        .env("GIT_TERMINAL_PROMPT", "0")
         .current_dir(repository_dir)
         .output()?;
 
