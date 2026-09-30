@@ -134,10 +134,7 @@ impl<T: Component> Popup<T> {
             self.position = Some(position);
         }
 
-        let is_menu = self
-            .contents
-            .type_name()
-            .starts_with("helix_term::ui::menu::Menu");
+        let is_menu = self.contents.is_menu();
 
         let mut render_borders = if is_menu {
             editor.menu_border()
