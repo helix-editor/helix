@@ -1,9 +1,9 @@
 //! Functions for working with [Path].
 
 pub use etcetera::home_dir;
-use once_cell::sync::Lazy;
 use regex_cursor::{engines::meta::Regex, Input};
 use ropey::RopeSlice;
+use std::sync::LazyLock;
 
 use std::{
     borrow::Cow,
@@ -263,10 +263,12 @@ fn compile_path_regex(
 /// If `src` ends with a path then this function returns the part of the slice.
 pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<RopeSlice<'_>> {
     let regex = if match_single_file {
-        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", true, cfg!(windows)));
+        static REGEX: LazyLock<Regex> =
+            LazyLock::new(|| compile_path_regex("", "$", true, cfg!(windows)));
         &*REGEX
     } else {
-        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", false, cfg!(windows)));
+        static REGEX: LazyLock<Regex> =
+            LazyLock::new(|| compile_path_regex("", "$", false, cfg!(windows)));
         &*REGEX
     };
 
@@ -281,10 +283,12 @@ pub fn find_paths(
     match_single_file: bool,
 ) -> impl Iterator<Item = Range<usize>> + '_ {
     let regex = if match_single_file {
-        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "", true, cfg!(windows)));
+        static REGEX: LazyLock<Regex> =
+            LazyLock::new(|| compile_path_regex("", "", true, cfg!(windows)));
         &*REGEX
     } else {
-        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "", false, cfg!(windows)));
+        static REGEX: LazyLock<Regex> =
+            LazyLock::new(|| compile_path_regex("", "", false, cfg!(windows)));
         &*REGEX
     };
     regex.find_iter(Input::new(src)).map(|mat| mat.range())

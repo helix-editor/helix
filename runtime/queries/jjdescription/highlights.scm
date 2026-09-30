@@ -5,6 +5,6 @@
 (change type: "D" @diff.minus)
 (change type: "M" @diff.delta)
 (change type: "C" @diff.plus)
-(change type: "R" @diff.delta)
+(change type: "R" @diff.delta.moved)
 
 (comment) @comment

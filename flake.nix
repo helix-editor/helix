@@ -60,7 +60,7 @@
       lib.mapAttrs (system: pkgs: {
         default = let
           commonRustFlagsEnv = "-C link-arg=-fuse-ld=lld -C target-cpu=native --cfg tokio_unstable";
-          platformRustFlagsEnv = lib.optionalString pkgs.stdenv.isLinux "-Clink-arg=-Wl,--no-rosegment";
+          platformRustFlagsEnv = lib.optionalString pkgs.stdenv.hostPlatform.isLinux "-Clink-arg=-Wl,--no-rosegment";
         in
           pkgs.mkShell {
             inputsFrom = [
@@ -75,8 +75,8 @@
                 rust-bin.nightly.latest.rust-analyzer
                 mdbook
               ]
-              ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) cargo-tarpaulin)
-              ++ (lib.optional stdenv.isLinux lldb);
+              ++ (lib.optional (stdenv.isx86_64 && stdenv.hostPlatform.isLinux) cargo-tarpaulin)
+              ++ (lib.optional stdenv.hostPlatform.isLinux lldb);
             shellHook = ''
               export RUST_BACKTRACE="1"
               export RUSTFLAGS="''${RUSTFLAGS:-""} ${commonRustFlagsEnv} ${platformRustFlagsEnv}"

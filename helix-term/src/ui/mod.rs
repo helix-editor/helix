@@ -420,9 +420,9 @@ pub mod completers {
     use helix_view::graphics::Style;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
-    use once_cell::sync::Lazy;
     use std::borrow::Cow;
     use std::collections::BTreeSet;
+    use std::sync::LazyLock;
     use tui::text::Span;
 
     /// A completion computation to be run on a background thread.
@@ -548,8 +548,8 @@ pub mod completers {
             .collect()
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
-        static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
+    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+        static KEYS: LazyLock<Vec<String>> = LazyLock::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
             get_keys(&json, &mut keys, None);
@@ -803,8 +803,8 @@ pub mod completers {
             .collect()
     }
 
-    pub fn program(_editor: &Editor, input: &str) -> CompletionResult {
-        static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
+    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+        static PROGRAMS_IN_PATH: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
             // Go through the entire PATH and read all files into a set.
             let Some(path) = std::env::var_os("PATH") else {
                 return Default::default();

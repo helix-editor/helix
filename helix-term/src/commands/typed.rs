@@ -4111,8 +4111,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     }
 ];
 
-pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =
-    Lazy::new(|| {
+pub static TYPABLE_COMMAND_MAP: LazyLock<HashMap<&'static str, &'static TypableCommand>> =
+    LazyLock::new(|| {
         TYPABLE_COMMAND_LIST
             .iter()
             .flat_map(|cmd| {

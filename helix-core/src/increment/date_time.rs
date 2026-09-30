@@ -1,7 +1,7 @@
 use chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt::Write;
+use std::sync::LazyLock;
 
 /// Increment a Date or DateTime
 ///
@@ -51,7 +51,7 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     })
 }
 
-static FORMATS: Lazy<Vec<Format>> = Lazy::new(|| {
+static FORMATS: LazyLock<Vec<Format>> = LazyLock::new(|| {
     vec![
         Format::new("%Y-%m-%d %H:%M:%S"), // 2021-11-24 07:12:23
         Format::new("%Y/%m/%d %H:%M:%S"), // 2021/11/24 07:12:23
