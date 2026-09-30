@@ -26,5 +26,7 @@ export extern hx [
     --vsplit,                                   # Splits all given files vertically into different windows
     --hsplit,                                   # Splits all given files horizontally into different windows
     --working-dir(-w): glob,                    # Specify an initial working directory
+    --socket: glob,                             # Bind or connect to a Unix remote socket
+    --remote: string,                           # Send a command to a running Helix and exit
     ...files: glob,                             # Sets the input file to use, position can also be specified via file[:row[:col]]
 ]

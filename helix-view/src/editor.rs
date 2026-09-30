@@ -434,6 +434,9 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// Override the Unix-domain remote socket path. Unset falls through to
+    /// `HELIX_SOCKET_PATH` / XDG default. Does not enable listening.
+    pub socket_path: Option<PathBuf>,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -1240,6 +1243,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            socket_path: None,
         }
     }
 }
