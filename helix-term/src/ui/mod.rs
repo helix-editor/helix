@@ -548,7 +548,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
         static KEYS: LazyLock<Vec<String>> = LazyLock::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -803,7 +803,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn program(_editor: &Editor, input: &str) -> CompletionResult {
         static PROGRAMS_IN_PATH: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
             // Go through the entire PATH and read all files into a set.
             let Some(path) = std::env::var_os("PATH") else {
