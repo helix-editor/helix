@@ -1,9 +1,5 @@
 ## Key remapping
 
-Helix currently supports one-way key remapping through a simple TOML configuration
-file. (More powerful solutions such as rebinding via commands will be
-available in the future).
-
 There are three kinds of commands that can be used in keymaps:
 
 * Static commands: commands like `move_char_right` which are usually bound to
