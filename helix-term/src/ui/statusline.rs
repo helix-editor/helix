@@ -169,7 +169,13 @@ where
     let config = context.editor.config();
     let modenames = &config.statusline.mode;
     let mode_str = match context.editor.mode() {
-        Mode::Insert => &modenames.insert,
+        Mode::Insert => {
+            if context.editor.overtype {
+                &modenames.overtype
+            } else {
+                &modenames.insert
+            }
+        }
         Mode::Select => &modenames.select,
         Mode::Normal => &modenames.normal,
     };

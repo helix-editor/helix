@@ -717,6 +717,7 @@ impl Default for StatusLineConfig {
 pub struct ModeConfig {
     pub normal: String,
     pub insert: String,
+    pub overtype: String,
     pub select: String,
 }
 
@@ -725,6 +726,7 @@ impl Default for ModeConfig {
         Self {
             normal: String::from("NOR"),
             insert: String::from("INS"),
+            overtype: String::from("OVR"),
             select: String::from("SEL"),
         }
     }
@@ -1273,6 +1275,7 @@ type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
+    pub overtype: bool,
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
@@ -1427,6 +1430,7 @@ impl Editor {
 
         Self {
             mode: Mode::Normal,
+            overtype: false,
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
