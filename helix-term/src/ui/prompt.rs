@@ -570,6 +570,24 @@ impl Prompt {
                     .unwrap();
             }
 
+            // Without this, the text can stop short of the right edge, down to just `…`.
+            if self.anchor > 0 && self.line[self.anchor..].width() < line_width {
+                let mut width = 0;
+                self.anchor = self
+                    .line
+                    .grapheme_indices(true)
+                    .rev()
+                    .find_map(|(idx, g)| {
+                        width += g.width();
+                        if width > line_width {
+                            Some(idx + g.len())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_default();
+            }
+
             self.truncate_start = self.anchor > 0;
             self.truncate_end = self.line[self.anchor..].width() > line_width;
 
