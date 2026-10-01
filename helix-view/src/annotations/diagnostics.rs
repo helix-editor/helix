@@ -6,11 +6,35 @@ use serde::{Deserialize, Serialize};
 
 use crate::Document;
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct DiagnosticsConfig {
+    pub enable: bool,
+    pub inline: InlineDiagnosticsConfig,
+    pub end_of_line: DiagnosticFilter,
+}
+
+impl Default for DiagnosticsConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            inline: InlineDiagnosticsConfig::default(),
+            end_of_line: DiagnosticFilter::default(),
+        }
+    }
+}
+
 /// Describes the severity level of a [`Diagnostic`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord)]
 pub enum DiagnosticFilter {
     Disable,
     Enable(Severity),
+}
+
+impl Default for DiagnosticFilter {
+    fn default() -> Self {
+        Self::Enable(Severity::Hint)
+    }
 }
 
 impl<'de> Deserialize<'de> for DiagnosticFilter {
