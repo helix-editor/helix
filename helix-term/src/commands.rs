@@ -2579,11 +2579,9 @@ fn global_search(cx: &mut Context) {
         search_root: PathBuf,
     }
 
-    let search_root = find_workspace().0;
-    if !search_root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
+    let Some(search_root) = find_workspace_root(cx) else {
         return;
-    }
+    };
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
@@ -3168,12 +3166,19 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn file_picker(cx: &mut Context) {
+fn find_workspace_root(cx: &mut Context) -> Option<PathBuf> {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
-        return;
+        return None;
     }
+    Some(root)
+}
+
+fn file_picker(cx: &mut Context) {
+    let Some(root) = find_workspace_root(cx) else {
+        return;
+    };
     let picker = ui::file_picker(cx.editor, root);
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3216,11 +3221,9 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 }
 
 fn file_explorer(cx: &mut Context) {
-    let root = find_workspace().0;
-    if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
+    let Some(root) = find_workspace_root(cx) else {
         return;
-    }
+    };
 
     if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
