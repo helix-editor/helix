@@ -1,8 +1,8 @@
-use std::{fs::File, io::Write, path::Path, process::Command};
+use std::{fs::File, io::Write, path::Path, process::Command, time::Duration};
 
 use tempfile::TempDir;
 
-use crate::git;
+use crate::{git, DiffProviderRegistry};
 
 fn exec_git_cmd(args: &str, git_dir: &Path) {
     let res = Command::new("git")
@@ -46,6 +46,35 @@ fn empty_git_repo() -> TempDir {
     exec_git_cmd("config user.email test@helix.org", tmp.path());
     exec_git_cmd("config user.name helix-test", tmp.path());
     tmp
+}
+
+#[tokio::test]
+async fn changed_files_preserves_provider_error() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    DiffProviderRegistry::default().for_each_changed_file(
+        temp_dir.path().to_path_buf(),
+        false,
+        move |result| {
+            sender.send(result).unwrap();
+            false
+        },
+    );
+
+    let result = tokio::time::timeout(Duration::from_secs(5), receiver.recv())
+        .await
+        .expect("diff provider timed out")
+        .expect("diff provider did not report an error");
+    let Err(error) = result else {
+        panic!("diff provider unexpectedly succeeded")
+    };
+    let message = format!("{error:#}");
+
+    assert!(
+        message.contains("failed to discover git repo"),
+        "provider error was not preserved: {message}"
+    );
 }
 
 #[test]
