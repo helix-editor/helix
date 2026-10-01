@@ -106,6 +106,11 @@ pub fn request_signature_help(
 ) {
     let (view, doc) = current!(editor);
 
+    // Prevent hiding multiple cursors
+    if doc.selection(view.id).len() > 1 {
+        return;
+    }
+
     // TODO merge multiple language server signature help into one instead of just taking the first language server that supports it
     let future = doc
         .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
