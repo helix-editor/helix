@@ -406,8 +406,11 @@ fn write_impl(
 
     // Does the document configure any code actions to run on save?
     let run_code_actions = options.code_actions
-        && doc!(cx.editor, &doc_id)
-            .language_config()
+        && cx
+            .editor
+            .documents
+            .get(&doc_id)
+            .and_then(|doc| doc.language_config())
             .and_then(|c| c.code_actions_on_save.as_deref())
             .is_some_and(|kinds| !kinds.is_empty());
 
@@ -419,7 +422,6 @@ fn write_impl(
     let tail = (auto_format || run_code_actions).then(|| {
         let path = path.clone();
         let callback = Callback::Followup(Box::new(move |editor| {
-            // The document could have been closed mid-chain
             if !editor.documents.contains_key(&doc_id) {
                 return None;
             }
@@ -836,7 +838,7 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
 
         let modified_names: Vec<_> = modified_ids
             .iter()
-            .map(|doc_id| doc!(editor, doc_id).display_name())
+            .filter_map(|doc_id| editor.documents.get(doc_id).map(|doc| doc.display_name()))
             .collect();
 
         bail!(
@@ -909,8 +911,11 @@ pub fn write_all_impl(
         let force = options.force;
 
         let run_code_actions = options.code_actions
-            && doc!(cx.editor, &doc_id)
-                .language_config()
+            && cx
+                .editor
+                .documents
+                .get(&doc_id)
+                .and_then(|doc| doc.language_config())
                 .and_then(|c| c.code_actions_on_save.as_deref())
                 .is_some_and(|kinds| !kinds.is_empty());
 
@@ -918,7 +923,6 @@ pub fn write_all_impl(
         // built when there is pre-save work; otherwise a synchronous save below.
         let tail = (auto_format || run_code_actions).then(|| {
             let callback: job::Callback = Callback::Followup(Box::new(move |editor| {
-                // The document could have been closed mid-chain
                 if !editor.documents.contains_key(&doc_id) {
                     return None;
                 }
@@ -1591,12 +1595,19 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     }
 
     let scrolloff = cx.editor.config().scrolloff;
-    let trust_full = doc_trust_full(cx.editor);
+    let diff_base_revision = doc!(cx.editor)
+        .path()
+        .and_then(|path| cx.editor.diff_base_override(path))
+        .map(ToOwned::to_owned);
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, trust_full)
-        .map(|_| {
-            view.ensure_cursor_in_view(doc, scrolloff);
-        })?;
+    doc.reload(
+        view,
+        &cx.editor.diff_providers,
+        diff_base_revision.as_deref(),
+    )
+    .map(|_| {
+        view.ensure_cursor_in_view(doc, scrolloff);
+    })?;
     if let Some(path) = doc.path().map(ToOwned::to_owned) {
         cx.editor
             .language_servers
@@ -1630,6 +1641,10 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         .collect();
 
     for (doc_id, view_ids) in docs_view_ids {
+        let diff_base_revision = doc!(cx.editor, &doc_id)
+            .path()
+            .and_then(|path| cx.editor.diff_base_override(path))
+            .map(ToOwned::to_owned);
         let doc = doc_mut!(cx.editor, &doc_id);
 
         // Every doc is guaranteed to have at least 1 view at this point.
@@ -1638,16 +1653,11 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        // Per-document trust: each doc's workspace may differ.
-        let trust_full = cx
-            .editor
-            .workspace_trust
-            .query(
-                doc.workspace_root(),
-                helix_loader::workspace_trust::TrustQuery::Git,
-            )
-            .is_trusted();
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
+        if let Err(error) = doc.reload(
+            view,
+            &cx.editor.diff_providers,
+            diff_base_revision.as_deref(),
+        ) {
             cx.editor.set_error(format!("{}", error));
             continue;
         }
@@ -2431,6 +2441,75 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
         Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
     doc.replace_diagnostics(diagnostics, &[], None);
     Ok(())
+}
+
+fn set_diff_base(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let revision = args
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("expected a git revision (branch name, commit SHA, HEAD~, etc.)"))?
+        .to_string();
+
+    let (path, uses_cwd) = diff_base_target_path(cx.editor)?;
+
+    cx.editor.set_diff_base_override(&path, revision.clone())?;
+    cx.editor.set_status(if uses_cwd {
+        format!("Diff base for current working directory set to {revision}")
+    } else {
+        format!("Diff base set to {revision}")
+    });
+    Ok(())
+}
+
+fn reset_diff_base(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (path, uses_cwd) = diff_base_target_path(cx.editor)?;
+
+    let removed = cx.editor.clear_diff_base_override(&path)?;
+    cx.editor.set_status(if removed {
+        if uses_cwd {
+            "Diff base for current working directory reset to HEAD"
+        } else {
+            "Diff base reset to HEAD"
+        }
+    } else {
+        if uses_cwd {
+            "Diff base for current working directory already uses HEAD"
+        } else {
+            "Diff base already uses HEAD"
+        }
+    });
+    Ok(())
+}
+
+/// Get the target path for diff base operations.
+/// Returns the document path if available, otherwise the current working directory.
+/// The bool indicates whether the cwd was used (true) or a document path (false).
+fn diff_base_target_path(editor: &mut Editor) -> anyhow::Result<(PathBuf, bool)> {
+    if let Some(path) = doc!(editor).path() {
+        return Ok((path.to_path_buf(), false));
+    }
+
+    let cwd = helix_stdx::env::current_working_dir();
+    if !cwd.exists() {
+        bail!("current buffer has no path and current working directory does not exist");
+    }
+
+    Ok((cwd, true))
 }
 
 fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -3808,6 +3887,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
+        name: "set-diff-base",
+        aliases: &[],
+        doc: "Set the git diff base for the current repository to a branch name, commit SHA, or any git revision (HEAD~, main^2, etc.).",
+        fun: set_diff_base,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (1, Some(1)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "reset-diff-base",
+        aliases: &[],
+        doc: "Reset the git diff base for the current repository back to HEAD.",
+        fun: reset_diff_base,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
         name: "set-option",
         aliases: &["set"],
         doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
@@ -4540,21 +4641,20 @@ fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Comp
 }
 
 fn current_workspace(cx: &compositor::Context) -> std::path::PathBuf {
-    let (_, doc) = current_ref!(cx.editor);
-    doc.workspace_root().to_path_buf()
-}
+    // Use safe tree access to avoid panic when no valid view is focused
+    let view_id = cx.editor.tree.focus;
+    let Some(view) = cx.editor.tree.try_get(view_id) else {
+        // Fallback to a default path when no valid view is focused
+        // This can happen during initialization
+        return std::path::PathBuf::new();
+    };
 
-/// Whether the currently focused document's workspace is trusted for git operations (gix
-/// `Trust::Full`).
-fn doc_trust_full(editor: &helix_view::Editor) -> bool {
-    let (_, doc) = current_ref!(editor);
-    editor
-        .workspace_trust
-        .query(
-            doc.workspace_root(),
-            helix_loader::workspace_trust::TrustQuery::Git,
-        )
-        .is_trusted()
+    let Some(doc) = cx.editor.documents.get(&view.doc) else {
+        // Document doesn't exist, fallback to empty path
+        return std::path::PathBuf::new();
+    };
+
+    doc.workspace_root().to_path_buf()
 }
 
 fn trust_workspace(
@@ -4567,6 +4667,11 @@ fn trust_workspace(
     }
 
     let workspace = current_workspace(cx);
+    if workspace.as_os_str().is_empty() {
+        cx.editor
+            .set_error("No workspace to trust - no document is currently focused");
+        return Ok(());
+    }
     cx.editor.workspace_trust.trust(&workspace);
 
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
@@ -4584,6 +4689,11 @@ fn untrust_workspace(
     }
 
     let workspace = current_workspace(cx);
+    if workspace.as_os_str().is_empty() {
+        cx.editor
+            .set_error("No workspace to untrust - no document is currently focused");
+        return Ok(());
+    }
     cx.editor.workspace_trust.untrust(&workspace);
     // Drop any workspace overrides that were merged into the live editor config while trust was
     // granted. Running LSPs are not stopped here (use `:lsp-stop` for that); this only handles
@@ -4602,7 +4712,23 @@ fn exclude_workspace(
     }
 
     let workspace = current_workspace(cx);
+    if workspace.as_os_str().is_empty() {
+        cx.editor
+            .set_error("No workspace to exclude - no document is currently focused");
+        return Ok(());
+    }
     cx.editor.workspace_trust.exclude(&workspace);
     cx.editor.config_events.0.send(ConfigEvent::Refresh)?;
     Ok(())
+}
+
+pub fn doc_trust_full(editor: &helix_view::Editor) -> bool {
+    let (_, doc) = current_ref!(editor);
+    editor
+        .workspace_trust
+        .query(
+            doc.workspace_root(),
+            helix_loader::workspace_trust::TrustQuery::Git,
+        )
+        .is_trusted()
 }

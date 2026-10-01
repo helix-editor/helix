@@ -10,6 +10,7 @@ use helix_view::{
 };
 
 use crate::ui::ProgressSpinners;
+use crate::commands::typed::doc_trust_full;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
 use tui::buffer::Buffer as Surface;
@@ -155,6 +156,7 @@ where
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::DiffBase => render_diff_base,
         helix_view::editor::StatusLineElement::Register => render_register,
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
         helix_view::editor::StatusLineElement::CodeActionHint => render_code_action_hint,
@@ -544,6 +546,38 @@ where
         .to_string();
 
     write(context, head.into());
+}
+
+fn render_diff_base<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    let diff_base = context
+        .doc
+        .path()
+        .and_then(|path| {
+            context
+                .editor
+                .diff_base_override_with_trust(path, doc_trust_full(context.editor))
+                .map(ToOwned::to_owned)
+                .or_else(|| {
+                    context
+                        .doc
+                        .version_control_head()
+                        .map(|head| head.to_string())
+                })
+        })
+        .or_else(|| {
+            let cwd = helix_stdx::env::current_working_dir();
+            context
+                .editor
+                .diff_base_override_for_dir_with_trust(&cwd, doc_trust_full(context.editor))
+                .map(ToOwned::to_owned)
+        });
+
+    if let Some(diff_base) = diff_base {
+        write(context, format!("diff:{}", diff_base).into());
+    }
 }
 
 fn render_register<'a, F>(context: &mut RenderContext<'a>, write: F)

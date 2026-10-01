@@ -1283,7 +1283,7 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
-        trust_full: bool,
+        diff_base_revision: Option<&str>,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
@@ -1310,12 +1310,12 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path, trust_full) {
+        match provider_registry.get_diff_base(&path, diff_base_revision) {
             Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
+            None => self.clear_diff_base(),
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path, trust_full);
+        self.version_control_head = provider_registry.get_current_head_name(&path);
 
         Ok(())
     }
@@ -2000,6 +2000,10 @@ impl Document {
         } else {
             self.diff_handle = None;
         }
+    }
+
+    pub fn clear_diff_base(&mut self) {
+        self.diff_handle = None;
     }
 
     pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
