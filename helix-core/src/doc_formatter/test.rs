@@ -103,6 +103,49 @@ fn long_word_softwrap() {
 }
 
 #[test]
+fn softwrap_cjk_punctuation_at_line_end() {
+    assert_eq!(softwrap_text("你好，世界。\n"), "你好，世界。 \n ");
+}
+
+#[test]
+fn softwrap_cjk_no_early_wrap_on_punctuation() {
+    assert_eq!(
+        softwrap_text("你好。你好。你好。你好。你好。\n"),
+        "你好。你好。你好\n.。你好。你好。 \n "
+    );
+}
+
+#[test]
+fn softwrap_wide_grapheme_never_starts_past_visible_edge() {
+    let text_fmt = TextFormat {
+        viewport_width: 7,
+        ..TextFormat::new_test(true)
+    };
+    let annotations = TextAnnotations::default();
+    let formatter = DocumentFormatter::new_at_prev_checkpoint(
+        "一二三，一二三，一二三，
+"
+        .into(),
+        &text_fmt,
+        &annotations,
+        0,
+    );
+
+    for grapheme in formatter {
+        if grapheme.raw != crate::graphemes::Grapheme::Newline {
+            assert!(
+                grapheme.visual_pos.col + grapheme.width() <= text_fmt.viewport_width as usize,
+                "grapheme '{}' starts at {} with width {} but viewport is {}",
+                grapheme.raw,
+                grapheme.visual_pos.col,
+                grapheme.width(),
+                text_fmt.viewport_width
+            );
+        }
+    }
+}
+
+#[test]
 fn softwrap_multichar_grapheme() {
     assert_eq!(
         softwrap_text("xxxx xxxx xxx a\u{0301}bc\n"),
