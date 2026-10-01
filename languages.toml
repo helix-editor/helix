@@ -100,6 +100,7 @@ nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
 nixd = { command = "nixd" }
 nls = { command = "nls" }
+nsis-lsp = { command = "nsis-lsp" }
 nu-lint = { command = "nu-lint", args = ["--lsp"] }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
@@ -3809,6 +3810,22 @@ language-servers = [ "nimlangserver" ]
 [[grammar]]
 name = "nim"
 source = { git = "https://github.com/alaviss/tree-sitter-nim", rev = "c5f0ce3b65222f5dbb1a12f9fe894524881ad590" }
+
+[[language]]
+name = "nsis"
+scope = "source.nsis"
+injection-regex = "nsis"
+file-types = ["nsi", "nsh"]
+comment-tokens = [";", "#"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "\t" }
+language-servers = ["nsis-lsp"]
+formatter = { command = "ardent", args = ["format"] }
+auto-format = true
+
+[[grammar]]
+name = "nsis"
+source = { git = "https://github.com/idleberg/tree-sitter-nsis", rev = "77feed03fc2b0c3462b21f835d65eec15daf19a2" }
 
 [[language]]
 name = "cabal"
