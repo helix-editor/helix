@@ -878,9 +878,10 @@ impl Document {
 
             let mut process = tokio::process::Command::new(&fmt_cmd);
 
-            if let Some(doc_dir) = self.path.as_ref().and_then(|path| path.parent()) {
-                process.current_dir(doc_dir);
-            }
+            // Run the formatter in the project root so project-relative configs
+            // (e.g. `ruff --config pyproject.toml`) resolve. Falls back to the
+            // file's parent directory when no workspace root is found.
+            process.current_dir(self.workspace_root());
 
             let args = match fmt_args
                 .iter()
