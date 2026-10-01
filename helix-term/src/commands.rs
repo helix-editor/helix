@@ -522,9 +522,9 @@ impl MappableCommand {
         toggle_block_comments, "Block comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
-        rotate_selection_contents_forward, "Rotate selection contents forward",
-        rotate_selection_contents_backward, "Rotate selections contents backward",
-        reverse_selection_contents, "Reverse selections contents",
+        rotate_selection_contents_forward, "Rotate selection contents forward (count sets the group size)",
+        rotate_selection_contents_backward, "Rotate selections contents backward (count sets the group size)",
+        reverse_selection_contents, "Reverse selections contents (count sets the group size)",
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
         select_next_sibling, "Select next sibling in the syntax tree",
@@ -5699,30 +5699,30 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
         .map(|fragment| fragment.chunks().collect())
         .collect();
 
-    let rotate_by = count.map_or(1, |count| count.get().min(ranges.len()));
+    let group = count
+        .map_or(ranges.len(), |count| count.get()) // default to rotating everything as one group
+        .min(ranges.len());
 
-    let primary_index = match strategy {
-        ReorderStrategy::RotateForward => {
-            ranges.rotate_right(rotate_by);
-            // Like `usize::wrapping_add`, but provide a custom range from `0` to `ranges.len()`
-            (selection.primary_index() + ranges.len() + rotate_by) % ranges.len()
-        }
-        ReorderStrategy::RotateBackward => {
-            ranges.rotate_left(rotate_by);
-            // Like `usize::wrapping_sub`, but provide a custom range from `0` to `ranges.len()`
-            (selection.primary_index() + ranges.len() - rotate_by) % ranges.len()
-        }
-        ReorderStrategy::Reverse => {
-            if rotate_by.is_multiple_of(2) {
-                // nothing changed, if we reverse something an even
-                // amount of times, the output will be the same
-                return;
-            }
-            ranges.reverse();
-            // -1 to turn 1-based len into 0-based index
-            (ranges.len() - 1) - selection.primary_index()
-        }
-    };
+    for chunk in ranges.chunks_mut(group) {
+        match strategy {
+            ReorderStrategy::RotateForward => chunk.rotate_right(1),
+            ReorderStrategy::RotateBackward => chunk.rotate_left(1),
+            ReorderStrategy::Reverse => chunk.reverse(),
+        };
+    }
+
+    let i = selection.primary_index();
+    let offset = i % group;
+    // the last chunk may be shorter than group
+    let chunk_start = i - offset;
+    let chunk_len = group.min(ranges.len() - chunk_start);
+
+    let primary_index = chunk_start
+        + match strategy {
+            ReorderStrategy::RotateForward => (offset + 1) % chunk_len,
+            ReorderStrategy::RotateBackward => (offset + chunk_len - 1) % chunk_len,
+            ReorderStrategy::Reverse => chunk_len - 1 - offset,
+        };
 
     let transaction = Transaction::change(
         doc.text(),
