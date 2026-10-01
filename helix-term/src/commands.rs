@@ -66,7 +66,9 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
+    ui::{
+        self, overlay::overlaid, picker::PathOrId, Picker, PickerColumn, Popup, Prompt, PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -2562,43 +2564,40 @@ fn make_search_word_bounded(cx: &mut Context) {
 }
 
 fn global_search(cx: &mut Context) {
-    #[derive(Debug)]
-    struct FileResult<'a> {
-        path: Cow<'a, Path>,
+    struct FileResult {
+        path: PathBuf,
         /// 0 indexed line start
         line_start: usize,
         /// 0 indexed line end
         line_end: usize,
     }
 
-    impl FileResult<'_> {
-        fn new(path: &Path, line_start: usize, line_end: usize) -> Self {
-            Self {
-                path: helix_stdx::path::get_relative_path(path.to_path_buf()),
-                line_start,
-                line_end,
-            }
-        }
-    }
-
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
         style: PathStyleConfig,
+        search_root: PathBuf,
     }
+
+    let Some(search_root) = find_workspace_root(cx) else {
+        return;
+    };
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
         style: PathStyleConfig::new(&cx.editor.theme),
+        search_root,
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            config
-                .style
-                .stylize(Some(&item.path), Some(item.line_start))
+            let path = item
+                .path
+                .strip_prefix(&config.search_root)
+                .unwrap_or(&item.path);
+            config.style.stylize(Some(path), Some(item.line_start))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -2611,11 +2610,7 @@ fn global_search(cx: &mut Context) {
             return async { Ok(()) }.boxed();
         }
 
-        let search_root = helix_stdx::env::current_working_dir();
-        if !search_root.exists() {
-            return async { Err(anyhow::anyhow!("Current working directory does not exist")) }
-                .boxed();
-        }
+        let search_root = config.search_root.clone();
 
         let documents: Vec<_> = editor
             .documents()
@@ -2684,7 +2679,11 @@ fn global_search(cx: &mut Context) {
                             let line_start = line_start as usize - 1;
                             let line_end = line_start + line_content.lines().count() - 1;
                             stop = injector
-                                .push(FileResult::new(entry.path(), line_start, line_end))
+                                .push(FileResult {
+                                    path: entry.path().to_path_buf(),
+                                    line_start,
+                                    line_end,
+                                })
                                 .is_err();
 
                             Ok(!stop)
@@ -2781,7 +2780,7 @@ fn global_search(cx: &mut Context) {
              line_start,
              line_end,
              ..
-         }| { Some((path.as_ref().into(), Some((*line_start, *line_end)))) },
+         }| { Some((PathOrId::Path(path), Some((*line_start, *line_end)))) },
     )
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
@@ -3167,12 +3166,19 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn file_picker(cx: &mut Context) {
+fn find_workspace_root(cx: &mut Context) -> Option<PathBuf> {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
-        return;
+        return None;
     }
+    Some(root)
+}
+
+fn file_picker(cx: &mut Context) {
+    let Some(root) = find_workspace_root(cx) else {
+        return;
+    };
     let picker = ui::file_picker(cx.editor, root);
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3215,11 +3221,9 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 }
 
 fn file_explorer(cx: &mut Context) {
-    let root = find_workspace().0;
-    if !root.exists() {
-        cx.editor.set_error("Workspace directory does not exist");
+    let Some(root) = find_workspace_root(cx) else {
         return;
-    }
+    };
 
     if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
