@@ -6953,12 +6953,33 @@ fn expand_user_snippet(cx: &mut Context) {
         let from = range.from();
         let to = range.to();
         let word = text.slice(from..to).to_string();
+        let line_where_word = range.line_range(text_slice).0;
+        let indentation_on_line: String = text_slice
+            .line(line_where_word)
+            .chars()
+            .take_while(|chr| chr.is_ascii_whitespace())
+            .collect();
 
-        let expansion = lang
+        let dumb_indent_expansion = lang
             .and_then(|lang| snippets.get(lang)?.get(&word))
             .or_else(|| snippets.get("global")?.get(&word))
             .map(|the| the.to_owned())
             .unwrap_or(word);
+
+        let expansion = {
+            let the: &str = &dumb_indent_expansion;
+            let prefix: &str = &indentation_on_line;
+            let mut collector = String::with_capacity(the.len());
+            for (index, line) in the.split_inclusive('\n').enumerate() {
+                if index == 0 {
+                    collector.push_str(line);
+                    continue;
+                }
+                collector.push_str(prefix);
+                collector.push_str(line);
+            }
+            collector
+        };
 
         let mut rendered_expansion = String::with_capacity(expansion.len());
         let mut tabstop_offsets = Vec::new();
