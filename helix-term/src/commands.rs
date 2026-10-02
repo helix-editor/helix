@@ -2607,6 +2607,7 @@ fn global_search(cx: &mut Context) {
                      editor: &mut Editor,
                      config: std::sync::Arc<GlobalSearchConfig>,
                      injector: &ui::picker::Injector<_, _>| {
+        editor.clear_status();
         if query.is_empty() {
             return async { Ok(()) }.boxed();
         }
@@ -2627,14 +2628,10 @@ fn global_search(cx: &mut Context) {
             .multi_line(true)
             .build(query)
         {
-            Ok(matcher) => {
-                // Clear any "Failed to compile regex" errors out of the statusline.
-                editor.clear_status();
-                matcher
-            }
+            Ok(matcher) => matcher,
             Err(err) => {
-                log::info!("Failed to compile search pattern in global search: {}", err);
-                return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
+                editor.set_error("Invalid regular expression");
+                return async move { Err(err.into()) }.boxed();
             }
         };
 
