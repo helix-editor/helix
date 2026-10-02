@@ -19,14 +19,20 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
+    /// Where to place the cursor in the buffer read from stdin.
+    pub stdin_position: Position,
     pub working_directory: Option<PathBuf>,
 }
 
 impl Args {
-    #[allow(clippy::too_many_lines)]
     pub fn parse_args() -> Result<Args> {
+        Self::parse_args_from(std::env::args())
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn parse_args_from(argv: impl IntoIterator<Item = String>) -> Result<Args> {
         let mut args = Args::default();
-        let mut argv = std::env::args().peekable();
+        let mut argv = argv.into_iter().peekable();
         let mut line_number = 0;
 
         let mut insert_file_with_position = |file_with_position: &str| {
@@ -167,4 +173,34 @@ fn split_path_row(s: &str) -> Option<(PathBuf, Position)> {
     let path = path.into();
     let pos = Position::new(row.saturating_sub(1), 0);
     Some((path, pos))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(argv: &[&str]) -> Args {
+        Args::parse_args_from(argv.iter().map(|arg| arg.to_string())).unwrap()
+    }
+
+    #[test]
+    fn line_number_applies_to_first_file() {
+        let args = parse(&["hx", "+10", "foo.txt", "bar.txt"]);
+        let positions: Vec<_> = args.files.values().collect();
+        assert_eq!(
+            positions,
+            [&vec![Position::new(9, 0)], &vec![Position::default()]]
+        );
+        assert_eq!(args.stdin_position, Position::default());
+    }
+
+    #[test]
+    fn line_number_without_files_applies_to_stdin() {
+        let args = parse(&["hx", "+10"]);
+        assert!(args.files.is_empty());
+        assert_eq!(args.stdin_position, Position::new(9, 0));
+
+        let args = parse(&["hx", "+"]);
+        assert_eq!(args.stdin_position, Position::new(usize::MAX, 0));
+    }
 }
