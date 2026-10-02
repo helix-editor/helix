@@ -19,7 +19,6 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: IndexMap<PathBuf, Vec<Position>>,
-    /// Where to place the cursor in the buffer read from stdin.
     pub stdin_position: Position,
     pub working_directory: Option<PathBuf>,
 }
@@ -128,12 +127,13 @@ impl Args {
         }
 
         if line_number != 0 {
-            if let Some(first_position) = args
+            match args
                 .files
                 .first_mut()
                 .and_then(|(_, positions)| positions.first_mut())
             {
-                first_position.row = line_number;
+                Some(first_position) => first_position.row = line_number,
+                None => args.stdin_position.row = line_number,
             }
         }
 
