@@ -199,6 +199,111 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn goto_scheme_comments_across_sibling_comments() -> anyhow::Result<()> {
+    let input = indoc! {r##"
+        #[|]#(define (process items)
+          ; hello
+          (fold-left + 0 items))
+
+        ; world
+        (let ((a 1)
+              (b 2))
+          (+ a b))
+
+        (display "first"
+                 "second")
+    "##};
+    let expected = indoc! {r##"
+        (define (process items)
+          ; hello
+          (fold-left + 0 items))
+
+        #[; world|]#
+        (let ((a 1)
+              (b 2))
+          (+ a b))
+
+        (display "first"
+                 "second")
+    "##};
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.scm", None),
+        (input, "]c]c", expected),
+    )
+    .await?;
+
+    let input = indoc! {r##"
+        (define (process items)
+          ; hello
+          (fold-left + 0 items))
+
+        ; world
+        (let ((a 1)
+              (b 2))
+          (+ a b))
+
+        (display "first"
+                 "second")#[|]#
+    "##};
+    let expected = indoc! {r##"
+        (define (process items)
+          #[|; hello]#
+          (fold-left + 0 items))
+
+        ; world
+        (let ((a 1)
+              (b 2))
+          (+ a b))
+
+        (display "first"
+                 "second")
+    "##};
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.scm", None),
+        (input, "[c[c", expected),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn goto_tsq_comments_in_query_files() -> anyhow::Result<()> {
+    let input = indoc! {r##"
+        #[|]#(function_declarator
+        ; first comment
+          declarator: [(identifier) (field_identifier)] @definition.function)
+
+        ; second comment
+        (preproc_function_def name: (identifier) @definition.function)
+
+        (preproc_def name: (identifier) @definition.constant)
+        ; third comment
+    "##};
+    let expected = indoc! {r##"
+        (function_declarator
+        ; first comment
+          declarator: [(identifier) (field_identifier)] @definition.function)
+
+        ; second comment
+        (preproc_function_def name: (identifier) @definition.function)
+
+        (preproc_def name: (identifier) @definition.constant)
+        #[; third comment|]#
+    "##};
+
+    test_with_config(
+        AppBuilder::new().with_file("queries/c/tags.scm", None),
+        (input, "]c]c]c", expected),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
     let tests = vec![
         // single cursor stays single cursor, first goes to end of current
