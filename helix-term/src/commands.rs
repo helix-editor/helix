@@ -614,6 +614,7 @@ impl MappableCommand {
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "Goto next snippet placeholder",
         goto_prev_tabstop, "Goto next snippet placeholder",
+        expand_user_snippet, "Expand current word as a snippet",
         rotate_selections_first, "Make the first selection your primary one",
         rotate_selections_last, "Make the last selection your primary one",
     );
@@ -6919,6 +6920,118 @@ fn goto_next_tabstop_impl(cx: &mut Context, direction: Direction) {
             }
         })
     }
+}
+
+fn expand_user_snippet(cx: &mut Context) {
+    use helix_core::graphemes::prev_grapheme_boundary;
+    use helix_core::textobject::textobject_word;
+    let config = cx.editor.config();
+    let snippets = &config.snippets;
+    let (view, doc) = current_ref!(cx.editor);
+    let view_id = view.id;
+    let text = doc.text();
+    let text_slice = text.slice(..);
+    let lang = doc.language_name();
+
+    let word_ranges = doc.selection(view_id).clone().transform(|range| {
+        textobject_word(
+            text_slice,
+            Range::point(prev_grapheme_boundary(text_slice, range.cursor(text_slice))),
+            textobject::TextObject::Inside,
+            1,
+            false,
+        )
+    });
+
+    let mut new_ranges: SmallVec<[Range; 1]> = SmallVec::with_capacity(word_ranges.len());
+    let old_primary = word_ranges.primary_index();
+    let mut new_primary_index = 0;
+    let mut index = 0usize;
+    let mut text_shift: isize = 0;
+
+    let transaction = Transaction::change_by_selection(text, &word_ranges, |range| {
+        let from = range.from();
+        let to = range.to();
+        let word = text.slice(from..to).to_string();
+        let line_where_word = range.line_range(text_slice).0;
+        let indentation_on_line: String = text_slice
+            .line(line_where_word)
+            .chars()
+            .take_while(|chr| chr.is_ascii_whitespace())
+            .collect();
+
+        let dumb_indent_expansion = lang
+            .and_then(|lang| snippets.get(lang)?.get(&word))
+            .or_else(|| snippets.get("global")?.get(&word))
+            .map(|the| the.to_owned())
+            .unwrap_or(word);
+
+        let expansion = {
+            let the: &str = &dumb_indent_expansion;
+            let prefix: &str = &indentation_on_line;
+            let mut collector = String::with_capacity(the.len());
+            for (index, line) in the.split_inclusive('\n').enumerate() {
+                if index == 0 {
+                    collector.push_str(line);
+                    continue;
+                }
+                collector.push_str(prefix);
+                collector.push_str(line);
+            }
+            collector
+        };
+
+        // this is a bit of a pain to error handle properly, so hopefully you and me will try to use a wrongly syntacted expansion,
+        // go “I see 🧐” and fix it, with no error handling? 😼
+        let expansion = {
+            match helix_view::expansion::expand(
+                cx.editor,
+                helix_core::command_line::Token::expand(&expansion),
+            ) {
+                Ok(the) => the,
+                Err(err) => {
+                    log::error!("Snippet command expansion: {err}");
+                    Cow::Owned(expansion)
+                }
+            }
+        };
+
+        let mut rendered_expansion = String::with_capacity(expansion.len());
+        let mut tabstop_offsets = Vec::new();
+        for ch in expansion.chars() {
+            if ch == '█' {
+                tabstop_offsets.push(rendered_expansion.chars().count());
+            } else {
+                rendered_expansion.push(ch);
+            }
+        }
+
+        if index == old_primary {
+            new_primary_index = new_ranges.len();
+        }
+
+        let new_from = from.saturating_add_signed(text_shift);
+        let inserted_length = rendered_expansion.chars().count();
+
+        if tabstop_offsets.is_empty() {
+            new_ranges.push(Range::point(new_from + inserted_length));
+        } else {
+            for offset in &tabstop_offsets {
+                new_ranges.push(Range::point(new_from + offset))
+            }
+        }
+
+        text_shift += inserted_length.saturating_sub(to - from) as isize;
+        index += 1;
+
+        // we pass the from and to for posterity but they don't actually matter as we manually specify the actual ranges afterwards
+        (from, to, Some(rendered_expansion.into()))
+    });
+
+    doc_mut!(cx.editor).apply(
+        &transaction.with_selection(Selection::new(new_ranges, new_primary_index)),
+        view_id,
+    );
 }
 
 fn record_macro(cx: &mut Context) {
