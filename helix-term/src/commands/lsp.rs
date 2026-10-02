@@ -1,6 +1,5 @@
 use futures_util::{stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
-    block_on,
     lsp::{
         self, CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionTriggerKind,
         DiagnosticSeverity, NumberOrString,
@@ -1217,15 +1216,25 @@ pub fn rename_symbol(cx: &mut Context) {
                 let future = language_server
                     .rename_symbol(doc.identifier(), pos, input.to_string())
                     .unwrap();
+                let doc_id = doc.id();
+                let doc_version = doc.version();
 
-                match block_on(future) {
-                    Ok(edits) => {
-                        let _ = cx
-                            .editor
+                cx.jobs.callback(super::make_job_callback(
+                    future,
+                    move |editor, _compositor, edits: Option<lsp::WorkspaceEdit>| {
+                        // The document may have changed while the request was in flight
+                        if editor
+                            .documents
+                            .get(&doc_id)
+                            .is_none_or(|doc| doc.version() != doc_version)
+                        {
+                            editor.set_error("discarded rename because the document changed");
+                            return;
+                        }
+                        let _ = editor
                             .apply_workspace_edit(offset_encoding, &edits.unwrap_or_default());
-                    }
-                    Err(err) => cx.editor.set_error(err.to_string()),
-                }
+                    },
+                ));
             },
         )
         .with_line(prefill, editor);
