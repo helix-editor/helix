@@ -3524,7 +3524,7 @@ grammar = "qmljs"
 
 [[grammar]]
 name = "qmljs"
-source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "0b2b25bcaa7d4925d5f0dda16f6a99c588a437f1" }
+source = { git = "https://github.com/yuja/tree-sitter-qmljs", rev = "de96ed62abded51fcdfcbeaaa120e0dd0d20c697" }
 
 [[language]]
 name = "mermaid"
