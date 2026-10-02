@@ -202,6 +202,38 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_goto_file_percent_encoded_url() -> anyhow::Result<()> {
+    // `file://` URLs are percent-encoded, so the path component must be decoded
+    // before it is used to open the file.
+    let dir = tempfile::tempdir()?;
+    let target = dir.path().join("one two.js");
+    std::fs::write(&target, "")?;
+    let url = helix_stdx::Url::from_file_path(&target).unwrap();
+    assert!(url.as_str().contains("%20"), "{url}");
+
+    let file = tempfile::NamedTempFile::new()?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some(&format!("i{url}<esc>%gf")),
+        Some(&|app| {
+            assert_eq!(
+                1,
+                app.editor
+                    .documents()
+                    .filter_map(|doc| doc.path()?.file_name())
+                    .filter(|name| *name == "one two.js")
+                    .count()
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test((
         indoc! {"\
