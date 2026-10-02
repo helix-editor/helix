@@ -6927,7 +6927,7 @@ fn expand_user_snippet(cx: &mut Context) {
     use helix_core::textobject::textobject_word;
     let config = cx.editor.config();
     let snippets = &config.snippets;
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
     let view_id = view.id;
     let text = doc.text();
     let text_slice = text.slice(..);
@@ -6981,6 +6981,21 @@ fn expand_user_snippet(cx: &mut Context) {
             collector
         };
 
+        // this is a bit of a pain to error handle properly, so hopefully you and me will try to use a wrongly syntacted expansion,
+        // go “I see 🧐” and fix it, with no error handling? 😼
+        let expansion = {
+            match helix_view::expansion::expand(
+                cx.editor,
+                helix_core::command_line::Token::expand(&expansion),
+            ) {
+                Ok(the) => the,
+                Err(err) => {
+                    log::error!("Snippet command expansion: {err}");
+                    Cow::Owned(expansion)
+                }
+            }
+        };
+
         let mut rendered_expansion = String::with_capacity(expansion.len());
         let mut tabstop_offsets = Vec::new();
         for ch in expansion.chars() {
@@ -7013,7 +7028,7 @@ fn expand_user_snippet(cx: &mut Context) {
         (from, to, Some(rendered_expansion.into()))
     });
 
-    doc.apply(
+    doc_mut!(cx.editor).apply(
         &transaction.with_selection(Selection::new(new_ranges, new_primary_index)),
         view_id,
     );
