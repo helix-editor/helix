@@ -86,10 +86,25 @@ impl Display for Grapheme<'_> {
                 }
                 Ok(())
             }
-            Grapheme::Other { ref g } => {
-                write!(f, "{g}")
-            }
+            Grapheme::Other { ref g } => f.write_str(&render_grapheme(g)),
         }
+    }
+}
+
+/// Returns a terminal-safe representation of a grapheme while preserving its cell width.
+///
+/// Control characters are editable text, but writing them directly to a terminal can move the
+/// cursor or trigger terminal behavior without advancing the cell grid. Replace them with the
+/// one-cell replacement character when rendering.
+#[must_use]
+pub fn render_grapheme(g: &str) -> Cow<'_, str> {
+    if g.chars().any(char::is_control) {
+        g.chars()
+            .map(|ch| if ch.is_control() { '\u{FFFD}' } else { ch })
+            .collect::<String>()
+            .into()
+    } else {
+        g.into()
     }
 }
 
@@ -337,5 +352,26 @@ impl Display for GraphemeStr<'_> {
 impl Clone for GraphemeStr<'_> {
     fn clone(&self) -> Self {
         self.deref().to_owned().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{grapheme_width, render_grapheme};
+    use std::borrow::Cow;
+
+    #[test]
+    fn render_control_characters_as_one_cell() {
+        for control in ["\0", "\x01", "\x1f", "\x7f"] {
+            let rendered = render_grapheme(control);
+            assert_eq!(rendered, "\u{FFFD}");
+            assert_eq!(grapheme_width(&rendered), 1);
+        }
+    }
+
+    #[test]
+    fn render_regular_graphemes_without_allocating() {
+        assert!(matches!(render_grapheme("hello"), Cow::Borrowed("hello")));
+        assert_eq!(render_grapheme("界"), "界");
     }
 }
