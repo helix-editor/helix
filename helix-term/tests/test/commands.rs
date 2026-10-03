@@ -187,6 +187,27 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     )
     .await?;
 
+    // trailing punctuation after an unquoted path
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iopen one.js; then two.js,<esc>B;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec!["two.js"]));
+        }),
+        false,
+    )
+    .await?;
+
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iopen one.js; then<esc>BB;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec!["one.js"]));
+        }),
+        false,
+    )
+    .await?;
+
     // allow numeric values in path
     test_key_sequence(
         &mut AppBuilder::new().with_file(file.path(), None).build()?,
