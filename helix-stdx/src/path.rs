@@ -457,4 +457,31 @@ mod tests {
             assert_match!(regex, "${BAR}");
         }
     }
+
+    #[test]
+    fn find_paths_trailing_punctuation() {
+        fn find_paths(src: &str, match_single_file: bool) -> Vec<&str> {
+            path::find_paths(RopeSlice::from(src), match_single_file)
+                .map(|range| &src[range])
+                .collect()
+        }
+
+        assert_eq!(find_paths("file_name.ext;", true), ["file_name.ext"]);
+        assert_eq!(find_paths("name.ext,", true), ["name.ext"]);
+        assert_eq!(find_paths("main.rs!?", true), ["main.rs"]);
+        assert_eq!(find_paths(".", true), ["."]);
+        assert_eq!(find_paths("..", true), [".."]);
+        assert_eq!(
+            find_paths("see foo/bar.rs, then ./baz.txt. or ~/qux;", false),
+            ["foo/bar.rs", "./baz.txt", "~/qux"]
+        );
+        assert_eq!(
+            find_paths("../.. and foo/. and a/b,c.rs", false),
+            ["../..", "foo/.", "a/b,c.rs"]
+        );
+        assert_eq!(
+            find_paths("https://example.com/search?q=a,b;c!", false),
+            ["https://example.com/search?q=a,b;c"]
+        );
+    }
 }
