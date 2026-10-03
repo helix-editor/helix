@@ -1,67 +1,216 @@
-(line_comment) @comment.line
-(block_comment) @comment.block
-(ty (ident) @type)
+(ty
+  (id)) @type
 
-(item_type name: (ident) @type)
-(item_record name: (ident) @type)
-(item_variant name: (ident) @type)
-(item_flags name: (ident) @type)
-(item_enum name: (ident) @type)
-(item_union name: (ident) @type)
-(item_resource name: (ident) @type)
+(decl_head
+  (id) @module)
 
-(item_use from: (ident) @namespace)
-(use_item name: (ident) @type)
-(item_func name: (ident) @function)
-(method name: (ident) @function.method)
-(fields (named_ty name: (ident) @variable.other.member))
-(input (args (named_ty name: (ident) @variable.parameter)))
-(output (args (named_ty name: (ident) @variable.other.member)))
-(flags (ident) @constant)
-(enum_items (ident) @constant)
-(variant_item tag: (ident) @type.enum.variant)
+(version) @string.special
 
-[
-  (unit)
+(use_path
+  [
+    "@"
+    "/"
+  ] @punctuation.delimiter)
 
-  "u8" "u16" "u32" "u64"
-  "s8" "s16" "s32" "s64"
-  "float32" "float64"
-  "char" "bool" "string"
-] @type.builtin
+(decl_head
+  [
+    "@"
+    "/"
+  ] @punctuation.delimiter)
 
-[
-  "list"
-  "option"
-  "result"
-  "tuple"
-  "future"
-  "stream"
-] @function.macro
+; feature gates with leading `@`
+(_
+  .
+  "@" @punctuation.special
+  .
+  [
+    "since"
+    "unstable"
+    "deprecated"
+  ] @attribute.builtin)
 
-[ "," ":" ] @punctuation.delimiter
-[ "(" ")" "{" "}" "<" ">" ] @punctuation.bracket
-[ "=" "->" ] @operator
+(unstable_gate
+  feature: (id) @string)
 
-[
-  "record"
-  "flags"
-  "variant"
-  "enum"
-  "union"
-  "type"
-  "resource"
-] @keyword.storage.type
+(world_item
+  name: (id) @module)
+
+(interface_item
+  name: (id) @module)
+
+(import_item
+  name: (id) @module
+  (extern_type
+    (body)))
+
+(import_item
+  name: (id) @function
+  (extern_type
+    (func_type)))
+
+(export_item
+  name: (id) @module
+  (extern_type
+    (body)))
+
+(export_item
+  name: (id) @function
+  (extern_type
+    (func_type)))
+
+(type_item
+  alias: (id) @type.definition)
+
+(func_item
+  name: (id) @function.method)
+
+(handle
+  (id) @type)
+
+(named_type
+  name: (id) @variable.parameter)
+
+(record_item
+  name: (id) @type)
+
+(record_field
+  name: (id) @variable.member)
+
+(flags_items
+  name: (id) @type)
+
+(flags_field) @variable.member
+
+(variant_items
+  name: (id) @type)
+
+(variant_case
+  name: (id) @constant)
+
+(enum_items
+  name: (id) @type)
+
+(enum_case) @constant
+
+(resource_item
+  name: (id) @type)
+
+(resource_method
+  (id) @function.method)
+
+(resource_method
+  "constructor" @constructor)
+
+(toplevel_use_item
+  "use" @keyword.import)
+
+(toplevel_use_item
+  alias: (id) @module)
+
+(use_item
+  "use" @keyword.import)
+
+(use_path
+  (id) @module)
+
+(alias_item
+  (id) @module)
+
+(use_names_item
+  (id) @module)
 
 "func" @keyword.function
 
-[
-  "static"
-] @keyword.storage.modifier
+(external_id
+  "@" @punctuation.special
+  "external-id" @attribute.builtin
+  id: (string_literal) @string)
+
 
 [
-  (star)
-  "use"
+  "type"
+  "interface"
+  "world"
+  "package"
+  "resource"
+  "record"
+  "enum"
+  "flags"
+  "variant"
+] @keyword.type
+
+"static" @keyword.modifier
+
+"async" @keyword.coroutine
+
+(uint) @constant
+
+[
+  "include"
+  "import"
+  "export"
   "as"
-  "from"
-] @keyword.control.import
+  "with"
+] @keyword.import
+
+[
+  "u8"
+  "u16"
+  "u32"
+  "u64"
+  "s8"
+  "s16"
+  "s32"
+  "s64"
+  "f32"
+  "f64"
+  "char"
+  "bool"
+  "string"
+] @type.builtin
+
+[
+  "tuple"
+  "list"
+  "option"
+  "result"
+  "map"
+  "borrow"
+  "future"
+  "stream"
+] @type
+
+"_" @variable.parameter.builtin
+
+[
+  ";"
+  ":"
+  ","
+  "."
+  "->"
+] @punctuation.delimiter
+
+(use_path
+  "/" @punctuation.delimiter)
+
+[
+  "{"
+  "}"
+  "("
+  ")"
+  ">"
+  "<"
+] @punctuation.bracket
+
+"=" @operator
+
+[
+  (line_comment)
+  (block_comment)
+] @comment @spell
+
+(line_comment
+  (doc_comment)) @comment.documentation
+
+(block_comment
+  (doc_comment)) @comment.documentation
