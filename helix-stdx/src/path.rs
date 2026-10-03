@@ -277,7 +277,25 @@ pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<Ro
         .map(|mat| src.byte_slice(mat.range()))
 }
 
+/// Drops trailing `,;!?.` from a matched path, since they usually end the
+/// surrounding sentence or statement. A dot that is part of a `.` or `..`
+/// component stays.
+fn trim_trailing_punctuation(src: RopeSlice<'_>, mut range: Range<usize>) -> Range<usize> {
+    while range.end > range.start {
+        let last = src.byte(range.end - 1);
+        let dot_component = last == b'.'
+            && (range.end - 1 == range.start
+                || matches!(src.byte(range.end - 2), b'.' | b'/' | b'\\'));
+        if !b",;!?.".contains(&last) || dot_component {
+            break;
+        }
+        range.end -= 1;
+    }
+    range
+}
+
 /// Returns an iterator of the **byte** ranges in src that contain a path.
+/// Trailing punctuation is not part of the returned path.
 pub fn find_paths(
     src: RopeSlice<'_>,
     match_single_file: bool,
@@ -291,7 +309,10 @@ pub fn find_paths(
             LazyLock::new(|| compile_path_regex("", "", false, cfg!(windows)));
         &*REGEX
     };
-    regex.find_iter(Input::new(src)).map(|mat| mat.range())
+    regex
+        .find_iter(Input::new(src))
+        .map(move |mat| trim_trailing_punctuation(src, mat.range()))
+        .filter(|range| !range.is_empty())
 }
 
 /// Performs substitution of `~` and environment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
