@@ -40,6 +40,8 @@ pub enum Variable {
     CurrentWorkingDirectory,
     /// Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix`
     WorkspaceDirectory,
+    // Current filename, relative to the nearest ancestor that contains `.git`, `.svn`, `jj` or `.helix`, similar to WorkSpaceDirectory
+    WorkspacePath,
     // The name of current buffers language as set in `languages.toml`
     Language,
     // Primary selection
@@ -48,6 +50,8 @@ pub enum Variable {
     SelectionLineStart,
     // The one-indexed line number of the end of the primary selection in the currently focused document.
     SelectionLineEnd,
+    // Clipboard content
+    Clipboard,
 }
 
 impl Variable {
@@ -59,10 +63,12 @@ impl Variable {
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
         Self::WorkspaceDirectory,
+        Self::WorkspacePath,
         Self::Language,
         Self::Selection,
         Self::SelectionLineStart,
         Self::SelectionLineEnd,
+        Self::Clipboard,
     ];
 
     pub const fn as_str(&self) -> &'static str {
@@ -74,10 +80,12 @@ impl Variable {
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
+            Self::WorkspacePath => "workspace_path",
             Self::Language => "language",
             Self::Selection => "selection",
             Self::SelectionLineStart => "selection_line_start",
             Self::SelectionLineEnd => "selection_line_end",
+            Self::Clipboard => "clipboard",
         }
     }
 
@@ -89,11 +97,13 @@ impl Variable {
             "file_path_absolute" => Some(Self::FilePathAbsolute),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
+            "workspace_path" => Some(Self::WorkspacePath),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
             "language" => Some(Self::Language),
             "selection" => Some(Self::Selection),
             "selection_line_start" => Some(Self::SelectionLineStart),
             "selection_line_end" => Some(Self::SelectionLineEnd),
+            "clipboard" => Some(Self::Clipboard),
             _ => None,
         }
     }
@@ -288,6 +298,28 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
                 .to_string_lossy()
                 .to_string(),
         )),
+        Variable::WorkspacePath => {
+            let workspace_path = helix_loader::find_workspace()
+                .0
+                .to_string_lossy()
+                .to_string();
+            let abs_path = match doc.path() {
+                Some(path) => path.to_owned(),
+                None => helix_stdx::env::current_working_dir(),
+            }
+            .to_string_lossy()
+            .to_string();
+
+            // check the workspace path is actually a valid prefix for the absolute path
+            // otherwise we might get weird results for files not in our CWD tree
+            if abs_path[..workspace_path.len()] == workspace_path {
+                Ok(std::borrow::Cow::Owned(
+                    abs_path[workspace_path.len() + 1..].into(), // if we're in-tree, cut off workspace dir plus an extra slash
+                ))
+            } else {
+                Ok(std::borrow::Cow::Owned(abs_path)) // otherwise return abs path
+            }
+        }
         Variable::Language => Ok(match doc.language_name() {
             Some(lang) => Cow::Owned(lang.to_owned()),
             None => Cow::Borrowed("text"),
@@ -302,6 +334,16 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
         Variable::SelectionLineEnd => {
             let end_line = doc.selection(view.id).primary().line_range(text).1;
             Ok(Cow::Owned((end_line + 1).to_string()))
+        }
+        Variable::Clipboard => {
+            let content = match editor.registers.read('+', editor) {
+                Some(mut values) if values.len() > 0 => values
+                    .next()
+                    .unwrap_or(Cow::Owned("".to_string()))
+                    .into_owned(),
+                _ => "".to_string(),
+            };
+            Ok(Cow::Owned(content))
         }
     }
 }
