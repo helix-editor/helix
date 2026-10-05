@@ -5,6 +5,8 @@ use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
+sema-lsp = { command = "sema", args = ["lsp"] }
+
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 ada-language-server = { command = "ada_language_server" }
 als = { command = "als" }
@@ -5655,3 +5657,50 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+# Sema language configuration for Helix
+# Uses the tree-sitter-sema grammar for Sema-specific syntax support.
+
+[[language]]
+name = "sema"
+scope = "source.sema"
+injection-regex = "sema"
+file-types = ["sema"]
+comment-tokens = ";"
+roots = ["sema.toml"]
+grammar = "sema"
+indent = { tab-width = 2, unit = "  " }
+auto-format = false
+language-servers = ["sema-lsp"]
+
+
+[language.auto-pairs]
+"(" = ")"
+"[" = "]"
+"{" = "}"
+"\"" = "\""
+
+# Debug adapter — Sema's DAP server (`sema dap`) over stdio.
+# Start a session with `:debug-start` / space-g-d; pick the "launch" template
+# and Helix will prompt for the program (defaults to the current file).
+[language.debugger]
+name = "sema"
+transport = "stdio"
+command = "sema"
+args = ["dap"]
+
+[[language.debugger.templates]]
+name = "launch"
+request = "launch"
+completion = [{ name = "program", completion = "filename" }]
+args = { program = "{0}" }
+
+[[language.debugger.templates]]
+name = "launch (stop on entry)"
+request = "launch"
+completion = [{ name = "program", completion = "filename" }]
+args = { program = "{0}", stopOnEntry = true }
+
+[[grammar]]
+name = "sema"
+source = { git = "https://github.com/sema-lisp/tree-sitter-sema", rev = "f2e289b9b3909cefa7c67138c65fe3dc8dc23553" }
