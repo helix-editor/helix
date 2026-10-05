@@ -107,6 +107,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "d" => surround_delete,
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
+            "A" => select_all_textobjects_around,
+            "I" => select_all_textobjects_inner,
         },
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
