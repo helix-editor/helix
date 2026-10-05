@@ -344,10 +344,7 @@ impl<T: Component> Component for Popup<T> {
 
         let max_offset = child_height.saturating_sub(inner.height) as usize;
         let half_page_size = (inner.height / 2) as usize;
-        let scroll = max_offset.min(self.scroll_half_pages * half_page_size);
-        self.scroll_half_pages = scroll
-            .checked_div(half_page_size)
-            .unwrap_or(self.scroll_half_pages);
+        let scroll = clamp_scroll(&mut self.scroll_half_pages, half_page_size, max_offset);
         cx.scroll = Some(scroll);
         self.contents.render(inner, surface, cx);
 
@@ -386,5 +383,47 @@ impl<T: Component> Component for Popup<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some(self.id)
+    }
+}
+
+/// Resolves a scroll request in half pages to a line offset, clamped to
+/// `max_offset`, and writes the clamp back so scrolling up after overshooting
+/// the end responds at once. The write-back rounds up: rounding down would
+/// make the next frame resolve to an offset short of `max_offset`, snapping
+/// the popup back up (all the way to the top when the overflow is under half
+/// a page).
+fn clamp_scroll(half_pages: &mut usize, half_page_size: usize, max_offset: usize) -> usize {
+    let scroll = max_offset.min(*half_pages * half_page_size);
+    if half_page_size > 0 {
+        *half_pages = scroll.div_ceil(half_page_size);
+    }
+    scroll
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clamp_scroll;
+
+    #[test]
+    fn clamped_scroll_is_stable_across_frames() {
+        // 5 lines of overflow, half page of 10: one scroll reaches the end.
+        let mut half_pages = 1;
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 5), 5);
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 5), 5);
+
+        // Overshooting by several half pages still lands on the end and
+        // one step up leaves it.
+        let mut half_pages = 4;
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 15), 15);
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 15), 15);
+        half_pages -= 1;
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 15), 10);
+    }
+
+    #[test]
+    fn content_that_fits_does_not_scroll() {
+        let mut half_pages = 3;
+        assert_eq!(clamp_scroll(&mut half_pages, 10, 0), 0);
+        assert_eq!(half_pages, 0);
     }
 }
