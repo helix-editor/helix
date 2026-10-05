@@ -550,8 +550,9 @@ fn get_node_start_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u
 }
 fn get_node_end_line(text: RopeSlice, node: &Node, new_line_byte_pos: Option<u32>) -> usize {
     let mut node_line = text.byte_to_line(node.end_byte() as usize);
-    // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
-    if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
+    // Adjust for the new line that will be inserted. A node ending exactly at the
+    // cursor still contains the new line that opens its next indentation level.
+    if new_line_byte_pos.is_some_and(|pos| node.end_byte() >= pos) {
         node_line += 1;
     }
     node_line
