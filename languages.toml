@@ -5360,7 +5360,7 @@ source = { git = "https://github.com/lykahb/tree-sitter-sgf", rev = "b7e0fb713b2
 [[language]]
 name = "ripple"
 scope = "source.ripple"
-file-types = [ "ripple" ]
+file-types = [ "tsrx", "ripple" ]
 roots = [ "package.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
