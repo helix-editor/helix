@@ -11,7 +11,7 @@ attribute = { fg = "gray" }
 
 function = { fg = "beige" }
 
-namespace = { fg = "beige" }
+namespace = { fg = "white" }
 
 comment = { fg = "comment" }
 
@@ -46,12 +46,12 @@ punctuation = { fg = "gray" }
 "punctuation.special" = { fg = "bright-green" }
 
 keyword = { fg = "gray" }
-"keyword.operator" = { fg = "beige" }
-"keyword.function" = { fg = "beige" }
+"keyword.operator" = { fg = "gray" }
+"keyword.function" = { fg = "gray" }
 "keyword.directive" = { fg = "beige" }
-"keyword.storage.type" = { fg = "beige" }
+"keyword.storage.type" = { fg = "gray" }
 "keyword.control.repeat" = { fg = "gray" }
-"keyword.control.import" = { fg = "beige" }
+"keyword.control.import" = { fg = "gray" }
 "keyword.control.conditional" = { fg = "gray" }
 
 error = { fg = "red" }
