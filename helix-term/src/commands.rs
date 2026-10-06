@@ -7214,13 +7214,7 @@ fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
 }
 
 fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-
-    if doc
-        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
-        .next()
-        .is_some()
-    {
+    if lsp::workspace_symbol_servers(cx.editor).next().is_some() {
         lsp::workspace_symbol_picker(cx);
     } else {
         syntax_workspace_symbol_picker(cx);
