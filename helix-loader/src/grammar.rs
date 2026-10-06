@@ -25,21 +25,21 @@ const DYLIB_EXTENSION: &str = "dll";
 #[cfg(target_arch = "wasm32")]
 const DYLIB_EXTENSION: &str = "wasm";
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Configuration {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Configuration {
     #[serde(rename = "use-grammars")]
     pub grammar_selection: Option<GrammarSelection>,
     pub grammar: Vec<GrammarConfiguration>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", untagged)]
 pub enum GrammarSelection {
     Only { only: HashSet<String> },
     Except { except: HashSet<String> },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GrammarConfiguration {
     #[serde(rename = "name")]
@@ -47,7 +47,7 @@ pub struct GrammarConfiguration {
     pub source: GrammarSource,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", untagged)]
 pub enum GrammarSource {
     Local {
@@ -64,6 +64,47 @@ pub enum GrammarSource {
 
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
+
+impl Configuration {
+    fn apply_selection(self) -> Vec<GrammarConfiguration> {
+        match &self.grammar_selection {
+            Some(GrammarSelection::Only { only: selections }) => self
+                .grammar
+                .into_iter()
+                .filter(|grammar| selections.contains(&grammar.grammar_id))
+                .collect(),
+            Some(GrammarSelection::Except { except: rejections }) => self
+                .grammar
+                .into_iter()
+                .filter(|grammar| !rejections.contains(&grammar.grammar_id))
+                .collect(),
+            None => self.grammar,
+        }
+    }
+}
+
+pub fn bundled_config() -> Configuration {
+    crate::config::default_lang_config()
+        .try_into::<Configuration>()
+        .expect("Built-in languages.toml contains invalid grammar configuration")
+}
+
+// Returns the set of grammar configurations the user requests.
+// Grammars are configured in the default and user `languages.toml` and are
+// merged. The `grammar_selection` key of the config is then used to filter
+// down all grammars into a subset of the user's choosing.
+pub fn load_user_config() -> Result<Configuration> {
+    // `--grammar fetch/build` clones grammar sources from URLs in `languages.toml` and compiles
+    // them into `.so` files helix later loads at runtime. If we let workspace
+    // `.helix/languages.toml` in through `fully_trusted`, a malicious workspace could inject a
+    // grammar with an attacker-controlled git source — running grammar build in that
+    // directory would clone and compile attacker code
+    let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
+    warn_if_workspace_languages_skipped(&trust);
+    Ok(crate::config::user_lang_config(&trust)
+        .context("Could not parse languages.toml")?
+        .try_into()?)
+}
 
 #[cfg(target_arch = "wasm32")]
 pub fn get_language(name: &str) -> Result<Option<Grammar>> {
@@ -108,11 +149,11 @@ fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::Workspace
     );
 }
 
-pub fn fetch_grammars(strict: bool) -> Result<()> {
+pub fn fetch(config: Configuration, strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
+    let mut grammars = config.apply_selection();
     // We do not need to fetch local grammars.
-    let mut grammars = get_grammar_configs()?;
     grammars.retain(|grammar| !matches!(grammar.source, GrammarSource::Local { .. }));
 
     let total = grammars.len();
@@ -184,11 +225,10 @@ pub fn fetch_grammars(strict: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
+pub fn build(target: Option<String>, config: Configuration, strict: bool) -> Result<()> {
     ensure_git_is_available()?;
 
-    let grammars = get_grammar_configs()?;
-
+    let grammars = config.apply_selection();
     let total = grammars.len();
     let counter = Arc::new(AtomicUsize::new(0));
 
@@ -241,48 +281,8 @@ pub fn build_grammars(target: Option<String>, strict: bool) -> Result<()> {
     Ok(())
 }
 
-// Returns the set of grammar configurations the user requests.
-// Grammars are configured in the default and user `languages.toml` and are
-// merged. The `grammar_selection` key of the config is then used to filter
-// down all grammars into a subset of the user's choosing.
-fn get_grammar_configs() -> Result<Vec<GrammarConfiguration>> {
-    // `--grammar fetch/build` clones grammar sources from URLs in `languages.toml` and compiles
-    // them into `.so` files helix later loads at runtime. If we let workspace
-    // `.helix/languages.toml` in through `fully_trusted`, a malicious workspace could inject a
-    // grammar with an attacker-controlled git source — running grammar build in that
-    // directory would clone and compile attacker code
-    let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
-    warn_if_workspace_languages_skipped(&trust);
-    let config: Configuration = crate::config::user_lang_config(&trust)
-        .context("Could not parse languages.toml")?
-        .try_into()?;
-
-    let grammars = match config.grammar_selection {
-        Some(GrammarSelection::Only { only: selections }) => config
-            .grammar
-            .into_iter()
-            .filter(|grammar| selections.contains(&grammar.grammar_id))
-            .collect(),
-        Some(GrammarSelection::Except { except: rejections }) => config
-            .grammar
-            .into_iter()
-            .filter(|grammar| !rejections.contains(&grammar.grammar_id))
-            .collect(),
-        None => config.grammar,
-    };
-
-    Ok(grammars)
-}
-
 pub fn get_grammar_names() -> Result<Option<HashSet<String>>> {
-    // See `get_grammar_configs`, same threat: workspace-local
-    // `languages.toml` must not influence the grammar set without
-    // explicit on-disk trust.
-    let trust = crate::workspace_trust::WorkspaceTrust::new(Default::default());
-    warn_if_workspace_languages_skipped(&trust);
-    let config: Configuration = crate::config::user_lang_config(&trust)
-        .context("Could not parse languages.toml")?
-        .try_into()?;
+    let config = load_user_config()?;
 
     let grammars = match config.grammar_selection {
         Some(GrammarSelection::Only { only: selections }) => Some(selections),

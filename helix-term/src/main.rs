@@ -1,4 +1,5 @@
 use anyhow::{Context, Error, Result};
+use helix_loader::grammar;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
@@ -91,12 +92,12 @@ FLAGS:
     }
 
     if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars(args.strict)?;
+        grammar::fetch(grammar::load_user_config()?, args.strict)?;
         return Ok(0);
     }
 
     if args.build_grammars {
-        helix_loader::grammar::build_grammars(None, args.strict)?;
+        grammar::build(None, grammar::load_user_config()?, args.strict)?;
         return Ok(0);
     }
 

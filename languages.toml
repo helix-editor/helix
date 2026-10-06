@@ -2158,7 +2158,7 @@ block-comment-tokens = { start = "{%", end = "%}" }
 
 [[grammar]]
 name = "djot"
-source = { git = "https://github.com/treeman/tree-sitter-djot", rev = "759a61896ccb2200a4becec4443e768638a21d58" }
+source = { git = "https://codeberg.org/treeman/tree-sitter-djot", rev = "a84d5e011131f8f6b5c5dd9668f249a020c40018" }
 
 [[language]]
 name = "dart"

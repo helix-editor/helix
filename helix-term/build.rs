@@ -1,11 +1,12 @@
-use helix_loader::grammar::{build_grammars, fetch_grammars};
+use helix_loader::grammar;
 
 const STRICT: bool = true;
 
 fn main() {
     if std::env::var("HELIX_DISABLE_AUTO_GRAMMAR_BUILD").is_err() {
-        fetch_grammars(STRICT).expect("Failed to fetch tree-sitter grammars");
-        build_grammars(Some(std::env::var("TARGET").unwrap()), STRICT)
+        let grammars = grammar::bundled_config();
+        grammar::fetch(grammars.clone(), STRICT).expect("Failed to fetch tree-sitter grammars");
+        grammar::build(Some(std::env::var("TARGET").unwrap()), grammars, STRICT)
             .expect("Failed to compile tree-sitter grammars");
     }
 
