@@ -1578,8 +1578,22 @@ fn get_character_info(
         hex
     };
 
-    cx.editor
-        .set_status(format!("\"{printable}\"{unicode}{dec} Hex{hex}"));
+    let category = {
+        let mut category = String::new();
+        for (index, char) in grapheme.chars().enumerate() {
+            if index != 0 {
+                category.push_str(" +");
+            }
+            category.push(' ');
+            category
+                .push_str(helix_core::unicode::category::get_general_category(char).abbreviation());
+        }
+        category
+    };
+
+    cx.editor.set_status(format!(
+        "\"{printable}\"{unicode}{dec} Hex{hex} Cat{category}"
+    ));
 
     Ok(())
 }
