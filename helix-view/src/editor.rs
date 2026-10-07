@@ -339,6 +339,8 @@ pub struct Config {
     pub auto_save: AutoSave,
     /// Set a global text_width
     pub text_width: usize,
+    /// Center the text column horizontally (padding up to `text-width`). Defaults to false.
+    pub center_text: bool,
     /// Time in milliseconds since last keypress before idle timers trigger.
     /// Used for various UI timeouts. Defaults to 250ms.
     #[serde(
@@ -1220,6 +1222,7 @@ impl Default for Config {
                 ..SoftWrap::default()
             },
             text_width: 80,
+            center_text: false,
             completion_replace: false,
             continue_comments: true,
             workspace_lsp_roots: Vec::new(),

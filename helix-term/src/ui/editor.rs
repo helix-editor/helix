@@ -173,7 +173,7 @@ impl EditorView {
                 editor,
                 doc,
                 view,
-                view.area,
+                view.area.clip_left(view.text_padding(doc)),
                 theme,
                 is_focused & self.terminal_focused,
                 &mut decorations,
@@ -1231,7 +1231,7 @@ impl EditorView {
 
         let gutter_coords_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
-                view.gutter_coords_at_screen_coords(row, column)
+                view.gutter_coords_at_screen_coords(&editor.documents[&view.doc], row, column)
                     .map(|coords| (coords, view.id))
             })
         };
