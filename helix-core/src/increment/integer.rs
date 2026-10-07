@@ -44,14 +44,11 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         let value = i128::from_str_radix(number, radix).ok()?;
         let new_value = value.saturating_add(amount as i128);
 
-        let format_length = match (value.is_negative(), new_value.is_negative()) {
-            (true, false) => number.len() - 1,
-            (false, true) => number.len() + 1,
-            _ => number.len(),
-        } - separator_rtl_indexes.len();
-
+        // Add leading zeros if the input had them
         if number.starts_with('0') || number.starts_with("-0") {
-            format!("{:01$}", new_value, format_length)
+            let digit_count = number.len() - usize::from(number.starts_with('-'));
+            let width = digit_count + usize::from(new_value.is_negative());
+            format!("{:0width$}", new_value)
         } else {
             format!("{}", new_value)
         }
@@ -227,6 +224,32 @@ mod test {
             ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
+        ];
+
+        for (original, amount, expected) in tests {
+            assert_eq!(increment(original, amount).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_increment_with_minus_zero() {
+        let tests = [
+            ("-1", 1, "0"),
+            ("-0", 1, "1"),
+            ("0", 1, "1"),
+            ("1", 1, "2"),
+            ("-1", -1, "-2"),
+            ("-0", -1, "-1"),
+            ("0", -1, "-1"),
+            ("1", -1, "0"),
+            ("-0001", 1, "0000"),
+            ("-0000", 1, "0001"),
+            ("0000", 1, "0001"),
+            ("0001", 1, "0002"),
+            ("-0001", -1, "-0002"),
+            ("-0000", -1, "-0001"),
+            ("0000", -1, "-0001"),
+            ("0001", -1, "0000"),
         ];
 
         for (original, amount, expected) in tests {
