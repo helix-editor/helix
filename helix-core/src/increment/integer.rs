@@ -86,30 +86,35 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         }
     };
 
-    // Add separators from original number.
-    for &rtl_index in &separator_rtl_indexes {
-        if rtl_index < new_text.len() {
-            let new_index = new_text.len().saturating_sub(rtl_index);
-            if new_index > 0 {
-                new_text.insert(new_index, SEPARATOR);
-            }
-        }
-    }
-
-    // Add in additional separators if necessary.
-    if new_text.len() > selected_text.len() && !separator_rtl_indexes.is_empty() {
-        let spacing = match separator_rtl_indexes.as_slice() {
-            [.., b, a] => a - b - 1,
-            _ => separator_rtl_indexes[0],
+    // Reinsert the separators
+    if !separator_rtl_indexes.is_empty() {
+        let prefix_length = if radix == 10 {
+            usize::from(new_text.starts_with('-'))
+        } else {
+            2
         };
+        let digits = &new_text[prefix_length..];
+        let mut grouped = String::with_capacity(new_text.len());
 
-        let prefix_length = if radix == 10 { 0 } else { 2 };
-        if let Some(mut index) = new_text.find(SEPARATOR) {
-            while index - prefix_length > spacing {
-                index -= spacing;
-                new_text.insert(index, SEPARATOR);
-            }
+        // Find the amount of consecutive digits and separators
+        let digits_width = separator_rtl_indexes[0];
+        let mut separators_width = 1;
+        while separators_width < separator_rtl_indexes.len()
+            && separator_rtl_indexes[separators_width] == digits_width + separators_width
+        {
+            separators_width += 1;
         }
+        let separator = SEPARATOR.to_string().repeat(separators_width);
+
+        for (i, digit) in digits.chars().enumerate() {
+            if i > 0 && (digits.len() - i) % digits_width == 0 {
+                grouped.push_str(&separator);
+            }
+            grouped.push(digit);
+        }
+
+        new_text.truncate(prefix_length);
+        new_text.push_str(&grouped);
     }
 
     Some(new_text)
@@ -222,6 +227,24 @@ mod test {
             ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
+        ];
+
+        for (original, amount, expected) in tests {
+            assert_eq!(increment(original, amount).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_increment_with_multiple_separators() {
+        let tests = [
+            ("999__999", 1, "1__000__000"),
+            ("1__000__000", -1, "999__999"),
+            ("-999__999", -1, "-1__000__000"),
+            ("0x0000__0000__0001", 0x1_ffff_0000, "0x0001__ffff__0001"),
+            ("0x0000__0000", -1, "0x0000__0000"),
+            ("0x0000__0000__0000", -1, "0x0000__0000__0000"),
+            ("0b01111111__11111111", 1, "0b10000000__00000000"),
+            ("0b11111111__11111111", 1, "0b1__00000000__00000000"),
         ];
 
         for (original, amount, expected) in tests {
