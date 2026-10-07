@@ -58,8 +58,11 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
     } else {
         let number = &word[2..];
         let value = u128::from_str_radix(number, radix).ok()?;
-        let new_value = (value as i128).saturating_add(amount as i128);
-        let new_value = if new_value < 0 { 0 } else { new_value };
+        let new_value = if amount >= 0 {
+            value.saturating_add(amount as u128)
+        } else {
+            value.saturating_sub(amount.unsigned_abs() as u128)
+        };
         let format_length = selected_text.len() - 2 - separator_rtl_indexes.len();
 
         match radix {
@@ -219,6 +222,31 @@ mod test {
             ("0x0000_0000_0000", -1, "0x0000_0000_0000"),
             ("0b01111111_11111111", 1, "0b10000000_00000000"),
             ("0b11111111_11111111", 1, "0b1_00000000_00000000"),
+        ];
+
+        for (original, amount, expected) in tests {
+            assert_eq!(increment(original, amount).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_decrement_max_u128_does_not_wrap_to_zero() {
+        let tests = [
+            (
+                "0xffffffffffffffffffffffffffffffff",
+                -1,
+                "0xfffffffffffffffffffffffffffffffe",
+            ),
+            (
+                "0xffffffffffffffffffffffffffffffff",
+                1,
+                "0xffffffffffffffffffffffffffffffff",
+            ),
+            (
+                "0b11111111111111111111111111111111",
+                -1,
+                "0b11111111111111111111111111111110",
+            ),
         ];
 
         for (original, amount, expected) in tests {
