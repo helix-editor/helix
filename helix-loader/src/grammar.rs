@@ -463,6 +463,13 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     // Fetch the grammar if the revision doesn't match.
     repo.fetch(&remote, revision, object_format)?;
 
+    // Verify that the checked-out HEAD actually matches the pinned revision.
+    // This guards against a tampered or truncated fetch (e.g. MITM or a
+    // compromised remote) silently checking out an unexpected commit.
+    if repo.revision().as_deref() != Some(revision) {
+        bail!("Fetched grammar '{}' revision mismatch: expected {revision}, repository is not at the expected commit", grammar.grammar_id);
+    }
+
     Ok(FetchStatus::GitUpdated {
         revision: revision.to_string(),
     })
