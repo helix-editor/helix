@@ -208,7 +208,9 @@ impl View {
     }
 
     pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+        self.area
+            .clip_left(self.gutter_offset(doc) + self.text_padding(doc))
+            .clip_bottom(1) // -1 for statusline
     }
 
     pub fn inner_height(&self) -> usize {
@@ -216,7 +218,16 @@ impl View {
     }
 
     pub fn inner_width(&self, doc: &Document) -> u16 {
-        self.area.clip_left(self.gutter_offset(doc)).width
+        self.inner_area(doc).width
+    }
+
+    pub fn text_padding(&self, doc: &Document) -> u16 {
+        if !doc.config.load().center_text {
+            return 0;
+        }
+        let available_width = self.area.clip_left(self.gutter_offset(doc)).width;
+        let text_width = u16::try_from(doc.text_width()).unwrap_or(available_width);
+        available_width.saturating_sub(text_width) / 2
     }
 
     pub fn gutters(&self) -> &[GutterType] {
@@ -630,19 +641,26 @@ impl View {
     /// Translates screen coordinates into coordinates on the gutter of the view.
     /// Returns a tuple of usize typed line and column numbers starting with 0.
     /// Returns None if coordinates are not on the gutter.
-    pub fn gutter_coords_at_screen_coords(&self, row: u16, column: u16) -> Option<Position> {
+    pub fn gutter_coords_at_screen_coords(
+        &self,
+        doc: &Document,
+        row: u16,
+        column: u16,
+    ) -> Option<Position> {
         // 1 for status
         if row < self.area.top() || row >= self.area.bottom() {
             return None;
         }
 
-        if column < self.area.left() || column > self.area.right() {
+        // The gutter starts after the text padding
+        let left = self.area.left() + self.text_padding(doc);
+        if column < left || column > self.area.right() {
             return None;
         }
 
         Some(Position::new(
             (row - self.area.top()) as usize,
-            (column - self.area.left()) as usize,
+            (column - left) as usize,
         ))
     }
 
@@ -1115,6 +1133,109 @@ mod tests {
                 true
             ),
             Some(7)
+        );
+    }
+
+    fn center_text_doc(view: &View, center_text: bool, text_width: usize) -> Document {
+        let config = Config {
+            center_text,
+            text_width,
+            ..Default::default()
+        };
+        let mut doc = Document::from(
+            Rope::from_str("abc\n\tdef"),
+            None,
+            Arc::new(ArcSwap::new(Arc::new(config))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        doc.ensure_view_init(view.id);
+        doc
+    }
+
+    #[test]
+    fn test_text_padding_disabled() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let doc = center_text_doc(&view, false, 20);
+
+        assert_eq!(view.text_padding(&doc), 0);
+        assert_eq!(view.inner_area(&doc).x, 40 + DEFAULT_GUTTER_OFFSET);
+        assert_eq!(view.inner_width(&doc), 40 - DEFAULT_GUTTER_OFFSET);
+    }
+
+    #[test]
+    fn test_text_padding_centers_text() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let doc = center_text_doc(&view, true, 20);
+
+        // (40 - 7 gutter - 20 text width) / 2
+        let padding = 6;
+        assert_eq!(view.text_padding(&doc), padding);
+        assert_eq!(
+            view.inner_area(&doc).x,
+            40 + padding + DEFAULT_GUTTER_OFFSET
+        );
+        assert_eq!(view.inner_width(&doc), 40 - padding - DEFAULT_GUTTER_OFFSET);
+    }
+
+    #[test]
+    fn test_text_padding_narrow_view() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        // text width is larger than the available width
+        let doc = center_text_doc(&view, true, 80);
+
+        assert_eq!(view.text_padding(&doc), 0);
+        assert_eq!(view.inner_width(&doc), 40 - DEFAULT_GUTTER_OFFSET);
+    }
+
+    #[test]
+    fn test_text_pos_at_screen_coords_center_text() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let doc = center_text_doc(&view, true, 20);
+        let text_left = 40 + 6 + DEFAULT_GUTTER_OFFSET;
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(
+                &doc,
+                40,
+                text_left,
+                TextFormat::default(),
+                &TextAnnotations::default(),
+                true
+            ),
+            Some(0)
+        );
+
+        assert_eq!(
+            view.text_pos_at_screen_coords(
+                &doc,
+                40,
+                text_left - 1,
+                TextFormat::default(),
+                &TextAnnotations::default(),
+                true
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn test_gutter_coords_at_screen_coords_center_text() {
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(40, 40, 40, 40);
+        let doc = center_text_doc(&view, true, 20);
+
+        // inside the padding
+        assert_eq!(view.gutter_coords_at_screen_coords(&doc, 40, 40), None);
+        assert_eq!(view.gutter_coords_at_screen_coords(&doc, 40, 45), None);
+
+        // first gutter column
+        assert_eq!(
+            view.gutter_coords_at_screen_coords(&doc, 41, 46),
+            Some(Position::new(1, 0))
         );
     }
 
