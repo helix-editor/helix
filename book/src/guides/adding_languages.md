@@ -37,7 +37,7 @@ below.
    [tree-sitter website](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights)
    for more information on writing queries.
 4. The highlight captures (`@function`, `@type`, ...) and how they resolve are
-   documented [on the themes page](./themes.md):
+   documented [on the themes page](../themes.md):
    match the most specific scope that fits, capture the leaf node you mean, and
    remember that the last matching pattern (and the innermost node) wins.
 5. Helix loads several query files from that directory; only `highlights.scm` is
