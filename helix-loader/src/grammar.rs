@@ -463,6 +463,18 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     // Fetch the grammar if the revision doesn't match.
     repo.fetch(&remote, revision, object_format)?;
 
+    // Verify that the checked-out revision actually matches the pinned
+    // revision from the configuration. `git checkout` can resolve an
+    // ambiguous ref (e.g. a stale local branch/tag from a previous fetch)
+    // to something other than the object we just fetched, so re-check
+    // the integrity of the result before treating the grammar as trusted.
+    if repo.revision().as_deref() != Some(revision) {
+        return Err(anyhow!(
+            "Grammar '{}' checked out revision does not match pinned revision '{revision}'; refusing to build",
+            grammar.grammar_id
+        ));
+    }
+
     Ok(FetchStatus::GitUpdated {
         revision: revision.to_string(),
     })
