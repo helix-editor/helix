@@ -18,8 +18,14 @@ pub struct Args {
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
-    pub files: IndexMap<PathBuf, Vec<Position>>,
+    pub files: IndexMap<PathBuf, Vec<FileTarget>>,
     pub working_directory: Option<PathBuf>,
+}
+
+#[derive(Default, Clone)]
+pub struct FileTarget {
+    pub position: Position,
+    pub section: Option<String>,
 }
 
 impl Args {
@@ -29,16 +35,16 @@ impl Args {
         let mut argv = std::env::args().peekable();
         let mut line_number = 0;
 
-        let mut insert_file_with_position = |file_with_position: &str| {
-            let (filename, position) = parse_file(file_with_position);
+        let mut insert_file_with_position = |file_str: &str| {
+            let (filename, target) = parse_file(file_str);
 
             // Before setting the working directory, resolve all the paths in args.files
             let filename = helix_stdx::path::canonicalize(filename);
 
             args.files
                 .entry(filename)
-                .and_modify(|positions| positions.push(position))
-                .or_insert_with(|| vec![position]);
+                .and_modify(|targets| targets.push(target.clone()))
+                .or_insert_with(|| vec![target]);
         };
 
         argv.next(); // skip the program, we don't care about that
@@ -125,9 +131,9 @@ impl Args {
             if let Some(first_position) = args
                 .files
                 .first_mut()
-                .and_then(|(_, positions)| positions.first_mut())
+                .and_then(|(_, target)| target.first_mut())
             {
-                first_position.row = line_number;
+                first_position.position.row = line_number
             }
         }
 
@@ -135,15 +141,29 @@ impl Args {
     }
 }
 
-/// Parse arg into [`PathBuf`] and position.
-pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
-    let def = || (PathBuf::from(s), Position::default());
+/// Parse arg into [`PathBuf`] and [`FileTarget`].
+///
+/// Supports `file#section`, `file:row`, `file:row:col`, and combinations
+/// like `file#section:row:col`. A file on disk always takes priority.
+pub(crate) fn parse_file(s: &str) -> (PathBuf, FileTarget) {
     if Path::new(s).exists() {
-        return def();
+        return (PathBuf::from(s), FileTarget::default());
     }
-    split_path_row_col(s)
-        .or_else(|| split_path_row(s))
-        .unwrap_or_else(def)
+
+    let (s, section) = match s.rsplit_once('#') {
+        Some((before, after)) if !after.is_empty() => (before, Some(after.to_string())),
+        _ => (s, None),
+    };
+
+    let (path, position) = if Path::new(s).exists() {
+        (PathBuf::from(s), Position::default())
+    } else {
+        split_path_row_col(s)
+            .or_else(|| split_path_row(s))
+            .unwrap_or_else(|| (PathBuf::from(s), Position::default()))
+    };
+
+    (path, FileTarget { position, section })
 }
 
 /// Split file.rs:10:2 into [`PathBuf`], row and col.

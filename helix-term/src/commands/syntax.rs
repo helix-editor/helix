@@ -179,6 +179,18 @@ fn tags_iter<'a>(
     })
 }
 
+pub fn find_section_position(
+    syntax: &Syntax,
+    loader: &Loader,
+    text: RopeSlice<'_>,
+    doc_id: DocumentId,
+    section_name: &str,
+) -> Option<usize> {
+    tags_iter(syntax, loader, text, UriOrDocumentId::Id(doc_id), None)
+        .find(|tag| tag.kind == TagKind::Section && tag.name.contains(section_name))
+        .map(|tag| tag.start)
+}
+
 pub fn syntax_symbol_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     let Some(syntax) = doc.syntax() else {
