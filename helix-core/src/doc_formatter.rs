@@ -394,7 +394,16 @@ impl<'t> DocumentFormatter<'t> {
                     word_width = self.wrap_word();
                     col = self.visual_pos.col + word_width;
                 }
-                Ordering::Less => (),
+                Ordering::Less => {
+                    let viewport_width = self.text_fmt.viewport_width as usize;
+                    if self
+                        .peek_grapheme(col, char_pos)
+                        .is_some_and(|grapheme| col + grapheme.width() > viewport_width)
+                    {
+                        word_width = self.wrap_word();
+                        col = self.visual_pos.col + word_width;
+                    }
+                }
             }
 
             let Some(grapheme) = self.next_grapheme(col, char_pos) else {
