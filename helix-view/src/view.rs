@@ -114,6 +114,11 @@ impl JumpList {
             .min(self.jumps.len());
     }
 
+    pub fn clear(&mut self) {
+        self.jumps.clear();
+        self.current = 0;
+    }
+
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
         self.jumps.iter()
     }

@@ -534,6 +534,7 @@ impl MappableCommand {
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
         save_selection, "Save current selection to jumplist",
+        clear_jumplist, "Clear jumplist",
         jump_view_right, "Jump to right split",
         jump_view_left, "Jump to left split",
         jump_view_up, "Jump to split above",
@@ -5927,6 +5928,12 @@ fn save_selection(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     push_jump(view, doc);
     cx.editor.set_status("Selection saved to jumplist");
+}
+
+fn clear_jumplist(cx: &mut Context) {
+    let view_id = cx.editor.tree.focus;
+    cx.editor.clear_jumplist(view_id);
+    cx.editor.set_status("Jumplist cleared");
 }
 
 fn rotate_view(cx: &mut Context) {
