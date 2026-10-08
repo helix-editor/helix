@@ -2498,12 +2498,20 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     let rope = doc.text();
 
     let selection = doc.selection(view.id);
-    let transaction = Transaction::change_by_selection(rope, selection, |range| {
+    let changes = selection.iter().flat_map(|range| {
         let fragment = range.fragment(rope.slice(..));
         let reflowed_text = helix_core::wrap::reflow_hard_wrap(&fragment, text_width);
+        let diff = helix_core::diff::compare_ropes(
+            &Rope::from(fragment.as_ref()),
+            &Rope::from(reflowed_text.as_str()),
+        );
 
-        (range.from(), range.to(), Some(reflowed_text))
+        diff.into_changes_iter()
+            .map(move |(from, to, replacement)| {
+                (range.from() + from, range.from() + to, replacement)
+            })
     });
+    let transaction = Transaction::change(rope, changes);
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);

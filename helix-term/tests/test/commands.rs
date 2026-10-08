@@ -321,6 +321,26 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_reflow_preserves_saved_jump_selection() -> anyhow::Result<()> {
+    // Reflow should preserve saved jumplist cursor positions instead of remapping them through
+    // a single whole-paragraph replacement.
+    test((
+        indoc! {"\
+            aaaa bbbb #[c|]#ccc dddd
+            "},
+        "<C-s>mip:reflow 9<ret><C-o>",
+        indoc! {"\
+            aaaa bbbb
+            #[c|]#ccc dddd
+            "},
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
     test((
