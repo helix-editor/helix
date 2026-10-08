@@ -441,6 +441,8 @@ impl MappableCommand {
         goto_file_hsplit, "Goto files in selections (hsplit)",
         goto_file_vsplit, "Goto files in selections (vsplit)",
         goto_reference, "Goto references",
+        call_hierarchy_incoming, "Show incoming call hierarchy",
+        call_hierarchy_outgoing, "Show outgoing call hierarchy",
         goto_window_top, "Goto window top",
         goto_window_center, "Goto window center",
         goto_window_bottom, "Goto window bottom",

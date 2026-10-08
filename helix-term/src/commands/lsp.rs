@@ -1,4 +1,7 @@
-use futures_util::{stream::FuturesUnordered, FutureExt};
+use futures_util::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    FutureExt,
+};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -9,7 +12,10 @@ use helix_lsp::{
     Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
-use tui::{text::Span, widgets::Row};
+use tui::{
+    text::Span,
+    widgets::{Block, Row, Tree, TreeItem, TreeState},
+};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
@@ -28,8 +34,11 @@ use helix_view::{
 };
 
 use crate::{
-    compositor::{self, Compositor},
+    alt,
+    compositor::{self, Component, Compositor, Event, EventResult},
+    ctrl,
     job::{Callback, Job},
+    key, shift,
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
@@ -89,9 +98,72 @@ fn lsp_location_to_location(
     })
 }
 
+fn call_hierarchy_item_to_location(
+    item: &lsp::CallHierarchyItem,
+    offset_encoding: OffsetEncoding,
+) -> Option<Location> {
+    call_hierarchy_uri_to_location(&item.uri, item.selection_range, offset_encoding)
+}
+
+fn call_hierarchy_uri_to_location(
+    uri: &lsp::Url,
+    range: lsp::Range,
+    offset_encoding: OffsetEncoding,
+) -> Option<Location> {
+    let uri = match Uri::try_from(uri) {
+        Ok(uri) => uri,
+        Err(err) => {
+            log::warn!("discarding call hierarchy item with invalid URI: {err}");
+            return None;
+        }
+    };
+    Some(Location {
+        uri,
+        range,
+        offset_encoding,
+    })
+}
+
 struct SymbolInformationItem {
     location: Location,
     symbol: lsp::SymbolInformation,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CallHierarchyDirection {
+    Incoming,
+    Outgoing,
+}
+
+#[derive(Debug, Clone)]
+struct CallHierarchyEntry {
+    id: usize,
+    item: lsp::CallHierarchyItem,
+    location: Location,
+    preview_location: Location,
+    server_id: LanguageServerId,
+    has_children: bool,
+    children: Vec<CallHierarchyEntry>,
+}
+
+impl CallHierarchyEntry {
+    fn new(
+        id: usize,
+        item: lsp::CallHierarchyItem,
+        location: Location,
+        preview_location: Location,
+        server_id: LanguageServerId,
+    ) -> Self {
+        Self {
+            id,
+            item,
+            location,
+            preview_location,
+            server_id,
+            has_children: true,
+            children: Vec::new(),
+        }
+    }
 }
 
 struct DiagnosticStyles {
@@ -197,6 +269,473 @@ fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
             log::warn!("Unknown symbol kind: {:?}", kind);
             ""
         }
+    }
+}
+
+fn call_hierarchy_direction_label(direction: CallHierarchyDirection) -> &'static str {
+    match direction {
+        CallHierarchyDirection::Incoming => "incoming",
+        CallHierarchyDirection::Outgoing => "outgoing",
+    }
+}
+
+fn call_hierarchy_preview_location(
+    uri: &lsp::Url,
+    ranges: &[lsp::Range],
+    offset_encoding: OffsetEncoding,
+    fallback: &Location,
+) -> Location {
+    ranges
+        .first()
+        .and_then(|range| call_hierarchy_uri_to_location(uri, *range, offset_encoding))
+        .unwrap_or_else(|| fallback.clone())
+}
+
+fn incoming_call_hierarchy_entry(
+    id: usize,
+    call: lsp::CallHierarchyIncomingCall,
+    offset_encoding: OffsetEncoding,
+    server_id: LanguageServerId,
+) -> Option<CallHierarchyEntry> {
+    let item = call.from;
+    let location = call_hierarchy_item_to_location(&item, offset_encoding)?;
+    let preview_location =
+        call_hierarchy_preview_location(&item.uri, &call.from_ranges, offset_encoding, &location);
+    Some(CallHierarchyEntry::new(
+        id,
+        item,
+        location,
+        preview_location,
+        server_id,
+    ))
+}
+
+fn outgoing_call_hierarchy_entry(
+    id: usize,
+    call: lsp::CallHierarchyOutgoingCall,
+    caller_uri: &lsp::Url,
+    offset_encoding: OffsetEncoding,
+    server_id: LanguageServerId,
+) -> Option<CallHierarchyEntry> {
+    let item = call.to;
+    let location = call_hierarchy_item_to_location(&item, offset_encoding)?;
+    let preview_location =
+        call_hierarchy_preview_location(caller_uri, &call.from_ranges, offset_encoding, &location);
+    Some(CallHierarchyEntry::new(
+        id,
+        item,
+        location,
+        preview_location,
+        server_id,
+    ))
+}
+
+struct CallHierarchyPicker {
+    direction: CallHierarchyDirection,
+    entries: Vec<CallHierarchyEntry>,
+    state: TreeState<usize>,
+    preview: ui::picker::FilePreview,
+}
+
+impl CallHierarchyPicker {
+    fn new(direction: CallHierarchyDirection, entries: Vec<CallHierarchyEntry>) -> Self {
+        let mut state = TreeState::default();
+        if let Some(first) = entries.first() {
+            state.select(vec![first.id]);
+        }
+        Self {
+            direction,
+            entries,
+            state,
+            preview: ui::picker::FilePreview::default(),
+        }
+    }
+
+    fn with_state(
+        direction: CallHierarchyDirection,
+        entries: Vec<CallHierarchyEntry>,
+        opened: HashSet<Vec<usize>>,
+        selected: Vec<usize>,
+    ) -> Self {
+        let mut state = TreeState::default();
+        for identifier in opened {
+            state.open(identifier);
+        }
+        state.select(selected);
+        Self {
+            direction,
+            entries,
+            state,
+            preview: ui::picker::FilePreview::default(),
+        }
+    }
+
+    fn selected_entry(&self) -> Option<&CallHierarchyEntry> {
+        let selected = self.state.selected();
+        if selected.is_empty() {
+            None
+        } else {
+            find_call_hierarchy_entry(&self.entries, selected)
+        }
+    }
+
+    fn jump_selected(&self, editor: &mut Editor, action: Action) {
+        if let Some(entry) = self.selected_entry() {
+            jump_to_location(editor, &entry.location, action);
+        }
+    }
+
+    fn render_tree(
+        &mut self,
+        area: helix_view::graphics::Rect,
+        surface: &mut tui::buffer::Buffer,
+        cx: &mut compositor::Context,
+    ) {
+        let background = cx.editor.theme.get("ui.background");
+        surface.clear_with(area, background);
+
+        let title = format!(
+            "{} call hierarchy",
+            call_hierarchy_direction_label(self.direction)
+        );
+        let block = Block::bordered().title(title);
+        let text_style = cx.editor.theme.get("ui.text");
+        let selected_style = cx.editor.theme.get("ui.text.focus");
+        let items = call_hierarchy_tree_items(&self.entries);
+        let Ok(tree) = Tree::new(&items) else {
+            return;
+        };
+        tree.block(block)
+            .style(text_style)
+            .highlight_style(selected_style)
+            .highlight_symbol(" > ")
+            .render_tree(area, surface, &mut self.state);
+    }
+
+    fn toggle_selected(&mut self, cx: &mut compositor::Context) {
+        let selected = self.state.selected().to_vec();
+        if selected.is_empty() {
+            return;
+        }
+
+        let Some(entry) = find_call_hierarchy_entry(&self.entries, &selected) else {
+            return;
+        };
+
+        if !entry.has_children {
+            cx.editor.set_status(format!(
+                "No {} calls.",
+                call_hierarchy_direction_label(self.direction)
+            ));
+            return;
+        }
+
+        if !entry.children.is_empty() {
+            self.state.toggle(selected);
+            return;
+        }
+
+        let Some(client) = cx
+            .editor
+            .language_servers
+            .get_by_id(entry.server_id)
+            .cloned()
+        else {
+            cx.editor
+                .set_error("Language server is no longer available");
+            return;
+        };
+
+        let item = entry.item.clone();
+        let parent_uri = item.uri.clone();
+        let direction = self.direction;
+        let server_id = entry.server_id;
+        let next_id = next_call_hierarchy_id(&self.entries);
+        let selected_path = selected.clone();
+        let opened = self.state.opened().clone();
+        let mut entries = self.entries.clone();
+
+        match direction {
+            CallHierarchyDirection::Incoming => {
+                let Some(request) = client.call_hierarchy_incoming(item) else {
+                    cx.editor
+                        .set_error("Language server does not support call hierarchy");
+                    return;
+                };
+                cx.jobs.callback(async move {
+                    let response = request.await?;
+                    let calls = response.unwrap_or_default();
+                    let offset_encoding = client.offset_encoding();
+                    let children = calls
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(offset, call)| {
+                            incoming_call_hierarchy_entry(
+                                next_id + offset,
+                                call,
+                                offset_encoding,
+                                server_id,
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+                        replace_call_hierarchy_children(
+                            editor,
+                            compositor,
+                            direction,
+                            &mut entries,
+                            selected_path,
+                            opened,
+                            children,
+                        );
+                    };
+
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                });
+            }
+            CallHierarchyDirection::Outgoing => {
+                let Some(request) = client.call_hierarchy_outgoing(item) else {
+                    cx.editor
+                        .set_error("Language server does not support call hierarchy");
+                    return;
+                };
+                cx.jobs.callback(async move {
+                    let response = request.await?;
+                    let calls = response.unwrap_or_default();
+                    let offset_encoding = client.offset_encoding();
+                    let children = calls
+                        .into_iter()
+                        .enumerate()
+                        .filter_map(|(offset, call)| {
+                            outgoing_call_hierarchy_entry(
+                                next_id + offset,
+                                call,
+                                &parent_uri,
+                                offset_encoding,
+                                server_id,
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+                        replace_call_hierarchy_children(
+                            editor,
+                            compositor,
+                            direction,
+                            &mut entries,
+                            selected_path,
+                            opened,
+                            children,
+                        );
+                    };
+
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                });
+            }
+        }
+    }
+}
+
+fn call_hierarchy_tree_items(entries: &[CallHierarchyEntry]) -> Vec<TreeItem<'static, usize>> {
+    entries.iter().map(call_hierarchy_tree_item).collect()
+}
+
+fn call_hierarchy_tree_item(entry: &CallHierarchyEntry) -> TreeItem<'static, usize> {
+    let text = call_hierarchy_entry_text(entry);
+    if entry.children.is_empty() {
+        if entry.has_children {
+            TreeItem::new(entry.id, text, vec![TreeItem::new_leaf(usize::MAX, "")])
+                .expect("placeholder identifier is unique")
+        } else {
+            TreeItem::new_leaf(entry.id, text)
+        }
+    } else {
+        TreeItem::new(entry.id, text, call_hierarchy_tree_items(&entry.children))
+            .expect("call hierarchy identifiers are unique")
+    }
+}
+
+fn call_hierarchy_entry_text(entry: &CallHierarchyEntry) -> String {
+    let detail = entry.item.detail.as_deref().unwrap_or_default();
+    let preview_line = entry.preview_location.range.start.line + 1;
+    format!(
+        "{:<9} {} {} {}:{}",
+        display_symbol_kind(entry.item.kind),
+        entry.item.name,
+        detail,
+        entry.location.uri,
+        preview_line,
+    )
+}
+
+fn find_call_hierarchy_entry<'a>(
+    entries: &'a [CallHierarchyEntry],
+    path: &[usize],
+) -> Option<&'a CallHierarchyEntry> {
+    let (id, rest) = path.split_first()?;
+    let entry = entries.iter().find(|entry| entry.id == *id)?;
+    if rest.is_empty() {
+        Some(entry)
+    } else {
+        find_call_hierarchy_entry(&entry.children, rest)
+    }
+}
+
+fn find_call_hierarchy_entry_mut<'a>(
+    entries: &'a mut [CallHierarchyEntry],
+    path: &[usize],
+) -> Option<&'a mut CallHierarchyEntry> {
+    let (id, rest) = path.split_first()?;
+    let entry = entries.iter_mut().find(|entry| entry.id == *id)?;
+    if rest.is_empty() {
+        Some(entry)
+    } else {
+        find_call_hierarchy_entry_mut(&mut entry.children, rest)
+    }
+}
+
+fn next_call_hierarchy_id(entries: &[CallHierarchyEntry]) -> usize {
+    fn max_id(entries: &[CallHierarchyEntry]) -> Option<usize> {
+        entries
+            .iter()
+            .map(|entry| {
+                max_id(&entry.children)
+                    .map(|child_id| child_id.max(entry.id))
+                    .unwrap_or(entry.id)
+            })
+            .max()
+    }
+
+    max_id(entries).unwrap_or(0) + 1
+}
+
+fn replace_call_hierarchy_children(
+    editor: &mut Editor,
+    compositor: &mut Compositor,
+    direction: CallHierarchyDirection,
+    entries: &mut [CallHierarchyEntry],
+    selected_path: Vec<usize>,
+    mut opened: HashSet<Vec<usize>>,
+    children: Vec<CallHierarchyEntry>,
+) {
+    let Some(entry) = find_call_hierarchy_entry_mut(entries, &selected_path) else {
+        return;
+    };
+    if children.is_empty() {
+        editor.set_status(format!(
+            "No {} calls.",
+            call_hierarchy_direction_label(direction)
+        ));
+        entry.has_children = false;
+    } else {
+        entry.children = children;
+        opened.insert(selected_path.clone());
+    }
+
+    let picker =
+        CallHierarchyPicker::with_state(direction, entries.to_vec(), opened, selected_path);
+    compositor.replace_or_push(ui::picker::ID, overlaid(picker));
+}
+
+impl Component for CallHierarchyPicker {
+    fn render(
+        &mut self,
+        area: helix_view::graphics::Rect,
+        surface: &mut tui::buffer::Buffer,
+        cx: &mut compositor::Context,
+    ) {
+        let render_preview =
+            self.selected_entry().is_some() && area.width > ui::picker::MIN_AREA_WIDTH_FOR_PREVIEW;
+
+        let tree_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+
+        let tree_area = area.with_width(tree_width);
+        self.render_tree(tree_area, surface, cx);
+
+        if render_preview {
+            let preview_area = area.clip_left(tree_width);
+            let location = self.selected_entry().and_then(|entry| {
+                let path = entry.preview_location.uri.as_path()?.to_path_buf();
+                let line = Some((
+                    entry.preview_location.range.start.line as usize,
+                    entry.preview_location.range.end.line as usize,
+                ));
+                Some((path, line))
+            });
+            if let Some((path, range)) = &location {
+                self.preview.render(
+                    preview_area,
+                    surface,
+                    cx,
+                    Some((ui::picker::PathOrId::Path(path.as_path()), *range)),
+                );
+            } else {
+                self.preview.render(preview_area, surface, cx, None);
+            }
+        }
+    }
+
+    fn handle_event(&mut self, event: &Event, ctx: &mut compositor::Context) -> EventResult {
+        let key_event = match event {
+            Event::Key(event) => *event,
+            Event::Resize(..) | Event::Mouse(_) => return EventResult::Consumed(None),
+            _ => return EventResult::Ignored(None),
+        };
+
+        let close: compositor::Callback = Box::new(|compositor: &mut Compositor, _ctx| {
+            compositor.pop();
+        });
+
+        match key_event {
+            key!(Up) | shift!(Tab) | ctrl!('p') => {
+                self.state.key_up();
+            }
+            key!(Down) | key!(Tab) | ctrl!('n') => {
+                self.state.key_down();
+            }
+            key!(PageUp) | ctrl!('u') => {
+                self.state.scroll_up(10);
+            }
+            key!(PageDown) | ctrl!('d') => {
+                self.state.scroll_down(10);
+            }
+            key!(Home) => {
+                self.state.select_first();
+            }
+            key!(End) => {
+                self.state.select_last();
+            }
+            key!(Left) => {
+                self.state.key_left();
+            }
+            key!(Right) | key!(Enter) => {
+                self.toggle_selected(ctx);
+            }
+            alt!(Enter) => {
+                self.jump_selected(ctx.editor, Action::Replace);
+            }
+            ctrl!('s') => {
+                self.jump_selected(ctx.editor, Action::HorizontalSplit);
+                return EventResult::Consumed(Some(close));
+            }
+            ctrl!('v') => {
+                self.jump_selected(ctx.editor, Action::VerticalSplit);
+                return EventResult::Consumed(Some(close));
+            }
+            key!(Esc) | ctrl!('c') => return EventResult::Consumed(Some(close)),
+            _ => {}
+        }
+
+        EventResult::Consumed(None)
+    }
+
+    fn id(&self) -> Option<&'static str> {
+        Some(ui::picker::ID)
     }
 }
 
@@ -1082,6 +1621,115 @@ pub fn goto_reference(cx: &mut Context) {
                 goto_impl(editor, compositor, locations);
             }
         };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
+}
+
+pub fn call_hierarchy_incoming(cx: &mut Context) {
+    call_hierarchy(cx, CallHierarchyDirection::Incoming);
+}
+
+pub fn call_hierarchy_outgoing(cx: &mut Context) {
+    call_hierarchy(cx, CallHierarchyDirection::Outgoing);
+}
+
+fn call_hierarchy(cx: &mut Context, direction: CallHierarchyDirection) {
+    let (view, doc) = current_ref!(cx.editor);
+
+    let mut seen_language_servers = HashSet::new();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::CallHierarchy)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .map(|language_server| {
+            let server_id = language_server.id();
+            let client = cx.editor.language_servers.get_by_id(server_id).cloned();
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let request = language_server
+                .prepare_call_hierarchy(doc.identifier(), pos)
+                .unwrap();
+            async move {
+                let Some(client) = client else {
+                    return anyhow::Ok(Vec::new());
+                };
+                let items = request.await?.unwrap_or_default();
+                let mut entries = Vec::new();
+                for item in items {
+                    match direction {
+                        CallHierarchyDirection::Incoming => {
+                            let Some(request) = client.call_hierarchy_incoming(item) else {
+                                continue;
+                            };
+                            let calls = request.await?.unwrap_or_default();
+                            let offset_encoding = client.offset_encoding();
+                            for call in calls {
+                                if let Some(entry) = incoming_call_hierarchy_entry(
+                                    entries.len(),
+                                    call,
+                                    offset_encoding,
+                                    server_id,
+                                ) {
+                                    entries.push(entry);
+                                }
+                            }
+                        }
+                        CallHierarchyDirection::Outgoing => {
+                            let parent_uri = item.uri.clone();
+                            let Some(request) = client.call_hierarchy_outgoing(item) else {
+                                continue;
+                            };
+                            let calls = request.await?.unwrap_or_default();
+                            let offset_encoding = client.offset_encoding();
+                            for call in calls {
+                                if let Some(entry) = outgoing_call_hierarchy_entry(
+                                    entries.len(),
+                                    call,
+                                    &parent_uri,
+                                    offset_encoding,
+                                    server_id,
+                                ) {
+                                    entries.push(entry);
+                                }
+                            }
+                        }
+                    }
+                }
+                anyhow::Ok(entries)
+            }
+        })
+        .collect();
+
+    if futures.is_empty() {
+        cx.editor
+            .set_error("No configured language server supports call hierarchy");
+        return;
+    }
+
+    cx.jobs.callback(async move {
+        let mut entries = Vec::new();
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(mut items) => entries.append(&mut items),
+                Err(err) => log::error!("Error requesting call hierarchy: {err}"),
+            }
+        }
+        for (id, entry) in entries.iter_mut().enumerate() {
+            entry.id = id;
+        }
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if entries.is_empty() {
+                editor.set_status(format!(
+                    "No {} calls.",
+                    call_hierarchy_direction_label(direction)
+                ));
+                return;
+            }
+
+            let picker = CallHierarchyPicker::new(direction, entries);
+            compositor.push(Box::new(overlaid(picker)));
+        };
+
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
 }

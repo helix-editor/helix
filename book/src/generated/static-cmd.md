@@ -138,6 +138,8 @@
 | `goto_file_hsplit` | Goto files in selections (hsplit) | normal: `` <C-w>f ``, `` <space>wf ``, select: `` <C-w>f ``, `` <space>wf `` |
 | `goto_file_vsplit` | Goto files in selections (vsplit) | normal: `` <C-w>F ``, `` <space>wF ``, select: `` <C-w>F ``, `` <space>wF `` |
 | `goto_reference` | Goto references | normal: `` gr ``, select: `` gr `` |
+| `call_hierarchy_incoming` | Show incoming call hierarchy |  |
+| `call_hierarchy_outgoing` | Show outgoing call hierarchy |  |
 | `goto_window_top` | Goto window top | normal: `` gt ``, select: `` gt `` |
 | `goto_window_center` | Goto window center | normal: `` gc ``, select: `` gc `` |
 | `goto_window_bottom` | Goto window bottom | normal: `` gb ``, select: `` gb `` |
