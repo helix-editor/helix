@@ -635,7 +635,6 @@ file-types = [
   "sublime-settings",
   "sublime-theme",
   "sublime-workspace",
-  "code-workspace",
   { glob = ".pytest_cache/v/cache/*" }, # https://docs.pytest.org/en/latest/reference/reference.html#confval-cache_dir
   { glob = "devenv.lock" }, # https://devenv.sh/
   { glob = "devbox.lock" }, # https://www.jetify.com/docs/devbox/
@@ -663,6 +662,7 @@ file-types = [
   { glob = ".devcontainer.json" },
   { glob = "devcontainer.json" },
   { glob = ".vscode/*.json" },
+  "code-workspace",
 ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
