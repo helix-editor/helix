@@ -417,6 +417,7 @@ impl From<Range> for helix_stdx::Range {
 pub struct Selection {
     ranges: SmallVec<[Range; 1]>,
     primary_index: usize,
+    edit_only_primary: bool,
 }
 
 #[allow(clippy::len_without_is_empty)] // a Selection is never empty
@@ -440,10 +441,7 @@ impl Selection {
         if self.ranges.len() == 1 {
             self
         } else {
-            Self {
-                ranges: smallvec![self.ranges[self.primary_index]],
-                primary_index: 0,
-            }
+            Self::new(smallvec![self.ranges[self.primary_index]], 0)
         }
     }
 
@@ -536,6 +534,14 @@ impl Selection {
         self.primary_index = idx;
     }
 
+    pub fn edit_only_primary(&self) -> bool {
+        self.edit_only_primary
+    }
+
+    pub fn set_edit_only_primary(&mut self, val: bool) {
+        self.edit_only_primary = val;
+    }
+
     #[must_use]
     /// Constructs a selection holding a single range.
     pub fn single(anchor: usize, head: usize) -> Self {
@@ -546,6 +552,7 @@ impl Selection {
                 old_visual_position: None
             }],
             primary_index: 0,
+            edit_only_primary: false,
         }
     }
 
@@ -627,6 +634,9 @@ impl Selection {
         let selection = Self {
             ranges,
             primary_index,
+
+            // This is not a parameter since everywhere a Selection is constructed, editing only the primary is not desired.
+            edit_only_primary: false,
         };
 
         selection.normalize()
@@ -637,9 +647,14 @@ impl Selection {
     where
         F: FnMut(Range) -> Range,
     {
-        for range in self.ranges.iter_mut() {
-            *range = f(*range)
+        if self.edit_only_primary {
+            self.ranges[self.primary_index] = f(self.ranges[self.primary_index])
+        } else {
+            for range in self.ranges.iter_mut() {
+                *range = f(*range)
+            }
         }
+
         self.normalize()
     }
 
@@ -728,10 +743,7 @@ impl FromIterator<Range> for Selection {
 
 impl From<Range> for Selection {
     fn from(range: Range) -> Self {
-        Self {
-            ranges: smallvec![range],
-            primary_index: 0,
-        }
+        Self::new(smallvec![range], 0)
     }
 }
 
