@@ -25,7 +25,7 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
         .iter()
         .map(AsRef::as_ref)
         .filter(|token| line.slice(start..).starts_with(token))
-        .max_by_key(|token| token.len())
+        .max_by_key(|token| token.chars().count())
 }
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -56,7 +56,7 @@ fn find_line_comment(
             min = std::cmp::min(min, pos);
 
             // line can be shorter than pos + token len
-            let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token.len(), len)));
+            let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token_len, len)));
 
             // as soon as one of the non-blank lines doesn't have a comment, the whole block is
             // considered uncommented.
@@ -109,7 +109,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
             changes.push((pos, pos, Some(comment.clone())));
         } else {
             // uncomment line
-            changes.push((pos, pos + token.len() + margin, None));
+            changes.push((pos, pos + token.chars().count() + margin, None));
         }
     }
 
@@ -248,11 +248,11 @@ pub fn create_block_comment_transaction(
                 let from = range.from();
                 changes.push((
                     from + start_pos,
-                    from + start_pos + start_token.len() + start_margin as usize,
+                    from + start_pos + start_token.chars().count() + start_margin as usize,
                     None,
                 ));
                 changes.push((
-                    from + end_pos - end_token.len() - end_margin as usize + 1,
+                    from + end_pos - end_token.chars().count() - end_margin as usize + 1,
                     from + end_pos + 1,
                     None,
                 ));
@@ -483,5 +483,44 @@ mod test {
             super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
             Some("///")
         );
+    }
+
+    #[test]
+    fn test_comment_line_with_emoji_token() {
+        let mut doc = Rope::from("67");
+        let token = Some("❤️");
+
+        let selection = Selection::single(0, doc.len_chars());
+        let transaction = toggle_line_comments(&doc, &selection, token);
+        transaction.apply(&mut doc);
+
+        assert_eq!(doc, "❤️ 67");
+
+        let selection = Selection::single(0, doc.len_chars());
+        let transaction = toggle_line_comments(&doc, &selection, token);
+        transaction.apply(&mut doc);
+
+        assert_eq!(doc, "67");
+    }
+
+    #[test]
+    fn test_comment_block_with_emoji_token() {
+        let mut doc = Rope::from("67\n67\n67");
+        let tokens = [BlockCommentToken {
+            start: String::from("❤️"),
+            end: String::from("❤️"),
+        }];
+
+        let selection = Selection::single(0, doc.len_chars());
+        let transaction = toggle_block_comments(&doc, &selection, &tokens);
+        transaction.apply(&mut doc);
+
+        assert_eq!(doc, "❤️ 67\n67\n67 ❤️");
+
+        let selection = Selection::single(0, doc.len_chars());
+        let transaction = toggle_block_comments(&doc, &selection, &tokens);
+        transaction.apply(&mut doc);
+
+        assert_eq!(doc, "67\n67\n67");
     }
 }
