@@ -398,7 +398,7 @@ fn debug_parameter_prompt(
     )
 }
 
-pub fn dap_toggle_breakpoint(cx: &mut Context) {
+pub fn dap_toggle_breakpoints(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let Some(path) = doc.path().map(ToOwned::to_owned) else {
@@ -408,26 +408,38 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
     };
 
     let text = doc.text().slice(..);
-    let line = doc.selection(view.id).primary().cursor_line(text);
-    dap_toggle_breakpoint_impl(cx, path, line);
+
+    let mut lines: Vec<usize> = doc
+        .selection(view.id)
+        .ranges()
+        .iter()
+        .map(|r| r.cursor_line(text))
+        .collect();
+    lines.sort();
+    lines.dedup();
+
+    dap_toggle_breakpoints_impl(cx, path, lines);
 }
 
-pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) {
+pub fn dap_toggle_breakpoints_impl(cx: &mut Context, path: PathBuf, lines: Vec<usize>) {
     // TODO: need to map breakpoints over edits and update them?
     // we shouldn't really allow editing while debug is running though
 
     let breakpoints = cx.editor.breakpoints.entry(path.clone()).or_default();
     // TODO: always keep breakpoints sorted and use binary search to determine insertion point
-    if let Some(pos) = breakpoints
-        .iter()
-        .position(|breakpoint| breakpoint.line == line)
-    {
-        breakpoints.remove(pos);
-    } else {
-        breakpoints.push(Breakpoint {
-            line,
-            ..Default::default()
-        });
+
+    for line in lines {
+        if let Some(pos) = breakpoints
+            .iter()
+            .position(|breakpoint| breakpoint.line == line)
+        {
+            breakpoints.remove(pos);
+        } else {
+            breakpoints.push(Breakpoint {
+                line,
+                ..Default::default()
+            });
+        }
     }
 
     let debugger = debugger!(cx.editor);

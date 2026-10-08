@@ -281,7 +281,7 @@
 | `goto_prev_paragraph` | Goto previous paragraph | normal: `` [p ``, select: `` [p `` |
 | `dap_launch` | Launch debug target | normal: `` <space>Gl ``, select: `` <space>Gl `` |
 | `dap_restart` | Restart debugging session | normal: `` <space>Gr ``, select: `` <space>Gr `` |
-| `dap_toggle_breakpoint` | Toggle breakpoint | normal: `` <space>Gb ``, select: `` <space>Gb `` |
+| `dap_toggle_breakpoints` | Toggle breakpoints | normal: `` <space>Gb ``, select: `` <space>Gb `` |
 | `dap_continue` | Continue program execution | normal: `` <space>Gc ``, select: `` <space>Gc `` |
 | `dap_pause` | Pause program execution | normal: `` <space>Gh ``, select: `` <space>Gh `` |
 | `dap_step_in` | Step in | normal: `` <space>Gi ``, select: `` <space>Gi `` |

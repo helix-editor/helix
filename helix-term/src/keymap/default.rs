@@ -239,7 +239,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "G" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
-                "b" => dap_toggle_breakpoint,
+                "b" => dap_toggle_breakpoints,
                 "c" => dap_continue,
                 "h" => dap_pause,
                 "i" => dap_step_in,
