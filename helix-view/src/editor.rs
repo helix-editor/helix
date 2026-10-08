@@ -2597,6 +2597,10 @@ impl Editor {
         self.last_cwd.as_deref()
     }
 
+    pub fn clear_jumplist(&mut self, view_id: ViewId) {
+        view_mut!(self, view_id).jumps.clear();
+    }
+
     pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
         if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
             self.jump_to(view_id, doc_id, selection);
