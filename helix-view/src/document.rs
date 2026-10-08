@@ -123,6 +123,84 @@ pub struct DocumentSavedEvent {
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
 pub type DocumentSavedEventFuture = BoxFuture<'static, DocumentSavedEventResult>;
 
+static PROCESS_UMASK: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
+
+/// Store the startup umask, used to mode new files from an elevated save like a normal save would.
+/// See `main` for why it's read there.
+pub fn set_process_umask(mask: u32) {
+    let _ = PROCESS_UMASK.set(mask);
+}
+
+/// The stored umask, or the usual `0o022` default if unset (tests).
+fn process_umask() -> u32 {
+    PROCESS_UMASK.get().copied().unwrap_or(0o022)
+}
+
+/// A document snapshot for an elevated save, from [`Document::prepare_sudo_save`]. Owns a copy of
+/// the text so the write doesn't borrow the `Document`.
+#[derive(Debug)]
+pub struct SudoSaveRequest {
+    pub doc_id: DocumentId,
+    /// Path the document takes after a successful save.
+    pub path: PathBuf,
+    /// The real path written, with symlinks resolved, so the file and not the link is replaced.
+    pub write_path: PathBuf,
+    /// Whether to create missing parent directories.
+    pub force: bool,
+    pub text: Rope,
+    pub encoding: &'static Encoding,
+    pub has_bom: bool,
+    /// Revision of this snapshot, used to mark the document saved.
+    pub revision: usize,
+    /// Owner `(uid, gid)` to set on the file, or `None` for a new file (left owned by the elevated
+    /// user).
+    pub owner: Option<(u32, u32)>,
+    /// Mode to set on the file, or `None` to skip `chmod`.
+    pub mode: Option<u32>,
+}
+
+/// Owner `(uid, gid)`, mode, and hardlink flag for an elevated-save target. `owner`/`mode` are
+/// `None` when they shouldn't be set.
+type ElevatedTargetMetadata = (Option<(u32, u32)>, Option<u32>, bool);
+
+/// Metadata to set on an elevated-save target (symlinks already resolved): an existing file keeps
+/// its owner and mode; a new file gets a mode from the umask and is left owned by the elevated
+/// user. Any other stat error is returned, not treated as a new file (which would re-own the
+/// existing file).
+#[cfg(unix)]
+fn elevated_target_metadata(write_path: &Path) -> io::Result<ElevatedTargetMetadata> {
+    use std::os::unix::fs::MetadataExt;
+    match std::fs::metadata(write_path) {
+        Ok(meta) => Ok((
+            Some((meta.uid(), meta.gid())),
+            Some(meta.mode() & 0o0777),
+            meta.nlink() > 1,
+        )),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            Ok((None, Some(0o666 & !process_umask()), false))
+        }
+        Err(err) => Err(err),
+    }
+}
+
+#[cfg(not(unix))]
+fn elevated_target_metadata(_write_path: &Path) -> io::Result<ElevatedTargetMetadata> {
+    Ok((None, None, false))
+}
+
+/// Format a save error for display, adding a `:sudo-write` hint on a permission error (unix).
+pub fn save_error_message(err: &anyhow::Error) -> String {
+    if cfg!(unix)
+        && err
+            .downcast_ref::<io::Error>()
+            .is_some_and(|err| err.kind() == io::ErrorKind::PermissionDenied)
+    {
+        format!("{err} (use :sudo-write to save with elevated privileges)")
+    } else {
+        err.to_string()
+    }
+}
+
 #[derive(Debug)]
 pub struct SavePoint {
     /// The view this savepoint is associated with
@@ -1201,6 +1279,73 @@ impl Document {
         };
 
         Ok(future)
+    }
+
+    /// Build a snapshot for an elevated save to `path` (or the current path if `None`), running the
+    /// pre-write checks from [`Document::save`] that don't need write access, and resolving
+    /// symlinks. The privileged write lives in the application, which hands it the terminal for the
+    /// password prompt.
+    pub fn prepare_sudo_save(
+        &mut self,
+        path: Option<PathBuf>,
+        force: bool,
+    ) -> Result<SudoSaveRequest, anyhow::Error> {
+        let path = match path {
+            Some(path) => helix_stdx::path::canonicalize(path),
+            None => match self.path.as_ref() {
+                Some(path) => path.clone(),
+                None => bail!("Can't save with no path set!"),
+            },
+        };
+
+        // Protect against overwriting changes made externally.
+        if !force {
+            if let Ok(metadata) = std::fs::metadata(&path) {
+                if let Ok(mtime) = metadata.modified() {
+                    if self.last_saved_time < mtime {
+                        bail!(
+                            "file modified by an external process, use :sudo-write! to overwrite"
+                        );
+                    }
+                }
+            }
+        }
+
+        // Resolve symlinks so we replace the real file, not the link (the write renames over it).
+        let write_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+
+        if let Some(parent) = write_path.parent() {
+            if !parent.exists() && !force {
+                bail!("can't save file, parent directory does not exist (use :sudo-write! to create it)");
+            }
+        }
+
+        // Read the target's owner and mode (a `stat` needs no write access) to set on the temp file.
+        let (owner, mode, is_hardlink) = elevated_target_metadata(&write_path).map_err(|err| {
+            anyhow::anyhow!("can't read metadata of '{}': {}", write_path.display(), err)
+        })?;
+
+        // An atomic write replaces the inode and breaks any hardlink, so refuse it; `:sudo-write!`
+        // opts in.
+        if is_hardlink && !force {
+            bail!(
+                "'{}' is a hardlink; :sudo-write! will save it but break the hardlink",
+                write_path.display()
+            );
+        }
+
+        Ok(SudoSaveRequest {
+            doc_id: self.id(),
+            path,
+            write_path,
+            force,
+            text: self.text().clone(),
+            encoding: self.encoding,
+            has_bom: self.has_bom,
+            revision: self.get_current_revision(),
+            owner,
+            mode,
+        })
     }
 
     /// Detect the programming language based on the file type.
@@ -2534,6 +2679,58 @@ mod test {
     use arc_swap::ArcSwap;
 
     use super::*;
+
+    // A new file has no owner and gets its mode from the umask (default 0o022, so 0o644).
+    #[cfg(unix)]
+    #[test]
+    fn elevated_new_file_mode_respects_umask_default() {
+        let (owner, mode, is_hardlink) =
+            elevated_target_metadata(Path::new("/nonexistent/hx-sudo-test/new.txt")).unwrap();
+        assert_eq!(owner, None);
+        assert_eq!(mode, Some(0o644));
+        assert!(!is_hardlink);
+    }
+
+    // A stat error other than "not found" (here EACCES) must error, not look like a new file,
+    // which would re-own the existing file to root.
+    #[cfg(unix)]
+    #[test]
+    fn elevated_target_metadata_errors_when_unstattable() {
+        use std::os::unix::fs::PermissionsExt;
+
+        // root can stat through a 0o000 dir, so skip this as root.
+        if unsafe { libc::geteuid() } == 0 {
+            return;
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        let target = locked.join("file.txt");
+        std::fs::write(&target, "existing").unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+
+        let result = elevated_target_metadata(&target);
+
+        // Restore permissions so the tempdir can be cleaned up.
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        assert!(
+            result.is_err(),
+            "an unstattable existing file must error, not be treated as a new file"
+        );
+    }
+
+    // A permission-denied save error gets the `:sudo-write` hint; other errors don't.
+    #[cfg(unix)]
+    #[test]
+    fn save_error_message_hints_sudo_write_on_permission_denied() {
+        let denied = anyhow::Error::new(io::Error::new(io::ErrorKind::PermissionDenied, "denied"));
+        assert!(save_error_message(&denied).contains(":sudo-write"));
+
+        let other = anyhow::Error::new(io::Error::new(io::ErrorKind::NotFound, "missing"));
+        assert!(!save_error_message(&other).contains(":sudo-write"));
+    }
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {

@@ -3,6 +3,7 @@ use crate::{
     clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+        SudoSaveRequest,
     },
     events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
@@ -434,6 +435,10 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// Command used to elevate privileges for `:sudo-write`. Defaults to `["sudo"]`.
+    pub sudo_command: Vec<String>,
+    /// Whether a plain `:write` to an unwritable file automatically elevates. Defaults to `false`.
+    pub auto_elevate_save: bool,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -1240,6 +1245,8 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            sudo_command: vec!["sudo".to_owned()],
+            auto_elevate_save: false,
         }
     }
 }
@@ -1325,6 +1332,11 @@ pub struct Editor {
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
+    /// Pending elevated save requests, handled by the application (it owns the terminal).
+    pub sudo_saves: (
+        UnboundedSender<SudoSaveRequest>,
+        UnboundedReceiver<SudoSaveRequest>,
+    ),
     pub needs_redraw: bool,
     /// Cached position of the cursor calculated during rendering.
     /// The content of `cursor_cache` is returned by `Editor::cursor` if
@@ -1350,6 +1362,7 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 #[derive(Debug)]
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
+    SudoSave(SudoSaveRequest),
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent((DebugAdapterId, dap::Payload)),
@@ -1462,6 +1475,7 @@ impl Editor {
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
+            sudo_saves: unbounded_channel(),
             needs_redraw: false,
             handlers,
             mouse_down_range: None,
@@ -2270,6 +2284,23 @@ impl Editor {
         Ok(())
     }
 
+    /// Queue an elevated save, handled by the application (see [`SudoSaveRequest`]).
+    pub fn sudo_save<P: Into<PathBuf>>(
+        &mut self,
+        doc_id: DocumentId,
+        path: Option<P>,
+        force: bool,
+    ) -> anyhow::Result<()> {
+        let path = path.map(|path| path.into());
+        let request = doc_mut!(self, &doc_id).prepare_sudo_save(path, force)?;
+        self.sudo_saves
+            .0
+            .send(request)
+            .map_err(|err| anyhow!("failed to send sudo save request: {}", err))?;
+
+        Ok(())
+    }
+
     pub fn resize(&mut self, area: Rect) {
         if self.tree.resize(area) {
             self._refresh();
@@ -2480,6 +2511,9 @@ impl Editor {
                 Some(config_event) = self.config_events.1.recv() => {
                     return EditorEvent::ConfigEvent(config_event)
                 }
+                Some(request) = self.sudo_saves.1.recv() => {
+                    return EditorEvent::SudoSave(request)
+                }
                 Some(message) = self.language_servers.incoming.next() => {
                     return EditorEvent::LanguageServerMessage(message)
                 }
@@ -2516,8 +2550,11 @@ impl Editor {
                 let save_event = match save_event {
                     Ok(event) => event,
                     Err(err) => {
-                        self.set_error(err.to_string());
-                        bail!(err);
+                        // Bail with the hinted message, not `err`: a compound command (`:wq`)
+                        // re-shows the returned error, overwriting the status set here.
+                        let message = crate::document::save_error_message(&err);
+                        self.set_error(message.clone());
+                        bail!(message);
                     }
                 };
 

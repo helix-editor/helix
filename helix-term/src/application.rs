@@ -9,7 +9,9 @@ use helix_lsp::{
 use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
-    document::{DocumentOpenError, DocumentSavedEventResult},
+    document::{
+        to_writer, DocumentOpenError, DocumentSavedEvent, DocumentSavedEventResult, SudoSaveRequest,
+    },
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
@@ -34,6 +36,7 @@ use std::{
     io::{stdin, IsTerminal},
     path::Path,
     sync::Arc,
+    time::SystemTime,
 };
 
 #[cfg_attr(windows, allow(unused_imports))]
@@ -79,6 +82,11 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 
     theme_mode: Option<theme::Mode>,
+
+    /// True while an elevation command owns the terminal. Lets a Ctrl-C at its password prompt
+    /// cancel the save instead of quitting Helix.
+    #[cfg_attr(windows, allow(dead_code))]
+    swallow_next_sigint: bool,
 }
 
 #[cfg(feature = "integration")]
@@ -253,6 +261,7 @@ impl Application {
             jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
+            swallow_next_sigint: false,
         };
 
         Ok(app)
@@ -544,28 +553,15 @@ impl Application {
                 }
             }
             signal::SIGCONT => {
-                // Copy/Paste from same issue from neovim:
-                // https://github.com/neovim/neovim/issues/12322
-                // https://github.com/neovim/neovim/pull/13084
-                for retries in 1..=10 {
-                    match self.terminal.claim() {
-                        Ok(()) => break,
-                        Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
-                        Err(_) => continue,
-                    }
-                }
-
-                // redraw the terminal
-                let area = self.terminal.size();
-                self.compositor.resize(area);
-                self.terminal.clear().expect("couldn't clear terminal");
-
+                self.reclaim_term();
                 self.render().await;
             }
             signal::SIGUSR1 => {
                 self.refresh_config();
                 self.render().await;
             }
+            // The Ctrl-C already cancelled the elevated save, don't also quit.
+            signal::SIGINT if std::mem::take(&mut self.swallow_next_sigint) => {}
             signal::SIGTERM | signal::SIGINT => {
                 self.restore_term().unwrap();
                 return false;
@@ -592,7 +588,8 @@ impl Application {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
             Err(err) => {
-                self.editor.set_error(err.to_string());
+                self.editor
+                    .set_error(helix_view::document::save_error_message(&err));
                 return;
             }
         };
@@ -656,6 +653,206 @@ impl Application {
         ));
     }
 
+    /// Run an elevated save (`:sudo-write`, or `:write` with `auto-elevate-save`). Hands the
+    /// terminal to `sudo-command` for its password prompt, then takes it back.
+    pub async fn handle_sudo_save(&mut self, request: SudoSaveRequest) {
+        let sudo_command = self.editor.config().sudo_command.clone();
+        if sudo_command.is_empty() {
+            self.editor
+                .set_error("`editor.sudo-command` is empty; cannot save with elevated privileges");
+            return;
+        }
+
+        // A Ctrl-C at the password prompt kills the elevation child. Swallow that SIGINT so it
+        // doesn't also quit Helix (see `handle_signals`).
+        self.swallow_next_sigint = true;
+
+        if let Err(err) = self.restore_term() {
+            self.swallow_next_sigint = false;
+            self.editor.set_error(format!(
+                "failed to restore terminal for elevated save: {err}"
+            ));
+            return;
+        }
+
+        let result = Self::elevated_write(&sudo_command, &request).await;
+        self.reclaim_term();
+
+        match result {
+            Ok(()) => {
+                // A successful save can't have a Ctrl-C cancel queued (that would fail the write),
+                // so don't swallow the next SIGINT.
+                self.swallow_next_sigint = false;
+
+                let save_time = std::fs::metadata(&request.write_path)
+                    .and_then(|metadata| metadata.modified())
+                    .unwrap_or_else(|_| SystemTime::now());
+
+                // Run the normal post-save bookkeeping.
+                self.handle_document_write(Ok(DocumentSavedEvent {
+                    revision: request.revision,
+                    save_time,
+                    doc_id: request.doc_id,
+                    path: request.path.clone(),
+                    text: request.text.clone(),
+                }));
+
+                // Tell language servers about the text we wrote, not the current buffer.
+                if let Some(doc) = self.editor.document(request.doc_id) {
+                    if doc.path().is_some() {
+                        let identifier = doc.identifier();
+                        for language_server in doc.language_servers() {
+                            if language_server.is_initialized() {
+                                language_server
+                                    .text_document_did_save(identifier.clone(), &request.text);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                self.editor
+                    .set_error(format!("elevated save failed: {err}"));
+            }
+        }
+
+        self.render().await;
+    }
+
+    /// Write the buffer to disk as another user in one elevated `sh` call, so the password is
+    /// asked for at most once. Data is passed as shell arguments, not built into the script, so it
+    /// can't be injected.
+    ///
+    /// The write is atomic and never opens the target directly, which avoids symlink attacks: the
+    /// text goes to a fresh `mktemp` file, which is `chown`/`chmod`ed to match the target and then
+    /// `rename`d over it. `rename` replaces a target symlink instead of following it.
+    #[cfg(unix)]
+    async fn elevated_write(
+        sudo_command: &[String],
+        request: &SudoSaveRequest,
+    ) -> anyhow::Result<()> {
+        use std::ffi::OsString;
+        use std::process::Stdio;
+        use tokio::io::AsyncReadExt;
+        use tokio::process::Command;
+
+        const SCRIPT: &str = "\
+set -e
+dir=$1; target=$2; owner=$3; mode=$4
+if [ -n \"$dir\" ]; then mkdir -p -- \"$dir\"; fi
+tmp=$(mktemp \"$(dirname \"$target\")/.hx-sudo.XXXXXX\")
+trap 'rm -f -- \"$tmp\"' EXIT
+tee -- \"$tmp\" > /dev/null
+if [ -n \"$owner\" ]; then chown -- \"$owner\" \"$tmp\"; fi
+if [ -n \"$mode\" ]; then chmod -- \"$mode\" \"$tmp\"; fi
+sync \"$tmp\" 2>/dev/null || sync
+mv -f -- \"$tmp\" \"$target\"
+";
+
+        let (program, base_args) = sudo_command
+            .split_first()
+            .ok_or_else(|| anyhow::anyhow!("`editor.sudo-command` is empty"))?;
+
+        // `$1`: parent dir to create when forced.
+        let dir = if request.force {
+            request
+                .write_path
+                .parent()
+                .map(|parent| parent.as_os_str().to_os_string())
+                .unwrap_or_default()
+        } else {
+            OsString::new()
+        };
+
+        // `$3`/`$4`: owner and mode for the temp file.
+        let owner = request
+            .owner
+            .map(|(uid, gid)| OsString::from(format!("{uid}:{gid}")))
+            .unwrap_or_default();
+        let mode = request
+            .mode
+            .map(|m| OsString::from(format!("{m:o}")))
+            .unwrap_or_default();
+
+        let mut command = Command::new(program);
+        command
+            .args(base_args)
+            .arg("sh")
+            .arg("-c")
+            .arg(SCRIPT)
+            .arg("helix-sudo-write") // $0
+            .arg(&dir)
+            .arg(request.write_path.as_os_str())
+            .arg(&owner)
+            .arg(&mode)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            // Piped so we can show it live and keep it for the error message.
+            .stderr(Stdio::piped());
+
+        let mut child = command.spawn()?;
+        let mut stdin = child.stdin.take().expect("stdin was piped");
+        let mut stderr = child.stderr.take().expect("stderr was piped");
+        let encoding = (request.encoding, request.has_bom);
+        let text = request.text.clone();
+        // Write to the child while also waiting on it, so a large buffer can't deadlock the pipe.
+        let input_task = tokio::spawn(async move {
+            to_writer(&mut stdin, encoding, &text).await?;
+            // Drop stdin so `tee` sees EOF and exits.
+            drop(stdin);
+            anyhow::Ok(())
+        });
+        let stderr_task = tokio::spawn(async move {
+            use std::io::Write as _;
+            let mut buf = Vec::new();
+            let mut chunk = [0u8; 1024];
+            while let Ok(n) = stderr.read(&mut chunk).await {
+                if n == 0 {
+                    break;
+                }
+                // Show it live (for any prompt) and keep it for the error message.
+                let mut out = std::io::stderr().lock();
+                let _ = out.write_all(&chunk[..n]);
+                let _ = out.flush();
+                buf.extend_from_slice(&chunk[..n]);
+            }
+            String::from_utf8_lossy(&buf).into_owned()
+        });
+
+        let (status, input_result, stderr) = tokio::join!(child.wait(), input_task, stderr_task);
+        // Check the exit status before the stdin write: a failed child closes the pipe, so the
+        // write result is often just a broken pipe hiding the command's real error.
+        if !status?.success() {
+            // Use the command's own error: its last non-empty stderr line.
+            let detail = stderr
+                .ok()
+                .as_deref()
+                .and_then(|out| out.lines().rev().find(|line| !line.trim().is_empty()))
+                .map(str::to_string);
+            match detail {
+                Some(detail) => anyhow::bail!("{}", detail),
+                None => {
+                    anyhow::bail!(
+                        "`{}` exited with an error (was the password correct?)",
+                        program
+                    )
+                }
+            }
+        }
+        input_result??;
+
+        Ok(())
+    }
+
+    /// Elevated saves need a Unix shell and `sudo`/`doas`, so they aren't supported here.
+    #[cfg(not(unix))]
+    async fn elevated_write(
+        _sudo_command: &[String],
+        _request: &SudoSaveRequest,
+    ) -> anyhow::Result<()> {
+        anyhow::bail!("elevated save (:sudo-write) is not supported on this platform")
+    }
+
     #[inline(always)]
     pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
         log::debug!("received editor event: {:?}", event);
@@ -664,6 +861,9 @@ impl Application {
             EditorEvent::DocumentSaved(event) => {
                 self.handle_document_write(event);
                 self.render().await;
+            }
+            EditorEvent::SudoSave(request) => {
+                self.handle_sudo_save(request).await;
             }
             EditorEvent::ConfigEvent(event) => {
                 self.handle_config_events(event);
@@ -700,6 +900,9 @@ impl Application {
     pub async fn handle_terminal_events(&mut self, event: std::io::Result<TerminalEvent>) {
         #[cfg(not(windows))]
         use termina::escape::csi;
+
+        // Any input means we've left the elevation prompt, so a later Ctrl-C should quit as usual.
+        self.swallow_next_sigint = false;
 
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
@@ -1277,6 +1480,24 @@ impl Application {
             .show_cursor(CursorKind::Block)
             .ok();
         self.terminal.restore()
+    }
+
+    /// Take the terminal back after a suspend/resume or elevated save, and redraw.
+    fn reclaim_term(&mut self) {
+        // Copy/Paste from same issue from neovim:
+        // https://github.com/neovim/neovim/issues/12322
+        // https://github.com/neovim/neovim/pull/13084
+        for retries in 1..=10 {
+            match self.terminal.claim() {
+                Ok(()) => break,
+                Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
+                Err(_) => continue,
+            }
+        }
+
+        let area = self.terminal.size();
+        self.compositor.resize(area);
+        self.terminal.clear().expect("couldn't clear terminal");
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]

@@ -15,6 +15,8 @@
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
 | `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
 | `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt) |
+| `:sudo-write`, `:sw` | Write changes to disk, elevating privileges with the configured `sudo-command` if the current user cannot write the file. Accepts an optional path (:sudo-write some/path.txt) |
+| `:sudo-write!`, `:sw!` | Force write changes to disk creating necessary subdirectories, elevating privileges with the configured `sudo-command` if the current user cannot write the file. Also saves a hardlinked file, breaking the hardlink. Directories and files it creates are owned by the elevated user. Accepts an optional path (:sudo-write! some/path.txt) |
 | `:write-buffer-close`, `:wbc` | Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt) |
 | `:write-buffer-close!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt) |
 | `:new`, `:n` | Create a new scratch buffer. |

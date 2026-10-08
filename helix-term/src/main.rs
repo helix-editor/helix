@@ -18,6 +18,16 @@ fn setup_logging(verbosity: u64) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    // Read the umask so elevated saves can mode new files. `umask` also sets, so put it back right
+    // away, while still single-threaded.
+    #[cfg(unix)]
+    {
+        // SAFETY: plain libc call, before any threads start.
+        let mask = unsafe { libc::umask(0) };
+        unsafe { libc::umask(mask) };
+        helix_view::document::set_process_umask(mask as u32);
+    }
+
     let exit_code = main_impl()?;
     std::process::exit(exit_code);
 }

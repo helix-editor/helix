@@ -81,6 +81,7 @@ fn exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
                 code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+                elevate: ElevateMode::Never,
             },
         )?;
     }
@@ -101,6 +102,7 @@ fn force_exit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
                 force: true,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
                 code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+                elevate: ElevateMode::Never,
             },
         )?;
     }
@@ -404,6 +406,20 @@ fn write_impl(
     let force = options.force;
     let path: Option<PathBuf> = path.map(Into::into);
 
+    // Send an unwritable target to the elevated save instead of failing with a permission error.
+    // Elevation writes the buffer as-is (no auto-format or code actions). Unix only; elsewhere
+    // fall through and let the normal save report the error.
+    let elevate = cfg!(unix)
+        && (match options.elevate {
+            ElevateMode::Never => false,
+            ElevateMode::Auto => config.auto_elevate_save,
+            ElevateMode::WhenNeeded => true,
+        })
+        && needs_elevation(doc!(cx.editor, &doc_id), path.as_deref());
+    if elevate {
+        return cx.editor.sudo_save(doc_id, path, force);
+    }
+
     // Does the document configure any code actions to run on save?
     let run_code_actions = options.code_actions
         && doc!(cx.editor, &doc_id)
@@ -521,11 +537,42 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     }
 }
 
+/// When a write should elevate because the user can't write the target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElevateMode {
+    /// Never elevate; report a permission error as usual. Used by compound commands (`:wq`,
+    /// `:wbc`, ...), where the elevated save's terminal handoff would race the next step.
+    Never,
+    /// Elevate an unwritable target only when `auto-elevate-save` is enabled. Used by `:write`.
+    Auto,
+    /// Elevate whenever the target is unwritable. Used by `:sudo-write`.
+    WhenNeeded,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WriteOptions {
     pub force: bool,
     pub auto_format: bool,
     pub code_actions: bool,
+    pub elevate: ElevateMode,
+}
+
+/// Whether the user can't write `path` (or the document's path), so the save must elevate. For a
+/// file that doesn't exist yet, checks the nearest existing parent directory.
+fn needs_elevation(doc: &Document, path: Option<&Path>) -> bool {
+    let target = match path {
+        Some(path) => helix_stdx::path::canonicalize(path),
+        None => match doc.path() {
+            Some(path) => path.to_path_buf(),
+            // No path: let the normal save report the "no path" error.
+            None => return false,
+        },
+    };
+
+    target
+        .ancestors()
+        .find(|dir| dir.exists())
+        .is_some_and(helix_stdx::faccess::readonly)
 }
 
 fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -540,6 +587,7 @@ fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Auto,
         },
     )
 }
@@ -556,6 +604,45 @@ fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Auto,
+        },
+    )
+}
+
+fn sudo_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(
+        cx,
+        args.first(),
+        WriteOptions {
+            force: false,
+            auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::WhenNeeded,
+        },
+    )
+}
+
+fn force_sudo_write(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    write_impl(
+        cx,
+        args.first(),
+        WriteOptions {
+            force: true,
+            auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
+            code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::WhenNeeded,
         },
     )
 }
@@ -576,6 +663,7 @@ fn write_buffer_close(
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Never,
         },
     )?;
 
@@ -599,6 +687,7 @@ fn force_write_buffer_close(
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Never,
         },
     )?;
 
@@ -788,6 +877,7 @@ fn write_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
             force: false,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Never,
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -810,6 +900,7 @@ fn force_write_quit(
             force: true,
             auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
             code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+            elevate: ElevateMode::Never,
         },
     )?;
     cx.block_try_flush_writes()?;
@@ -1692,6 +1783,7 @@ fn update(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
                 force: false,
                 auto_format: !args.has_flag(WRITE_NO_FORMAT_FLAG.name),
                 code_actions: !args.has_flag(WRITE_NO_CODE_ACTIONS_FLAG.name),
+                elevate: ElevateMode::Auto,
             },
         )
     } else {
@@ -3164,6 +3256,30 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: Signature {
             positionals: (0, Some(1)),
             flags: &[WRITE_NO_FORMAT_FLAG,WRITE_NO_CODE_ACTIONS_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "sudo-write",
+        aliases: &["sw"],
+        doc: "Write changes to disk, elevating privileges with the configured `sudo-command` if the current user cannot write the file. Accepts an optional path (:sudo-write some/path.txt)",
+        fun: sudo_write,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG, WRITE_NO_CODE_ACTIONS_FLAG],
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "sudo-write!",
+        aliases: &["sw!"],
+        doc: "Force write changes to disk creating necessary subdirectories, elevating privileges with the configured `sudo-command` if the current user cannot write the file. Also saves a hardlinked file, breaking the hardlink. Directories and files it creates are owned by the elevated user. Accepts an optional path (:sudo-write! some/path.txt)",
+        fun: force_sudo_write,
+        completer: CommandCompleter::positional(&[completers::filename]),
+        signature: Signature {
+            positionals: (0, Some(1)),
+            flags: &[WRITE_NO_FORMAT_FLAG, WRITE_NO_CODE_ACTIONS_FLAG],
             ..Signature::DEFAULT
         },
     },
