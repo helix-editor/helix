@@ -244,6 +244,16 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        // `set_cwd` doesn't run at startup, record the initial workspace here.
+        {
+            let cfg = config.load();
+            helix_loader::workspace_history::record(
+                &helix_loader::find_workspace().0,
+                cfg.editor.workspace_history.enable,
+                cfg.editor.workspace_history.max_entries,
+            );
+        }
+
         let app = Self {
             compositor,
             terminal,

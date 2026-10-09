@@ -1439,6 +1439,46 @@ fn show_current_directory(
     Ok(())
 }
 
+fn workspace_history(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if helix_loader::workspace_history::load().is_empty() {
+        cx.editor.set_error("No workspace history yet");
+        return Ok(());
+    }
+    let callback = async move {
+        let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let picker = ui::workspace_history_picker(editor);
+                compositor.push(Box::new(overlaid(picker)));
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn workspace_history_clear(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    helix_loader::workspace_history::clear();
+    cx.editor.set_status("Workspace history cleared");
+    Ok(())
+}
+
 /// Sets the [`Document`]'s encoding..
 fn set_encoding(
     cx: &mut compositor::Context,
@@ -3568,6 +3608,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["pwd"],
         doc: "Show the current working directory.",
         fun: show_current_directory,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "workspace-history",
+        aliases: &[],
+        doc: "Open the workspace history picker.",
+        fun: workspace_history,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "workspace-history-clear",
+        aliases: &[],
+        doc: "Clear the recorded workspace history.",
+        fun: workspace_history_clear,
         completer: CommandCompleter::none(),
         signature: Signature {
             positionals: (0, Some(0)),

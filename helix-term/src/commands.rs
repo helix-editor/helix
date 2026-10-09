@@ -408,6 +408,7 @@ impl MappableCommand {
         file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        workspace_history_picker, "Open workspace history picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
         syntax_symbol_picker, "Open symbol picker from syntax information",
@@ -3388,6 +3389,15 @@ fn buffer_picker(cx: &mut Context) {
         });
         Some((meta.id.into(), lines))
     });
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn workspace_history_picker(cx: &mut Context) {
+    if helix_loader::workspace_history::load().is_empty() {
+        cx.editor.set_error("No workspace history yet");
+        return;
+    }
+    let picker = ui::workspace_history_picker(cx.editor);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

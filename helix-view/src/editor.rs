@@ -434,6 +434,8 @@ pub struct Config {
     pub buffer_picker: BufferPickerConfig,
     /// Workspace-trust configuration.
     pub workspace_trust: WorkspaceTrustConfig,
+    /// Recent workspace history configuration.
+    pub workspace_history: WorkspaceHistoryConfig,
 }
 
 /// User-facing configuration for `[editor.workspace-trust]`.
@@ -456,6 +458,26 @@ impl Default for WorkspaceTrustConfig {
             level: ImplicitTrustLevelConfig::default(),
             prompt: true,
             trusted: Vec::new(),
+        }
+    }
+}
+
+/// User-facing configuration for `[editor.workspace-history]`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct WorkspaceHistoryConfig {
+    /// Whether to record recently opened workspace roots for `:workspace-history`.
+    /// Defaults to `true`.
+    pub enable: bool,
+    /// Maximum number of workspace roots to remember. Defaults to `50`.
+    pub max_entries: usize,
+}
+
+impl Default for WorkspaceHistoryConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            max_entries: 50,
         }
     }
 }
@@ -1240,6 +1262,7 @@ impl Default for Config {
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
             workspace_trust: WorkspaceTrustConfig::default(),
+            workspace_history: WorkspaceHistoryConfig::default(),
         }
     }
 }
@@ -2590,6 +2613,14 @@ impl Editor {
     pub fn set_cwd(&mut self, path: &Path) -> std::io::Result<()> {
         self.last_cwd = helix_stdx::env::set_current_working_dir(path)?;
         self.clear_doc_relative_paths();
+        let (workspace, _) =
+            helix_loader::find_workspace_in(helix_stdx::env::current_working_dir());
+        let config = self.config();
+        helix_loader::workspace_history::record(
+            &workspace,
+            config.workspace_history.enable,
+            config.workspace_history.max_entries,
+        );
         Ok(())
     }
 

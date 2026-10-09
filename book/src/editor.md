@@ -24,6 +24,7 @@
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
 - [`[editor.workspace-trust]` Section](#editorworkspace-trust-section)
+- [`[editor.workspace-history]` Section](#editorworkspace-history-section)
 
 ### `[editor]` Section
 
@@ -565,4 +566,21 @@ level = "servers"
 # Discouraged: skips .helix/ change detection and trusts anything that lands
 # under a matching path. `~` and environment variables are expanded.
 trusted = ["~/src/github.com/me/*"]
+```
+
+### `[editor.workspace-history]` Section
+
+Controls the recent workspace history used by `:workspace-history`.
+
+| Key           | Description                                          | Default |
+| ---           | ---                                                  | ---     |
+| `enable`      | Whether to record recently opened workspace roots.   | `true`  |
+| `max-entries` | Maximum number of workspace roots to remember.       | `50`    |
+
+Example:
+
+```toml
+[editor.workspace-history]
+enable = true
+max-entries = 50
 ```

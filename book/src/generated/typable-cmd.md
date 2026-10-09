@@ -51,6 +51,8 @@
 | `:push-directory`, `:pushd` | Save and then change the current directory. |
 | `:pop-directory`, `:popd` | Remove the top entry from the directory stack, and cd to the new top directory.. |
 | `:show-directory`, `:pwd` | Show the current working directory. |
+| `:workspace-history` | Open the workspace history picker. |
+| `:workspace-history-clear` | Clear the recorded workspace history. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
 | `:reload`, `:rl` | Discard changes and reload from the source file. |

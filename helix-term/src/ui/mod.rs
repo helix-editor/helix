@@ -421,6 +421,97 @@ fn get_child_if_single_dir(path: &Path) -> Option<PathBuf> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkspaceHistoryEntry {
+    pub path: PathBuf,
+    pub last_seen: u64,
+}
+
+#[derive(Debug)]
+pub struct WorkspaceHistoryData {
+    directory_style: Style,
+}
+
+fn relative_time(last_seen: u64) -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(last_seen);
+    let ago = now.saturating_sub(last_seen);
+    const MINUTE: u64 = 60;
+    const HOUR: u64 = 60 * MINUTE;
+    const DAY: u64 = 24 * HOUR;
+    if ago < MINUTE {
+        "just now".to_owned()
+    } else if ago < HOUR {
+        format!("{}m ago", ago / MINUTE)
+    } else if ago < DAY {
+        format!("{}h ago", ago / HOUR)
+    } else if ago < 30 * DAY {
+        format!("{}d ago", ago / DAY)
+    } else if ago < 365 * DAY {
+        format!("{}mo ago", ago / (30 * DAY))
+    } else {
+        format!("{}y ago", ago / (365 * DAY))
+    }
+}
+
+pub fn workspace_history_picker(
+    editor: &Editor,
+) -> Picker<WorkspaceHistoryEntry, WorkspaceHistoryData> {
+    let data = WorkspaceHistoryData {
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
+    let entries = helix_loader::workspace_history::load()
+        .into_iter()
+        .map(|entry| WorkspaceHistoryEntry {
+            path: entry.path,
+            last_seen: entry.last_seen,
+        })
+        .collect::<Vec<_>>();
+    let columns = [
+        PickerColumn::new(
+            "workspace",
+            |entry: &WorkspaceHistoryEntry, data: &WorkspaceHistoryData| {
+                let name = entry
+                    .path
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| entry.path.display().to_string());
+                Spans::from(vec![
+                    Span::raw(name),
+                    Span::raw(" "),
+                    Span::styled(entry.path.display().to_string(), data.directory_style),
+                ])
+                .into()
+            },
+        ),
+        PickerColumn::new("opened", |entry: &WorkspaceHistoryEntry, _| {
+            relative_time(entry.last_seen).into()
+        })
+        .without_filtering(),
+    ];
+    Picker::new(
+        columns,
+        0,
+        entries,
+        data,
+        move |cx, entry: &WorkspaceHistoryEntry, _action| match cx.editor.set_cwd(&entry.path) {
+            Ok(()) => cx.editor.set_status(format!(
+                "Current working directory is now {}",
+                helix_stdx::env::current_working_dir().display()
+            )),
+            Err(err) => {
+                cx.editor.set_error(format!(
+                    "Could not change working directory to '{}': {err}",
+                    entry.path.display()
+                ));
+                helix_loader::workspace_history::remove(&entry.path);
+            }
+        },
+    )
+}
+
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
