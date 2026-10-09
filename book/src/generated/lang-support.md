@@ -264,6 +264,7 @@
 | scfg | ✓ |  |  |  |  |  |
 | scheme | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | scss | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
+| sema | ✓ | ✓ | ✓ |  |  | `sema` |
 | sgf | ✓ | ✓ | ✓ |  |  |  |
 | shellcheckrc | ✓ | ✓ |  |  |  |  |
 | slang | ✓ | ✓ | ✓ |  |  | `slangd` |
