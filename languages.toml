@@ -5703,4 +5703,4 @@ args = { program = "{0}", stopOnEntry = true }
 
 [[grammar]]
 name = "sema"
-source = { git = "https://github.com/sema-lisp/tree-sitter-sema", rev = "f2e289b9b3909cefa7c67138c65fe3dc8dc23553" }
+source = { git = "https://github.com/sema-lisp/tree-sitter-sema", rev = "4c56443c99f7322d0a592229461234d93bf192d6" }

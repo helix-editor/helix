@@ -36,7 +36,6 @@
 ; --- Comments ---
 
 (comment) @comment.line
-(block_comment) @comment.block
 
 ; --- Punctuation ---
 
@@ -56,8 +55,8 @@
 
 ((symbol) @operator
   (#any-of? @operator
-    "+" "-" "*" "/" "%" "=" ">" "<" ">=" "<="
-    "eq?" "equal?" "eqv?"))
+    "+" "-" "*" "/" "=" ">" "<" ">=" "<="
+    "eq?" "equal?"))
 
 ; --- Keyword literals :foo (map keys, keyword args) ---
 
