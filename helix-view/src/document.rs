@@ -10,7 +10,7 @@ use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
-use helix_core::syntax::config::LanguageServerFeature;
+use helix_core::syntax::config::{HardWrap, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
 use helix_lsp::util::lsp_pos_to_pos;
@@ -2347,6 +2347,30 @@ impl Document {
             .map(|n| n.get() as usize)
             .or_else(|| self.language_config().and_then(|config| config.text_width))
             .unwrap_or_else(|| self.config.load().text_width)
+    }
+
+    /// The hard wrap configuration resolved at `byte_pos`: settings from the
+    /// innermost language layer (following injections) take precedence, then the
+    /// document's language, then the global editor configuration. Both keys use
+    /// the same precedence.
+    pub fn hard_wrap_config_at(&self, loader: &syntax::Loader, byte_pos: usize) -> HardWrap {
+        let global = self.config.load();
+        let layer = self
+            .language_config_at(loader, byte_pos)
+            .and_then(|config| config.hard_wrap.as_ref());
+        let lang = self
+            .language_config()
+            .and_then(|config| config.hard_wrap.as_ref());
+        HardWrap {
+            enable: layer
+                .and_then(|hard_wrap| hard_wrap.enable)
+                .or_else(|| lang.and_then(|hard_wrap| hard_wrap.enable))
+                .or(global.hard_wrap.enable),
+            list_markers: layer
+                .and_then(|hard_wrap| hard_wrap.list_markers.clone())
+                .or_else(|| lang.and_then(|hard_wrap| hard_wrap.list_markers.clone()))
+                .or_else(|| global.hard_wrap.list_markers.clone()),
+        }
     }
 
     pub fn text_format(&self, mut viewport_width: u16, theme: Option<&Theme>) -> TextFormat {

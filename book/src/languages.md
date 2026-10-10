@@ -68,7 +68,8 @@ These configuration keys are available:
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
 | `formatter`           | The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout. The filename of the current buffer can be passed as argument by using the `%{buffer_name}` expansion variable. See below for more information in the [Configuring the formatter command](#configuring-the-formatter-command) |
 | `soft-wrap`           | [editor.softwrap](./editor.md#editorsoft-wrap-section)
-| `text-width`          |  Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set, defaults to `editor.text-width`   |
+| `hard-wrap`           | [editor.hardwrap](./editor.md#editorhard-wrap-section)
+| `text-width`          |  Maximum line length. Used for the `:reflow` command, soft-wrapping if `soft-wrap.wrap-at-text-width` is set, and hard-wrapping on input if `hard-wrap.enable` is set, defaults to `editor.text-width`   |
 | `rulers`              | Overrides the `editor.rulers` config key for the language. |
 | `path-completion`     | Overrides the `editor.path-completion` config key for the language. |
 | `word-completion`     | Overrides the [`editor.word-completion`](./editor.md#editorword-completion-section) configuration for the language. |

@@ -48,7 +48,10 @@ use helix_core::{
     diagnostic::DiagnosticProvider,
     syntax::{
         self,
-        config::{AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
+        config::{
+            AutoPairConfig, HardWrap, IndentationHeuristic, LanguageServerFeature,
+            ListMarkersConfig, SoftWrap,
+        },
     },
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -291,6 +294,31 @@ where
     Ok(chars)
 }
 
+/// The default for `[editor.hard-wrap]`: off, with the built-in list markers on.
+fn default_hard_wrap() -> HardWrap {
+    HardWrap {
+        enable: Some(false),
+        list_markers: Some(ListMarkersConfig::Enable(true)),
+    }
+}
+
+/// Deserializes `[editor.hard-wrap]` by overlaying the provided keys onto the
+/// editor default, so that a partial table (e.g. only `enable = true`) keeps the
+/// other documented defaults instead of resetting them to `None`. Language-level
+/// `hard-wrap` tables deliberately keep their `None` fields so they fall through
+/// to the global config, and so do not use this deserializer.
+fn deserialize_hard_wrap<'de, D>(deserializer: D) -> Result<HardWrap, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let hard_wrap = HardWrap::deserialize(deserializer)?;
+    let default = default_hard_wrap();
+    Ok(HardWrap {
+        enable: hard_wrap.enable.or(default.enable),
+        list_markers: hard_wrap.list_markers.or(default.list_markers),
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -390,6 +418,10 @@ pub struct Config {
     /// Whether to color modes with different colors. Defaults to `false`.
     pub color_modes: bool,
     pub soft_wrap: SoftWrap,
+    /// Hard wrap lines at input time when they exceed `text-width` (like vim's
+    /// `textwidth`). Independent from `soft_wrap`, which remains display-only.
+    #[serde(deserialize_with = "deserialize_hard_wrap")]
+    pub hard_wrap: HardWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
@@ -1219,6 +1251,7 @@ impl Default for Config {
                 enable: Some(false),
                 ..SoftWrap::default()
             },
+            hard_wrap: default_hard_wrap(),
             text_width: 80,
             completion_replace: false,
             continue_comments: true,
