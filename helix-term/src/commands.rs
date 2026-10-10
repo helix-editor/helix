@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod hard_wrap;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
@@ -4370,6 +4371,8 @@ pub mod insert {
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
+
+        super::hard_wrap::hard_wrap_after_insert(cx, c);
 
         helix_event::dispatch(PostInsertChar { c, cx });
     }
