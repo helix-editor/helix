@@ -5655,3 +5655,16 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "al"
+scope = "source.al"
+injection-regex = "al"
+file-types = ["al"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "al"
+source = { git = "https://github.com/SShadowS/tree-sitter-al", rev = "335d1ffc04a123a1812a033f768827db710d9239" }
