@@ -2426,7 +2426,7 @@ name = "hcl"
 scope = "source.hcl"
 injection-regex = "(hcl|tf|nomad)"
 language-id = "terraform"
-file-types = ["hcl", "tf", "nomad"]
+file-types = ["hcl", "tf", "tofu", "nomad"]
 comment-token = "#"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
