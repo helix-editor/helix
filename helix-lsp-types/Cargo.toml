@@ -14,8 +14,6 @@ description = "Types for interaction with a language server, using VSCode's Lang
 repository = "https://github.com/gluon-lang/lsp-types"
 documentation = "https://docs.rs/lsp-types"
 
-readme = "README.md"
-
 keywords = ["language", "server", "lsp", "vscode", "lsif"]
 
 license = "MIT"
