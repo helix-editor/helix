@@ -78,9 +78,6 @@ diagnostic = { underline = { color = "ghost", style = "curl" } }
 "markup.link" = { fg = "sym", underline = { style = "line" } }
 "markup.quote" = "doc"
 
-"markup.normal" = "default"
-"markup.normal.raw" = "code"
-"markup.heading.raw" = "code"
 "markup.raw" = "code"
 
 "diff.plus" = "green" # + add

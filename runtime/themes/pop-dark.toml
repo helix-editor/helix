@@ -117,16 +117,9 @@ namespace = { fg = 'orangeL' }
 'markup.link.label' = { fg = 'blueH' }
 'markup.link.text' = { fg = 'blueN' }
 'markup.quote' = { fg = 'blueL' }
-'markup.normal' = { fg = 'blueL' }
-'markup.normal.completion' = { bg = 'brownN' }
-'markup.normal.raw' = { bg = 'brownN' }
-'markup.heading.completion' = { fg = 'greenN' }
-'markup.heading.raw' = { bg = 'brownN' }
 'markup.raw' = { bg = 'brownN' }
 'markup.raw.block' = { bg = 'brownH', fg = 'orangeH' }
 'markup.raw.inline' = { fg = 'blueL' }
-'markup.raw.inline.completion' = { fg = 'greenN' }
-'markup.raw.inline.hover' = { fg = 'greenS' }
 'diff.plus' = { fg = '#4dd44d' }
 'diff.minus' = { fg = '#dd4d4d' }
 'diff.delta' = { fg = '#4d4ddd' }

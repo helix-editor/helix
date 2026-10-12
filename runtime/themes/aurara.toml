@@ -350,19 +350,9 @@ markup = "purple-pleasant-dimmer" # fallback
 # Markup - Interface ==============================
 # "These scopes are used for theming the editor interface."
 
-# TODO: ??
-'markup.normal' = { }
-'markup.normal.completion' = { } # For completion doc popup ui.
-'markup.normal.raw' = { } # For hover popup ui.
-
-'markup.heading.completion' = { } # Headings for completion doc popup ui.
-'markup.heading.raw' = { } # Headings for hover popup ui.
-
 'markup.raw' = { } # Code block in Markdown.
 'markup.raw.block' = { } # Multiline (```) codeblock in Markdown.
 'markup.raw.inline' = { } # `Inline code block` in Markdown.
-'markup.raw.inline.completion' = { } # ?
-'markup.raw.inline.hover' = { } # ?
 
 # Diff ==============================
 # Version control changes.

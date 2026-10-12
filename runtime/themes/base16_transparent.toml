@@ -61,7 +61,6 @@
 "markup.link.text" = "light-red"
 "markup.quote" = "light-cyan"
 "markup.raw" = "green"
-"markup.normal" = { fg = "blue" }
 "markup.insert" = { fg = "green" }
 "markup.select" = { fg = "magenta" }
 

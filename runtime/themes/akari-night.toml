@@ -122,12 +122,6 @@
 "markup.raw" = { fg = "bright-green" }
 "markup.raw.inline" = { fg = "bright-green" }
 "markup.raw.block" = { fg = "bright-green" }
-"markup.normal.completion" = "foreground"
-"markup.normal.hover" = "foreground"
-"markup.heading.completion" = { fg = "lantern", modifiers = ["bold"] }
-"markup.heading.hover" = { fg = "lantern", modifiers = ["bold"] }
-"markup.raw.inline.completion" = { fg = "bright-green" }
-"markup.raw.inline.hover" = { fg = "bright-green" }
 
 # Syntax highlighting
 "attribute" = { fg = "amber" }
