@@ -310,6 +310,8 @@ These scopes are used for theming the editor interface:
 | `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.gutter.virtual`               | Gutter for soft-wrapped and virtual lines                                                      |
+| `ui.gutter.selected.virtual`      | Gutter for soft-wrapped and virtual lines of the line the cursor is on                         |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
@@ -351,6 +353,7 @@ These scopes are used for theming the editor interface:
 | `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.cursorline.primary`           | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorline.secondary`         | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorcolumn`                 | Fallback for `ui.cursorcolumn.primary` and `ui.cursorcolumn.secondary`                         |
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
 | `ui.cursorcolumn.secondary`       | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
 | `warning`                         | Diagnostics warning (gutter)                                                                   |
