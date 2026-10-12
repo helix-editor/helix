@@ -3,8 +3,8 @@
 | `no_op` | Do nothing |  |
 | `move_char_left` | Move left | normal: `` h ``, `` <left> ``, insert: `` <left> `` |
 | `move_char_right` | Move right | normal: `` l ``, `` <right> ``, insert: `` <right> `` |
-| `move_line_up` | Move up | normal: `` gk `` |
-| `move_line_down` | Move down | normal: `` gj `` |
+| `move_line_up` | Move up | normal: `` gk ``, `` g<up> ``, select: `` g<up> `` |
+| `move_line_down` | Move down | normal: `` gj ``, `` g<down> ``, select: `` g<down> `` |
 | `move_visual_line_up` | Move up | normal: `` k ``, `` <up> ``, insert: `` <up> `` |
 | `move_visual_line_down` | Move down | normal: `` j ``, `` <down> ``, insert: `` <down> `` |
 | `extend_char_left` | Extend left | select: `` h ``, `` <left> `` |
@@ -155,8 +155,8 @@
 | `goto_prev_change` | Goto previous change | normal: `` [g ``, select: `` [g `` |
 | `goto_first_change` | Goto first change | normal: `` [G ``, select: `` [G `` |
 | `goto_last_change` | Goto last change | normal: `` ]G ``, select: `` ]G `` |
-| `goto_line_start` | Goto line start | normal: `` gh ``, `` <home> ``, select: `` gh ``, insert: `` <home> `` |
-| `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, select: `` gl `` |
+| `goto_line_start` | Goto line start | normal: `` gh ``, `` <home> ``, `` g<left> ``, select: `` gh ``, `` g<left> ``, insert: `` <home> `` |
+| `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, `` g<right> ``, select: `` gl ``, `` g<right> `` |
 | `goto_column` | Goto column | normal: `` g\| `` |
 | `extend_to_column` | Extend to column | select: `` g\| `` |
 | `goto_next_buffer` | Goto next buffer | normal: `` gn ``, select: `` gn `` |
