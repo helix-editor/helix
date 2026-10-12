@@ -18,6 +18,8 @@
 
 ![Screenshot](./screenshot.png)
 
+[![Live demo by Demoshell](https://build.demoshell.com/v1/embed/badge.svg)](https://build.demoshell.com/launch?snapshot=demoshell%2Ftui%3Ahelix)
+
 A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
 
 The editing model is very heavily based on Kakoune; during development I found
