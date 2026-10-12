@@ -17,6 +17,9 @@ use helix_view::expansion;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
+use futures_util::stream::FuturesUnordered;
+use tokio_stream::StreamExt;
+
 #[derive(Clone)]
 pub struct TypableCommand {
     pub name: &'static str,
@@ -1796,6 +1799,57 @@ fn lsp_workspace_command(
             }
         }
     }
+    Ok(())
+}
+
+fn lsp_forward_search(
+    cx: &mut compositor::Context,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::ForwardSearch)
+        .count()
+        == 0
+    {
+        cx.editor
+            .set_error("No configured language server supports forward search");
+        return Ok(());
+    }
+
+    let mut seen_language_servers = HashSet::new();
+    let mut futures: FuturesUnordered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::ForwardSearch)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .map(|language_server| {
+            let server_name = language_server.name().to_string();
+            // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
+            let pos = doc.position(view.id, language_server.offset_encoding());
+            let request = language_server
+                .forward_search(doc.identifier(), pos)
+                .unwrap();
+
+            async move { anyhow::Ok((server_name, request.await?)) }
+        })
+        .collect();
+
+    cx.jobs.callback(async move {
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok((server_name, _)) => {
+                    log::debug!("Forward search requested via language server {server_name}")
+                }
+                Err(err) => log::error!("Error requesting forward search: {err}"),
+            }
+        }
+        Ok(Callback::Editor(Box::new(|_| {})))
+    });
+
     Ok(())
 }
 
@@ -3639,6 +3693,17 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: Signature {
             positionals: (0, None),
             raw_after: Some(1),
+            ..Signature::DEFAULT
+        },
+    },
+    TypableCommand {
+        name: "lsp-forward-search",
+        aliases: &[],
+        doc: "Request a forward search (e.g. SyncTeX) at the current cursor position from the language server",
+        fun: lsp_forward_search,
+        completer: CommandCompleter::none(),
+        signature: Signature {
+            positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
     },
