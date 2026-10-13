@@ -83,7 +83,11 @@ impl Client {
             id,
             _process: process,
             server_tx,
-            request_counter: AtomicU64::new(0),
+            // > The `seq` for the first message sent by a client or debug adapter
+            // > is 1, and for each subsequent message is 1 greater than the
+            // > previous message sent by that actor
+            // <https://microsoft.github.io/debug-adapter-protocol/specification#Base_Protocol_ProtocolMessage>
+            request_counter: AtomicU64::new(1),
             caps: None,
             connection_type: None,
             starting_request_args: None,
@@ -233,11 +237,7 @@ impl Client {
     }
 
     fn next_request_id(&self) -> u64 {
-        // > The `seq` for the first message sent by a client or debug adapter
-        // > is 1, and for each subsequent message is 1 greater than the
-        // > previous message sent by that actor
-        // <https://microsoft.github.io/debug-adapter-protocol/specification#Base_Protocol_ProtocolMessage>
-        self.request_counter.fetch_add(1, Ordering::Relaxed) + 1
+        self.request_counter.fetch_add(1, Ordering::Relaxed)
     }
 
     // Internal, called by specific DAP commands when resuming
@@ -319,10 +319,12 @@ impl Client {
     ) -> impl Future<Output = Result<()>> {
         let server_tx = self.server_tx.clone();
         let command = command.to_string();
+        let seq = Some(self.next_request_id());
 
         async move {
             let response = match result {
                 Ok(result) => Response {
+                    seq,
                     request_seq,
                     command,
                     success: true,
@@ -330,6 +332,7 @@ impl Client {
                     body: Some(result),
                 },
                 Err(error) => Response {
+                    seq,
                     request_seq,
                     command,
                     success: false,
