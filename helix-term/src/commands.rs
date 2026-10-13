@@ -77,6 +77,7 @@ use std::{
     error::Error,
     fmt,
     future::Future,
+    hash::Hash,
     io::Read,
     num::NonZeroUsize,
 };
@@ -1379,6 +1380,254 @@ fn resolve_document_link_request(
     language_server.resolve_document_link(link.link.clone())
 }
 
+/// Extract the paths or URLs handled by the built-in `goto_file` fallback.
+fn goto_file_fallback_paths(text: RopeSlice, selections: &[Range]) -> Vec<String> {
+    if selections.len() == 1 && selections[0].len() == 1 {
+        let selection = selections[0];
+        // Cap the search at roughly 1k bytes around the cursor.
+        let lookaround = 1000;
+        let pos = text.char_to_byte(selection.cursor(text));
+        let search_start = text
+            .line_to_byte(text.byte_to_line(pos))
+            .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
+        let search_end = text
+            .line_to_byte(text.byte_to_line(pos) + 1)
+            .min(text.ceil_char_boundary(pos + lookaround));
+        let search_range = text.byte_slice(search_start..search_end);
+        // We also allow paths that are next to the cursor (can be ambiguous but
+        // rarely so in practice) so that gf on quoted/braced paths works (not sure about this
+        // but apparently that is how gf has worked historically in helix).
+        let path = find_paths(search_range, true)
+            .take_while(|range| search_start + range.start <= pos + 1)
+            .find(|range| pos <= search_start + range.end)
+            .map(|range| Cow::from(search_range.byte_slice(range)));
+        log::debug!("goto_file auto-detected path: {path:?}");
+        let path = path.unwrap_or_else(|| selection.fragment(text));
+        vec![path.into_owned()]
+    } else {
+        // Otherwise use each selection, trimmed.
+        selections
+            .iter()
+            .map(|range| range.fragment(text).trim().to_owned())
+            .filter(|sel| !sel.is_empty())
+            .collect()
+    }
+}
+
+fn resolved_document_link_target(
+    result: helix_lsp::Result<helix_lsp::lsp::DocumentLink>,
+) -> Option<Url> {
+    match result {
+        Ok(link) => link.target,
+        Err(err) => {
+            log::warn!("Failed to resolve document link: {err}");
+            None
+        }
+    }
+}
+
+fn document_link_request_index<K, F>(
+    indices: &mut HashMap<K, Option<usize>>,
+    requests: &mut Vec<F>,
+    key: K,
+    request: impl FnOnce() -> Option<F>,
+) -> Option<usize>
+where
+    K: Eq + Hash,
+{
+    if let Some(&index) = indices.get(&key) {
+        return index;
+    }
+
+    let index = request().map(|request| {
+        let index = requests.len();
+        requests.push(request);
+        index
+    });
+    indices.insert(key, index);
+    index
+}
+
+fn resolved_document_link_actions(
+    resolved_targets: &[Option<Url>],
+    groups: impl IntoIterator<Item = (Vec<usize>, Vec<String>)>,
+    mut seen_targets: HashSet<Url>,
+) -> (Vec<Url>, Vec<String>) {
+    let mut targets = Vec::new();
+    let mut fallback_paths = Vec::new();
+    let mut seen_fallback_paths = HashSet::new();
+
+    for (indices, group_fallback_paths) in groups {
+        let mut group_has_target = false;
+        for index in indices {
+            if let Some(target) = resolved_targets.get(index).and_then(Option::as_ref) {
+                group_has_target = true;
+                if seen_targets.insert(target.clone()) {
+                    targets.push(target.clone());
+                }
+            }
+        }
+
+        if !group_has_target {
+            for path in group_fallback_paths {
+                if seen_fallback_paths.insert(path.clone()) {
+                    fallback_paths.push(path);
+                }
+            }
+        }
+    }
+
+    (targets, fallback_paths)
+}
+
+#[cfg(test)]
+mod goto_file_document_link_tests {
+    use super::*;
+
+    fn document_link(target: Option<Url>) -> helix_lsp::lsp::DocumentLink {
+        helix_lsp::lsp::DocumentLink {
+            range: Default::default(),
+            target,
+            tooltip: None,
+            data: None,
+        }
+    }
+
+    #[test]
+    fn resolution_error_uses_fallback() {
+        let resolved = [resolved_document_link_target(Err(
+            helix_lsp::Error::Unhandled,
+        ))];
+        let (targets, fallback) = resolved_document_link_actions(
+            &resolved,
+            [(vec![0], vec!["fallback.rs".to_owned()])],
+            HashSet::new(),
+        );
+
+        assert!(targets.is_empty());
+        assert_eq!(fallback, ["fallback.rs"]);
+    }
+
+    #[test]
+    fn resolved_link_without_target_uses_fallback() {
+        let resolved = [resolved_document_link_target(Ok(document_link(None)))];
+        let (targets, fallback) = resolved_document_link_actions(
+            &resolved,
+            [(vec![0], vec!["fallback.rs".to_owned()])],
+            HashSet::new(),
+        );
+
+        assert!(targets.is_empty());
+        assert_eq!(fallback, ["fallback.rs"]);
+    }
+
+    #[test]
+    fn valid_resolved_target_takes_precedence_and_is_deduplicated() {
+        let target = Url::parse("file:///target.rs").unwrap();
+        let resolved = [
+            Some(target.clone()),
+            Some(target.clone()),
+            resolved_document_link_target(Err(helix_lsp::Error::Unhandled)),
+        ];
+        let groups = [
+            (vec![0, 2], vec!["fallback.rs".to_owned()]),
+            (vec![1], vec!["other.rs".to_owned()]),
+        ];
+        let (targets, fallback) = resolved_document_link_actions(&resolved, groups, HashSet::new());
+
+        assert_eq!(targets, [target]);
+        assert!(fallback.is_empty());
+    }
+
+    #[test]
+    fn shared_unresolved_link_falls_back_once_across_selections() {
+        let resolved = [None];
+        let groups = [
+            (vec![0], vec!["fallback.rs".to_owned()]),
+            (vec![0], vec!["fallback.rs".to_owned()]),
+        ];
+        let (targets, fallback) = resolved_document_link_actions(&resolved, groups, HashSet::new());
+
+        assert!(targets.is_empty());
+        assert_eq!(fallback, ["fallback.rs"]);
+    }
+
+    #[test]
+    fn one_valid_target_suppresses_fallback_for_mixed_unresolved_links() {
+        let target = Url::parse("file:///target.rs").unwrap();
+        let resolved = [None, Some(target.clone())];
+        let (targets, fallback) = resolved_document_link_actions(
+            &resolved,
+            [(vec![0, 1], vec!["fallback.rs".to_owned()])],
+            HashSet::new(),
+        );
+
+        assert_eq!(targets, [target]);
+        assert!(fallback.is_empty());
+    }
+
+    #[test]
+    fn direct_target_group_does_not_fallback_when_resolution_fails() {
+        let resolved = [None];
+        let (targets, fallback) =
+            resolved_document_link_actions(&resolved, [(vec![0], Vec::new())], HashSet::new());
+
+        assert!(targets.is_empty());
+        assert!(fallback.is_empty());
+    }
+
+    #[test]
+    fn request_planner_creates_one_request_per_link_key() {
+        let mut indices = HashMap::new();
+        let mut requests = Vec::new();
+        let mut created = 0;
+        let mut unavailable_checked = 0;
+
+        let unavailable =
+            document_link_request_index(&mut indices, &mut requests, "unavailable", || {
+                unavailable_checked += 1;
+                None
+            });
+        let unavailable_again =
+            document_link_request_index(&mut indices, &mut requests, "unavailable", || {
+                unavailable_checked += 1;
+                Some("phantom")
+            });
+
+        let first = document_link_request_index(&mut indices, &mut requests, "link", || {
+            created += 1;
+            Some("request")
+        });
+        let second = document_link_request_index(&mut indices, &mut requests, "link", || {
+            created += 1;
+            Some("duplicate")
+        });
+
+        assert_eq!(unavailable, None);
+        assert_eq!(unavailable_again, None);
+        assert_eq!(unavailable_checked, 1);
+        assert_eq!(first, Some(0));
+        assert_eq!(second, first);
+        assert_eq!(created, 1);
+        assert_eq!(requests, ["request"]);
+    }
+
+    #[test]
+    fn direct_target_is_not_reopened_after_resolution() {
+        let target = Url::parse("file:///target.rs").unwrap();
+        let resolved = [Some(target.clone())];
+        let seen_targets = HashSet::from([target]);
+        let (targets, fallback) = resolved_document_link_actions(
+            &resolved,
+            [(vec![0], vec!["fallback.rs".to_owned()])],
+            seen_targets,
+        );
+
+        assert!(targets.is_empty());
+        assert!(fallback.is_empty());
+    }
+}
+
 /// Goto files/URLs in selection.
 ///
 /// Prefers LSP document links when the cursor/selection overlaps a link range,
@@ -1395,32 +1644,53 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
     let mut lsp_targets = Vec::new();
     let mut lsp_targets_seen = HashSet::new();
-    let mut unresolved_links = HashSet::new();
+    let mut unresolved_link_indices = HashMap::new();
     let mut resolve_requests = Vec::new();
+    let mut resolve_groups = Vec::new();
     let mut fallback_ranges = Vec::new();
 
     if doc.document_links.is_empty() {
         fallback_ranges.extend_from_slice(&selections);
     } else {
         for selection in &selections {
-            let mut matched = false;
+            let mut matched_target = false;
+            let mut resolve_indices = Vec::new();
+            let mut resolve_indices_seen = HashSet::new();
             for link in &doc.document_links {
                 if !selection_overlaps_document_link(selection, link) {
                     continue;
                 }
-                matched = true;
                 if let Some(target) = link.link.target.clone() {
+                    matched_target = true;
                     if lsp_targets_seen.insert(target.clone()) {
                         lsp_targets.push(target);
                     }
-                } else if unresolved_links.insert((link.start, link.end, link.language_server_id)) {
-                    if let Some(request) = resolve_document_link_request(cx.editor, link) {
-                        resolve_requests.push(request);
+                } else {
+                    let key = (link.start, link.end, link.language_server_id);
+                    if let Some(index) = document_link_request_index(
+                        &mut unresolved_link_indices,
+                        &mut resolve_requests,
+                        key,
+                        || resolve_document_link_request(cx.editor, link),
+                    ) {
+                        if resolve_indices_seen.insert(index) {
+                            resolve_indices.push(index);
+                        }
                     }
                 }
             }
-            if !matched {
-                fallback_ranges.push(*selection);
+
+            if resolve_indices.is_empty() {
+                if !matched_target {
+                    fallback_ranges.push(*selection);
+                }
+            } else {
+                let fallback_paths = if matched_target {
+                    Vec::new()
+                } else {
+                    goto_file_fallback_paths(text, std::slice::from_ref(selection))
+                };
+                resolve_groups.push((resolve_indices, fallback_paths));
             }
         }
     }
@@ -1429,71 +1699,44 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         open_url(cx, target, action);
     }
 
-    if !resolve_requests.is_empty() {
+    let unresolved_fallback_paths = if resolve_requests.is_empty() {
+        let (_, fallback_paths) =
+            resolved_document_link_actions(&[], resolve_groups, lsp_targets_seen.clone());
+        fallback_paths
+    } else {
         let rel_path = rel_path.clone();
+        let seen_targets = lsp_targets_seen.clone();
         cx.jobs.callback(async move {
-            let mut targets = Vec::new();
-            let mut seen = HashSet::new();
+            let mut resolved_targets = Vec::with_capacity(resolve_requests.len());
 
             // Resolve links off the main thread, then hand the resulting URLs
             // back to the editor/compositor callback once all requests finish.
             for request in resolve_requests {
-                match request.await {
-                    Ok(link) => {
-                        if let Some(target) = link.target {
-                            if seen.insert(target.clone()) {
-                                targets.push(target);
-                            }
-                        }
-                    }
-                    Err(err) => log::warn!("Failed to resolve document link: {err}"),
-                }
+                resolved_targets.push(resolved_document_link_target(request.await));
             }
+            let (targets, fallback_paths) =
+                resolved_document_link_actions(&resolved_targets, resolve_groups, seen_targets);
 
             Ok(Callback::EditorCompositor(Box::new(
                 move |editor, compositor| {
                     for target in targets {
                         open_url_in_callback(editor, compositor, target, action, &rel_path);
                     }
+                    for path in fallback_paths {
+                        open_fallback_path_in_callback(editor, compositor, path, action, &rel_path);
+                    }
                 },
             )))
         });
-    }
+        Vec::new()
+    };
 
-    if fallback_ranges.is_empty() {
+    if fallback_ranges.is_empty() && unresolved_fallback_paths.is_empty() {
         return;
     }
 
-    let paths: Vec<_> = if fallback_ranges.len() == 1 && fallback_ranges[0].len() == 1 {
-        let selection = fallback_ranges[0];
-        // Cap the search at roughly 1k bytes around the cursor.
-        let lookaround = 1000;
-        let pos = text.char_to_byte(selection.cursor(text));
-        let search_start = text
-            .line_to_byte(text.byte_to_line(pos))
-            .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
-        let search_end = text
-            .line_to_byte(text.byte_to_line(pos) + 1)
-            .min(text.ceil_char_boundary(pos + lookaround));
-        let search_range = text.byte_slice(search_start..search_end);
-        // we also allow paths that are next to the cursor (can be ambiguous but
-        // rarely so in practice) so that gf on quoted/braced path works (not sure about this
-        // but apparently that is how gf has worked historically in helix)
-        let path = find_paths(search_range, true)
-            .take_while(|range| search_start + range.start <= pos + 1)
-            .find(|range| pos <= search_start + range.end)
-            .map(|range| Cow::from(search_range.byte_slice(range)));
-        log::debug!("goto_file auto-detected path: {path:?}");
-        let path = path.unwrap_or_else(|| selection.fragment(text));
-        vec![path.into_owned()]
-    } else {
-        // Otherwise use each selection, trimmed.
-        fallback_ranges
-            .iter()
-            .map(|range| range.fragment(text).trim().to_owned())
-            .filter(|sel| !sel.is_empty())
-            .collect()
-    };
+    let mut paths = goto_file_fallback_paths(text, &fallback_ranges);
+    paths.extend(unresolved_fallback_paths);
 
     for sel in paths {
         if let Ok(url) = Url::parse(&sel) {
@@ -1509,6 +1752,28 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
+    }
+}
+
+fn open_fallback_path_in_callback(
+    editor: &mut Editor,
+    compositor: &mut Compositor,
+    path_or_url: String,
+    action: Action,
+    rel_path: &Path,
+) {
+    if let Ok(url) = Url::parse(&path_or_url) {
+        open_url_in_callback(editor, compositor, url, action, rel_path);
+        return;
+    }
+
+    let path = path::expand(&path_or_url);
+    let path = &rel_path.join(path);
+    if path.is_dir() {
+        let picker = ui::file_picker(editor, path.into());
+        compositor.push(Box::new(overlaid(picker)));
+    } else if let Err(e) = editor.open(path, action) {
+        editor.set_error(format!("Open file failed: {:?}", e));
     }
 }
 
