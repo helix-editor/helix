@@ -4,6 +4,8 @@ use std::{fmt, sync::Arc};
 pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
 
+use crate::Selection;
+
 /// Describes the severity level of a [`Diagnostic`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -94,5 +96,15 @@ impl Diagnostic {
     #[inline]
     pub fn severity(&self) -> Severity {
         self.severity.unwrap_or(Severity::Warning)
+    }
+
+    /// Returns a single selection spanning the range of the diagnostic.
+    pub fn single_selection(&self) -> Selection {
+        Selection::single(self.range.start, self.range.end)
+    }
+
+    /// Returns a single reversed selection spanning the range of the diagnostic.
+    pub fn single_selection_rev(&self) -> Selection {
+        Selection::single(self.range.end, self.range.start)
     }
 }
