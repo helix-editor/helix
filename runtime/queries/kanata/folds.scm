@@ -1,0 +1,9 @@
+(defcfg)       @fold
+(defsrc)       @fold
+(deflayer)     @fold
+(deflayermap)  @fold
+(defalias)     @fold
+(defvar)       @fold
+(deflocalkeys) @fold
+(list)         @fold
+(block_comment) @fold
