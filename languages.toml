@@ -19,6 +19,7 @@ beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 biome-lsp-proxy = { command = "biome", args = ["lsp-proxy"] }
 bitbake-language-server = { command = "bitbake-language-server" }
+brim = { command = "brim", args = ["lsp"] }
 buck2 = { command = "buck2", args = ["lsp"] }
 buf = { command = "buf", args = ["lsp", "serve", "--timeout", "0"] }
 c3-lsp = { command = "c3-lsp" }
@@ -5655,3 +5656,17 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "brim"
+scope = "source.brim"
+injection-regex = "brim"
+file-types = ["brim"]
+roots = ["brim.toml"]
+comment-tokens = ["//"]
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["brim"]
+
+[[grammar]]
+name = "brim"
+source = { git = "https://github.com/ordnary-com/brim", rev = "f6a9f47987439e15f2d1ce48e086918cc051dd28", subpath = "editors/tree-sitter-brim" }

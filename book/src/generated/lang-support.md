@@ -18,6 +18,7 @@
 | blade | ✓ | ✓ |  |  | ✓ |  |
 | blueprint | ✓ |  |  |  |  | `blueprint-compiler` |
 | bovex |  |  |  |  |  |  |
+| brim | ✓ | ✓ | ✓ | ✓ | ✓ | `brim` |
 | c | ✓ | ✓ | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ | ✓ | ✓ | ✓ | `roslyn-language-server`, `OmniSharp`, `csharp-ls` |
 | c3 | ✓ |  |  |  |  | `c3-lsp` |
