@@ -2942,6 +2942,19 @@ formatter = { command = "cljfmt", args = ["fix", "-"] }
 [[grammar]]
 name = "clojure"
 source = { git = "https://github.com/sogaiu/tree-sitter-clojure", rev = "e43eff80d17cf34852dcd92ca5e6986d23a7040f" }
+[[language]]
+name = "clean"
+scope = "source.clean"
+injection-regex = "clean"
+file-types = ["icl", "dcl"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "clean"
+source = { git = "https://github.com/ishaq2321/tree-sitter-clean", rev = "2b0fe49" }
+
 
 [[language]]
 name = "starlark"
