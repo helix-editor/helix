@@ -4361,7 +4361,7 @@ pub mod insert {
             auto_pairs
                 .as_ref()
                 .and_then(|ap| {
-                    auto_pairs::hook_insert(text, range, c, ap)
+                    auto_pairs::hook_insert(text, range, c, ap, cx.editor.config.load().auto_pairs_overtype)
                         .map(|(change, range)| (change, Some(range)))
                         .or_else(|| Some(insert_char(*range, c)))
                 })
