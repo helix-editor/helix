@@ -373,6 +373,7 @@ impl Tree {
             match &mut node.content {
                 Content::View(view) => {
                     // debug!!("setting view area {:?}", area);
+                    view.container_area = self.area;
                     view.area = area;
                 } // TODO: call f()
                 Content::Container(container) => {
