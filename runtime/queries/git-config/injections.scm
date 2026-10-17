@@ -13,3 +13,19 @@
  (name) @_var (#any-of? @_var "xfuncname" "wordRegex")
  value: (string) @injection.content
  (#set! injection.language "regex"))
+
+((section_header (section_name) @markup.heading)
+ (#eq? @markup.heading "alias")
+ (variable (name)
+  value: (string) @injection.content
+   (#match? @injection.content "(?s)(^\"!.*\"$)|(^!)")
+  (#set! injection.language "bash"))
+)
+
+(variable
+ (name) @_var (#eq? @_var "helper")
+ value: (string) @injection.content
+  (#match? @injection.content "(?s)(^\"!.*\"$)|(^!)")
+ (#set! injection.language "bash"))
+
+; TODO: missing `*.cmd` sections
