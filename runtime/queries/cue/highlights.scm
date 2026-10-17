@@ -35,6 +35,10 @@
 ; Keywords
 "let" @keyword
 
+"func" @keyword.function
+
+["try" "else" "otherwise" "fallback"] @keyword.control.conditional
+
 "in" @keyword.operator
 
 ; Operators
@@ -57,6 +61,7 @@
   "!~"
   "!"
   "="
+  "->"
 ] @operator
 
 ; Fields & Properties
@@ -69,6 +74,12 @@
   (identifier) @variable.other.member)
 
 ; Functions
+(parameter
+  name: (identifier) @variable.parameter)
+
+(labeled_argument
+  label: (identifier) @variable.parameter)
+
 (call_expression
   function: (identifier) @function)
 
@@ -117,6 +128,15 @@
   "?"
 ] @punctuation.special
 
+(spread_expression
+  "..." @punctuation.special)
+
+(list_lit
+  "#" @punctuation.special)
+
+(struct_lit
+  "#" @punctuation.special)
+
 ; Literals
 (string) @string
 
@@ -129,9 +149,7 @@
 
 (float) @constant.numeric.float
 
-(si_unit
-  (float)
-  (_) @string.special.symbol)
+(multiplier) @string.special.symbol
 
 (boolean) @constant.builtin.boolean
 
