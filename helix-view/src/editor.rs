@@ -1343,9 +1343,24 @@ pub struct Editor {
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
     pub workspace_trust: WorkspaceTrust,
+    /// Set by the frontend. Used to run programs which need to take over the terminal.
+    pub terminal_handoff: Option<std::rc::Rc<dyn TerminalHandoff>>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
+
+/// Implemented by the frontend to lend the terminal to a child process.
+///
+/// This is what allows interactive programs (file managers, git clients, ...) to be run from
+/// within the editor: see `Editor::run_blocking_shell`.
+pub trait TerminalHandoff {
+    /// Releases the terminal, runs `command` to completion and then reclaims the terminal,
+    /// scheduling a full redraw.
+    ///
+    /// The child's standard input and error streams must refer to the terminal. Its standard
+    /// output is whatever the caller configured on `command`.
+    fn run(&self, command: &mut std::process::Command) -> std::io::Result<std::process::Output>;
+}
 
 #[derive(Debug)]
 pub enum EditorEvent {
@@ -1468,7 +1483,43 @@ impl Editor {
             cursor_cache: CursorCache::default(),
             dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
             workspace_trust,
+            terminal_handoff: None,
         }
+    }
+
+    /// Runs `command` with the configured shell, giving it exclusive use of the terminal until
+    /// it exits.
+    ///
+    /// The child inherits the editor's standard input and error streams. When `capture_stdout`
+    /// is true its standard output is captured and returned in the `Output`, otherwise it is
+    /// inherited too. The editor is blocked for as long as the child runs.
+    pub fn run_blocking_shell(
+        &self,
+        command: &str,
+        capture_stdout: bool,
+    ) -> anyhow::Result<std::process::Output> {
+        use std::process::{Command, Stdio};
+
+        let Some(handoff) = self.terminal_handoff.clone() else {
+            bail!("blocking shell commands are not supported by this frontend");
+        };
+
+        let shell = self.config().shell.clone();
+        let mut process = Command::new(&shell[0]);
+        process
+            .args(&shell[1..])
+            .arg(command)
+            .stdin(Stdio::inherit())
+            .stdout(if capture_stdout {
+                Stdio::piped()
+            } else {
+                Stdio::inherit()
+            })
+            .stderr(Stdio::inherit());
+
+        handoff
+            .run(&mut process)
+            .map_err(|err| anyhow!("failed to run `{command}`: {err}"))
     }
 
     pub fn popup_border(&self) -> bool {

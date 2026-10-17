@@ -11,6 +11,7 @@ pub mod health;
 pub mod job;
 pub mod keymap;
 pub mod logging;
+pub mod terminal_handoff;
 pub mod ui;
 
 #[cfg(not(windows))]
