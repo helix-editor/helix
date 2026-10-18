@@ -57,6 +57,7 @@ impl<B: Backend> TerminalHandoff for Handoff<B> {
         // the event loop, which is the only thing that polls the terminal's event stream.
         terminal.backend_mut().show_cursor(CursorKind::Block).ok();
         terminal.restore()?;
+        sys::blank_screen();
 
         let output = sys::run(command);
 
@@ -119,6 +120,15 @@ mod sys {
                 // SAFETY: restores the action returned by `sigaction` above.
                 unsafe { libc::sigaction(*signal, old, std::ptr::null_mut()) };
             }
+        }
+    }
+
+    /// Switches to a cleared alternate screen. Best effort.
+    pub fn blank_screen() {
+        use std::io::Write;
+
+        if let Ok(mut tty) = File::options().write(true).open("/dev/tty") {
+            let _ = tty.write_all(b"\x1b[?1049h\x1b[2J\x1b[H");
         }
     }
 
@@ -199,6 +209,8 @@ mod sys {
         io,
         process::{Command, Output},
     };
+
+    pub fn blank_screen() {}
 
     pub fn run(command: &mut Command) -> io::Result<Output> {
         command.spawn()?.wait_with_output()
