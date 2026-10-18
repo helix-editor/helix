@@ -17,25 +17,33 @@ fn request_document_highlights(editor: &mut Editor, doc_id: DocumentId, view_id:
         return;
     }
 
+    if editor.tree.try_get(view_id).is_none() {
+        return;
+    }
+
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
 
-    doc.ensure_view_init(view_id);
-
-    let Some(language_server) = doc
-        .language_servers_with_feature(LanguageServerFeature::DocumentHighlight)
-        .next()
-    else {
+    if !doc.has_language_server_with_feature(LanguageServerFeature::DocumentHighlight) {
         doc.clear_document_highlights(view_id);
         return;
-    };
+    }
 
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view_id, offset_encoding);
-    let Some(future) =
-        language_server.text_document_document_highlight(doc.identifier(), pos, None)
-    else {
+    doc.ensure_view_init(view_id);
+    let Some((offset_encoding, future)) = (match doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentHighlight)
+        .next()
+    {
+        Some(language_server) => {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view_id, offset_encoding);
+            language_server
+                .text_document_document_highlight(doc.identifier(), pos, None)
+                .map(|future| (offset_encoding, future))
+        }
+        None => None,
+    }) else {
         doc.clear_document_highlights(view_id);
         return;
     };
@@ -109,6 +117,10 @@ fn apply_document_highlights(
         return;
     }
 
+    if editor.tree.try_get(view_id).is_none() {
+        return;
+    }
+
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
@@ -128,7 +140,11 @@ fn apply_document_highlights(
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut SelectionDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_document_highlight {
+        if event.doc.config.load().lsp.auto_document_highlight
+            && event
+                .doc
+                .has_language_server_with_feature(LanguageServerFeature::DocumentHighlight)
+        {
             let doc_id = event.doc.id();
             let view_id = event.view;
             job::dispatch_blocking(move |editor, _| {
@@ -151,7 +167,12 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     });
 
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        if event.doc.config.load().lsp.auto_document_highlight && !event.ghost_transaction {
+        if event.doc.config.load().lsp.auto_document_highlight
+            && !event.ghost_transaction
+            && event
+                .doc
+                .has_language_server_with_feature(LanguageServerFeature::DocumentHighlight)
+        {
             let doc_id = event.doc.id();
             let view_id = event.view;
             job::dispatch_blocking(move |editor, _| {
