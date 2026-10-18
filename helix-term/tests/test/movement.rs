@@ -833,9 +833,9 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
     test_with_config(
         AppBuilder::new().with_file("foo.html", None),
         (
-            "<script>let #[|x]# = 1;</script>",
+            "<script>let x #[|=]# 1;</script>",
             "<A-p>",
-            "<script>#[|let]# x = 1;</script>",
+            "<script>let #[|x]# = 1;</script>",
         ),
     )
     .await?;
