@@ -133,7 +133,10 @@ impl Url {
     /// Convert a `file://` URI back to a filesystem path.
     #[allow(clippy::result_unit_err)]
     pub fn to_file_path(&self) -> Result<PathBuf, ()> {
-        if self.scheme() != "file" {
+        // Schemes are case-insensitive (RFC3986 §3.1), so accept any casing.
+        // The scheme is `file`, so it is always 5 bytes (`file:`) regardless of
+        // case, which keeps the slice below valid.
+        if !self.scheme().eq_ignore_ascii_case("file") {
             return Err(());
         }
         let rest = self.0["file:".len()..].strip_prefix("//").ok_or(())?;
@@ -330,6 +333,21 @@ mod tests {
     #[test]
     fn non_file_scheme_has_no_path() {
         assert!(Url::parse("untitled:foo").unwrap().to_file_path().is_err());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn to_file_path_accepts_uppercase_scheme() {
+        // Schemes are case-insensitive (RFC3986 §3.1); the `url` crate lowercased
+        // them on parse, so a mixed-case `file` scheme must still resolve.
+        for uri in ["FILE:///home/user/x.rs", "File:///home/user/x.rs"] {
+            let url = Url::parse(uri).unwrap();
+            assert_eq!(
+                url.to_file_path().unwrap(),
+                PathBuf::from("/home/user/x.rs"),
+                "{uri}"
+            );
+        }
     }
 
     #[test]
