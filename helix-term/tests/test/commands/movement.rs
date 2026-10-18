@@ -593,6 +593,16 @@ async fn select_all_siblings() -> anyhow::Result<()> {
                 ]|]#;
             "##},
         ),
+        // select siblings based on nearest parent with named children
+        (
+            indoc! {r##"
+                let foo = bar(*#[a|]#, b, c);
+            "##},
+            "<A-a>",
+            indoc! {r##"
+                let foo = bar(#[*a|]#, #(b|)#, #(c|)#);
+            "##},
+        ),
     ];
 
     for test in tests {
