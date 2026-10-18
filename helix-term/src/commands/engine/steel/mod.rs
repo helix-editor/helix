@@ -68,7 +68,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Mutex, MutexGuard, RwLock, RwLockReadGuard, Weak,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use std::{str::FromStr as _, sync::Arc};
 
@@ -1482,6 +1482,13 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
             "editor-document-last-saved",
             |cx: &mut Context, doc: DocumentId| -> Option<SystemTime> {
                 cx.editor.documents.get(&doc).map(|x| x.last_saved_time())
+            },
+        )
+        .register_fn_with_ctx(
+            CTX,
+            "editor-document-focused-at",
+            |cx: &mut Context, doc: DocumentId| -> Option<Instant> {
+                cx.editor.documents.get(&doc).map(|x| x.focused_at)
             },
         )
         .register_fn_with_ctx(CTX, "editor-document->language", cx_get_document_language)

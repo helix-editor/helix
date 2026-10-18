@@ -283,6 +283,22 @@
 ;;Check when a document was last saved (returns a `SystemTime`)
 (define editor-document-last-saved helix.editor-document-last-saved)
 
+(provide editor-document-focused-at)
+;;@doc
+;;Check when a document last had focus (returns an `Instant`).
+;;
+;;Pass it to `instant/elapsed` from `steel/time` to get how long ago that was,
+;;which is what sorting buffers most-recently-used needs.
+;;
+;;```scheme
+;;(define (most-recently-used)
+;;  (sort (editor-all-documents)
+;;        (lambda (a b)
+;;          (< (duration->millis (instant/elapsed (editor-document-focused-at a)))
+;;             (duration->millis (instant/elapsed (editor-document-focused-at b)))))))
+;;```
+(define editor-document-focused-at helix.editor-document-focused-at)
+
 (provide editor-document->language)
 ;;@doc
 ;;Get the language for the document
