@@ -562,16 +562,32 @@ pub fn dap_variables(cx: &mut Context) {
     let scope_style = theme.get("ui.linenr.selected");
     let type_style = theme.get("ui.text");
     let text_style = theme.get("ui.text.focus");
+    let inactive_style = theme.get("ui.text.inactive");
 
     for scope in scopes.iter() {
         // use helix_view::graphics::Style;
         use tui::text::Span;
-        let response = block_on(debugger.variables(scope.variables_reference));
 
         variables.push(Spans::from(Span::styled(
             format!("▸ {}", scope.name),
             scope_style,
         )));
+
+        // The adapter marked this scope `expensive`, meaning resolving its
+        // variables can be arbitrarily slow or hang entirely (e.g. a
+        // JavaScript "Global" scope). `debugger.variables` is awaited via
+        // `block_on` below, which would freeze the whole editor if the
+        // adapter never responds, so these scopes are skipped rather than
+        // fetched automatically.
+        if scope.expensive {
+            variables.push(Spans::from(Span::styled(
+                "  <expensive scope, not fetched>".to_string(),
+                inactive_style,
+            )));
+            continue;
+        }
+
+        let response = block_on(debugger.variables(scope.variables_reference));
 
         if let Ok(vars) = response {
             variables.reserve(vars.len());
