@@ -394,18 +394,24 @@ pub mod requests {
     #[derive(Debug)]
     pub enum Launch {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct LaunchResponse {}
+
     impl Request for Launch {
         type Arguments = Value;
-        type Result = ();
+        type Result = Option<LaunchResponse>;
         const COMMAND: &'static str = "launch";
     }
 
     #[derive(Debug)]
     pub enum Attach {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct AttachResponse {}
+
     impl Request for Attach {
         type Arguments = Value;
-        type Result = ();
+        type Result = Option<AttachResponse>;
         const COMMAND: &'static str = "attach";
     }
 
@@ -423,18 +429,24 @@ pub mod requests {
     #[derive(Debug)]
     pub enum Restart {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct RestartResponse {}
+
     impl Request for Restart {
         type Arguments = Value;
-        type Result = ();
+        type Result = Option<RestartResponse>;
         const COMMAND: &'static str = "restart";
     }
 
     #[derive(Debug)]
     pub enum Disconnect {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct DisconnectResponse {}
+
     impl Request for Disconnect {
         type Arguments = Option<DisconnectArguments>;
-        type Result = ();
+        type Result = Option<DisconnectResponse>;
         const COMMAND: &'static str = "disconnect";
     }
 
@@ -447,18 +459,24 @@ pub mod requests {
     #[derive(Debug)]
     pub enum Terminate {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct TerminateResponse {}
+
     impl Request for Terminate {
         type Arguments = Option<TerminateArguments>;
-        type Result = ();
+        type Result = Option<TerminateResponse>;
         const COMMAND: &'static str = "terminate";
     }
 
     #[derive(Debug)]
     pub enum ConfigurationDone {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct ConfigurationDoneResponse {}
+
     impl Request for ConfigurationDone {
         type Arguments = Option<ConfigurationDoneArguments>;
-        type Result = ();
+        type Result = Option<ConfigurationDoneResponse>;
         const COMMAND: &'static str = "configurationDone";
     }
 
@@ -624,9 +642,12 @@ pub mod requests {
     #[derive(Debug)]
     pub enum StepIn {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct StepInResponse {}
+
     impl Request for StepIn {
         type Arguments = StepInArguments;
-        type Result = ();
+        type Result = Option<StepInResponse>;
         const COMMAND: &'static str = "stepIn";
     }
 
@@ -641,9 +662,12 @@ pub mod requests {
     #[derive(Debug)]
     pub enum StepOut {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct StepOutResponse {}
+
     impl Request for StepOut {
         type Arguments = StepOutArguments;
-        type Result = ();
+        type Result = Option<StepOutResponse>;
         const COMMAND: &'static str = "stepOut";
     }
 
@@ -658,9 +682,12 @@ pub mod requests {
     #[derive(Debug)]
     pub enum Next {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct NextResponse {}
+
     impl Request for Next {
         type Arguments = NextArguments;
-        type Result = ();
+        type Result = Option<NextResponse>;
         const COMMAND: &'static str = "next";
     }
 
@@ -673,9 +700,12 @@ pub mod requests {
     #[derive(Debug)]
     pub enum Pause {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct PauseResponse {}
+
     impl Request for Pause {
         type Arguments = PauseArguments;
-        type Result = ();
+        type Result = Option<PauseResponse>;
         const COMMAND: &'static str = "pause";
     }
 
@@ -783,9 +813,12 @@ pub mod requests {
     #[derive(Debug)]
     pub enum StartDebugging {}
 
+    #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    pub struct StartDebuggingResponse {}
+
     impl Request for StartDebugging {
         type Arguments = StartDebuggingArguments;
-        type Result = ();
+        type Result = Option<StartDebuggingResponse>;
         const COMMAND: &'static str = "startDebugging";
     }
 }
@@ -1104,4 +1137,15 @@ fn test_deserialize_module_id_from_string() {
     let raw = r#"{"id": "0", "name": "Name"}"#;
     let module: Module = serde_json::from_str(raw).expect("Error!");
     assert_eq!(module.id, "0");
+}
+
+#[test]
+fn test_deserialize_configuration_done_response() {
+    let response: <requests::ConfigurationDone as Request>::Result =
+        serde_json::from_str("null").unwrap();
+    assert_eq!(response, None);
+
+    let response: <requests::ConfigurationDone as Request>::Result =
+        serde_json::from_str("{}").unwrap();
+    assert_eq!(response, Some(requests::ConfigurationDoneResponse {}));
 }
