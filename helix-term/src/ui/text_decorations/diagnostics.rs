@@ -139,7 +139,7 @@ impl Renderer<'_, '_> {
         let text_fmt = self.config.text_fmt(text_col, self.renderer.viewport.width);
         let annotations = TextAnnotations::default();
         let formatter = DocumentFormatter::new_at_prev_checkpoint(
-            diag.message.as_str().trim().into(),
+            diag.message.trim().into(),
             &text_fmt,
             &annotations,
             0,

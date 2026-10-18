@@ -105,7 +105,7 @@ pub mod util {
         let code = match diag.code.clone() {
             Some(x) => match x {
                 NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
-                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
+                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x.into_string())),
             },
             None => None,
         };
@@ -131,11 +131,11 @@ pub mod util {
             range: range_to_lsp_range(doc, range, offset_encoding),
             severity,
             code,
-            source: diag.source.clone(),
-            message: diag.message.to_owned(),
+            source: diag.source.clone().map(|source| source.into_string()),
+            message: diag.message.clone().into_string(),
             related_information: None,
             tags,
-            data: diag.data.to_owned(),
+            data: diag.data.clone(),
             ..Default::default()
         }
     }
