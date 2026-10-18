@@ -1716,6 +1716,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "cassowary",
+ "criterion",
  "crossterm",
  "helix-core",
  "helix-view",
