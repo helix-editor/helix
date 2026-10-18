@@ -377,6 +377,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
             "w" => extend_to_word,
         },
+        "m" => { "Match"
+            "m" => extend_brackets,
+        },
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
