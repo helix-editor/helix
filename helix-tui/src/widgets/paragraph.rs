@@ -7,7 +7,7 @@ use crate::{
         Block, Widget,
     },
 };
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode;
 use helix_view::graphics::{Rect, Style};
 use std::iter;
 
@@ -214,7 +214,7 @@ impl Widget for Paragraph<'_> {
                             symbol
                         })
                         .set_style(*style);
-                    x += symbol.width() as u16;
+                    x += unicode::width(symbol) as u16;
                 }
             }
             y += 1;
