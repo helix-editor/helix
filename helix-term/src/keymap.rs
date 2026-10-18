@@ -174,10 +174,46 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         M: serde::de::MapAccess<'de>,
     {
         let mut mapping = IndexMap::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
+        let mut label = String::new();
+        let mut command: Option<String> = None;
+
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "label" => label = map.next_value::<String>()?,
+                "command" => command = Some(map.next_value::<String>()?),
+                _ => {
+                    let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
+                    let value = map.next_value::<KeyTrie>()?;
+                    mapping.insert(key_event, value);
+                }
+            }
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping)))
+
+        if let Some(cmd_str) = command {
+            let cmd = cmd_str
+                .parse::<MappableCommand>()
+                .map_err(serde::de::Error::custom)?;
+
+            let cmd = if !label.is_empty() {
+                match cmd {
+                    MappableCommand::Typable { name, args, .. } => MappableCommand::Typable {
+                        name,
+                        args,
+                        doc: label,
+                    },
+                    MappableCommand::Macro { keys, .. } => {
+                        MappableCommand::Macro { name: label, keys }
+                    }
+                    other => other,
+                }
+            } else {
+                cmd
+            };
+
+            Ok(KeyTrie::MappableCommand(cmd))
+        } else {
+            Ok(KeyTrie::Node(KeyTrieNode::new(&label, mapping)))
+        }
     }
 }
 
