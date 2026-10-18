@@ -5470,7 +5470,7 @@ comment-token = "#"
 
 [[grammar]]
 name = "gnuplot"
-source = { git = "https://codeberg.org/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
+source = { git = "https://github.com/maribu/tree-sitter-gnuplot", rev = "21a3a3929facb964b3592daeb69119294ff84cf2" }
 
 [[language]]
 name = "ebnf"
