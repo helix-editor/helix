@@ -842,3 +842,31 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn append_mode_adjacent_selections() -> anyhow::Result<()> {
+    // Appending to adjacent single-character selections must place a cursor
+    // after each rather than collapsing them into a single cursor.
+    // https://github.com/helix-editor/helix/issues/15627
+    test((
+        "#[a|]##(b|)#
+",
+        "aX<esc>",
+        "#[aX|]#bX#(
+|)#",
+    ))
+    .await?;
+
+    // A single selection is unaffected: the appended text is included in the
+    // resulting selection as before.
+    test((
+        "#[abc|]#
+",
+        "aX<esc>",
+        "#[abcX|]#
+",
+    ))
+    .await?;
+
+    Ok(())
+}
