@@ -695,7 +695,7 @@ impl Component for Prompt {
                                 if let Err(err) =
                                     cx.editor.registers.push(register, self.line.clone())
                                 {
-                                    cx.editor.set_error(err.to_string());
+                                    cx.editor.set_error(|| err.to_string());
                                 }
                             };
                         }
