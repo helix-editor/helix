@@ -400,12 +400,10 @@ impl Buffer {
     /// and that the whole run fits inside the buffer area.
     #[inline]
     pub fn set_tab(&mut self, x: u16, y: u16, tab: &str, style: Style) {
-        let mut index = self.index_of(x, y);
-        for (i, ch) in tab.char_indices() {
+        for (index, (i, ch)) in (self.index_of(x, y)..).zip(tab.char_indices()) {
             let cell = &mut self.content[index];
             cell.set_symbol_with_width(&tab[i..i + ch.len_utf8()], 1);
             cell.set_style(style);
-            index += 1;
         }
     }
 

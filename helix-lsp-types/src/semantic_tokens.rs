@@ -158,14 +158,15 @@ impl SemanticToken {
         D: serde::Deserializer<'de>,
     {
         let data = Vec::<u32>::deserialize(deserializer)?;
-        let chunks = data.chunks_exact(5);
+        let (chunks, remainder) = data.as_chunks::<5>();
 
-        if !chunks.remainder().is_empty() {
+        if !remainder.is_empty() {
             return Result::Err(serde::de::Error::custom("Length is not divisible by 5"));
         }
 
         Result::Ok(
             chunks
+                .iter()
                 .map(|chunk| SemanticToken {
                     delta_line: chunk[0],
                     delta_start: chunk[1],
