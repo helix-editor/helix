@@ -2685,6 +2685,22 @@ fn run_shell_command(
     Ok(())
 }
 
+fn run_shell_command_blocking(
+    cx: &mut compositor::Context,
+    args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let command = args.join(" ");
+    let output = cx.editor.run_blocking_shell(&command, false)?;
+    ensure!(output.status.success(), "{}", output.status);
+
+    Ok(())
+}
+
 fn reset_diff_change(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3975,6 +3991,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: SHELL_SIGNATURE,
     },
     TypableCommand {
+        name: "run-shell-command-blocking",
+        aliases: &["shb", "!!"],
+        doc: "Run a shell command with exclusive access to the terminal, for example a TUI",
+        fun: run_shell_command_blocking,
+        completer: SHELL_COMPLETER,
+        signature: SHELL_SIGNATURE,
+    },
+    TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
         doc: "Reset the diff change at the cursor position.",
@@ -4362,7 +4386,9 @@ pub fn complete_command_args(
                 .collect(),
             }
         }
-        TokenKind::Expand | TokenKind::Expansion(ExpansionKind::Shell) => {
+        TokenKind::Expand
+        | TokenKind::Expansion(ExpansionKind::Shell)
+        | TokenKind::Expansion(ExpansionKind::ShellBlocking) => {
             // See the comment about the checked sub expect above.
             let arg_completer = matches!(args.completion_state(), CompletionState::Positional)
                 .then(|| {
@@ -4472,7 +4498,7 @@ fn complete_expand(
                 TokenKind::Expansion(ExpansionKind::Variable) => {
                     return complete_variable_expansion(&token.content, local_offset);
                 }
-                TokenKind::Expansion(ExpansionKind::Shell) => {
+                TokenKind::Expansion(ExpansionKind::Shell | ExpansionKind::ShellBlocking) => {
                     return complete_expand(editor, &token, None, local_offset);
                 }
                 TokenKind::ExpansionKind => {

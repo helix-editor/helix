@@ -128,6 +128,9 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
         }
         TokenKind::Expand => expand_inner(editor, token.content),
         TokenKind::Expansion(ExpansionKind::Shell) => expand_shell(editor, token.content),
+        TokenKind::Expansion(ExpansionKind::ShellBlocking) => {
+            expand_shell_blocking(editor, token.content)
+        }
         TokenKind::Expansion(ExpansionKind::Register) => expand_register(editor, token.content),
         // Note: see the docs for this variant.
         TokenKind::ExpansionKind => unreachable!(
@@ -174,14 +177,41 @@ pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a
     }
 
     // Trim exactly one trailing line ending if it exists.
+    trim_trailing_line_ending(&mut text);
+
+    Ok(Cow::Owned(text))
+}
+
+/// Expand a shell command which takes over the terminal while it runs.
+///
+/// The command's standard output is what the expansion evaluates to. A non-zero exit status is
+/// an error, which aborts the command line the expansion is part of. That way cancelling out of
+/// a program (for example with `<C-c>` in `fzf`) doesn't run the command with an empty argument.
+pub fn expand_shell_blocking<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, str>> {
+    // Recursively expand the expansion's content before executing the shell command.
+    let content = expand_inner(editor, content)?;
+
+    let output = editor.run_blocking_shell(&content, true)?;
+    ensure!(
+        output.status.success(),
+        "`{content}` failed: {}",
+        output.status
+    );
+
+    let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+    trim_trailing_line_ending(&mut text);
+
+    Ok(Cow::Owned(text))
+}
+
+/// Trim exactly one trailing line ending if it exists.
+fn trim_trailing_line_ending(text: &mut String) {
     if text.ends_with('\n') {
         text.pop();
         if text.ends_with('\r') {
             text.pop();
         }
     }
-
-    Ok(Cow::Owned(text))
 }
 
 /// Expand a register's contents
