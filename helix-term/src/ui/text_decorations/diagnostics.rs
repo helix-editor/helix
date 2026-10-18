@@ -5,10 +5,11 @@ use helix_core::doc_formatter::{DocumentFormatter, FormattedGrapheme};
 use helix_core::graphemes::Grapheme;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{Diagnostic, Position};
+
 use helix_view::annotations::diagnostics::{
     DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
 };
-
+use helix_view::document::Mode;
 use helix_view::theme::Style;
 use helix_view::{Document, Theme};
 
@@ -56,7 +57,14 @@ impl<'a> InlineDiagnostics<'a> {
         cursor: usize,
         config: InlineDiagnosticsConfig,
         eol_diagnostics: DiagnosticFilter,
+        editor_mode: Mode,
     ) -> Self {
+        // Shadow the variable here to hide if user doesn't want to show the eol diagnostics.
+        // Value gets moved after this into the inline::new function, so we have to shadow here without a clone.
+        let eol_diagnostics = match (&config.hide_diag_when_inserting, editor_mode) {
+            (true, Mode::Insert) => DiagnosticFilter::Disable,
+            (_, _) => eol_diagnostics,
+        };
         InlineDiagnostics {
             state: InlineDiagnosticAccumulator::new(cursor, doc, config),
             styles: Styles::new(theme),
