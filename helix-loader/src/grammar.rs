@@ -390,7 +390,7 @@ impl VendoredGrammar {
         self.reinit(remote, object_format)?;
 
         git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
-        git(&self.dir, ["checkout", rev])?;
+        git(&self.dir, ["checkout", "FETCH_HEAD"])?;
 
         Ok(())
     }
