@@ -11,7 +11,7 @@ keyword = { fg = "#d85651" }
 'keyword.control.import' = { fg = "#d85651" }
 'keyword.control.retun' = { fg = "#d85651" }
 'keyword.control.exception' = { fg = "#d85651" }
-'keyword.directive' = { fg = "#ff938a" }  # -- preprocessor comments (#if in C)
+'keyword.directive' = { fg = "#ff938a" }           # -- preprocessor comments (#if in C)
 'keyword.operator' = { fg = "#d85651" }
 'keyword.function' = { fg = "#d85651" }
 'keyword.storage.type' = { fg = "#d85651" }
@@ -65,7 +65,7 @@ keyword = { fg = "#d85651" }
 'constant.numeric.float' = { fg = "#ff938a" }
 'constant.character.escape' = { fg = "#ff938a" }
 
-'label' = { fg = "#daaa3f" }  # used for lifetimes, .class, #id in CSS, etc.
+'label' = { fg = "#daaa3f" }       # used for lifetimes, .class, #id in CSS, etc.
 'tag' = { fg = "#daaa3f" }
 'tag.builtin' = { fg = "#daaa3f" }
 
@@ -101,8 +101,8 @@ keyword = { fg = "#d85651" }
 
 
 # UI CANVAS
-'ui.background' = { fg = "#b1b1b1", bg = "#151524" }
-'ui.background.separator' = { fg = "#b1b1b1", bg = "#151524" }
+'ui.background' = { fg = "#373e47", bg = "#151524" }
+'ui.background.separator' = { fg = "#373e47", bg = "#151524" }
 
 'ui.cursor.normal' = { fg = "#151524", bg = "#909dab" }
 'ui.cursor.insert' = { fg = "#151524", bg = "#2a2a3c" }
@@ -144,8 +144,8 @@ error = { fg = "#bb3831", bg = "#151524" }
 'diff.delta' = { fg = "#ffdeaa" }
 'diff.delta.moved' = { fg = "#539bf5" }
 
-'ui.debug.breakpoint' = "text"
-'ui.debug.active' = "sky"
+'ui.debug.breakpoint' = { fg = "#c9c9c9" }
+'ui.debug.active' = { fg = "#539bf5" }
 
 'ui.gutter' = { bg = "#151524" }
 'ui.gutter.selected' = { bg = "#340c6f" }
@@ -154,9 +154,15 @@ error = { fg = "#bb3831", bg = "#151524" }
 # STATUS LINE
 'ui.statusline' = { fg = "#909dab", bg = "#110E17" }
 'ui.statusline.inactive' = { fg = "#54595f", bg = "#110E17" }
-'ui.statusline.normal' = { fg = "#09070D", bg = "#94e2d5", modifiers = ["bold"] }
-'ui.statusline.insert' = { fg = "#09070D", bg = "#ffdeaa", modifiers = ["bold"] }
-'ui.statusline.select' = { fg = "#09070D", bg = "#cba6f7", modifiers = ["bold"] }
+'ui.statusline.normal' = { fg = "#09070D", bg = "#94e2d5", modifiers = [
+  "bold",
+] }
+'ui.statusline.insert' = { fg = "#09070D", bg = "#ffdeaa", modifiers = [
+  "bold",
+] }
+'ui.statusline.select' = { fg = "#09070D", bg = "#cba6f7", modifiers = [
+  "bold",
+] }
 
 
 ## BUFFER LINE
@@ -166,12 +172,12 @@ error = { fg = "#bb3831", bg = "#151524" }
 
 
 # WIDGETS
-'ui.window' = { fg = "#373e47", bg = "#151524" }  # window == split
+'ui.window' = { fg = "#373e47", bg = "#151524" } # window == split
 'ui.popup' = { bg = "#373e47" }
-'ui.popup.info' = { fg = "#cba6f7" }  # popup border & title
+'ui.popup.info' = { fg = "#cba6f7" }             # popup border & title
 'ui.text.info' = { fg = "#a6a596" }
 'ui.help' = { fg = "#a6a596", bg = "#0B090F" }
-'ui.text' = { fg = "#b1b1b1" }  # markdown text also (very annoying !!!)
+'ui.text' = { fg = "#b1b1b1" }                   # markdown text also (very annoying !!!)
 'ui.text.focus' = { fg = "#94e2d5" }
 'ui.text.inactive' = { fg = "#6f6b58" }
 'ui.text.directory' = { fg = "#539bf5" }
