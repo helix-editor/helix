@@ -148,7 +148,7 @@ error = { fg = "#bb3831", bg = "#151524" }
 'ui.debug.active' = { fg = "#539bf5" }
 
 'ui.gutter' = { bg = "#151524" }
-'ui.gutter.selected' = { bg = "#340c6f" }
+'ui.gutter.selected' = { bg = "#110E17" }
 
 
 # STATUS LINE
@@ -173,7 +173,7 @@ error = { fg = "#bb3831", bg = "#151524" }
 
 # WIDGETS
 'ui.window' = { fg = "#373e47", bg = "#151524" } # window == split
-'ui.popup' = { bg = "#373e47" }
+'ui.popup' = { fg = "#373e47", bg = "#110E17" }
 'ui.popup.info' = { fg = "#cba6f7" }             # popup border & title
 'ui.text.info' = { fg = "#a6a596" }
 'ui.help' = { fg = "#a6a596", bg = "#0B090F" }
