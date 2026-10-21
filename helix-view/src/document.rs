@@ -2427,6 +2427,17 @@ impl Document {
         view_id: ViewId,
         ranges: Vec<std::ops::Range<usize>>,
     ) {
+        // The ranges may have been computed on an older version of the text. Keep them inside the
+        // current text, since mapping an out of range position through a change panics.
+        let text_len = self.text.len_chars();
+        let ranges: Vec<_> = ranges
+            .into_iter()
+            .filter_map(|range| {
+                let end = range.end.min(text_len);
+                (range.start < end).then_some(range.start..end)
+            })
+            .collect();
+
         if ranges.is_empty() {
             self.document_highlights.remove(&view_id);
         } else {
@@ -2534,6 +2545,30 @@ mod test {
     use arc_swap::ArcSwap;
 
     use super::*;
+
+    #[test]
+    fn stale_document_highlights_do_not_panic_on_apply() {
+        // Document highlight ranges are computed on a clone of the text taken when the
+        // request was sent. When the reply is applied after an edit shrank the document,
+        // the stored ranges can point past the end of the current text.
+        let mut doc = Document::from(
+            Rope::from("fn main() {}\n"),
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        let view = ViewId::default();
+        doc.set_selection(view, Selection::single(0, 0));
+        let len = doc.text().len_chars();
+        assert_eq!(len, 13);
+        doc.set_document_highlights(view, vec![3..7, len + 5..len + 9]);
+
+        // The next edit maps the stored highlights through its changeset.
+        let transaction = Transaction::insert(doc.text(), doc.selection(view), "x".into());
+        doc.apply(&transaction, view);
+
+        assert_eq!(doc.document_highlights(view).unwrap().to_vec(), vec![4..8]);
+    }
 
     #[test]
     fn changeset_to_changes_ignore_line_endings() {

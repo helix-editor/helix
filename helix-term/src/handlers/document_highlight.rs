@@ -41,6 +41,7 @@ fn request_document_highlights(editor: &mut Editor, doc_id: DocumentId, view_id:
     };
 
     let text = doc.text().clone();
+    let doc_version = doc.version();
     let cancel = doc.document_highlight_controller(view_id).restart();
 
     tokio::spawn(async move {
@@ -58,7 +59,7 @@ fn request_document_highlights(editor: &mut Editor, doc_id: DocumentId, view_id:
             .unwrap_or_default();
 
         job::dispatch(move |editor, _| {
-            apply_document_highlights(editor, doc_id, view_id, ranges);
+            apply_document_highlights(editor, doc_id, view_id, doc_version, ranges);
         })
         .await;
     });
@@ -103,6 +104,7 @@ fn apply_document_highlights(
     editor: &mut Editor,
     doc_id: DocumentId,
     view_id: ViewId,
+    doc_version: i32,
     ranges: Vec<std::ops::Range<usize>>,
 ) {
     if !editor.config().lsp.auto_document_highlight {
@@ -112,6 +114,12 @@ fn apply_document_highlights(
     let Some(doc) = editor.document_mut(doc_id) else {
         return;
     };
+
+    // The ranges were computed on the text as of `doc_version` and don't match the document anymore
+    // if it has been edited since.
+    if doc.version() != doc_version {
+        return;
+    }
 
     if !doc.has_language_server_with_feature(LanguageServerFeature::DocumentHighlight) {
         doc.clear_document_highlights(view_id);
