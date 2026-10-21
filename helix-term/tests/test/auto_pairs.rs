@@ -1424,3 +1424,52 @@ async fn delete_append_inside_nested_pair_multi() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn delete_pair_closer_with_combining_mark() -> anyhow::Result<()> {
+    // `)` + U+0301 is a single 2-char grapheme. `<right>` in insert mode
+    // leaves a forward 1-width cursor on it (Forward, single grapheme arm).
+    test((
+        "#[(|]#)\u{301}\n",
+        "i<right><backspace>",
+        "#[\n|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // plain `i` gives a backward cursor; closer grapheme at EOF without
+    // a trailing newline (Backward, single grapheme arm)
+    test((
+        "foo(#[|)\u{301}\u{301}]#",
+        "i<backspace>",
+        "foo#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn delete_whitespace_pair_crlf_forward_cursor() -> anyhow::Result<()> {
+    // LF control: passes today
+    test((
+        "#[(|]#\n\t)\n",
+        "i<right><right><backspace>",
+        "(#[)|]#\n",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    // CRLF: after joining `(\r\n\t)` the cursor must sit on the closer,
+    // exactly like with LF
+    test((
+        "#[(|]#\r\n\t)\r\n",
+        "i<right><right><backspace>",
+        "(#[)|]#\r\n",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
+
+    Ok(())
+}
