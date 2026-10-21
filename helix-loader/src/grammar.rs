@@ -90,7 +90,7 @@ fn ensure_git_is_available() -> Result<()> {
 
 /// Print a notice if the current workspace has a `.helix/languages.toml` that we *would* have
 /// merged but the workspace-trust gate is keeping us from.
-fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
+pub fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
     let workspace_languages = crate::workspace_lang_config_file();
     if !workspace_languages.exists() {
         return;
