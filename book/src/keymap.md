@@ -383,8 +383,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | `[g`     | Go to previous change                        | `goto_prev_change`      |
 | `]G`     | Go to last change                            | `goto_last_change`      |
 | `[G`     | Go to first change                           | `goto_first_change`     |
-| `[x`     | Go to next (X)HTML element                   | `goto_next_xml_element` |
-| `]x`     | Go to previous (X)HTML element               | `goto_prev_xml_element` |
+| `[x`     | Go to previous (X)HTML element               | `goto_prev_xml_element` |
+| `]x`     | Go to next (X)HTML element                   | `goto_next_xml_element` |
 | `]Space` | Add newline below                            | `add_newline_below`     |
 | `[Space` | Add newline above                            | `add_newline_above`     |
 
