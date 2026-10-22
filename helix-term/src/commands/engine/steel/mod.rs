@@ -673,7 +673,9 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         .register_fn_with_ctx(CTX, "current-selection-object", current_selection)
         .register_fn_with_ctx(CTX, "get-helix-cwd", get_helix_cwd)
         .register_fn_with_ctx(CTX, "move-window-far-left", move_window_to_the_left)
-        .register_fn_with_ctx(CTX, "move-window-far-right", move_window_to_the_right);
+        .register_fn_with_ctx(CTX, "move-window-far-right", move_window_to_the_right)
+        .register_fn_with_ctx(CTX, "offset->lsp", offset_to_lsp)
+        .register_fn_with_ctx(CTX, "lsp->offset", lsp_to_offset);
 
     module
         .register_fn("selection->primary-index", |sel: Selection| {
@@ -4665,9 +4667,7 @@ fn current_column_number(cx: &mut Context) -> usize {
     .col
 }
 
-fn current_line_character(cx: &mut Context, encoding: SteelString) -> anyhow::Result<usize> {
-    let (view, doc) = current_ref!(cx.editor);
-
+fn parse_encoding(encoding: SteelString) -> anyhow::Result<helix_lsp::OffsetEncoding> {
     let encoding = match &***encoding {
         "utf-8" => helix_lsp::OffsetEncoding::Utf8,
         "utf-16" => helix_lsp::OffsetEncoding::Utf16,
@@ -4675,7 +4675,48 @@ fn current_line_character(cx: &mut Context, encoding: SteelString) -> anyhow::Re
         _ => anyhow::bail!("invalid encoding {encoding:?}"),
     };
 
+    Ok(encoding)
+}
+
+fn current_line_character(cx: &mut Context, encoding: SteelString) -> anyhow::Result<usize> {
+    let (view, doc) = current_ref!(cx.editor);
+
+    let encoding = parse_encoding(encoding)?;
+
     Ok(doc.position(view.id, encoding).character as usize)
+}
+
+fn offset_to_lsp(
+    cx: &mut Context,
+    encoding: SteelString,
+    offset: usize,
+) -> anyhow::Result<(u32, u32)> {
+    let (_, doc) = current_ref!(cx.editor);
+
+    let encoding = parse_encoding(encoding)?;
+
+    let lsp_pos = helix_lsp::util::pos_to_lsp_pos(doc.text(), offset, encoding);
+
+    Ok((lsp_pos.line, lsp_pos.character))
+}
+
+fn lsp_to_offset(
+    cx: &mut Context,
+    encoding: SteelString,
+    line: u32,
+    character: u32,
+) -> anyhow::Result<usize> {
+    let (_, doc) = current_ref!(cx.editor);
+
+    let encoding = parse_encoding(encoding)?;
+
+    let offset = helix_lsp::util::lsp_pos_to_pos(
+        doc.text(),
+        helix_lsp::Position { line, character },
+        encoding,
+    )
+    .ok_or_else(|| anyhow::anyhow!("lsp position out of bounds"))?;
+    Ok(offset)
 }
 
 fn get_selection(cx: &mut Context) -> String {

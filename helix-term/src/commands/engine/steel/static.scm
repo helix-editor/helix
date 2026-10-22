@@ -94,6 +94,16 @@
 ;;Returns the current selection object
 (define current-selection-object helix.static.current-selection-object)
 
+(provide offset->lsp)
+;;@doc
+;;Converts an offset in the current document to a LSP position
+(define offset->lsp helix.static.offset->lsp)
+
+(provide lsp->offset)
+;;@doc
+;;Converts a LSP position to an offset in the current document
+(define lsp->offset helix.static.lsp->offset)
+
 (provide get-helix-cwd)
 ;;@doc
 ;;Returns the current working directly that helix is using
