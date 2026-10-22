@@ -5655,3 +5655,15 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "liquid"
+scope = "source.liquid"
+injection-regex = "liquid"
+file-types = ["liquid"]
+block-comment-tokens = { start = "{% comment %}", end = "{% endcomment %}" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "liquid"
+source = { git = "https://github.com/hankthetank27/tree-sitter-liquid", rev = "e45dbac8c5fa95b1f0e00e7e0c04bc8855823391" }
