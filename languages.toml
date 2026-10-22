@@ -321,6 +321,10 @@ mode = "location"
 command = "clarinet"
 args = ["lsp"]
 
+[language-server.cucumber-language-server]
+command = "cucumber-language-server"
+args = ["--stdio"]
+
 [language-server.docker-language-server]
 command = "docker-language-server"
 args = ["start", "--stdio"]
@@ -4633,6 +4637,7 @@ scope = "source.feature"
 file-types = ["feature"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "cucumber-language-server" ]
 
 [[grammar]]
 name = "gherkin"
