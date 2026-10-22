@@ -277,7 +277,7 @@
 | sourcepawn | ✓ | ✓ |  |  |  | `sourcepawn-studio` |
 | spade | ✓ |  | ✓ |  | ✓ | `swim` |
 | spicedb | ✓ |  |  | ✓ |  |  |
-| sql | ✓ | ✓ |  |  | ✓ |  |
+| sql | ✓ | ✓ |  |  | ✓ | `sqls` |
 | ssh_client_config | ✓ |  |  |  |  |  |
 | starlark | ✓ | ✓ | ✓ |  | ✓ | `starpls`, `buck2` |
 | strace | ✓ |  |  |  |  |  |
