@@ -22,6 +22,7 @@ parking_lot = { workspace = true, features = ["hardware-lock-elision"] }
 
 anyhow = "1"
 log = "0.4"
+portable-atomic.workspace = true
 futures-executor = "0.3.32"
 
 [features]

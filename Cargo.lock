@@ -1557,6 +1557,7 @@ dependencies = [
  "helix-dap-types",
  "helix-stdx",
  "log",
+ "portable-atomic",
  "serde",
  "serde_json",
  "slotmap",
@@ -1584,6 +1585,7 @@ dependencies = [
  "hashbrown 0.17.1",
  "log",
  "parking_lot",
+ "portable-atomic",
  "tokio",
 ]
 
@@ -1621,6 +1623,7 @@ dependencies = [
  "helix-stdx",
  "log",
  "parking_lot",
+ "portable-atomic",
  "serde",
  "serde_json",
  "slotmap",
