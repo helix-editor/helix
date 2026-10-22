@@ -1,0 +1,25 @@
+{% if user.name == "x" and true %}
+// ^ @keyword.control.conditional
+//    ^ @variable
+//                  ^ @string
+//                       ^ @keyword.operator
+//                           ^ @constant.builtin.boolean
+<p>{{ product.price | money: 2 }}</p>
+//                     ^ @function
+//                           ^ @constant.numeric
+{% endif %}
+{% for item in collection.items %}{% break %}{% endfor %}
+// ^ @keyword.control.repeat
+//          ^ @keyword.operator
+//                                    ^ @keyword.control.repeat
+{% render 'card', item: item %}
+// ^ @keyword.control.import
+//        ^ @string
+{% raw %}{{ not parsed }}{% endraw %}
+//          ^ @markup.raw
+{% comment %} a comment {% endcomment %}
+//              ^ @comment
+{% for i in (1..5) %}{% if x == empty or y == nil %}{% endif %}{% endfor %}
+//            ^ @operator
+//                                 ^ @constant.builtin
+//                                             ^ @constant.builtin
