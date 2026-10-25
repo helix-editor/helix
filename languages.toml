@@ -5655,3 +5655,16 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "rgc"
+scope = "source.rgc"
+injection-regex = "rgc"
+file-types = ["rg"]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+grammar = "rgc"
+
+[[grammar]]
+name = "rgc"
+source = { git = "https://github.com/rgc-lang/tree-sitter-rgc", rev = "f813d342c12d529d812af11023c6a53d94841cde" }
