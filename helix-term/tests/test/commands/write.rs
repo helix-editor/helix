@@ -1,13 +1,77 @@
 use std::{
     io::{Read, Seek, Write},
     ops::RangeInclusive,
+    time::Duration,
 };
 
-use helix_core::diagnostic::Severity;
+use helix_core::{diagnostic::Severity, syntax::config::LanguageServerFeature};
 use helix_stdx::path;
 use helix_view::doc;
 
 use super::*;
+
+fn language_server_script(
+    supports_formatting: bool,
+    formatted_text: &str,
+) -> anyhow::Result<tempfile::NamedTempFile> {
+    let mut server = tempfile::NamedTempFile::new()?;
+    let script = indoc! {r#"
+            send() {
+              printf 'Content-Length: %d\r\n\r\n%s' "${#1}" "$1"
+            }
+
+            while IFS= read -r header; do
+              header=${header%$'\r'}
+              case "$header" in
+                'Content-Length: '*) length=${header#Content-Length: } ;;
+                '')
+                  IFS= read -r -N "$length" payload || true
+                  id=$(printf '%s' "$payload" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p')
+                  case "$payload" in
+                    *'"method":"initialize"'*)
+                      send "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"capabilities\":{\"documentFormattingProvider\":FORMAT_SUPPORT,\"textDocumentSync\":1}}}"
+                      ;;
+                    *'"method":"textDocument/formatting"'*)
+                      send "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":1,\"character\":0}},\"newText\":\"FORMAT_OUTPUT\\n\"}]}"
+                      ;;
+                    *'"method":"shutdown"'*)
+                      send "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":null}"
+                      ;;
+                  esac
+                  ;;
+              esac
+            done
+        "#}
+    .replace(
+        "FORMAT_SUPPORT",
+        if supports_formatting {
+            "true"
+        } else {
+            "false"
+        },
+    )
+    .replace("FORMAT_OUTPUT", formatted_text);
+    server.write_all(script.as_bytes())?;
+    server.flush()?;
+    Ok(server)
+}
+
+async fn wait_for_language_servers(
+    app: &mut Application,
+    expected_count: usize,
+) -> anyhow::Result<()> {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            helpers::run_event_loop_until_idle(app).await;
+            if doc!(app.editor).language_servers().count() == expected_count {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await?;
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_exit_w_buffer_w_path() -> anyhow::Result<()> {
@@ -471,6 +535,107 @@ async fn test_write_quit_auto_format_exits_after_format() -> anyhow::Result<()> 
 
     // file saves with new content and editor exits after save
     helpers::assert_file_has_content(&mut file, "new content\n")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_format_prefers_language_server_to_external_formatter() -> anyhow::Result<()> {
+    let unsupported_server = language_server_script(false, "unsupported formatter")?;
+    let server = language_server_script(true, "lsp formatter")?;
+
+    let file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+    let unsupported_server_path = format!(
+        "{:?}",
+        unsupported_server
+            .path()
+            .to_string_lossy()
+            .replace('\\', "/")
+    );
+    let server_path = format!("{:?}", server.path().to_string_lossy().replace('\\', "/"));
+    let lang_conf = format!(
+        indoc! {r#"
+            [language-server.unsupported-formatter]
+            command = "bash"
+            args = [{}]
+
+            [language-server.test-formatter]
+            command = "bash"
+            args = [{}]
+
+            [[language]]
+            name = "rust"
+            language-servers = ["unsupported-formatter", "test-formatter"]
+            formatter = {{ command = "bash", args = [ "-c", "echo external formatter" ] }}
+        "#},
+        unsupported_server_path, server_path
+    );
+    let mut config = helpers::test_config();
+    config.editor.lsp.enable = true;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[external source|]#\n")
+        .with_config(config)
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf)))
+        .build()?;
+
+    wait_for_language_servers(&mut app, 2).await?;
+    assert!(doc!(app.editor).has_language_server_with_feature(LanguageServerFeature::Format));
+
+    let assert_lsp_formatter = |app: &Application| {
+        assert_eq!(doc!(app.editor).text(), "lsp formatter\n");
+    };
+    test_key_sequences(
+        &mut app,
+        vec![(Some(":format<ret>"), Some(&assert_lsp_formatter))],
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_format_uses_external_formatter_when_lsp_formatting_is_disabled() -> anyhow::Result<()>
+{
+    let server = language_server_script(true, "lsp formatter")?;
+
+    let file = tempfile::Builder::new().suffix(".rs").tempfile()?;
+    let server_path = format!("{:?}", server.path().to_string_lossy().replace('\\', "/"));
+    let lang_conf = format!(
+        indoc! {r#"
+            [language-server.test-formatter]
+            command = "bash"
+            args = [{}]
+
+            [[language]]
+            name = "rust"
+            language-servers = [{{ name = "test-formatter", except-features = ["format"] }}]
+            formatter = {{ command = "bash", args = [ "-c", "echo external formatter" ] }}
+        "#},
+        server_path
+    );
+    let mut config = helpers::test_config();
+    config.editor.lsp.enable = true;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[external source|]#\n")
+        .with_config(config)
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf)))
+        .build()?;
+
+    wait_for_language_servers(&mut app, 1).await?;
+    assert!(!doc!(app.editor).has_language_server_with_feature(LanguageServerFeature::Format));
+
+    let assert_external_formatter = |app: &Application| {
+        assert_eq!(doc!(app.editor).text(), "external formatter\n");
+    };
+    test_key_sequences(
+        &mut app,
+        vec![(Some(":format<ret>"), Some(&assert_external_formatter))],
+        false,
+    )
+    .await?;
 
     Ok(())
 }

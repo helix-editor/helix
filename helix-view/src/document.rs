@@ -858,6 +858,39 @@ impl Document {
         &self,
         editor: &Editor,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        if let Some(language_server) = self
+            .language_servers_with_feature(LanguageServerFeature::Format)
+            .next()
+        {
+            let text = self.text.clone();
+            let offset_encoding = language_server.offset_encoding();
+            let request = language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions {
+                    tab_size: self.tab_width() as u32,
+                    insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                    ..Default::default()
+                },
+                None,
+            )?;
+
+            let fut = async move {
+                let edits = request
+                    .await
+                    .unwrap_or_else(|e| {
+                        log::warn!("LSP formatting failed: {}", e);
+                        Default::default()
+                    })
+                    .unwrap_or_default();
+                Ok(helix_lsp::util::generate_transaction_from_edits(
+                    &text,
+                    edits,
+                    offset_encoding,
+                ))
+            };
+            return Some(fut.boxed());
+        }
+
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
             .and_then(|c| c.formatter.as_ref())
@@ -944,39 +977,9 @@ impl Document {
                 Ok(helix_core::diff::compare_ropes(&text, &Rope::from(str)))
             };
             return Some(formatting_future.boxed());
-        };
+        }
 
-        let text = self.text.clone();
-        // finds first language server that supports formatting and then formats
-        let language_server = self
-            .language_servers_with_feature(LanguageServerFeature::Format)
-            .next()?;
-        let offset_encoding = language_server.offset_encoding();
-        let request = language_server.text_document_formatting(
-            self.identifier(),
-            lsp::FormattingOptions {
-                tab_size: self.tab_width() as u32,
-                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                ..Default::default()
-            },
-            None,
-        )?;
-
-        let fut = async move {
-            let edits = request
-                .await
-                .unwrap_or_else(|e| {
-                    log::warn!("LSP formatting failed: {}", e);
-                    Default::default()
-                })
-                .unwrap_or_default();
-            Ok(helix_lsp::util::generate_transaction_from_edits(
-                &text,
-                edits,
-                offset_encoding,
-            ))
-        };
-        Some(fut.boxed())
+        None
     }
 
     pub fn save<P: Into<PathBuf>>(
