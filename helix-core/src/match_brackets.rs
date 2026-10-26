@@ -83,7 +83,7 @@ fn find_pair(
     let pos = doc.char_to_byte(pos_) as u32;
 
     let root = syntax.tree_for_byte_range(pos, pos).root_node();
-    let mut node = root.descendant_for_byte_range(pos, pos)?;
+    let mut node = root.descendant_for_byte_range(pos, pos + 1)?;
 
     loop {
         if node.is_named() && node.child_count() >= 2 {
@@ -349,5 +349,30 @@ mod tests {
         assert("(prev line\n ) (middle) ( \n next line)", 0, 12);
         assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
         assert("(prev line\n ) (middle) ( \n next line)", 23, 36);
+    }
+
+    #[test]
+    fn test_find_matching_bracket_after_empty_node() {
+        // Typst emits a zero-width token right before the `(` or `[` of a call
+        let loader = crate::config::default_lang_loader();
+        let language = loader.language_for_name("typst").unwrap();
+        let doc = crate::Rope::from_str(
+            "#rect(width: 100%, stroke: stroke(dash: \"dash-dotted\", thickness: 2pt), radius: 5mm)[\n\n]\n",
+        );
+        let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+
+        let assert = |pos, expected| {
+            let actual = find_matching_bracket(&syntax, doc.slice(..), pos);
+            assert_eq!(Some(expected), actual);
+            let actual = find_matching_bracket_fuzzy(&syntax, doc.slice(..), pos);
+            assert_eq!(Some(expected), actual);
+
+            let actual = find_matching_bracket_fuzzy(&syntax, doc.slice(..), expected);
+            assert_eq!(Some(pos), actual, "expected symmetrical behaviour");
+        };
+
+        assert(5, 83);
+        assert(33, 69);
+        assert(84, 87);
     }
 }
