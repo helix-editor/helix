@@ -2097,6 +2097,7 @@ name = "mail"
 scope = "text.mail"
 file-types = ["eml"]
 injection-regex = "mail|eml|email"
+text-width = 72
 
 [[grammar]]
 name = "mail"
