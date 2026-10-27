@@ -453,7 +453,7 @@ impl CharHelpers for Chars<'_> {
 
         // Skip any initial newline characters.
         while let Some(ch) = self.next() {
-            if char_is_line_ending(ch) {
+            if is_word_motion_eol(ch) {
                 prev_ch = Some(ch);
                 advance(&mut head);
             } else {
@@ -461,7 +461,7 @@ impl CharHelpers for Chars<'_> {
                 break;
             }
         }
-        if prev_ch.map(char_is_line_ending).unwrap_or(false) {
+        if prev_ch.map(is_word_motion_eol).unwrap_or(false) {
             anchor = head;
         }
 
@@ -489,12 +489,30 @@ impl CharHelpers for Chars<'_> {
     }
 }
 
+/// Like [`char_is_line_ending`], but also treats `\r` as part of a line ending.
+///
+/// Word motions walk the text one char at a time, so a `\r\n` line ending is
+/// seen as two separate chars. Without this, the `\r` is categorized as
+/// whitespace and word motions select it or stop between the `\r` and `\n`.
+fn is_word_motion_eol(ch: char) -> bool {
+    ch == '\r' || char_is_line_ending(ch)
+}
+
+/// [`categorize_char`] for word motions, see [`is_word_motion_eol`].
+fn word_motion_category(ch: char) -> CharCategory {
+    if ch == '\r' {
+        CharCategory::Eol
+    } else {
+        categorize_char(ch)
+    }
+}
+
 fn is_word_boundary(a: char, b: char) -> bool {
-    categorize_char(a) != categorize_char(b)
+    word_motion_category(a) != word_motion_category(b)
 }
 
 fn is_long_word_boundary(a: char, b: char) -> bool {
-    match (categorize_char(a), categorize_char(b)) {
+    match (word_motion_category(a), word_motion_category(b)) {
         (CharCategory::Word, CharCategory::Punctuation)
         | (CharCategory::Punctuation, CharCategory::Word) => false,
         (a, b) if a != b => true,
@@ -503,7 +521,7 @@ fn is_long_word_boundary(a: char, b: char) -> bool {
 }
 
 fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
-    match (categorize_char(a), categorize_char(b)) {
+    match (word_motion_category(a), word_motion_category(b)) {
         (CharCategory::Word, CharCategory::Word) => {
             if (a == '_') != (b == '_') {
                 return true;
@@ -525,35 +543,35 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
     match target {
         WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
             is_word_boundary(prev_ch, next_ch)
-                && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
+                && (is_word_motion_eol(next_ch) || !next_ch.is_whitespace())
         }
         WordMotionTarget::NextWordEnd | WordMotionTarget::PrevWordStart => {
             is_word_boundary(prev_ch, next_ch)
-                && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+                && (!prev_ch.is_whitespace() || is_word_motion_eol(next_ch))
         }
         WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
             is_long_word_boundary(prev_ch, next_ch)
-                && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
+                && (is_word_motion_eol(next_ch) || !next_ch.is_whitespace())
         }
         WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
             is_long_word_boundary(prev_ch, next_ch)
-                && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+                && (!prev_ch.is_whitespace() || is_word_motion_eol(next_ch))
         }
         WordMotionTarget::NextSubWordStart => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
-                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+                && (is_word_motion_eol(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
         }
         WordMotionTarget::PrevSubWordEnd => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
-                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+                && (is_word_motion_eol(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
         }
         WordMotionTarget::NextSubWordEnd => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
-                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || is_word_motion_eol(next_ch))
         }
         WordMotionTarget::PrevSubWordStart => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
-                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || is_word_motion_eol(next_ch))
         }
     }
 }
@@ -1418,6 +1436,77 @@ mod test {
                 let range = move_prev_word_start(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_words_over_crlf_line_endings() {
+        // Word motions should treat `\r\n` like `\n`: the `\r` must not end up
+        // in the selection and the line ending must not be split.
+        type Motion = fn(RopeSlice, Range, usize) -> Range;
+        let tests: [(&str, Motion, Range, Range); 9] = [
+            (
+                "foo bar\r\nbaz",
+                move_prev_word_start,
+                Range::new(7, 9),
+                Range::new(7, 4),
+            ),
+            (
+                "foo bar\r\nbaz",
+                move_prev_long_word_start,
+                Range::new(7, 9),
+                Range::new(7, 4),
+            ),
+            (
+                "foo bar\r\nbaz",
+                move_prev_sub_word_start,
+                Range::new(7, 9),
+                Range::new(7, 4),
+            ),
+            (
+                "foo\r\n\r\nbar",
+                move_prev_word_start,
+                Range::new(5, 7),
+                Range::new(3, 0),
+            ),
+            (
+                "Newlines\r\n\r\nare bridged",
+                move_prev_word_start,
+                Range::new(12, 13),
+                Range::new(8, 0),
+            ),
+            (
+                "foo\r\n    \r\nbar",
+                move_prev_word_start,
+                Range::new(11, 12),
+                Range::new(9, 5),
+            ),
+            (
+                "foo\r\nbar",
+                move_prev_word_end,
+                Range::new(5, 6),
+                Range::new(3, 0),
+            ),
+            (
+                "foo\r\nbar",
+                move_next_word_start,
+                Range::new(3, 5),
+                Range::new(5, 8),
+            ),
+            (
+                "Jumping\r\n\r\n\r\n   from",
+                move_next_word_start,
+                Range::new(0, 11),
+                Range::new(13, 16),
+            ),
+        ];
+
+        for (sample, motion, begin, expected_end) in tests {
+            let range = motion(Rope::from(sample).slice(..), begin, 1);
+            assert_eq!(
+                range, expected_end,
+                "Case failed: {sample:?} from {begin:?}"
+            );
         }
     }
 
