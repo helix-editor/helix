@@ -1,0 +1,131 @@
+# eyesclosed: a low-chroma dark theme
+# Author : Ethan Lee <ethantlee21@gmail.com>
+# License: MIT
+
+"variable" = { fg = "variable" }
+"variable.parameter" = { fg = "parameter" }
+"variable.other.member" = { fg = "property" }
+"variable.builtin" = { fg = "selfvar", modifiers = ["italic"] }
+"keyword" = { fg = "keyword", modifiers = ["bold"] }
+"function" = { fg = "function" }
+"function.macro" = { fg = "macro", modifiers = ["italic"] }
+"type" = { fg = "type" }
+"type.builtin" = { fg = "builtin" }
+"constructor" = { fg = "type" }
+"constant" = { fg = "constant" }
+"constant.numeric" = { fg = "constant" }
+"constant.builtin" = { fg = "constant" }
+"constant.character.escape" = { fg = "escape", modifiers = ["bold"] }
+"string" = { fg = "string" }
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "doc", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "doc", modifiers = ["italic"] }
+"attribute" = { fg = "attribute" }
+"label" = { fg = "lifetime", modifiers = ["italic"] }
+"namespace" = { fg = "namespace" }
+"operator" = { fg = "operator" }
+"punctuation" = { fg = "punct" }
+"markup.heading" = { fg = "md-heading", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "md-hmark" }
+"markup.bold" = { fg = "md-bold", modifiers = ["bold"] }
+"markup.italic" = { fg = "md-italic", modifiers = ["italic"] }
+"markup.raw" = { fg = "md-code" }
+"markup.link.text" = { fg = "md-link", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "md-url" }
+"markup.list" = { fg = "md-list" }
+"markup.quote" = { fg = "md-quote", modifiers = ["italic"] }
+
+"ui.background" = { bg = "bg" }
+"ui.text" = { fg = "text" }
+"ui.text.focus" = { fg = "function", bg = "focus-bg", modifiers = ["bold"] }
+"ui.highlight" = { bg = "focus-bg" }
+"special" = { fg = "constant", modifiers = ["bold"] }
+"ui.cursor" = { fg = "bg", bg = "linenr-active" }
+"ui.cursor.primary" = { fg = "bg", bg = "cursor" }
+"ui.cursor.match" = { fg = "function", modifiers = ["underlined"] }
+"ui.cursorline.primary" = { bg = "cursorline" }
+"ui.selection" = { bg = "selection" }
+"ui.linenr" = { fg = "linenr" }
+"ui.linenr.selected" = { fg = "linenr-active" }
+"ui.statusline" = { fg = "status-fg", bg = "bg-alt" }
+"ui.statusline.inactive" = { fg = "linenr", bg = "bg-alt" }
+"ui.statusline.normal" = { fg = "bg", bg = "mode", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg", bg = "warning", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg", bg = "function", modifiers = ["bold"] }
+"ui.popup" = { fg = "text", bg = "bg-alt" }
+"ui.help" = { fg = "text", bg = "bg-alt" }
+"ui.menu" = { fg = "text", bg = "bg-alt" }
+"ui.menu.selected" = { fg = "function", bg = "focus-bg", modifiers = ["bold"] }
+"ui.window" = { fg = "linenr" }
+"ui.virtual.whitespace" = { fg = "indent" }
+"ui.virtual.indent-guide" = { fg = "indent" }
+"ui.virtual.ruler" = { bg = "cursorline" }
+"ui.virtual.inlay-hint" = { fg = "inlay", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "cursor", modifiers = ["bold"] }
+
+"diff.plus" = { fg = "added" }
+"diff.delta" = { fg = "modified" }
+"diff.minus" = { fg = "removed" }
+
+"error" = { fg = "error", modifiers = ["bold"] }
+"warning" = { fg = "warning", modifiers = ["bold"] }
+"info" = { fg = "info", modifiers = ["bold"] }
+"hint" = { fg = "hint", modifiers = ["bold"] }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "warning", style = "dashed" } }
+"diagnostic.info" = { underline = { color = "info", style = "dotted" } }
+"diagnostic.hint" = { underline = { color = "hint", style = "dotted" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+bg = "#111214"            # night
+bg-alt = "#1A1B21"        # lid
+cursorline = "#1A1B21"    # lid
+selection = "#383B4A"     # shade
+focus-bg = "#464957"      # glow
+linenr = "#383B4A"        # shade
+linenr-active = "#9A9DAE" # ash
+cursor = "#CDCFD1"        # moon
+indent = "#1A1B21"        # lid
+status-fg = "#9A9DAE"     # ash
+mode = "#779BB0"          # tide
+inlay = "#696D7D"         # haze
+error = "#FFABA2"         # flare
+warning = "#C18E5F"       # ember
+info = "#779BB0"          # tide
+hint = "#696D7D"          # haze
+added = "#779BB0"         # tide
+removed = "#C18E5F"       # ember
+modified = "#696D7D"      # haze
+text = "#BBBCC7"          # mist
+variable = "#BBBCC7"      # mist
+parameter = "#BBBCC7"     # mist
+property = "#9A9DAE"      # ash
+keyword = "#779BB0"       # tide
+function = "#D8D0D0"      # blush
+type = "#B7C8CB"          # frost
+builtin = "#9A9DAE"       # ash
+selfvar = "#779BB0"       # tide
+constant = "#ECD8AE"      # candle
+string = "#D9CBAE"        # linen
+escape = "#ECD8AE"        # candle
+comment = "#696D7D"       # haze
+doc = "#9A9DAE"           # ash
+macro = "#B7C8CB"         # frost
+attribute = "#9A9DAE"     # ash
+lifetime = "#BBBCC7"      # mist
+namespace = "#9A9DAE"     # ash
+operator = "#9A9DAE"      # ash
+punct = "#696D7D"         # haze
+md-heading = "#CDCFD1"    # moon
+md-hmark = "#779BB0"      # tide
+md-bold = "#CDCFD1"       # moon
+md-italic = "#BBBCC7"     # mist
+md-code = "#D9CBAE"       # linen
+md-link = "#B7C8CB"       # frost
+md-url = "#696D7D"        # haze
+md-list = "#779BB0"       # tide
+md-quote = "#9A9DAE"      # ash
+md-fence = "#696D7D"      # haze
+md-rule = "#383B4A"       # shade
