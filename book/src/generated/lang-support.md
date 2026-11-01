@@ -169,6 +169,7 @@
 | lean | ✓ |  |  |  |  | `lake` |
 | ledger | ✓ |  |  |  |  |  |
 | less | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
+| lispex | ✓ | ✓ | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |
@@ -305,6 +306,7 @@
 | todotxt | ✓ |  |  |  |  |  |
 | tolk | ✓ |  | ✓ |  |  |  |
 | toml | ✓ | ✓ | ✓ | ✓ | ✓ | `taplo`, `tombi` |
+| topaz | ✓ | ✓ | ✓ |  |  | `topaz` |
 | tql | ✓ |  | ✓ |  |  |  |
 | tsq | ✓ |  |  |  | ✓ | `ts_query_ls` |
 | tsx | ✓ | ✓ | ✓ | ✓ | ✓ | `typescript-language-server` |
