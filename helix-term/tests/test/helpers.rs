@@ -354,6 +354,7 @@ pub struct AppBuilder {
     config: Config,
     syn_loader: helix_core::syntax::Loader,
     input: Option<(String, Selection)>,
+    workspace_trust: WorkspaceTrust,
 }
 
 impl Default for AppBuilder {
@@ -363,6 +364,7 @@ impl Default for AppBuilder {
             config: test_config(),
             syn_loader: test_syntax_loader(None),
             input: None,
+            workspace_trust: WorkspaceTrust::fully_trusted(),
         }
     }
 }
@@ -403,6 +405,11 @@ impl AppBuilder {
         self
     }
 
+    pub fn with_workspace_trust(mut self, workspace_trust: WorkspaceTrust) -> Self {
+        self.workspace_trust = workspace_trust;
+        self
+    }
+
     pub fn build(self) -> anyhow::Result<Application> {
         if let Some(path) = &self.args.working_directory {
             bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
@@ -416,7 +423,7 @@ impl AppBuilder {
             self.args,
             self.config,
             self.syn_loader,
-            WorkspaceTrust::fully_trusted(),
+            self.workspace_trust,
         )?;
 
         if let Some((text, selection)) = self.input {

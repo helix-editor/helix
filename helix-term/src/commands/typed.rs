@@ -1806,6 +1806,20 @@ fn lsp_restart(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
 
     let editor_config = cx.editor.config.load();
     let doc = doc!(cx.editor);
+
+    // Refuse to spawn language servers in workspace trust restricted mode.
+    if !cx
+        .editor
+        .workspace_trust
+        .query(
+            doc.workspace_root(),
+            helix_loader::workspace_trust::TrustQuery::Lsp,
+        )
+        .is_trusted()
+    {
+        bail!("Workspace is not trusted. Run `:workspace-trust` to enable language servers.");
+    }
+
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
