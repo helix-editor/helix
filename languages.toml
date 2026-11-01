@@ -181,6 +181,7 @@ yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 zuban = { command = "zuban", args = ["server"] }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
+topaz-lsp = { command = "topaz", args = ["lsp"] }
 tinymist = { command = "tinymist" }
 ts_query_ls = { command = "ts_query_ls" }
 termux-language-server = { command = "termux-language-server" }
@@ -5655,3 +5656,32 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "topaz"
+scope = "source.topaz"
+injection-regex = "topaz"
+file-types = ["tpz"]
+roots = ["topaz.toml"]
+comment-tokens = ["//"]
+block-comment-tokens = [["/*", "*/"]]
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["topaz-lsp"]
+
+[[grammar]]
+name = "topaz"
+source = { git = "https://github.com/studiohaze/tree-sitter-topaz", rev = "8589aaedcead8e66a69429ae69cc6916a49707d4" }
+
+[[language]]
+name = "lispex"
+scope = "source.lispex"
+injection-regex = "lispex"
+file-types = ["lspx"]
+roots = []
+comment-tokens = [";"]
+block-comment-tokens = [["#|", "|#"]]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "lispex"
+source = { git = "https://github.com/studiohaze/tree-sitter-lispex", rev = "af2148b9e2b64185c6f192832bc92dd68dbb60f4" }
