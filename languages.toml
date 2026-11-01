@@ -4789,8 +4789,8 @@ name = "nginx"
 scope = "source.nginx"
 injection-regex = "nginx"
 file-types = [
-  { glob = "sites-available/*.conf" },
-  { glob = "sites-enabled/*.conf" },
+  { glob = "sites-available/*" },
+  { glob = "sites-enabled/*" },
   { glob = "nginx.conf" },
   { glob = "conf.d/*.conf" }
 ]
