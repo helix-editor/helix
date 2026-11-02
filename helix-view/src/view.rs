@@ -124,9 +124,9 @@ impl JumpList {
             .jumps
             .iter()
             .take(self.current)
-            .filter(|(other_id, _)| other_id == doc_id)
+            .filter(|(other_id, _, _)| other_id == doc_id)
             .count();
-        self.jumps.retain(|(other_id, _)| other_id != doc_id);
+        // self.jumps.retain(|(other_id, _)| other_id != doc_id);
         self.current = self
             .current
             .saturating_sub(removed_before_current)
@@ -730,7 +730,7 @@ impl View {
         // map it through a changeset whose pre-image predates it, panicking in
         // `ChangeSet::update_positions` when the document has since grown.
         self.sync_changes(doc);
-        self.jumps.push(jump);
+        self.jumps.push((jump.0, jump.1, None));
     }
 }
 

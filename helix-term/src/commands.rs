@@ -3418,16 +3418,15 @@ fn jumplist_picker(cx: &mut Context) {
     //         .collect::<Vec<_>>()
     //         .join(" ");
 
-    let line_start = selection.primary().cursor_line(text);
     let new_meta = |view: &View, doc_id: DocumentId, selection: Selection, mark: Option<char>| {
-        let doc = &cx.editor.documents.get(&doc_id);
-        let text = doc.map_or("".into(), |d| {
-            selection
-                .fragments(d.text().slice(..))
-                .map(Cow::into_owned)
-                .collect::<Vec<_>>()
-                .join(" ")
-        });
+        let doc = doc!(cx.editor, &doc_id);
+        let text = doc.text().slice(..);
+        let contents = selection
+            .fragments(text)
+            .map(Cow::into_owned)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let line_start = selection.primary().cursor_line(text);
 
         JumpMeta {
             id: doc_id,
@@ -3515,7 +3514,7 @@ fn jumplist_picker(cx: &mut Context) {
 
                 marks.chain(jumps)
             }),
-            (),
+            PathStyleConfig::new(&cx.editor.theme),
             |cx, meta, action| {
                 cx.editor.switch(meta.id, action);
                 let config = cx.editor.config();

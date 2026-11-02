@@ -2308,8 +2308,8 @@ pub(super) fn goto_line_number(
                 .expect("update_goto_line_number_preview should always set last_selection");
 
             let (view, doc) = current!(cx.editor);
-            view.push_jump(doc, (doc.id(), last_selection));
-            view.jumps.push((doc.id(), last_selection, None));
+            view.push_jump(doc, (doc.id(), last_selection.clone()));
+            view.jumps.push((doc.id(), last_selection.clone(), None));
         }
 
         // When a user hits backspace and there are no numbers left,
