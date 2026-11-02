@@ -4683,18 +4683,6 @@ name = "snakemake"
 source = { git = "https://github.com/osthomas/tree-sitter-snakemake", rev = "e909815acdbe37e69440261ebb1091ed52e1dec6" }
 
 [[language]]
-name = "cylc"
-scope = "source.cylc"
-injection-regex = "cylc"
-file-types = ["cylc", { glob = "suite.rc" }]
-comment-tokens = "#"
-indent = { tab-width = 4, unit = "    " }
-
-[[grammar]]
-name = "cylc"
-source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "6d1d81137112299324b526477ce1db989ab58fb8" }
-
-[[language]]
 name = "quint"
 scope = "source.quint"
 file-types = ["qnt"]
