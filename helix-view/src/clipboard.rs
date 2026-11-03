@@ -102,6 +102,61 @@ mod external {
         None,
     }
 
+    #[cfg(not(any(windows, target_os = "macos")))]
+    fn is_exit_success(program: &str, args: &[&str]) -> bool {
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+
+        let Ok(mut child) = Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        else {
+            return false;
+        };
+
+        let start = Instant::now();
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => return status.success(),
+                Ok(None) if start.elapsed() < Duration::from_secs(1) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                _ => break,
+            }
+        }
+
+        // A failed probe must not leave a running process or a zombie behind.
+        let _ = child.kill();
+        let _ = child.wait();
+        false
+    }
+
+    #[cfg(all(test, not(any(windows, target_os = "macos"))))]
+    mod tests {
+        use super::is_exit_success;
+        use std::time::{Duration, Instant};
+
+        #[test]
+        fn clipboard_probe_checks_exit_status() {
+            assert!(is_exit_success("sh", &["-c", "exit 0"]));
+            assert!(!is_exit_success("sh", &["-c", "exit 1"]));
+            assert!(!is_exit_success(
+                "helix-nonexistent-clipboard-provider",
+                &[]
+            ));
+        }
+
+        #[test]
+        fn clipboard_probe_times_out() {
+            let start = Instant::now();
+            assert!(!is_exit_success("sh", &["-c", "exec sleep 5"]));
+            assert!(start.elapsed() < Duration::from_secs(3));
+        }
+    }
+
     impl Default for ClipboardProvider {
         #[cfg(windows)]
         fn default() -> Self {
@@ -133,15 +188,6 @@ mod external {
         #[cfg(not(any(windows, target_os = "macos")))]
         fn default() -> Self {
             use helix_stdx::env::{binary_exists, env_var_is_set};
-
-            fn is_exit_success(program: &str, args: &[&str]) -> bool {
-                std::process::Command::new(program)
-                    .args(args)
-                    .output()
-                    .ok()
-                    .and_then(|out| out.status.success().then_some(()))
-                    .is_some()
-            }
 
             if binary_exists("termux-clipboard-set") && binary_exists("termux-clipboard-get") {
                 Self::Termux
