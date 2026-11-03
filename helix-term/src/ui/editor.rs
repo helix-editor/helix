@@ -127,6 +127,25 @@ impl EditorView {
             &text_annotations,
         ));
 
+        if let Some(fold_highlight) = ["ui.virtual.fold", "ui.virtual.inlay-hint", "comment"]
+            .into_iter()
+            .find_map(|scope| theme.find_highlight(scope))
+        {
+            // only the outermost folds are visible (and the ranges must not overlap)
+            let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
+            for fold in doc.folds(view.id) {
+                if ranges.last().is_none_or(|last| last.end <= fold.start) {
+                    ranges.push(fold.clone());
+                }
+            }
+            if !ranges.is_empty() {
+                overlays.push(OverlayHighlights::Homogeneous {
+                    highlight: fold_highlight,
+                    ranges,
+                });
+            }
+        }
+
         if doc
             .language_config()
             .and_then(|config| config.rainbow_brackets)
@@ -1275,6 +1294,26 @@ impl EditorView {
                     editor.focus(view_id);
 
                     let (view, doc) = current!(cxt.editor);
+
+                    // find out which gutter column was clicked
+                    let mut gutter_start = 0;
+                    let clicked_gutter = view.gutters().iter().copied().find(|gutter| {
+                        let width = gutter.width(view, doc);
+                        let hit = (gutter_start..gutter_start + width).contains(&coords.col);
+                        gutter_start += width;
+                        hit
+                    });
+                    if clicked_gutter == Some(helix_view::editor::GutterType::Fold) {
+                        if let Some(char_idx) =
+                            view.pos_at_visual_coords(doc, coords.row as u16, 0, true)
+                        {
+                            let line = doc.text().char_to_line(char_idx);
+                            let view_id = view.id;
+                            commands::toggle_fold_at_line(doc, view_id, line);
+                            return EventResult::Consumed(None);
+                        }
+                        return EventResult::Ignored(None);
+                    }
 
                     let Some(path) = doc.path().map(ToOwned::to_owned) else {
                         return EventResult::Ignored(None);

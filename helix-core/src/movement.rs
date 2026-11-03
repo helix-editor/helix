@@ -103,6 +103,37 @@ pub fn move_vertically_visual(
     new_range
 }
 
+/// Moves `count` lines up or down treating each folded region as a single line.
+fn move_lines_skipping_folds(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    mut line_idx: usize,
+    dir: Direction,
+    count: usize,
+) -> usize {
+    let last_line = slice.len_lines() - 1;
+    for _ in 0..count {
+        let mut next = match dir {
+            Direction::Forward if line_idx < last_line => line_idx + 1,
+            Direction::Backward if line_idx > 0 => line_idx - 1,
+            _ => break,
+        };
+        while let Some(fold) = annotations.fold_containing(slice.line_to_char(next)) {
+            next = match dir {
+                // the line after the fold
+                Direction::Forward => slice.char_to_line(fold.end) + 1,
+                // the header line of the fold
+                Direction::Backward => slice.char_to_line(fold.start),
+            };
+        }
+        if next > last_line {
+            break;
+        }
+        line_idx = next;
+    }
+    line_idx
+}
+
 pub fn move_vertically(
     slice: RopeSlice,
     range: Range,
@@ -126,9 +157,13 @@ pub fn move_vertically(
     let line_idx = slice.char_to_line(pos);
 
     // Compute the new position.
-    let mut new_line_idx = match dir {
-        Direction::Forward => line_idx.saturating_add(count),
-        Direction::Backward => line_idx.saturating_sub(count),
+    let mut new_line_idx = if annotations.has_folds() {
+        move_lines_skipping_folds(slice, annotations, line_idx, dir, count)
+    } else {
+        match dir {
+            Direction::Forward => line_idx.saturating_add(count),
+            Direction::Backward => line_idx.saturating_sub(count),
+        }
     };
 
     let line = if new_line_idx >= slice.len_lines() - 1 {

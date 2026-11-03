@@ -206,6 +206,11 @@ useful when you're simply looking over text and not actively editing it.
 | `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`               |
 | `Ctrl-u`             | Move cursor and page half page up                         | `page_cursor_half_up`   |
 | `Ctrl-d`             | Move cursor and page half page down                       | `page_cursor_half_down` |
+| `a`                  | Toggle the fold of the code block at the cursor           | `toggle_fold`           |
+| `f`                  | Fold the code block at the cursor                         | `fold`                  |
+| `o`                  | Unfold the code block at the cursor                       | `unfold`                |
+| `M`                  | Fold all code blocks                                      | `fold_all`              |
+| `R`                  | Unfold all code blocks                                    | `unfold_all`            |
 
 #### Goto mode
 

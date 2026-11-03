@@ -19,6 +19,7 @@
   - [`[editor.gutters.diff]` Section](#editorguttersdiff-section)
   - [`[editor.gutters.spacer]` Section](#editorguttersspacer-section)
   - [`[editor.gutters.code-action-hint]` Section](#editorgutterscode-action-hint-section)
+  - [`[editor.gutters.fold]` Section](#editorguttersfold-section)
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
@@ -40,7 +41,7 @@
 | `cursorline` | Highlight all lines with a cursor | `false` |
 | `cursorcolumn` | Highlight all columns with a cursor | `false` |
 | `continue-comments` | if helix should automatically add a line comment token if you create a new line inside a comment. | `true` |
-| `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer` and `code-action-hint`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+| `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer` and `code-action-hint` and `fold`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "fold", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
 | `auto-format` | Enable automatic formatting on save[^3] | `true` |
@@ -395,7 +396,7 @@ specific gutter components as subsections.
 
 | Key      | Description                    | Default                                                       |
 | ---      | ---                            | ---                                                           |
-| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
+| `layout` | A vector of gutters to display | `["diagnostics", "spacer", "line-numbers", "fold", "diff"]` |
 
 Example:
 
@@ -441,6 +442,36 @@ Currently unused
 The `code-action-hint` gutter option displays an indicator for whether a code action is available at current selection.
 
 There are currently no options for this section.
+
+#### `[editor.gutters.fold]` Section
+
+The `fold` gutter option shows `▼` next to lines that start a foldable code block
+and `▶` next to folded blocks. Clicking the indicator folds/unfolds the block.
+Foldable blocks are computed from the tree-sitter syntax tree, or from indentation
+for files without a grammar. Folds can also be toggled with `za` (see the
+[view mode keymap](./keymap.md#view-mode)). A fold opens automatically when the cursor
+moves into it.
+
+It is enabled by default, right after the line numbers. To hide it, replace `fold` with a `spacer`:
+
+```toml
+[editor.gutters]
+layout = ["diagnostics", "spacer", "line-numbers", "spacer", "diff"]
+```
+
+| Key        | Description                                   | Default |
+| ---        | ---                                           | ---     |
+| `foldable` | Symbol shown for lines that can be folded     | `"▼"`   |
+| `folded`   | Symbol shown for folded lines                 | `"▶"`   |
+
+The gutter is as wide as the widest symbol. In the default layout it takes the place of the
+spacer between the line numbers and the text, so the gutter has the same width as without folding.
+
+```toml
+[editor.gutters.fold]
+foldable = "⌄"
+folded = "›"
+```
 
 ### `[editor.soft-wrap]` Section
 

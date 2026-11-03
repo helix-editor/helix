@@ -211,3 +211,111 @@ fn annotation_and_overlay() {
         "fooo  bar "
     );
 }
+
+const FOLD_TEXT: &str = "fn a() {\n  x\n  y\n}\nz\n";
+
+fn fold_text(text: &str, softwrap: bool, folds: &[std::ops::Range<usize>]) -> String {
+    let mut annotations = TextAnnotations::default();
+    annotations.add_folds(folds);
+    let res = DocumentFormatter::new_at_prev_checkpoint(
+        text.into(),
+        &TextFormat::new_test(softwrap),
+        &annotations,
+        0,
+    )
+    .collect_to_str();
+    res
+}
+
+#[test]
+fn fold() {
+    let text = crate::Rope::from(FOLD_TEXT);
+    let fold = crate::fold::fold_range_for_lines(text.slice(..), 0, 3).unwrap();
+    assert_eq!(fold, 8..17);
+    assert_eq!(
+        fold_text(FOLD_TEXT, false, &[fold.clone()]),
+        "fn a() {⋯} \nz \n "
+    );
+    assert_eq!(fold_text(FOLD_TEXT, true, &[fold]), "fn a() {⋯} \nz \n ");
+}
+
+#[test]
+fn nested_fold() {
+    // the inner fold is hidden by the outer fold
+    let folds = [8..17, 12..15];
+    assert_eq!(fold_text(FOLD_TEXT, false, &folds), "fn a() {⋯} \nz \n ");
+    // only the inner fold
+    assert_eq!(
+        fold_text(FOLD_TEXT, false, &folds[1..]),
+        "fn a() { \n  x⋯y \n} \nz \n "
+    );
+}
+
+#[test]
+fn fold_line_indices_and_positions() {
+    use crate::{char_idx_at_visual_offset, visual_offset_from_block, Position};
+
+    let text = crate::Rope::from(FOLD_TEXT);
+    let text = text.slice(..);
+    let folds = [8..17];
+    let mut annotations = TextAnnotations::default();
+    annotations.add_folds(&folds);
+    let text_fmt = TextFormat::new_test(false);
+
+    // starting the formatter inside the fold starts at the fold header
+    let mut formatter =
+        DocumentFormatter::new_at_prev_checkpoint(text, &text_fmt, &annotations, 14);
+    assert_eq!(formatter.next_char_pos(), 0);
+    let graphemes: Vec<_> = formatter.by_ref().collect();
+    let z = graphemes.iter().find(|g| g.char_idx == 19).unwrap();
+    assert_eq!(z.line_idx, 4);
+    assert_eq!(z.visual_pos, Position::new(1, 0));
+    let closing = graphemes.iter().find(|g| g.char_idx == 17).unwrap();
+    assert_eq!(closing.line_idx, 3);
+    assert_eq!(closing.visual_pos, Position::new(0, 9));
+
+    // hidden chars are displayed at the fold marker
+    assert_eq!(
+        visual_offset_from_block(text, 0, 12, &text_fmt, &annotations).0,
+        Position::new(0, 8)
+    );
+    // moving down from the header skips the hidden lines
+    assert_eq!(
+        char_idx_at_visual_offset(text, 0, 1, 0, &text_fmt, &annotations),
+        (19, 0)
+    );
+    // moving up from the line after the fold lands on the header
+    assert_eq!(
+        char_idx_at_visual_offset(text, 19, -1, 2, &text_fmt, &annotations),
+        (2, 0)
+    );
+}
+
+#[test]
+fn move_vertically_skips_folds() {
+    use crate::movement::{move_vertically, Direction, Movement};
+    use crate::Range;
+
+    let text = crate::Rope::from(FOLD_TEXT);
+    let text = text.slice(..);
+    let folds = [8..17];
+    let mut annotations = TextAnnotations::default();
+    annotations.add_folds(&folds);
+    let text_fmt = TextFormat::new_test(false);
+    let mut move_line = |pos: usize, dir| {
+        move_vertically(
+            text,
+            Range::point(pos),
+            dir,
+            1,
+            Movement::Move,
+            &text_fmt,
+            &mut annotations,
+        )
+        .head
+    };
+    // `fn a() {⋯}` -> `z`
+    assert_eq!(move_line(0, Direction::Forward), 19);
+    // `z` -> `fn a() {⋯}`
+    assert_eq!(move_line(19, Direction::Backward), 0);
+}

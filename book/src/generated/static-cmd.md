@@ -252,6 +252,11 @@
 | `insert_register` | Insert register | insert: `` <C-r> `` |
 | `copy_between_registers` | Copy between two registers |  |
 | `align_view_middle` | Align view middle | normal: `` Zm ``, `` zm ``, select: `` Zm ``, `` zm `` |
+| `toggle_fold` | Toggle fold at cursor | normal: `` Za ``, `` za ``, select: `` Za ``, `` za `` |
+| `fold` | Fold code block at cursor | normal: `` Zf ``, `` zf ``, select: `` Zf ``, `` zf `` |
+| `unfold` | Unfold code block at cursor | normal: `` Zo ``, `` zo ``, select: `` Zo ``, `` zo `` |
+| `fold_all` | Fold all code blocks | normal: `` ZM ``, `` zM ``, select: `` ZM ``, `` zM `` |
+| `unfold_all` | Unfold all code blocks | normal: `` ZR ``, `` zR ``, select: `` ZR ``, `` zR `` |
 | `align_view_top` | Align view top | normal: `` Zt ``, `` zt ``, select: `` Zt ``, `` zt `` |
 | `align_view_center` | Align view center | normal: `` Zc ``, `` Zz ``, `` zc ``, `` zz ``, select: `` Zc ``, `` Zz ``, `` zc ``, `` zz `` |
 | `align_view_bottom` | Align view bottom | normal: `` Zb ``, `` zb ``, select: `` Zb ``, `` zb `` |
