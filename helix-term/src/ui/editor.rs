@@ -116,25 +116,56 @@ impl EditorView {
             decorations.add_decoration(line_decoration);
         }
 
+        // folded lines don't take up any rows so more document lines than
+        // `inner.height` can be visible: highlight all of them
+        let highlight_lines = Self::viewport_doc_lines(
+            doc.text().slice(..),
+            view_offset.anchor,
+            inner.height,
+            doc.folds(view.id),
+        );
         let syntax_highlighter =
-            Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
+            Self::doc_syntax_highlighter(doc, view_offset.anchor, highlight_lines, &loader);
         let mut overlays = Vec::new();
 
         overlays.push(Self::overlay_syntax_highlights(
             doc,
             view_offset.anchor,
-            inner.height,
+            highlight_lines,
             &text_annotations,
         ));
+
+        if let Some(fold_highlight) = ["ui.virtual.fold", "ui.virtual.inlay-hint", "comment"]
+            .into_iter()
+            .find_map(|scope| theme.find_highlight(scope))
+        {
+            // only the outermost folds are visible (and the ranges must not overlap)
+            let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
+            for fold in doc.folds(view.id) {
+                if ranges.last().is_none_or(|last| last.end <= fold.start) {
+                    ranges.push(fold.clone());
+                }
+            }
+            if !ranges.is_empty() {
+                overlays.push(OverlayHighlights::Homogeneous {
+                    highlight: fold_highlight,
+                    ranges,
+                });
+            }
+        }
 
         if doc
             .language_config()
             .and_then(|config| config.rainbow_brackets)
             .unwrap_or(config.rainbow_brackets)
         {
-            if let Some(overlay) =
-                Self::doc_rainbow_highlights(doc, view_offset.anchor, inner.height, theme, &loader)
-            {
+            if let Some(overlay) = Self::doc_rainbow_highlights(
+                doc,
+                view_offset.anchor,
+                highlight_lines,
+                theme,
+                &loader,
+            ) {
                 overlays.push(overlay);
             }
         }
@@ -276,15 +307,48 @@ impl EditorView {
             .for_each(|area| surface.set_style(area, ruler_theme))
     }
 
+    /// Returns how many document lines (starting at the line containing `anchor`)
+    /// are needed to fill `height` rows when the lines inside `folds` are hidden.
+    /// `folds` must be sorted by their start, see [`TextAnnotations::add_folds`].
+    fn viewport_doc_lines(
+        text: helix_core::RopeSlice,
+        anchor: usize,
+        height: u16,
+        folds: &[std::ops::Range<usize>],
+    ) -> usize {
+        let len_chars = text.len_chars();
+        let row = text.char_to_line(anchor.min(len_chars));
+        let row_start = text.line_to_char(row);
+        // the next document line that has not been accounted for yet
+        let mut doc_line = row;
+        // rows of the viewport that are still left to fill
+        let mut remaining = height as usize;
+
+        for fold in folds.iter().filter(|fold| fold.end > row_start) {
+            let start_line = text.char_to_line(fold.start.min(len_chars)).max(row);
+            let end_line = text.char_to_line(fold.end.min(len_chars));
+            // the lines up to (and including) the fold start are displayed normally,
+            // the text after the fold end continues on the row of the fold start
+            let visible = (start_line + 1).saturating_sub(doc_line);
+            if visible > remaining {
+                break;
+            }
+            remaining -= visible;
+            doc_line = doc_line.max(end_line + 1);
+        }
+
+        doc_line + remaining - row
+    }
+
     fn viewport_byte_range(
         text: helix_core::RopeSlice,
         row: usize,
-        height: u16,
+        height: usize,
     ) -> std::ops::Range<usize> {
         // Calculate viewport byte ranges:
         // Saturating subs to make it inclusive zero indexing.
         let last_line = text.len_lines().saturating_sub(1);
-        let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
+        let last_visible_line = (row + height).saturating_sub(1).min(last_line);
         let start = text.line_to_byte(row.min(last_line));
         let end = text.line_to_byte(last_visible_line + 1);
 
@@ -297,7 +361,7 @@ impl EditorView {
     pub fn doc_syntax_highlighter<'editor>(
         doc: &'editor Document,
         anchor: usize,
-        height: u16,
+        height: usize,
         loader: &'editor syntax::Loader,
     ) -> Option<syntax::Highlighter<'editor>> {
         let syntax = doc.syntax()?;
@@ -313,7 +377,7 @@ impl EditorView {
     pub fn overlay_syntax_highlights(
         doc: &Document,
         anchor: usize,
-        height: u16,
+        height: usize,
         text_annotations: &TextAnnotations,
     ) -> OverlayHighlights {
         let text = doc.text().slice(..);
@@ -328,7 +392,7 @@ impl EditorView {
     pub fn doc_rainbow_highlights(
         doc: &Document,
         anchor: usize,
-        height: u16,
+        height: usize,
         theme: &Theme,
         loader: &syntax::Loader,
     ) -> Option<OverlayHighlights> {
@@ -1276,6 +1340,26 @@ impl EditorView {
 
                     let (view, doc) = current!(cxt.editor);
 
+                    // find out which gutter column was clicked
+                    let mut gutter_start = 0;
+                    let clicked_gutter = view.gutters().iter().copied().find(|gutter| {
+                        let width = gutter.width(view, doc);
+                        let hit = (gutter_start..gutter_start + width).contains(&coords.col);
+                        gutter_start += width;
+                        hit
+                    });
+                    if clicked_gutter == Some(helix_view::editor::GutterType::Fold) {
+                        if let Some(char_idx) =
+                            view.pos_at_visual_coords(doc, coords.row as u16, 0, true)
+                        {
+                            let line = doc.text().char_to_line(char_idx);
+                            let view_id = view.id;
+                            commands::toggle_fold_at_line(doc, view_id, line);
+                            return EventResult::Consumed(None);
+                        }
+                        return EventResult::Ignored(None);
+                    }
+
                     let Some(path) = doc.path().map(ToOwned::to_owned) else {
                         return EventResult::Ignored(None);
                     };
@@ -1757,5 +1841,36 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::EditorView;
+    use helix_core::{fold::fold_range_for_lines, Rope};
+
+    #[test]
+    fn viewport_doc_lines_accounts_for_folds() {
+        let text = Rope::from((0..30).map(|i| format!("line {i}\n")).collect::<String>());
+        let text = text.slice(..);
+        let fold = |start, end| fold_range_for_lines(text, start, end).unwrap();
+        let lines = |anchor_line, height, folds: &[_]| {
+            EditorView::viewport_doc_lines(text, text.line_to_char(anchor_line), height, folds)
+        };
+
+        // no folds: one document line per row
+        assert_eq!(lines(0, 5, &[]), 5);
+        // lines 3..=10 are hidden behind the fold on line 2
+        assert_eq!(lines(0, 5, &[fold(2, 10)]), 13);
+        // the fold header is the last visible row
+        assert_eq!(lines(0, 3, &[fold(2, 10)]), 11);
+        // a fold below the viewport changes nothing
+        assert_eq!(lines(0, 5, &[fold(8, 12)]), 5);
+        // a fold above the viewport changes nothing
+        assert_eq!(lines(15, 5, &[fold(2, 10)]), 5);
+        // nested folds are hidden by the outer fold
+        assert_eq!(lines(0, 5, &[fold(2, 10), fold(4, 6)]), 13);
+        // multiple folds add up
+        assert_eq!(lines(0, 5, &[fold(1, 4), fold(6, 9)]), 11);
     }
 }

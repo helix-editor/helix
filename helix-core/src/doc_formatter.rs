@@ -169,8 +169,12 @@ impl Default for TextFormat {
     }
 }
 
+/// The grapheme that is displayed in place of folded text.
+pub const FOLD_MARKER: &str = "⋯";
+
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
+    text: RopeSlice<'t>,
     text_fmt: &'t TextFormat,
     annotations: &'t TextAnnotations<'t>,
 
@@ -212,11 +216,18 @@ impl<'t> DocumentFormatter<'t> {
         char_idx: usize,
     ) -> Self {
         // TODO divide long lines into blocks to avoid bad performance for long lines
-        let block_line_idx = text.char_to_line(char_idx.min(text.len_chars()));
-        let block_char_idx = text.line_to_char(block_line_idx);
+        let mut block_line_idx = text.char_to_line(char_idx.min(text.len_chars()));
+        let mut block_char_idx = text.line_to_char(block_line_idx);
+        // A line hidden inside a fold is displayed on the same visual line as
+        // the start of the fold so the block must start before the fold.
+        while let Some(fold_start) = annotations.fold_start_containing(block_char_idx) {
+            block_line_idx = text.char_to_line(fold_start);
+            block_char_idx = text.line_to_char(block_line_idx);
+        }
         annotations.reset_pos(block_char_idx);
 
         DocumentFormatter {
+            text,
             text_fmt,
             annotations,
             visual_pos: Position { row: 0, col: 0 },
@@ -262,6 +273,22 @@ impl<'t> DocumentFormatter<'t> {
         let (grapheme, source) =
             if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme(char_pos) {
                 (grapheme.into(), GraphemeSource::VirtualText { highlight })
+            } else if let Some(fold_end) = self
+                .annotations
+                .fold_at(char_pos)
+                .map(|end| end.min(self.text.len_chars()))
+                .filter(|&end| end > char_pos)
+            {
+                // the folded text is replaced by a single placeholder grapheme
+                // that spans all hidden chars
+                self.graphemes = self.text.slice(fold_end..).graphemes();
+                self.annotations.skip_hidden(fold_end);
+                (
+                    FOLD_MARKER.into(),
+                    GraphemeSource::Document {
+                        codepoints: (fold_end - char_pos) as u32,
+                    },
+                )
             } else if let Some(grapheme) = self.graphemes.next() {
                 let codepoints = grapheme.len_chars() as u32;
 
@@ -457,6 +484,15 @@ impl<'t> Iterator for DocumentFormatter<'t> {
         };
 
         self.char_pos += grapheme.doc_chars();
+        if grapheme.doc_chars() > 1
+            && grapheme.raw != Grapheme::Newline
+            && self.annotations.has_folds()
+        {
+            // folds can hide line breaks
+            self.line_pos = self
+                .text
+                .char_to_line(self.char_pos.min(self.text.len_chars()));
+        }
         if !grapheme.is_virtual() {
             self.annotations.process_virtual_text_anchors(&grapheme);
         }

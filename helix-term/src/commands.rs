@@ -558,6 +558,11 @@ impl MappableCommand {
         align_view_top, "Align view top",
         align_view_center, "Align view center",
         align_view_bottom, "Align view bottom",
+        toggle_fold, "Toggle fold at cursor",
+        fold, "Fold code block at cursor or selected lines",
+        unfold, "Unfold code block at cursor",
+        fold_all, "Fold all code blocks",
+        unfold_all, "Unfold all code blocks",
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
         match_brackets, "Goto matching bracket",
@@ -6124,6 +6129,105 @@ fn align_view_center(cx: &mut Context) {
 fn align_view_bottom(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Bottom);
+}
+
+/// Returns the (deduplicated) lines of the cursors of the current selection.
+fn cursor_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {
+    let text = doc.text().slice(..);
+    let mut lines: Vec<_> = doc
+        .selection(view_id)
+        .iter()
+        .map(|range| range.cursor_line(text))
+        .collect();
+    lines.dedup();
+    lines
+}
+
+/// Folds the innermost foldable region around `line` (or the line itself if it is a header).
+fn foldable_range_at_line(doc: &Document, line: usize) -> Option<std::ops::Range<usize>> {
+    helix_core::fold::enclosing_foldable_range(
+        doc.text().slice(..),
+        doc.syntax(),
+        line,
+        doc.tab_width(),
+    )
+}
+
+pub(crate) fn toggle_fold_at_line(doc: &mut Document, view_id: ViewId, line: usize) {
+    if !doc.remove_folds_on_line(view_id, line) {
+        if let Some(range) = helix_core::fold::foldable_range(
+            doc.text().slice(..),
+            doc.syntax(),
+            line,
+            doc.tab_width(),
+        ) {
+            doc.add_folds(view_id, [range]);
+        }
+    }
+}
+
+fn toggle_fold(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let mut to_fold = Vec::new();
+    for line in cursor_lines(doc, view.id) {
+        if !doc.remove_folds_on_line(view.id, line) {
+            to_fold.extend(foldable_range_at_line(doc, line));
+        }
+    }
+    doc.add_folds(view.id, to_fold);
+}
+
+/// Folds the selected lines of each multi-line selection and the code block
+/// around the cursor of every other selection.
+fn fold(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let folds: Vec<_> = doc
+        .selection(view.id)
+        .iter()
+        .filter_map(|range| {
+            let (start_line, end_line) = range.line_range(text);
+            if start_line < end_line {
+                // the first selected line stays visible as the fold header
+                helix_core::fold::fold_range_for_lines(text, start_line, end_line)
+            } else {
+                foldable_range_at_line(doc, range.cursor_line(text))
+            }
+        })
+        .collect();
+    if folds.is_empty() {
+        cx.editor.set_status("No foldable code block at cursor");
+        return;
+    }
+    doc.add_folds(view.id, folds);
+}
+
+fn unfold(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let cursors: Vec<_> = doc
+        .selection(view.id)
+        .iter()
+        .map(|range| range.cursor(text))
+        .collect();
+    for line in cursor_lines(doc, view.id) {
+        doc.remove_folds_on_line(view.id, line);
+    }
+    for cursor in cursors {
+        doc.remove_folds_at(view.id, cursor);
+    }
+}
+
+fn fold_all(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let folds =
+        helix_core::fold::all_foldable_ranges(doc.text().slice(..), doc.syntax(), doc.tab_width());
+    doc.add_folds(view.id, folds);
+}
+
+fn unfold_all(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    doc.clear_folds(view.id);
 }
 
 fn align_view_middle(cx: &mut Context) {

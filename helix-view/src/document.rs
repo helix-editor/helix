@@ -155,6 +155,9 @@ pub struct Document {
     pub(crate) document_highlights: HashMap<ViewId, DocumentHighlights>,
     /// LSP code action hints for each view.
     pub(crate) code_action_hints: HashSet<ViewId>,
+    /// Folded (hidden) char ranges for each view, sorted by start.
+    /// See [`helix_core::fold`] for the shape of these ranges.
+    pub(crate) folds: HashMap<ViewId, Vec<std::ops::Range<usize>>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -765,6 +768,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            folds: HashMap::new(),
             document_highlights: HashMap::new(),
             code_action_hints: HashSet::new(),
             color_swatches: None,
@@ -1397,6 +1401,7 @@ impl Document {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+        self.reveal_cursors(view_id);
         helix_event::dispatch(SelectionDidChange {
             doc: self,
             view: view_id,
@@ -1442,6 +1447,7 @@ impl Document {
         self.view_data.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
+        self.folds.remove(&view_id);
         self.document_highlights.remove(&view_id);
         self.document_highlight_controllers.remove(&view_id);
         self.code_action_hints.remove(&view_id);
@@ -1469,6 +1475,7 @@ impl Document {
                     view_id,
                     selection.clone().ensure_invariants(self.text.slice(..)),
                 );
+                self.reveal_cursors(view_id);
                 helix_event::dispatch(SelectionDidChange {
                     doc: self,
                     view: view_id,
@@ -1487,6 +1494,24 @@ impl Document {
                 .map(transaction.changes())
                 // Ensure all selections across all views still adhere to invariants.
                 .ensure_invariants(self.text.slice(..));
+        }
+
+        let text = self.text.slice(..);
+        for folds in self.folds.values_mut() {
+            for fold in folds.iter_mut() {
+                changes.update_positions(
+                    [
+                        (&mut fold.start, Assoc::Before),
+                        (&mut fold.end, Assoc::Before),
+                    ]
+                    .into_iter(),
+                );
+            }
+            normalize_folds(text, folds);
+        }
+        let view_ids: Vec<_> = self.folds.keys().copied().collect();
+        for view_id in view_ids {
+            self.reveal_cursors(view_id);
         }
 
         for view_data in self.view_data.values_mut() {
@@ -2418,6 +2443,97 @@ impl Document {
         self.jump_labels.insert(view_id, labels);
     }
 
+    /// The folded char ranges of the given view, sorted by start.
+    pub fn folds(&self, view_id: ViewId) -> &[std::ops::Range<usize>] {
+        self.folds.get(&view_id).map_or(&[], Vec::as_slice)
+    }
+
+    /// Folds (hides) the given char ranges in the given view.
+    ///
+    /// Selections whose cursor would be hidden by a fold are moved to the start of
+    /// that fold. Existing folds that partially overlap a new fold are removed.
+    pub fn add_folds(
+        &mut self,
+        view_id: ViewId,
+        new_folds: impl IntoIterator<Item = std::ops::Range<usize>>,
+    ) {
+        let text = self.text.slice(..);
+        let len = text.len_chars();
+        let mut new_folds: Vec<_> = new_folds
+            .into_iter()
+            .filter(|fold| fold.start < fold.end && fold.end <= len)
+            .collect();
+        if new_folds.is_empty() {
+            return;
+        }
+        // outermost folds first so that cursors move to the outermost fold start
+        new_folds.sort_by_key(|fold| (fold.start, std::cmp::Reverse(fold.end)));
+        let selection = self.selection(view_id).clone().transform(|range| {
+            let cursor = range.cursor(text);
+            new_folds
+                .iter()
+                .find(|fold| fold.start < cursor && cursor < fold.end)
+                .map_or(range, |fold| Range::point(fold.start))
+        });
+        let folds = self.folds.entry(view_id).or_default();
+        // folds must either be nested or disjoint
+        folds.retain(|other| {
+            new_folds.iter().all(|fold| {
+                let nested = (fold.start <= other.start && other.end <= fold.end)
+                    || (other.start <= fold.start && fold.end <= other.end);
+                let disjoint = other.end <= fold.start || fold.end <= other.start;
+                nested || disjoint
+            })
+        });
+        folds.extend(new_folds);
+        normalize_folds(text, folds);
+        self.set_selection(view_id, selection);
+    }
+
+    /// Removes all folds that start on `line`. Returns whether any fold was removed.
+    pub fn remove_folds_on_line(&mut self, view_id: ViewId, line: usize) -> bool {
+        let text = self.text.slice(..);
+        let Some(folds) = self.folds.get_mut(&view_id) else {
+            return false;
+        };
+        let len = folds.len();
+        folds.retain(|fold| text.char_to_line(fold.start) != line);
+        len != folds.len()
+    }
+
+    /// Removes all folds that hide `pos` or start at `pos`.
+    /// Returns whether any fold was removed.
+    pub fn remove_folds_at(&mut self, view_id: ViewId, pos: usize) -> bool {
+        let Some(folds) = self.folds.get_mut(&view_id) else {
+            return false;
+        };
+        let len = folds.len();
+        folds.retain(|fold| !(fold.start <= pos && pos < fold.end));
+        len != folds.len()
+    }
+
+    /// Removes all folds of the given view.
+    pub fn clear_folds(&mut self, view_id: ViewId) {
+        self.folds.remove(&view_id);
+    }
+
+    /// Opens all folds that hide the cursor of a selection in the given view.
+    fn reveal_cursors(&mut self, view_id: ViewId) {
+        let Some(folds) = self.folds.get_mut(&view_id) else {
+            return;
+        };
+        let Some(selection) = self.selections.get(&view_id) else {
+            return;
+        };
+        let text = self.text.slice(..);
+        folds.retain(|fold| {
+            !selection.iter().any(|range| {
+                let cursor = range.cursor(text);
+                fold.start < cursor && cursor < fold.end
+            })
+        });
+    }
+
     pub fn remove_jump_labels(&mut self, view_id: ViewId) {
         self.jump_labels.remove(&view_id);
     }
@@ -2527,6 +2643,22 @@ impl Display for FormatterError {
             }
         }
     }
+}
+
+/// Restores the invariants of folds after the document changed:
+/// folds start at a line ending, span multiple lines and are sorted.
+fn normalize_folds(text: helix_core::RopeSlice, folds: &mut Vec<std::ops::Range<usize>>) {
+    let len = text.len_chars();
+    folds.retain_mut(|fold| {
+        if fold.start >= len || fold.end > len {
+            return false;
+        }
+        let start_line = text.char_to_line(fold.start);
+        fold.start = helix_core::line_ending::line_end_char_index(&text, start_line);
+        fold.start < fold.end && text.char_to_line(fold.end) > start_line
+    });
+    folds.sort_by_key(|fold| (fold.start, std::cmp::Reverse(fold.end)));
+    folds.dedup();
 }
 
 #[cfg(test)]

@@ -38,14 +38,32 @@ pub fn move_horizontally(
     count: usize,
     behaviour: Movement,
     _: &TextFormat,
-    _: &mut TextAnnotations,
+    annotations: &mut TextAnnotations,
 ) -> Range {
     let pos = range.cursor(slice);
 
     // Compute the new position.
-    let new_pos = match dir {
-        Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
-        Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+    let new_pos = if annotations.has_folds() {
+        // a folded region is skipped as if it was a single grapheme
+        (0..count).fold(pos, |pos, _| {
+            let next = match dir {
+                Direction::Forward => next_grapheme_boundary(slice, pos),
+                Direction::Backward => prev_grapheme_boundary(slice, pos),
+            };
+            match annotations
+                .fold_containing(next)
+                .filter(|fold| next < fold.end)
+            {
+                Some(fold) if dir == Direction::Forward => fold.end,
+                Some(fold) => fold.start,
+                None => next,
+            }
+        })
+    } else {
+        match dir {
+            Direction::Forward => nth_next_grapheme_boundary(slice, pos, count),
+            Direction::Backward => nth_prev_grapheme_boundary(slice, pos, count),
+        }
     };
 
     // Compute the final new range.
@@ -103,6 +121,37 @@ pub fn move_vertically_visual(
     new_range
 }
 
+/// Moves `count` lines up or down treating each folded region as a single line.
+fn move_lines_skipping_folds(
+    slice: RopeSlice,
+    annotations: &TextAnnotations,
+    mut line_idx: usize,
+    dir: Direction,
+    count: usize,
+) -> usize {
+    let last_line = slice.len_lines() - 1;
+    for _ in 0..count {
+        let mut next = match dir {
+            Direction::Forward if line_idx < last_line => line_idx + 1,
+            Direction::Backward if line_idx > 0 => line_idx - 1,
+            _ => break,
+        };
+        while let Some(fold) = annotations.fold_containing(slice.line_to_char(next)) {
+            next = match dir {
+                // the line after the fold
+                Direction::Forward => slice.char_to_line(fold.end) + 1,
+                // the header line of the fold
+                Direction::Backward => slice.char_to_line(fold.start),
+            };
+        }
+        if next > last_line {
+            break;
+        }
+        line_idx = next;
+    }
+    line_idx
+}
+
 pub fn move_vertically(
     slice: RopeSlice,
     range: Range,
@@ -126,9 +175,13 @@ pub fn move_vertically(
     let line_idx = slice.char_to_line(pos);
 
     // Compute the new position.
-    let mut new_line_idx = match dir {
-        Direction::Forward => line_idx.saturating_add(count),
-        Direction::Backward => line_idx.saturating_sub(count),
+    let mut new_line_idx = if annotations.has_folds() {
+        move_lines_skipping_folds(slice, annotations, line_idx, dir, count)
+    } else {
+        match dir {
+            Direction::Forward => line_idx.saturating_add(count),
+            Direction::Backward => line_idx.saturating_sub(count),
+        }
     };
 
     let line = if new_line_idx >= slice.len_lines() - 1 {
