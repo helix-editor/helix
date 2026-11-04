@@ -670,9 +670,13 @@ impl Transaction {
     {
         let len = doc.len_chars();
 
-        let (lower, upper) = deletions.size_hint();
-        let size = upper.unwrap_or(lower);
-        let mut changeset = ChangeSet::with_capacity(2 * size + 1); // rough estimate
+        // The merge below relies on ranges sorted by start; callers are not
+        // required to provide them in order, and unsorted ranges used to be
+        // dropped silently.
+        let mut deletions: Vec<Deletion> = deletions.collect();
+        deletions.sort_unstable_by_key(|&(from, _)| from);
+
+        let mut changeset = ChangeSet::with_capacity(2 * deletions.len() + 1); // rough estimate
 
         let mut last = 0;
         for (mut from, to) in deletions {
@@ -932,6 +936,16 @@ impl Iterator for ChangeIterator<'_> {
 mod test {
     use super::*;
     use crate::history::State;
+
+    #[test]
+    fn delete_unsorted_ranges() {
+        let doc = Rope::from("abcd");
+        let transaction = Transaction::delete(&doc, vec![(2, 3), (0, 1)].into_iter());
+
+        let mut doc = doc;
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "bd");
+    }
 
     #[test]
     fn composition() {
