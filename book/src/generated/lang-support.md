@@ -169,7 +169,7 @@
 | lean | ✓ |  |  |  |  | `lake` |
 | ledger | ✓ |  |  |  |  |  |
 | less | ✓ |  | ✓ |  | ✓ | `vscode-css-language-server` |
-| lispex | ✓ | ✓ | ✓ |  |  |  |
+| lispex | ✓ | ✓ | ✓ |  |  | `lispex` |
 | llvm | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir | ✓ | ✓ | ✓ |  |  |  |
 | llvm-mir-yaml | ✓ |  | ✓ |  |  |  |

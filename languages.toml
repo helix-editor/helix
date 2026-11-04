@@ -82,6 +82,7 @@ koto-ls = { command = "koto-ls" }
 kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lake", args = ["serve"] }
+lispex-lsp = { command = "lispex", args = ["lsp"] }
 ltex-ls = { command = "ltex-ls" }
 ltex-ls-plus = { command = "ltex-ls-plus" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
@@ -5681,6 +5682,7 @@ roots = []
 comment-tokens = [";"]
 block-comment-tokens = [["#|", "|#"]]
 indent = { tab-width = 2, unit = "  " }
+language-servers = ["lispex-lsp"]
 
 [[grammar]]
 name = "lispex"
