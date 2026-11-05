@@ -722,12 +722,12 @@ impl Transaction {
         let process_change = |change_start, change_end, (idx, range): (usize, &Range)| {
             // update the primary idx
             if idx == selection.primary_index() {
-                new_primary_idx = Some(idx);
+                new_primary_idx = Some(ranges.len());
             } else if new_primary_idx.is_none() {
                 if idx > selection.primary_index() {
                     new_primary_idx = last_selection_idx;
                 } else {
-                    last_selection_idx = Some(idx);
+                    last_selection_idx = Some(ranges.len());
                 }
             }
             ranges.push(*range);
@@ -1182,5 +1182,42 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    #[test]
+    fn change_by_selection_ignore_overlapping_primary() {
+        // The range before the primary overlaps the first change and is dropped: the primary
+        // index must count the kept ranges.
+        let doc = Rope::from("0123456789abc");
+        for (ranges, primary) in [
+            (
+                crate::smallvec![Range::new(0, 1), Range::new(2, 3), Range::new(4, 5)],
+                2,
+            ),
+            (
+                crate::smallvec![
+                    Range::new(0, 1),
+                    Range::new(2, 3),
+                    Range::new(4, 5),
+                    Range::new(6, 7)
+                ],
+                2,
+            ),
+        ] {
+            let selection = Selection::new(ranges, primary);
+            let (_, new_selection) = Transaction::change_by_selection_ignore_overlapping(
+                &doc,
+                &selection,
+                |range| {
+                    if range.from() == 0 {
+                        (0, 3)
+                    } else {
+                        (range.from(), range.to())
+                    }
+                },
+                |_, _| None,
+            );
+            assert_eq!(new_selection.primary(), selection.primary());
+        }
     }
 }
