@@ -392,6 +392,7 @@ impl ChangeSet {
 
         let mut old_pos = 0;
         let mut new_pos = 0;
+        let mut prev = 0;
         let mut iter = self.changes.iter().enumerate().peekable();
 
         'outer: loop {
@@ -401,36 +402,21 @@ impl ChangeSet {
                         let Some((pos, assoc)) = positions.peek_mut() else {
                             return;
                         };
-                        if **pos < old_pos {
-                            // Positions are not sorted, revert to the last Operation that
-                            // contains this position and continue iterating from there.
-                            // We can unwrap here since `pos` can not be negative
-                            // (unsigned integer) and iterating backwards to the start
-                            // should always move us back to the start
-                            for (i, change) in self.changes[..$i].iter().enumerate().rev() {
-                                match change {
-                                    Retain(i) => {
-                                        old_pos -= i;
-                                        new_pos -= i;
-                                    }
-                                    Delete(i) => {
-                                        old_pos -= i;
-                                    }
-                                    Insert(ins) => {
-                                        new_pos -= ins.chars().count();
-                                    }
-                                }
-                                if old_pos <= **pos {
-                                    iter = self.changes[i..].iter().enumerate().peekable();
-                                }
-                            }
-                            debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
+                        if **pos < old_pos || **pos < prev {
+                            // Positions are not sorted. A position before the last mapped one
+                            // may sit at an insertion point that was already passed, so start
+                            // over from the first change.
+                            old_pos = 0;
+                            new_pos = 0;
+                            prev = 0;
+                            iter = self.changes.iter().enumerate().peekable();
                             continue 'outer;
                         }
                         #[allow(clippy::redundant_closure_call)]
                         let Some(new_pos) = $map(**pos, *assoc) else {
                             break;
                         };
+                        prev = **pos;
                         **pos = new_pos;
                         positions.next();
                     }
@@ -990,6 +976,22 @@ mod test {
         // applying a revert gives us back the original
         revert.apply(&mut doc2);
         assert_eq!(doc, doc2);
+    }
+
+    #[test]
+    fn update_positions_unsorted_at_insert() {
+        use Operation::*;
+        let cs = ChangeSet {
+            changes: vec![Insert("ab".into()), Retain(3)],
+            len: 3,
+            len_after: 5,
+        };
+        let mut a = 1;
+        let mut b = 0;
+        cs.update_positions([(&mut a, Assoc::Before), (&mut b, Assoc::Before)].into_iter());
+        assert_eq!(a, cs.map_pos(1, Assoc::Before));
+        assert_eq!(b, cs.map_pos(0, Assoc::Before));
+        assert_eq!((a, b), (3, 0));
     }
 
     #[test]
