@@ -778,8 +778,8 @@ impl Transaction {
             };
 
             let offset_range = Range::new(
-                (new_range.anchor as isize + offset) as usize,
-                (new_range.head as isize + offset) as usize,
+                new_range.anchor.saturating_add_signed(offset),
+                new_range.head.saturating_add_signed(offset),
             );
 
             end_ranges.push(offset_range);
@@ -1182,5 +1182,24 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    #[test]
+    fn change_by_and_with_selection_after_prior_deletion() {
+        let doc = Rope::from("0123456789abc");
+        let selection = Selection::new(crate::smallvec![Range::point(0), Range::point(1)], 0);
+
+        let transaction = Transaction::change_by_and_with_selection(&doc, &selection, |range| {
+            if range.head == 0 {
+                ((0, 10, None), None)
+            } else {
+                ((10, 10, None), None)
+            }
+        });
+
+        let mut result = doc.clone();
+        assert!(transaction.apply(&mut result));
+        assert_eq!(result, "abc");
+        assert_eq!(transaction.selection().unwrap(), &Selection::point(0));
     }
 }
