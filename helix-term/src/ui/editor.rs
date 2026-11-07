@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
+use std::{cell::Cell, mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -42,6 +42,9 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    /// Area between the left and right statusline regions, where transient
+    /// indicators are drawn so they do not paint over the bar.
+    statusline_text: Cell<Option<(u16, u16, Style)>>,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
 }
@@ -66,6 +69,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            statusline_text: Cell::new(None),
             terminal_focused: true,
         }
     }
@@ -235,15 +239,14 @@ impl EditorView {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+        let statusline_area = view.area.clip_top(view.area.height.saturating_sub(1));
 
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface);
+        if let Some(area) = statusline::render(&mut context, statusline_area, surface) {
+            self.statusline_text.set(Some(area));
+        }
     }
 
     pub fn render_rulers(
@@ -1619,6 +1622,7 @@ impl Component for EditorView {
         // clear with background color
         surface.set_style(area, cx.editor.theme.get("ui.background"));
         let config = cx.editor.config();
+        self.statusline_text.set(None);
 
         // check if bufferline should be rendered
         use helix_view::editor::BufferLine;
@@ -1628,8 +1632,8 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
+        // The statusline occupies the last row of the area; -1 for the bufferline.
+        let mut editor_area = area;
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }
@@ -1656,25 +1660,32 @@ impl Component for EditorView {
         let key_width = 15u16; // for showing pending keys
         let mut status_msg_width = 0;
 
+        let (text_start, text_end, text_style) =
+            self.statusline_text
+                .get()
+                .unwrap_or((area.x, area.x + area.width, Style::default()));
+        let text_width = text_end.saturating_sub(text_start);
+
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             status_msg_width = status_msg.width();
             use helix_view::editor::Severity;
             let style = if *severity == Severity::Error {
-                cx.editor.theme.get("error")
+                text_style.patch(cx.editor.theme.get("error"))
             } else {
-                cx.editor.theme.get("ui.text")
+                text_style.patch(cx.editor.theme.get("ui.text"))
             };
 
-            surface.set_string(
-                area.x,
+            surface.set_stringn(
+                text_start,
                 area.y + area.height.saturating_sub(1),
                 status_msg,
+                text_width as usize,
                 style,
             );
         }
 
-        if area.width.saturating_sub(status_msg_width as u16) > key_width {
+        if text_width.saturating_sub(status_msg_width as u16) > key_width {
             let mut disp = String::new();
             if let Some(count) = cx.editor.count {
                 disp.push_str(&count.to_string())
@@ -1685,7 +1696,7 @@ impl Component for EditorView {
             for key in &self.pseudo_pending {
                 disp.push_str(&key.key_sequence_format());
             }
-            let style = cx.editor.theme.get("ui.text");
+            let style = text_style.patch(cx.editor.theme.get("ui.text"));
             let macro_width = if cx.editor.macro_recording.is_some() {
                 3
             } else {
@@ -1694,10 +1705,9 @@ impl Component for EditorView {
             let restricted = workspace_trust_indicator_visible(cx.editor);
             let trust_width = if restricted { 3 } else { 0 };
             surface.set_string(
-                area.x
-                    + area
-                        .width
-                        .saturating_sub(key_width + macro_width + trust_width),
+                text_end
+                    .saturating_sub(key_width + macro_width + trust_width)
+                    .max(text_start),
                 area.y + area.height.saturating_sub(1),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
@@ -1708,8 +1718,7 @@ impl Component for EditorView {
                     .fg(helix_view::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
-                    area.x
-                        .saturating_add(area.width.saturating_sub(3 + macro_width)),
+                    text_end.saturating_sub(3 + macro_width).max(text_start),
                     area.y + area.height.saturating_sub(1),
                     "[⚠]",
                     style,
@@ -1721,7 +1730,7 @@ impl Component for EditorView {
                     .fg(helix_view::graphics::Color::Yellow)
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
-                    area.x + area.width.saturating_sub(3),
+                    text_end.saturating_sub(3).max(text_start),
                     area.y + area.height.saturating_sub(1),
                     &disp,
                     style,

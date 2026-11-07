@@ -115,9 +115,11 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+mode.command = "COMMAND"
 mode.normal-short = "NOR"
 mode.insert-short = "INS"
 mode.select-short = "VIS"
+mode.command-short = "COM"
 diagnostics = ["warning", "error"]
 workspace-diagnostics = ["warning", "error"]
 transparent = ["center"]
@@ -136,9 +138,11 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `mode.command` | The text shown in the `mode` element for the `:` command line | `"COMMAND"` |
 | `mode.normal-short` | The text shown for normal mode when `mode-short-width` is reached | `"NOR"` |
 | `mode.insert-short` | The text shown for insert mode when `mode-short-width` is reached | `"INS"` |
 | `mode.select-short` | The text shown for select mode when `mode-short-width` is reached | `"SEL"` |
+| `mode.command-short` | The text shown for the `:` command line when `mode-short-width` is reached | `"COM"` |
 | `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
 | `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
 | `transparent` | A list of regions (`left`, `center`, `right`) drawn without a background | `[]` |

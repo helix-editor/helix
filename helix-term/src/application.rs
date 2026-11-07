@@ -264,6 +264,8 @@ impl Application {
             self.compositor.full_redraw = false;
         }
 
+        self.editor.prompt = self.compositor.prompt_state();
+
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,

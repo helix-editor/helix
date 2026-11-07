@@ -732,9 +732,11 @@ pub struct ModeConfig {
     pub normal: String,
     pub insert: String,
     pub select: String,
+    pub command: String,
     pub normal_short: String,
     pub insert_short: String,
     pub select_short: String,
+    pub command_short: String,
 }
 
 impl Default for ModeConfig {
@@ -743,9 +745,11 @@ impl Default for ModeConfig {
             normal: String::from("NOR"),
             insert: String::from("INS"),
             select: String::from("SEL"),
+            command: String::from("COMMAND"),
             normal_short: String::from("NOR"),
             insert_short: String::from("INS"),
             select_short: String::from("SEL"),
+            command_short: String::from("COM"),
         }
     }
 }
@@ -1298,6 +1302,20 @@ use futures_util::stream::{Flatten, Once};
 
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
 
+/// A prompt mirrored from the UI layer so the statusline can render an inline
+/// command line.
+#[derive(Debug, Clone, Default)]
+pub struct PromptState {
+    /// The static prompt prefix, e.g. `":"`.
+    pub prompt: String,
+    /// The text typed after the prefix.
+    pub line: String,
+    /// Byte offset of the cursor within `line`.
+    pub cursor: usize,
+    /// Whether this is the `:` command line rather than another prompt.
+    pub is_command: bool,
+}
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -1339,6 +1357,11 @@ pub struct Editor {
 
     pub status_msg: Option<(Cow<'static, str>, Severity)>,
     pub autoinfo: Option<Info>,
+
+    /// The active prompt, if any. Updated by the UI before each frame.
+    pub prompt: Option<PromptState>,
+    /// Cursor position of an inline command line, set by the statusline.
+    pub prompt_cursor: Cell<Option<Position>>,
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
@@ -1439,7 +1462,7 @@ pub enum CloseError {
 
 impl Editor {
     pub fn new(
-        mut area: Rect,
+        area: Rect,
         theme_loader: Arc<theme::Loader>,
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
@@ -1449,9 +1472,6 @@ impl Editor {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
-
-        // HAXX: offset the render area height by 1 to account for prompt/commandline
-        area.height -= 1;
 
         Self {
             mode: Mode::Normal,
@@ -1481,6 +1501,8 @@ impl Editor {
             ))),
             status_msg: None,
             autoinfo: None,
+            prompt: None,
+            prompt_cursor: Cell::new(None),
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,

@@ -1,5 +1,9 @@
 use helix_core::indent::IndentStyle;
-use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
+use helix_core::{
+    coords_at_pos, encoding,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
+    Position,
+};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -50,7 +54,11 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
-pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
+pub fn render(
+    context: &mut RenderContext,
+    viewport: Rect,
+    surface: &mut Surface,
+) -> Option<(u16, u16, Style)> {
     let config = context.editor.config();
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
@@ -65,6 +73,12 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         }
     };
     let accent_style = mode_style(context);
+    let command = context.focused
+        && context
+            .editor
+            .prompt
+            .as_ref()
+            .is_some_and(|prompt| prompt.is_command);
 
     // Left side of the status line.
 
@@ -99,16 +113,18 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     // Center of the status line.
 
     let center_style = region_style(StatusLineRegion::Center);
-    for element_id in &config.statusline.center {
-        let style = if config.statusline.accent.contains(element_id) {
-            accent_style
-        } else {
-            center_style
-        };
-        let render = get_render_function(*element_id);
-        (render)(context, |context, span| {
-            append(&mut context.parts.center, span, style)
-        })
+    if !command {
+        for element_id in &config.statusline.center {
+            let style = if config.statusline.accent.contains(element_id) {
+                accent_style
+            } else {
+                center_style
+            };
+            let render = get_render_function(*element_id);
+            (render)(context, |context, span| {
+                append(&mut context.parts.center, span, style)
+            })
+        }
     }
 
     // Width of the empty space between the left and center area and between the center and right area.
@@ -155,6 +171,79 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         &context.parts.center,
         center_width,
     );
+
+    if command {
+        let start = left_end.saturating_add(1).min(right_start);
+        render_command_line(
+            context,
+            surface,
+            Rect::new(start, viewport.y, right_start.saturating_sub(start), 1),
+            center_style,
+        );
+    }
+
+    if context.focused {
+        let start = left_end.saturating_add(1).min(right_start);
+        Some((start, right_start, center_style))
+    } else {
+        None
+    }
+}
+
+fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rect, style: Style) {
+    let Some(prompt) = context
+        .editor
+        .prompt
+        .as_ref()
+        .filter(|prompt| prompt.is_command)
+    else {
+        return;
+    };
+    if area.width == 0 {
+        return;
+    }
+
+    let prefix_width = prompt.prompt.width() as u16;
+    let width = area.width as usize;
+    if prefix_width as usize >= width {
+        surface.set_stringn(area.x, area.y, &prompt.prompt, width, style);
+        return;
+    }
+
+    let line_width = width - prefix_width as usize;
+    let cursor_width = prompt.line[..prompt.cursor].width();
+    let scroll = cursor_width.saturating_sub(line_width.saturating_sub(1));
+    let anchor = if scroll == 0 {
+        0
+    } else {
+        prompt
+            .line
+            .grapheme_indices(true)
+            .scan(0usize, |width, (idx, grapheme)| {
+                let offset = *width;
+                *width += grapheme.width();
+                Some((idx, offset))
+            })
+            .find(|(_, offset)| *offset >= scroll)
+            .map(|(idx, _)| idx)
+            .unwrap_or(prompt.line.len())
+    };
+
+    surface.set_stringn(area.x, area.y, &prompt.prompt, width, style);
+    surface.set_stringn(
+        area.x + prefix_width,
+        area.y,
+        &prompt.line[anchor..],
+        line_width,
+        style,
+    );
+
+    let cursor_col = (area.x + prefix_width + prompt.line[anchor..prompt.cursor].width() as u16)
+        .min(area.x + area.width - 1);
+    context
+        .editor
+        .prompt_cursor
+        .set(Some(Position::new(area.y as usize, cursor_col as usize)));
 }
 
 fn append<'a>(buffer: &mut Spans<'a>, mut span: Span<'a>, base_style: Style) {
@@ -220,13 +309,26 @@ where
         .statusline
         .mode_short_width
         .is_some_and(|width| context.view.area.width <= width);
-    let mode_str = match context.editor.mode() {
-        Mode::Insert if short => &modenames.insert_short,
-        Mode::Insert => &modenames.insert,
-        Mode::Select if short => &modenames.select_short,
-        Mode::Select => &modenames.select,
-        Mode::Normal if short => &modenames.normal_short,
-        Mode::Normal => &modenames.normal,
+    let command = context
+        .editor
+        .prompt
+        .as_ref()
+        .is_some_and(|prompt| prompt.is_command);
+    let mode_str = if command {
+        if short {
+            &modenames.command_short
+        } else {
+            &modenames.command
+        }
+    } else {
+        match context.editor.mode() {
+            Mode::Insert if short => &modenames.insert_short,
+            Mode::Insert => &modenames.insert,
+            Mode::Select if short => &modenames.select_short,
+            Mode::Select => &modenames.select,
+            Mode::Normal if short => &modenames.normal_short,
+            Mode::Normal => &modenames.normal,
+        }
     };
     let content = if visible {
         format!(" {mode_str} ")
