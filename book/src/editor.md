@@ -150,6 +150,13 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `accent` | A list of elements drawn with the current mode's `ui.statusline.*` colors | `[]` |
 | `mode-short-width` | Use the `mode.*-short` labels when the statusline is at most this many columns wide | unset |
 
+While the `:` command line is open, the statusline renders only the `mode`
+element, one blank cell, and the command input across the rest of the row with a
+transparent background. Other elements are hidden until the command line closes.
+
+Trailing elements that render only whitespace are not painted, so empty
+elements at the end of a region do not leave a background block.
+
 The following statusline elements can be configured:
 
 | Key    | Description |

@@ -66,6 +66,19 @@ pub fn render(
     } else {
         context.editor.theme.get("ui.statusline.inactive")
     };
+
+    let command = context.focused
+        && context
+            .editor
+            .prompt
+            .as_ref()
+            .is_some_and(|prompt| prompt.is_command);
+    if command {
+        return Some(render_command_status(
+            context, viewport, surface, base_style,
+        ));
+    }
+
     let region_style = |region: StatusLineRegion| {
         if config.statusline.transparent.contains(&region) {
             base_style.bg(Color::Reset)
@@ -74,12 +87,6 @@ pub fn render(
         }
     };
     let accent_style = mode_style(context);
-    let command = context.focused
-        && context
-            .editor
-            .prompt
-            .as_ref()
-            .is_some_and(|prompt| prompt.is_command);
 
     // Left side of the status line.
 
@@ -120,27 +127,25 @@ pub fn render(
     // Center of the status line.
 
     let center_style = region_style(StatusLineRegion::Center);
-    if !command {
-        for element_id in &config.statusline.center {
-            if dashboard && is_document_element(*element_id) {
-                continue;
-            }
-            let style = if config.statusline.accent.contains(element_id) {
-                accent_style
-            } else {
-                center_style
-            };
-            let render = get_render_function(*element_id);
-            (render)(context, |context, span| {
-                append(&mut context.parts.center, span, style)
-            })
+    for element_id in &config.statusline.center {
+        if dashboard && is_document_element(*element_id) {
+            continue;
         }
+        let style = if config.statusline.accent.contains(element_id) {
+            accent_style
+        } else {
+            center_style
+        };
+        let render = get_render_function(*element_id);
+        (render)(context, |context, span| {
+            append(&mut context.parts.center, span, style)
+        })
     }
 
     // Width of the empty space between the left and center area and between the center and right area.
     let spacing = 1u16;
 
-    let left_width = context.parts.left.width() as u16;
+    let left_width = content_width(&context.parts.left);
     let right_width = context.parts.right.width() as u16;
     let edge_width = left_width.max(right_width);
     let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
@@ -150,21 +155,10 @@ pub fn render(
     let left_end = viewport.x.saturating_add(left_width).min(end);
     let right_start = end.saturating_sub(right_width);
 
-    let mut left_content_end = 0;
-    let mut width = 0;
-    for span in &context.parts.left.0 {
-        width += span.content.width();
-        if !span.content.chars().all(char::is_whitespace) {
-            left_content_end = width;
-        }
-    }
-    let text_start = if left_content_end == 0 {
+    let text_start = if left_width == 0 {
         viewport.x
     } else {
-        viewport
-            .x
-            .saturating_add(left_content_end as u16)
-            .saturating_add(1)
+        left_end.saturating_add(1)
     }
     .min(right_start);
 
@@ -200,25 +194,57 @@ pub fn render(
         center_width,
     );
 
-    if command {
-        render_command_line(
-            context,
-            surface,
-            Rect::new(
-                text_start,
-                viewport.y,
-                right_start.saturating_sub(text_start),
-                1,
-            ),
-            center_style,
-        );
-    }
-
     if context.focused {
         Some((text_start, right_start, center_style))
     } else {
         None
     }
+}
+
+/// Renders the statusline while the `:` command line is open: just the mode
+/// chip, one transparent gap, then the command line across the rest.
+fn render_command_status(
+    context: &mut RenderContext,
+    viewport: Rect,
+    surface: &mut Surface,
+    base_style: Style,
+) -> (u16, u16, Style) {
+    let transparent = base_style.bg(Color::Reset);
+    surface.set_style(viewport.with_height(1), transparent);
+
+    render_mode(context, |context, span| {
+        append(&mut context.parts.left, span, transparent)
+    });
+    let mode_width = context.parts.left.width() as u16;
+    surface.set_spans(viewport.x, viewport.y, &context.parts.left, mode_width);
+
+    let end = viewport.x.saturating_add(viewport.width);
+    let start = viewport
+        .x
+        .saturating_add(mode_width)
+        .saturating_add(1)
+        .min(end);
+    render_command_line(
+        context,
+        surface,
+        Rect::new(start, viewport.y, end.saturating_sub(start), 1),
+        transparent,
+    );
+
+    (start, end, transparent)
+}
+
+/// Width of the spans up to the last span that contains visible content.
+fn content_width(spans: &Spans) -> u16 {
+    let mut width = 0;
+    let mut content = 0;
+    for span in &spans.0 {
+        width += span.content.width();
+        if !span.content.chars().all(char::is_whitespace) {
+            content = width;
+        }
+    }
+    content as u16
 }
 
 fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rect, style: Style) {
