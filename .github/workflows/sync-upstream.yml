@@ -1,0 +1,111 @@
+name: Sync upstream
+
+# Keeps the fork current with helix-editor/helix without touching an editor:
+#   * fast-forwards `master` to upstream/master (pure mirror)
+#   * rebases `local` (all custom commits) onto it
+#   * only pushes `local` after `cargo check` passes
+#   * opens an issue when a conflict or check failure needs a human
+#
+# Scheduled workflows only run from the repository's default branch, which is
+# `local`. Push credentials for the default token never trigger other
+# workflows, so this will not kick off upstream's release/pages jobs.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  MIRROR: master
+  FORK: local
+  UPSTREAM_URL: https://github.com/helix-editor/helix.git
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout mirror
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.MIRROR }}
+          fetch-depth: 0
+
+      - name: Rust setup
+        uses: ./.github/actions/rust-setup
+        with:
+          toolchain: "1.90.0"
+          cache-key: sync-upstream
+
+      - name: Fast-forward mirror and rebase patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch upstream --prune --no-tags
+          git fetch origin --prune
+
+          git switch "$MIRROR"
+          git merge-base --is-ancestor "$MIRROR" "upstream/$MIRROR"
+          git merge --ff-only "upstream/$MIRROR"
+          git push origin "$MIRROR"
+
+          git switch -C "$FORK" "origin/$FORK"
+          previous=$(git rev-parse HEAD)
+          git rebase "$MIRROR"
+
+          if [ "$(git rev-parse HEAD)" = "$previous" ]; then
+            echo "### Already up to date" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "### Checking rebased tree" >> "$GITHUB_STEP_SUMMARY"
+          if ! HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo check -p helix-term --quiet; then
+            git reset --hard "$previous"
+            echo "cargo check failed; \`$FORK\` left at $previous" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          git push --force-with-lease origin "$FORK"
+          echo "Rebased \`$FORK\` onto \`$MIRROR\` at $(git rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          title="Upstream sync needs attention"
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq 'length')
+          if [ "$existing" -gt 0 ]; then
+            echo "An open issue already exists."
+            exit 0
+          fi
+          gh issue create --title "$title" --body "$(cat <<EOF
+          [Sync run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) could not update the fork automatically.
+
+          Most likely a rebase conflict or a \`cargo check\` failure caused by upstream changes.
+          \`master\` may already be updated; \`local\` was left untouched.
+
+          \`\`\`sh
+          git fetch upstream
+          git switch local
+          git rebase master
+          # resolve, then:
+          HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo check -p helix-term
+          git push --force-with-lease origin local
+          \`\`\`
+          EOF
+          )"
