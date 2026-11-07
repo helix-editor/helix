@@ -765,6 +765,8 @@ pub struct DashboardConfig {
     pub vertical_align: DashboardVerticalAlign,
     pub header: String,
     pub header_file: Option<String>,
+    /// Draw the built-in logo when no header is configured.
+    pub default_logo: bool,
     pub subtitle: String,
     pub footer: String,
     pub items: Vec<DashboardItem>,
@@ -785,6 +787,7 @@ impl Default for DashboardConfig {
             vertical_align: DashboardVerticalAlign::Center,
             header: String::new(),
             header_file: None,
+            default_logo: true,
             subtitle: String::new(),
             footer: String::new(),
             items: Vec::new(),

@@ -238,6 +238,7 @@ action = "file_picker"
 | `vertical-align` | `top` or `center` | `"center"` |
 | `header` | Multiline header text | unset |
 | `header-file` | Read the header from a file instead of `header` (takes precedence) | unset |
+| `default-logo` | Draw the built-in dot logo when no header is configured | `true` |
 | `subtitle` | Multiline text shown between the header and the items | unset |
 | `footer` | Multiline footer text | unset |
 | `items` | List of shortcut rows, see below | `[]` |
@@ -283,6 +284,10 @@ The dashboard uses these theme scopes, each falling back to an existing scope:
 | `ui.dashboard.icon` | `ui.text.inactive` |
 | `ui.dashboard.key` | `ui.text.inactive` |
 | `ui.dashboard.footer` | `ui.text.inactive` |
+
+The built-in logo is drawn with four shades that can be overridden through
+`ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
+`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`.
 
 ### `[editor.lsp]` Section
 
