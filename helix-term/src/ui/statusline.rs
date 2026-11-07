@@ -234,15 +234,21 @@ fn render_command_status(
     (start, end, transparent)
 }
 
-/// Width of the spans up to the last span that contains visible content.
+/// Width of the spans up to the last span that contains visible content, plus
+/// one cell of padding unless that span already ends with whitespace.
 fn content_width(spans: &Spans) -> u16 {
     let mut width = 0;
     let mut content = 0;
+    let mut padded = true;
     for span in &spans.0 {
         width += span.content.width();
         if !span.content.chars().all(char::is_whitespace) {
             content = width;
+            padded = span.content.chars().last().is_some_and(char::is_whitespace);
         }
+    }
+    if !padded {
+        content += 1;
     }
     content as u16
 }
