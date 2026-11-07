@@ -179,6 +179,94 @@ The following statusline elements can be configured:
 | `register` | The current selected register |
 | `code-action-hint` | Indicator for when code actions are available |
 
+### `[editor.dashboard]` Section
+
+The dashboard replaces the empty buffer when Helix starts without files. It is
+drawn over the buffer area and leaves the statusline visible. Document-specific
+statusline elements are hidden while it is shown.
+
+Content is composed from four optional blocks: `header`, `subtitle`, `items`
+and `footer`. A block is only drawn if it contains text.
+
+```toml
+[editor.dashboard]
+enable = true
+layout = "vertical"
+align = "center"
+vertical-align = "center"
+section-gap = 1
+item-gap = 0
+menu-style = "space-between"
+menu-width = 50
+key-width = 16
+column-gap = 4
+
+header = """
+  your ascii art
+"""
+subtitle = """
+helix %{version}
+
+A post-modern modal text editor
+"""
+footer = "docs: docs.helix-editor.com"
+
+[[editor.dashboard.items]]
+key = "f"
+icon = ""
+desc = "Find File"
+action = "file_picker"
+```
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `enable` | Show the dashboard when Helix starts without files | `false` |
+| `layout` | `vertical` (blocks stacked) or `horizontal` (header left, rest right) | `"vertical"` |
+| `align` | Horizontal block alignment for the vertical layout (`left` or `center`) | `"center"` |
+| `vertical-align` | `top` or `center` | `"center"` |
+| `header` | Multiline header text | unset |
+| `header-file` | Read the header from a file instead of `header` (takes precedence) | unset |
+| `subtitle` | Multiline text shown between the header and the items | unset |
+| `footer` | Multiline footer text | unset |
+| `items` | List of shortcut rows, see below | `[]` |
+| `menu-style` | `space-between` (keys right-aligned) or `key-left` (keys left-aligned) | `"space-between"` |
+| `menu-width` | Minimum width of the item block for `space-between` | `50` |
+| `key-width` | Width reserved for keys with `key-left` | `16` |
+| `section-gap` | Blank lines between blocks | `1` |
+| `item-gap` | Blank lines between items | `0` |
+| `column-gap` | Blank columns between the two columns in the horizontal layout | `4` |
+
+`%{version}` in any text block is replaced with the Helix version.
+
+Each item supports these keys:
+
+| Key | Description |
+| --- | ----------- |
+| `key` | Text shown in the key column, and the trigger when it parses to a single key (e.g. `f`, `<space>`, `<C-x>`) |
+| `icon` | Optional icon shown before the description |
+| `desc` | Description shown in the item |
+| `action` | Command to run. Accepts the same values as keymap entries: a command name (`file_picker`, `buffer_picker`, `global_search`) or a typable command (`:new`, `:config-open`, `:quit`). Omit for a static row. |
+
+While the dashboard is shown, keys that do not start a keymap sequence or open
+command mode are swallowed. Item keys run their action and dismiss the
+dashboard. Leader sequences and validated command-mode commands dismiss it once
+a command executes; aborting the command line keeps the dashboard.
+
+Content that is wider than the terminal is clipped, and a status message reports
+the required and available width. Keep `header`/`header-file` lines within the
+terminal width.
+
+The dashboard uses these theme scopes, each falling back to an existing scope:
+
+| Scope | Fallback |
+| ----- | -------- |
+| `ui.dashboard.header` | `ui.text` |
+| `ui.dashboard.subtitle` | `ui.text.inactive` |
+| `ui.dashboard.item` | `ui.text` |
+| `ui.dashboard.icon` | `ui.text.inactive` |
+| `ui.dashboard.key` | `ui.text.inactive` |
+| `ui.dashboard.footer` | `ui.text.inactive` |
+
 ### `[editor.lsp]` Section
 
 | Key                   | Description                                                 | Default |

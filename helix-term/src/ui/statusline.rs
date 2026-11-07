@@ -60,6 +60,7 @@ pub fn render(
     surface: &mut Surface,
 ) -> Option<(u16, u16, Style)> {
     let config = context.editor.config();
+    let dashboard = context.editor.dashboard;
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
     } else {
@@ -84,6 +85,9 @@ pub fn render(
 
     let left_style = region_style(StatusLineRegion::Left);
     for element_id in &config.statusline.left {
+        if dashboard && is_document_element(*element_id) {
+            continue;
+        }
         let style = if config.statusline.accent.contains(element_id) {
             accent_style
         } else {
@@ -99,6 +103,9 @@ pub fn render(
 
     let right_style = region_style(StatusLineRegion::Right);
     for element_id in &config.statusline.right {
+        if dashboard && is_document_element(*element_id) {
+            continue;
+        }
         let style = if config.statusline.accent.contains(element_id) {
             accent_style
         } else {
@@ -115,6 +122,9 @@ pub fn render(
     let center_style = region_style(StatusLineRegion::Center);
     if !command {
         for element_id in &config.statusline.center {
+            if dashboard && is_document_element(*element_id) {
+                continue;
+            }
             let style = if config.statusline.accent.contains(element_id) {
                 accent_style
             } else {
@@ -294,6 +304,33 @@ where
         helix_view::editor::StatusLineElement::CurrentWorkingDirectory => render_cwd,
         helix_view::editor::StatusLineElement::CodeActionHint => render_code_action_hint,
     }
+}
+
+/// Statusline elements that describe the current document and are meaningless
+/// on the dashboard.
+fn is_document_element(element: StatusLineElementID) -> bool {
+    use helix_view::editor::StatusLineElement as E;
+    matches!(
+        element,
+        E::FileBaseName
+            | E::FileName
+            | E::FileAbsolutePath
+            | E::FileModificationIndicator
+            | E::ReadOnlyIndicator
+            | E::FileEncoding
+            | E::FileLineEnding
+            | E::FileIndentStyle
+            | E::FileType
+            | E::Diagnostics
+            | E::WorkspaceDiagnostics
+            | E::Selections
+            | E::PrimarySelectionLength
+            | E::Position
+            | E::PositionPercentage
+            | E::TotalLineNumbers
+            | E::Register
+            | E::CodeActionHint
+    )
 }
 
 fn mode_style(context: &RenderContext) -> Style {

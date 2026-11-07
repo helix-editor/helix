@@ -1,4 +1,5 @@
 mod completion;
+mod dashboard;
 mod document;
 pub(crate) mod editor;
 mod info;

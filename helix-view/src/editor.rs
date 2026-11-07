@@ -368,6 +368,8 @@ pub struct Config {
     pub file_explorer: FileExplorerConfig,
     /// Configuration of the statusline elements
     pub statusline: StatusLineConfig,
+    /// Configuration of the dashboard shown when Helix starts without files.
+    pub dashboard: DashboardConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -752,6 +754,100 @@ impl Default for ModeConfig {
             command_short: String::from("COM"),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DashboardConfig {
+    pub enable: bool,
+    pub layout: DashboardLayout,
+    pub align: DashboardAlign,
+    pub vertical_align: DashboardVerticalAlign,
+    pub header: String,
+    pub header_file: Option<String>,
+    pub subtitle: String,
+    pub footer: String,
+    pub items: Vec<DashboardItem>,
+    pub menu_style: DashboardMenuStyle,
+    pub menu_width: u16,
+    pub key_width: u16,
+    pub section_gap: u16,
+    pub item_gap: u16,
+    pub column_gap: u16,
+}
+
+impl Default for DashboardConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            layout: DashboardLayout::Vertical,
+            align: DashboardAlign::Center,
+            vertical_align: DashboardVerticalAlign::Center,
+            header: String::new(),
+            header_file: None,
+            subtitle: String::new(),
+            footer: String::new(),
+            items: Vec::new(),
+            menu_style: DashboardMenuStyle::SpaceBetween,
+            menu_width: 50,
+            key_width: 16,
+            section_gap: 1,
+            item_gap: 0,
+            column_gap: 4,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct DashboardItem {
+    pub key: Option<String>,
+    pub icon: Option<String>,
+    pub desc: String,
+    pub action: Option<String>,
+}
+
+impl Default for DashboardItem {
+    fn default() -> Self {
+        Self {
+            key: None,
+            icon: None,
+            desc: String::new(),
+            action: None,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum DashboardLayout {
+    #[default]
+    Vertical,
+    Horizontal,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum DashboardAlign {
+    Left,
+    #[default]
+    Center,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum DashboardVerticalAlign {
+    Top,
+    #[default]
+    Center,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum DashboardMenuStyle {
+    #[default]
+    SpaceBetween,
+    KeyLeft,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1236,6 +1332,7 @@ impl Default for Config {
             file_picker: FilePickerConfig::default(),
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
+            dashboard: DashboardConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,
@@ -1362,6 +1459,8 @@ pub struct Editor {
     pub prompt: Option<PromptState>,
     /// Cursor position of an inline command line, set by the statusline.
     pub prompt_cursor: Cell<Option<Position>>,
+    /// Whether the startup dashboard is currently shown.
+    pub dashboard: bool,
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
@@ -1503,6 +1602,7 @@ impl Editor {
             autoinfo: None,
             prompt: None,
             prompt_cursor: Cell::new(None),
+            dashboard: false,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,

@@ -6,6 +6,7 @@ use crate::{
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
+        dashboard,
         document::{render_document, LinePos, TextRenderer},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
@@ -45,6 +46,8 @@ pub struct EditorView {
     /// Area between the left and right statusline regions, where transient
     /// indicators are drawn so they do not paint over the bar.
     statusline_text: Cell<Option<(u16, u16, Style)>>,
+    dashboard: dashboard::Renderer,
+    dashboard_warned: bool,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
 }
@@ -70,6 +73,8 @@ impl EditorView {
             completion: None,
             spinners: ProgressSpinners::default(),
             statusline_text: Cell::new(None),
+            dashboard: dashboard::Renderer::new(),
+            dashboard_warned: false,
             terminal_focused: true,
         }
     }
@@ -939,10 +944,36 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
+        let dashboard = mode == Mode::Normal && cxt.editor.dashboard;
+        let pending_before = !self.keymaps.pending().is_empty();
+
+        if dashboard && !pending_before {
+            if let Some(action) = dashboard_action(cxt.editor, event) {
+                run_dashboard_action(cxt, &action);
+                cxt.editor.dashboard = false;
+                return None;
+            }
+        }
+
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
+
+        // On the dashboard only leader sequences and command mode get through.
+        // Any other key is swallowed so it cannot edit the scratch buffer or
+        // dismiss the dashboard by accident.
+        let mut dismiss = false;
+        if dashboard {
+            match &key_result {
+                KeymapResult::Pending(_) => {}
+                KeymapResult::Matched(command) if command.name() == "command_mode" => {}
+                KeymapResult::Matched(_) | KeymapResult::MatchedSequence(_) if pending_before => {
+                    dismiss = true;
+                }
+                _ => return None,
+            }
+        }
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
@@ -980,6 +1011,9 @@ impl EditorView {
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
+        }
+        if dismiss {
+            cxt.editor.dashboard = false;
         }
         None
     }
@@ -1164,6 +1198,32 @@ impl EditorView {
         commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
 
         EventResult::Ignored(None)
+    }
+}
+
+/// Returns the action configured for the dashboard key that matches `event`.
+fn dashboard_action(editor: &Editor, event: KeyEvent) -> Option<String> {
+    editor.config().dashboard.items.iter().find_map(|item| {
+        let action = item.action.as_ref()?;
+        let mut keys = helix_view::input::parse_macro(item.key.as_deref()?).ok()?;
+        if keys.len() == 1 && keys.pop()? == event {
+            Some(action.clone())
+        } else {
+            None
+        }
+    })
+}
+
+fn run_dashboard_action(cxt: &mut commands::Context, action: &str) {
+    match action.parse::<commands::MappableCommand>() {
+        Ok(command) => {
+            command.execute(cxt);
+            helix_event::dispatch(PostCommand {
+                command: &command,
+                cx: cxt,
+            });
+        }
+        Err(err) => cxt.editor.set_error(format!("dashboard: {err}")),
     }
 }
 
@@ -1650,6 +1710,24 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
+        if cx.editor.dashboard {
+            let dashboard_area = area.clip_bottom(1);
+            surface.clear_with(dashboard_area, cx.editor.theme.get("ui.background"));
+            let dashboard_config = cx.editor.config().dashboard.clone();
+            if let Some(width) =
+                self.dashboard
+                    .render(&cx.editor.theme, &dashboard_config, dashboard_area, surface)
+            {
+                if !self.dashboard_warned {
+                    self.dashboard_warned = true;
+                    cx.editor.set_status(format!(
+                        "dashboard is {width} columns wide but the terminal is {}; clipped",
+                        dashboard_area.width
+                    ));
+                }
+            }
+        }
+
         if config.auto_info {
             if let Some(mut info) = cx.editor.autoinfo.take() {
                 info.render(area, surface, cx);
@@ -1744,6 +1822,9 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        if editor.dashboard {
+            return (None, CursorKind::Hidden);
+        }
         match editor.cursor() {
             // all block cursors are drawn manually
             (pos, CursorKind::Block) => {

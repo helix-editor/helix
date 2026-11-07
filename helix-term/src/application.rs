@@ -119,6 +119,10 @@ impl Application {
         let mut terminal = Terminal::new(backend)?;
         let area = terminal.size();
         let mut compositor = Compositor::new(area);
+        let show_dashboard = args.files.is_empty()
+            && !args.load_tutor
+            && config.editor.dashboard.enable
+            && (stdin().is_terminal() || cfg!(feature = "integration"));
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
@@ -132,6 +136,7 @@ impl Application {
             workspace_trust,
         );
         Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
+        editor.dashboard = show_dashboard;
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
