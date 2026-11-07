@@ -64,14 +64,20 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
             base_style
         }
     };
+    let accent_style = mode_style(context);
 
     // Left side of the status line.
 
     let left_style = region_style(StatusLineRegion::Left);
     for element_id in &config.statusline.left {
+        let style = if config.statusline.accent.contains(element_id) {
+            accent_style
+        } else {
+            left_style
+        };
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.left, span, left_style)
+            append(&mut context.parts.left, span, style)
         });
     }
 
@@ -79,9 +85,14 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     let right_style = region_style(StatusLineRegion::Right);
     for element_id in &config.statusline.right {
+        let style = if config.statusline.accent.contains(element_id) {
+            accent_style
+        } else {
+            right_style
+        };
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.right, span, right_style)
+            append(&mut context.parts.right, span, style)
         })
     }
 
@@ -89,9 +100,14 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
 
     let center_style = region_style(StatusLineRegion::Center);
     for element_id in &config.statusline.center {
+        let style = if config.statusline.accent.contains(element_id) {
+            accent_style
+        } else {
+            center_style
+        };
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.center, span, center_style)
+            append(&mut context.parts.center, span, style)
         })
     }
 
@@ -182,6 +198,17 @@ where
     }
 }
 
+fn mode_style(context: &RenderContext) -> Style {
+    if !context.focused || !context.editor.config().color_modes {
+        return Style::default();
+    }
+    match context.editor.mode() {
+        Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
+        Mode::Select => context.editor.theme.get("ui.statusline.select"),
+        Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
+    }
+}
+
 fn render_mode<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
@@ -207,15 +234,7 @@ where
         // If not focused, explicitly leave an empty space instead of returning None.
         " ".repeat(mode_str.width() + 2)
     };
-    let style = if visible && config.color_modes {
-        match context.editor.mode() {
-            Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
-            Mode::Select => context.editor.theme.get("ui.statusline.select"),
-            Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
-        }
-    } else {
-        Style::default()
-    };
+    let style = mode_style(context);
     write(context, Span::styled(content, style));
 }
 
@@ -223,6 +242,11 @@ fn render_lsp_spinner<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
+    let idle = if context.editor.config().statusline.reserve_space {
+        " "
+    } else {
+        ""
+    };
     write(
         context,
         context
@@ -235,7 +259,7 @@ where
                     .and_then(|spinner| spinner.frame())
             })
             // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-            .unwrap_or(" ")
+            .unwrap_or(idle)
             .into(),
     );
 }
@@ -509,8 +533,10 @@ where
 {
     let title = if context.doc.is_modified() {
         "[+]"
-    } else {
+    } else if context.editor.config().statusline.reserve_space {
         "   "
+    } else {
+        ""
     };
 
     write(context, title.into());

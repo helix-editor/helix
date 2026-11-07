@@ -682,8 +682,13 @@ pub struct StatusLineConfig {
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
+    /// Reserve space for elements that are currently empty, so the layout does
+    /// not shift when they appear.
+    pub reserve_space: bool,
     /// Regions of the statusline that are drawn without a background.
     pub transparent: Vec<StatusLineRegion>,
+    /// Elements painted with the current mode's `ui.statusline.*` colors.
+    pub accent: Vec<StatusLineElement>,
     /// Use the short mode labels when the statusline is at most this many
     /// columns wide.
     pub mode_short_width: Option<u16>,
@@ -714,6 +719,8 @@ impl Default for StatusLineConfig {
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
             transparent: Vec::new(),
+            accent: Vec::new(),
+            reserve_space: true,
             mode_short_width: None,
         }
     }

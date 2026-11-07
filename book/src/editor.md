@@ -121,6 +121,8 @@ mode.select-short = "VIS"
 diagnostics = ["warning", "error"]
 workspace-diagnostics = ["warning", "error"]
 transparent = ["center"]
+reserve-space = false
+accent = ["position"]
 mode-short-width = 100
 ```
 The `[editor.statusline]` key takes the following sub-keys:
@@ -140,6 +142,8 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
 | `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
 | `transparent` | A list of regions (`left`, `center`, `right`) drawn without a background | `[]` |
+| `reserve-space` | Reserve space for elements that are currently empty (spinner, modification indicator) | `true` |
+| `accent` | A list of elements drawn with the current mode's `ui.statusline.*` colors | `[]` |
 | `mode-short-width` | Use the `mode.*-short` labels when the statusline is at most this many columns wide | unset |
 
 The following statusline elements can be configured:
