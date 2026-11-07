@@ -115,9 +115,12 @@ separator = "│"
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+mode.normal-short = "NOR"
+mode.insert-short = "INS"
+mode.select-short = "VIS"
 diagnostics = ["warning", "error"]
 workspace-diagnostics = ["warning", "error"]
-transparent = false
+transparent = ["center"]
 mode-short-width = 100
 ```
 The `[editor.statusline]` key takes the following sub-keys:
@@ -131,10 +134,13 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `mode.normal-short` | The text shown for normal mode when `mode-short-width` is reached | `"NOR"` |
+| `mode.insert-short` | The text shown for insert mode when `mode-short-width` is reached | `"INS"` |
+| `mode.select-short` | The text shown for select mode when `mode-short-width` is reached | `"SEL"` |
 | `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
 | `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
-| `transparent` | Don't paint a background behind the statusline; elements with their own background keep it | `false` |
-| `mode-short-width` | Use three-character mode labels when the statusline is narrower than this many columns | unset |
+| `transparent` | A list of regions (`left`, `center`, `right`) drawn without a background | `[]` |
+| `mode-short-width` | Use the `mode.*-short` labels when the statusline is at most this many columns wide | unset |
 
 The following statusline elements can be configured:
 
