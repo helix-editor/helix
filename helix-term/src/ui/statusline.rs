@@ -203,14 +203,7 @@ fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rec
         return;
     }
 
-    let prefix_width = prompt.prompt.width() as u16;
-    let width = area.width as usize;
-    if prefix_width as usize >= width {
-        surface.set_stringn(area.x, area.y, &prompt.prompt, width, style);
-        return;
-    }
-
-    let line_width = width - prefix_width as usize;
+    let line_width = area.width as usize;
     let cursor_width = prompt.line[..prompt.cursor].width();
     let scroll = cursor_width.saturating_sub(line_width.saturating_sub(1));
     let anchor = if scroll == 0 {
@@ -229,17 +222,10 @@ fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rec
             .unwrap_or(prompt.line.len())
     };
 
-    surface.set_stringn(area.x, area.y, &prompt.prompt, width, style);
-    surface.set_stringn(
-        area.x + prefix_width,
-        area.y,
-        &prompt.line[anchor..],
-        line_width,
-        style,
-    );
+    surface.set_stringn(area.x, area.y, &prompt.line[anchor..], line_width, style);
 
-    let cursor_col = (area.x + prefix_width + prompt.line[anchor..prompt.cursor].width() as u16)
-        .min(area.x + area.width - 1);
+    let cursor_col =
+        (area.x + prompt.line[anchor..prompt.cursor].width() as u16).min(area.x + area.width - 1);
     context
         .editor
         .prompt_cursor
