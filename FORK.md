@@ -38,6 +38,18 @@ HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo check -p helix-term
 git push --force-with-lease origin local
 ```
 
+## Running your build
+
+The binary does not locate the repo's `runtime/` by itself, so running
+`./target/debug/hx` directly opens files without grammar queries (no syntax
+highlighting). Run it through cargo, which exports the manifest dir:
+
+```sh
+cargo run -p helix-term -- <args>
+# or
+HELIX_RUNTIME=$PWD/runtime ./target/debug/hx <args>
+```
+
 ## Writing patches that survive rebases
 
 - One commit per feature; rebase needs to be able to drop or reorder them.
