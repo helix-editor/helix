@@ -248,9 +248,14 @@ Each item supports these keys:
 | `action` | Command to run. Accepts the same values as keymap entries: a command name (`file_picker`, `buffer_picker`, `global_search`) or a typable command (`:new`, `:config-open`, `:quit`). Omit for a static row. |
 
 While the dashboard is shown, keys that do not start a keymap sequence or open
-command mode are swallowed. Item keys run their action and dismiss the
-dashboard. Leader sequences and validated command-mode commands dismiss it once
-a command executes; aborting the command line keeps the dashboard.
+command mode are swallowed. Item keys run their action. The dashboard stays
+visible until a file is opened or a new buffer is created, so cancelling a
+picker or aborting the command line returns to it.
+
+Leader sequences and `:` keep the dashboard visible while they run. Opening a
+file from a picker, `:open`, `:config-open`, or any other command that loads a
+file replaces the dashboard with that file. `:new` dismisses it and creates an
+empty buffer.
 
 Content that is wider than the terminal is clipped, and a status message reports
 the required and available width. Keep `header`/`header-file` lines within the
