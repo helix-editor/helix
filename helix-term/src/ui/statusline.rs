@@ -5,7 +5,7 @@ use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
-    theme::Style,
+    theme::{Color, Style},
     Document, Editor, View,
 };
 
@@ -51,17 +51,21 @@ pub struct RenderBuffer<'a> {
 }
 
 pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
+    let config = context.editor.config();
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
     } else {
         context.editor.theme.get("ui.statusline.inactive")
     };
+    let base_style = if config.statusline.transparent {
+        base_style.bg(Color::Reset)
+    } else {
+        base_style
+    };
 
     surface.set_style(viewport.with_height(1), base_style);
 
     // Left side of the status line.
-
-    let config = context.editor.config();
 
     for element_id in &config.statusline.left {
         let render = get_render_function(*element_id);
@@ -172,6 +176,12 @@ where
         Mode::Insert => &modenames.insert,
         Mode::Select => &modenames.select,
         Mode::Normal => &modenames.normal,
+    };
+    let mode_str = match config.statusline.mode_short_width {
+        Some(width) if context.view.area.width < width => {
+            mode_str.chars().take(3).collect::<String>()
+        }
+        _ => mode_str.clone(),
     };
     let content = if visible {
         format!(" {mode_str} ")

@@ -682,6 +682,12 @@ pub struct StatusLineConfig {
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
+    /// Don't paint a background behind the statusline. Elements with their own
+    /// background keep it.
+    pub transparent: bool,
+    /// Use three-character mode labels when the statusline is narrower than
+    /// this many columns.
+    pub mode_short_width: Option<u16>,
 }
 
 impl Default for StatusLineConfig {
@@ -708,6 +714,8 @@ impl Default for StatusLineConfig {
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
+            transparent: false,
+            mode_short_width: None,
         }
     }
 }
