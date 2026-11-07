@@ -117,6 +117,8 @@ mode.insert = "INSERT"
 mode.select = "SELECT"
 diagnostics = ["warning", "error"]
 workspace-diagnostics = ["warning", "error"]
+transparent = false
+mode-short-width = 100
 ```
 The `[editor.statusline]` key takes the following sub-keys:
 
@@ -131,6 +133,8 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
 | `diagnostics` | A list of severities which are displayed for the current buffer | `["warning", "error"]` |
 | `workspace-diagnostics` | A list of severities which are displayed for the workspace | `["warning", "error"]` |
+| `transparent` | Don't paint a background behind the statusline; elements with their own background keep it | `false` |
+| `mode-short-width` | Use three-character mode labels when the statusline is narrower than this many columns | unset |
 
 The following statusline elements can be configured:
 
