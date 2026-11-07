@@ -607,7 +607,6 @@ fn new_file(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> an
         return Ok(());
     }
 
-    cx.editor.dashboard = false;
     cx.editor.new_file(Action::Replace);
 
     Ok(())

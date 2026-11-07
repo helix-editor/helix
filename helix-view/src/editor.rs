@@ -1435,8 +1435,8 @@ pub struct Editor {
     pub prompt: Option<PromptState>,
     /// Cursor position of an inline command line, set by the statusline.
     pub prompt_cursor: Cell<Option<Position>>,
-    /// Whether the startup dashboard is currently shown.
-    pub dashboard: bool,
+    /// Document that was focused when the startup dashboard was shown.
+    pub dashboard_doc: Option<DocumentId>,
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
@@ -1578,7 +1578,7 @@ impl Editor {
             autoinfo: None,
             prompt: None,
             prompt_cursor: Cell::new(None),
-            dashboard: false,
+            dashboard_doc: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
@@ -1629,13 +1629,18 @@ impl Editor {
         self.config.load()
     }
 
-    /// Whether the startup dashboard should be shown. It stays visible until a
-    /// file is loaded into the focused view.
+    /// Whether the startup dashboard should be shown. It stays visible while
+    /// the document that was focused at startup is active and unmodified.
     pub fn dashboard_visible(&self) -> bool {
-        if !self.dashboard {
+        if self.mode != Mode::Normal {
             return false;
         }
-        let view = self.tree.get(self.tree.focus);
+        let Some(view) = self.tree.try_get(self.tree.focus) else {
+            return false;
+        };
+        if self.dashboard_doc != Some(view.doc) {
+            return false;
+        }
         let Some(doc) = self.documents.get(&view.doc) else {
             return false;
         };

@@ -136,7 +136,6 @@ impl Application {
             workspace_trust,
         );
         Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
-        editor.dashboard = show_dashboard;
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -235,6 +234,12 @@ impl Application {
             editor
                 .new_file_from_stdin(Action::VerticalSplit)
                 .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+        }
+
+        if show_dashboard {
+            if let Some(view) = editor.tree.try_get(editor.tree.focus) {
+                editor.dashboard_doc = Some(view.doc);
+            }
         }
 
         #[cfg(windows)]
