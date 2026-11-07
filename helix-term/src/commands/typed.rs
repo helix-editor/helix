@@ -4163,6 +4163,9 @@ pub(super) fn command_mode(cx: &mut Context) {
         Some(':'),
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event == PromptEvent::Validate {
+                cx.editor.dashboard = false;
+            }
             if let Err(err) = execute_command_line(cx, input, event) {
                 cx.editor.set_error(err.to_string());
             }
