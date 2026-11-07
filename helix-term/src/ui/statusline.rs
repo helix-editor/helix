@@ -60,7 +60,7 @@ pub fn render(
     surface: &mut Surface,
 ) -> Option<(u16, u16, Style)> {
     let config = context.editor.config();
-    let dashboard = context.editor.dashboard;
+    let dashboard = context.editor.dashboard_visible();
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
     } else {
@@ -150,22 +150,20 @@ pub fn render(
     let left_end = viewport.x.saturating_add(left_width).min(end);
     let right_start = end.saturating_sub(right_width);
 
-    let mut left_content_width = 0;
+    let mut left_content_end = 0;
     let mut width = 0;
     for span in &context.parts.left.0 {
-        for grapheme in span.content.graphemes(true) {
-            width += grapheme.width();
-            if !grapheme.chars().all(char::is_whitespace) {
-                left_content_width = width;
-            }
+        width += span.content.width();
+        if !span.content.chars().all(char::is_whitespace) {
+            left_content_end = width;
         }
     }
-    let text_start = if left_content_width == 0 {
+    let text_start = if left_content_end == 0 {
         viewport.x
     } else {
         viewport
             .x
-            .saturating_add(left_content_width as u16)
+            .saturating_add(left_content_end as u16)
             .saturating_add(1)
     }
     .min(right_start);
