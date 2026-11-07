@@ -13,7 +13,7 @@ use tui::text::Span;
 
 type Line = Vec<Span<'static>>;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Block {
     lines: Vec<Line>,
 }
@@ -75,17 +75,17 @@ impl Renderer {
         Self::default()
     }
 
-    /// Draws the dashboard in `area` and returns the layout width if it does
-    /// not fit, so the caller can warn.
+    /// Draws the dashboard in `area` and returns the size of the chosen
+    /// layout, so the caller can warn when it does not fit.
     pub fn render(
         &mut self,
         theme: &Theme,
         config: &DashboardConfig,
         area: Rect,
         surface: &mut Surface,
-    ) -> Option<u16> {
+    ) -> (usize, usize) {
         if area.width == 0 || area.height == 0 {
-            return None;
+            return (0, 0);
         }
 
         let header = text_block(
@@ -102,28 +102,43 @@ impl Renderer {
             dashboard_style(theme, "footer", "ui.text.inactive"),
         );
 
-        let layout_width = match config.layout {
-            DashboardLayout::Vertical => {
-                let block = stack([header, subtitle, items, footer], config.section_gap);
+        let vertical = stack(
+            [
+                header.clone(),
+                subtitle.clone(),
+                items.clone(),
+                footer.clone(),
+            ],
+            config.section_gap,
+        );
+        let right = stack([subtitle, items, footer], config.section_gap);
+        let gap = if header.is_empty() || right.is_empty() {
+            0
+        } else {
+            config.column_gap as usize
+        };
+
+        let vertical_size = (vertical.width(), vertical.height());
+        let horizontal_size = (
+            header.width() + gap + right.width(),
+            header.height().max(right.height()),
+        );
+        let layout = choose_layout(config.layout, area, vertical_size, horizontal_size);
+
+        match layout {
+            DashboardLayout::Vertical | DashboardLayout::Auto => {
                 let x = match config.align {
                     DashboardAlign::Left => area.x,
                     DashboardAlign::Center => {
-                        area.x + area.width.saturating_sub(block.width() as u16) / 2
+                        area.x + area.width.saturating_sub(vertical.width() as u16) / 2
                     }
                 };
-                let y = vertical_y(area, block.height(), config.vertical_align);
-                draw(&block, x, y, area, surface);
-                block.width()
+                let y = vertical_y(area, vertical.height(), config.vertical_align);
+                draw(&vertical, x, y, area, surface);
+                vertical_size
             }
             DashboardLayout::Horizontal => {
-                let right = stack([subtitle, items, footer], config.section_gap);
-                let gap = if header.is_empty() || right.is_empty() {
-                    0
-                } else {
-                    config.column_gap as usize
-                };
-                let total = header.width() + gap + right.width();
-                let x = area.x + area.width.saturating_sub(total as u16) / 2;
+                let x = area.x + area.width.saturating_sub(horizontal_size.0 as u16) / 2;
 
                 let header_y = vertical_y(area, header.height(), config.vertical_align);
                 draw(&header, x, header_y, area, surface);
@@ -131,11 +146,47 @@ impl Renderer {
                 let right_x = x + header.width() as u16 + gap as u16;
                 let right_y = vertical_y(area, right.height(), config.vertical_align);
                 draw(&right, right_x, right_y, area, surface);
-                total
+                horizontal_size
             }
-        };
+        }
+    }
+}
 
-        (layout_width > area.width as usize).then_some(layout_width as u16)
+fn choose_layout(
+    layout: DashboardLayout,
+    area: Rect,
+    vertical: (usize, usize),
+    horizontal: (usize, usize),
+) -> DashboardLayout {
+    if layout != DashboardLayout::Auto {
+        return layout;
+    }
+
+    let fits = |(width, height): (usize, usize)| {
+        width <= area.width as usize && height <= area.height as usize
+    };
+
+    match (fits(vertical), fits(horizontal)) {
+        (true, false) => DashboardLayout::Vertical,
+        (false, true) => DashboardLayout::Horizontal,
+        (true, true) => {
+            if area.width as usize >= area.height as usize * 2 {
+                DashboardLayout::Horizontal
+            } else {
+                DashboardLayout::Vertical
+            }
+        }
+        (false, false) => {
+            let overflow = |(width, height): (usize, usize)| {
+                width.saturating_sub(area.width as usize)
+                    + height.saturating_sub(area.height as usize)
+            };
+            if overflow(vertical) <= overflow(horizontal) {
+                DashboardLayout::Vertical
+            } else {
+                DashboardLayout::Horizontal
+            }
+        }
     }
 }
 
@@ -317,6 +368,46 @@ mod tests {
         assert_eq!(
             block.lines[0][0].content.as_ref(),
             format!("helix {}", env!("CARGO_PKG_VERSION"))
+        );
+    }
+
+    #[test]
+    fn auto_layout_prefers_horizontal_when_wide() {
+        let area = Rect::new(0, 0, 120, 24);
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (40, 20), (80, 12)),
+            DashboardLayout::Horizontal
+        );
+    }
+
+    #[test]
+    fn auto_layout_prefers_vertical_when_tall() {
+        let area = Rect::new(0, 0, 50, 40);
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (40, 20), (45, 10)),
+            DashboardLayout::Vertical
+        );
+    }
+
+    #[test]
+    fn auto_layout_uses_the_fitting_orientation() {
+        let area = Rect::new(0, 0, 60, 20);
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (50, 18), (80, 10)),
+            DashboardLayout::Vertical
+        );
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (80, 18), (50, 10)),
+            DashboardLayout::Horizontal
+        );
+    }
+
+    #[test]
+    fn auto_layout_picks_the_smallest_overflow() {
+        let area = Rect::new(0, 0, 50, 12);
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (30, 17), (51, 10)),
+            DashboardLayout::Horizontal
         );
     }
 }

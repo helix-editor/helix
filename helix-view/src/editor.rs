@@ -780,7 +780,7 @@ impl Default for DashboardConfig {
     fn default() -> Self {
         Self {
             enable: false,
-            layout: DashboardLayout::Vertical,
+            layout: DashboardLayout::Auto,
             align: DashboardAlign::Center,
             vertical_align: DashboardVerticalAlign::Center,
             header: String::new(),
@@ -822,6 +822,7 @@ impl Default for DashboardItem {
 #[serde(rename_all = "kebab-case")]
 pub enum DashboardLayout {
     #[default]
+    Auto,
     Vertical,
     Horizontal,
 }

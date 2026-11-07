@@ -195,6 +195,11 @@ statusline elements are hidden while it is shown.
 Content is composed from four optional blocks: `header`, `subtitle`, `items`
 and `footer`. A block is only drawn if it contains text.
 
+With `layout = "auto"` the dashboard picks the orientation that fits the
+terminal. If both fit, horizontal is used on wide terminals (width at least
+twice the height) and vertical otherwise. If neither fits, the orientation with
+the smallest overflow is used.
+
 ```toml
 [editor.dashboard]
 enable = true
@@ -228,7 +233,7 @@ action = "file_picker"
 | Key | Description | Default |
 | --- | ----------- | ------- |
 | `enable` | Show the dashboard when Helix starts without files | `false` |
-| `layout` | `vertical` (blocks stacked) or `horizontal` (header left, rest right) | `"vertical"` |
+| `layout` | `auto` (choose based on available room), `vertical`, or `horizontal` | `"auto"` |
 | `align` | Horizontal block alignment for the vertical layout (`left` or `center`) | `"center"` |
 | `vertical-align` | `top` or `center` | `"center"` |
 | `header` | Multiline header text | unset |

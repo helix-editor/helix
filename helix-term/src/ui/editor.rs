@@ -1707,17 +1707,18 @@ impl Component for EditorView {
             let dashboard_area = area.clip_bottom(1);
             surface.clear_with(dashboard_area, cx.editor.theme.get("ui.background"));
             let dashboard_config = cx.editor.config().dashboard.clone();
-            if let Some(width) =
+            let (width, height) =
                 self.dashboard
-                    .render(&cx.editor.theme, &dashboard_config, dashboard_area, surface)
+                    .render(&cx.editor.theme, &dashboard_config, dashboard_area, surface);
+            if !self.dashboard_warned
+                && (width > dashboard_area.width as usize
+                    || height > dashboard_area.height as usize)
             {
-                if !self.dashboard_warned {
-                    self.dashboard_warned = true;
-                    cx.editor.set_status(format!(
-                        "dashboard is {width} columns wide but the terminal is {}; clipped",
-                        dashboard_area.width
-                    ));
-                }
+                self.dashboard_warned = true;
+                cx.editor.set_status(format!(
+                    "dashboard is {width}x{height} but the terminal is {}x{}; clipped",
+                    dashboard_area.width, dashboard_area.height
+                ));
             }
         }
 
