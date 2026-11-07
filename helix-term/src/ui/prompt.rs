@@ -3,6 +3,7 @@ use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::document::Mode;
+use helix_view::editor::PromptState;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
@@ -47,6 +48,8 @@ pub struct Prompt {
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
     language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
+    /// The `:` command line is rendered by the statusline instead of the prompt row.
+    is_command: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -103,7 +106,15 @@ impl Prompt {
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
             language: None,
+            is_command: false,
         }
+    }
+
+    /// Marks this prompt as the `:` command line, which is drawn by the
+    /// statusline.
+    pub fn command_line(mut self) -> Self {
+        self.is_command = true;
+        self
     }
 
     /// Gets the byte index in the input representing the current cursor location.
@@ -510,6 +521,11 @@ impl Prompt {
             text.render(inner, surface, cx);
         }
 
+        // The command line is drawn by the statusline.
+        if self.is_command {
+            return;
+        }
+
         let line = area.height - 1;
         surface.clear_with(area.clip_top(line), background);
         // render buffer text
@@ -765,11 +781,27 @@ impl Component for Prompt {
         EventResult::Consumed(None)
     }
 
+    fn prompt_state(&self) -> Option<PromptState> {
+        Some(PromptState {
+            prompt: self.prompt.to_string(),
+            line: self.line.clone(),
+            cursor: self.cursor,
+            is_command: self.is_command,
+        })
+    }
+
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.render_prompt(area, surface, cx)
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        if self.is_command {
+            return (
+                editor.prompt_cursor.get(),
+                editor.config().cursor_shape.from_mode(Mode::Insert),
+            );
+        }
+
         let area = area
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });

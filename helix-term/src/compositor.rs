@@ -17,6 +17,7 @@ pub enum EventResult {
 
 use crate::job::Jobs;
 use crate::ui::picker;
+use helix_view::editor::PromptState;
 use helix_view::Editor;
 
 pub use helix_view::input::Event;
@@ -71,6 +72,11 @@ pub trait Component: Any + AnyComponent {
     }
 
     fn id(&self) -> Option<&'static str> {
+        None
+    }
+
+    /// Current state of this layer if it is a prompt.
+    fn prompt_state(&self) -> Option<PromptState> {
         None
     }
 }
@@ -200,6 +206,14 @@ impl Compositor {
         self.layers
             .iter()
             .any(|component| component.type_name() == type_name)
+    }
+
+    /// State of the topmost prompt, if any.
+    pub fn prompt_state(&self) -> Option<PromptState> {
+        self.layers
+            .iter()
+            .rev()
+            .find_map(|component| component.prompt_state())
     }
 
     pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
