@@ -6,7 +6,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::editor::{
     DashboardAlign, DashboardConfig, DashboardLayout, DashboardMenuStyle, DashboardVerticalAlign,
 };
-use helix_view::graphics::{Rect, Style};
+use helix_view::graphics::{Color, Rect, Style};
 use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
@@ -88,10 +88,12 @@ impl Renderer {
             return (0, 0);
         }
 
-        let header = text_block(
-            &self.header.resolve(config),
-            dashboard_style(theme, "header", "ui.text"),
-        );
+        let header_text = self.header.resolve(config);
+        let header = if config.default_logo && header_text.trim().is_empty() {
+            default_logo(theme)
+        } else {
+            text_block(&header_text, dashboard_style(theme, "header", "ui.text"))
+        };
         let subtitle = text_block(
             &config.subtitle,
             dashboard_style(theme, "subtitle", "ui.text.inactive"),
@@ -257,6 +259,62 @@ fn icon_spans(icon: &str, icon_width: usize, style: Style) -> Vec<Span<'static>>
     ]
 }
 
+const DEFAULT_LOGO: &str = "\
+==            ,
+xxxx,       .::
+`xxxxxxxx,:::::
+    `xx::::::`
+   ,::::::^xxx;
+.:::::`    ,;;;
+:::`    ,;;;;;`
+:eee,;;;;;;`
+ ,;;;;;;ee,
+;;;;;^eeeeeeee,
+;;^       `eeee
+`            --";
+
+const LOGO_PURPLE: Color = Color::Rgb(153, 123, 200);
+const LOGO_PURPLE_DARK: Color = Color::Rgb(112, 107, 200);
+const LOGO_BLUE: Color = Color::Rgb(85, 197, 228);
+const LOGO_BLUE_DARK: Color = Color::Rgb(132, 221, 234);
+
+fn default_logo(theme: &Theme) -> Block {
+    let purple = logo_color(theme, "ui.dashboard.logo.purple", LOGO_PURPLE);
+    let purple_dark = logo_color(theme, "ui.dashboard.logo.purple-dark", LOGO_PURPLE_DARK);
+    let blue = logo_color(theme, "ui.dashboard.logo.blue", LOGO_BLUE);
+    let blue_dark = logo_color(theme, "ui.dashboard.logo.blue-dark", LOGO_BLUE_DARK);
+    let fallback = dashboard_style(theme, "header", "ui.text");
+
+    Block {
+        lines: DEFAULT_LOGO
+            .lines()
+            .map(|line| {
+                line.trim_end()
+                    .chars()
+                    .map(|ch| {
+                        let color = match ch {
+                            'x' | 'e' => purple,
+                            '=' | '`' | '^' => purple_dark,
+                            ':' | '.' => blue,
+                            ';' | ',' | '-' => blue_dark,
+                            ' ' => return Span::raw(" "),
+                            _ => return Span::styled(ch.to_string(), fallback),
+                        };
+                        Span::styled(ch.to_string(), Style::default().fg(color))
+                    })
+                    .collect()
+            })
+            .collect(),
+    }
+}
+
+fn logo_color(theme: &Theme, scope: &str, default: Color) -> Color {
+    theme
+        .try_get_exact(scope)
+        .and_then(|style| style.fg)
+        .unwrap_or(default)
+}
+
 fn text_block(text: &str, style: Style) -> Block {
     let text = text.replace("%{version}", env!("CARGO_PKG_VERSION"));
     Block {
@@ -369,6 +427,19 @@ mod tests {
             block.lines[0][0].content.as_ref(),
             format!("helix {}", env!("CARGO_PKG_VERSION"))
         );
+    }
+
+    #[test]
+    fn default_logo_uses_known_characters() {
+        for ch in DEFAULT_LOGO.chars() {
+            assert!(
+                matches!(
+                    ch,
+                    'x' | 'e' | '=' | '`' | '^' | ':' | '.' | ';' | ',' | '-' | ' ' | '\n'
+                ),
+                "unexpected character in default logo: {ch:?}"
+            );
+        }
     }
 
     #[test]
