@@ -658,11 +658,10 @@ pub struct StatusLineConfig {
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
-    /// Don't paint a background behind the statusline. Elements with their own
-    /// background keep it.
-    pub transparent: bool,
-    /// Use three-character mode labels when the statusline is narrower than
-    /// this many columns.
+    /// Regions of the statusline that are drawn without a background.
+    pub transparent: Vec<StatusLineRegion>,
+    /// Use the short mode labels when the statusline is at most this many
+    /// columns wide.
     pub mode_short_width: Option<u16>,
 }
 
@@ -690,7 +689,7 @@ impl Default for StatusLineConfig {
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
-            transparent: false,
+            transparent: Vec::new(),
             mode_short_width: None,
         }
     }
@@ -702,6 +701,9 @@ pub struct ModeConfig {
     pub normal: String,
     pub insert: String,
     pub select: String,
+    pub normal_short: String,
+    pub insert_short: String,
+    pub select_short: String,
 }
 
 impl Default for ModeConfig {
@@ -710,8 +712,19 @@ impl Default for ModeConfig {
             normal: String::from("NOR"),
             insert: String::from("INS"),
             select: String::from("SEL"),
+            normal_short: String::from("NOR"),
+            insert_short: String::from("INS"),
+            select_short: String::from("SEL"),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineRegion {
+    Left,
+    Center,
+    Right,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]

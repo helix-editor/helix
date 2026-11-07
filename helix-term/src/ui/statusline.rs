@@ -11,7 +11,7 @@ use helix_view::{
 
 use crate::ui::ProgressSpinners;
 
-use helix_view::editor::StatusLineElement as StatusLineElementID;
+use helix_view::editor::{StatusLineElement as StatusLineElementID, StatusLineRegion};
 use tui::buffer::Buffer as Surface;
 use tui::text::{Span, Spans};
 
@@ -57,65 +57,82 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     } else {
         context.editor.theme.get("ui.statusline.inactive")
     };
-    let base_style = if config.statusline.transparent {
-        base_style.bg(Color::Reset)
-    } else {
-        base_style
+    let region_style = |region: StatusLineRegion| {
+        if config.statusline.transparent.contains(&region) {
+            base_style.bg(Color::Reset)
+        } else {
+            base_style
+        }
     };
-
-    surface.set_style(viewport.with_height(1), base_style);
 
     // Left side of the status line.
 
+    let left_style = region_style(StatusLineRegion::Left);
     for element_id in &config.statusline.left {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.left, span, base_style)
+            append(&mut context.parts.left, span, left_style)
         });
     }
 
-    surface.set_spans(
-        viewport.x,
-        viewport.y,
-        &context.parts.left,
-        context.parts.left.width() as u16,
-    );
-
     // Right side of the status line.
 
+    let right_style = region_style(StatusLineRegion::Right);
     for element_id in &config.statusline.right {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.right, span, base_style)
+            append(&mut context.parts.right, span, right_style)
         })
     }
 
-    surface.set_spans(
-        viewport.x
-            + viewport
-                .width
-                .saturating_sub(context.parts.right.width() as u16),
-        viewport.y,
-        &context.parts.right,
-        context.parts.right.width() as u16,
-    );
-
     // Center of the status line.
 
+    let center_style = region_style(StatusLineRegion::Center);
     for element_id in &config.statusline.center {
         let render = get_render_function(*element_id);
         (render)(context, |context, span| {
-            append(&mut context.parts.center, span, base_style)
+            append(&mut context.parts.center, span, center_style)
         })
     }
 
     // Width of the empty space between the left and center area and between the center and right area.
     let spacing = 1u16;
 
-    let edge_width = context.parts.left.width().max(context.parts.right.width()) as u16;
+    let left_width = context.parts.left.width() as u16;
+    let right_width = context.parts.right.width() as u16;
+    let edge_width = left_width.max(right_width);
     let center_max_width = viewport.width.saturating_sub(2 * edge_width + 2 * spacing);
     let center_width = center_max_width.min(context.parts.center.width() as u16);
 
+    let end = viewport.x.saturating_add(viewport.width);
+    let left_end = viewport.x.saturating_add(left_width).min(end);
+    let right_start = end.saturating_sub(right_width);
+
+    surface.set_style(
+        Rect::new(
+            viewport.x,
+            viewport.y,
+            left_end.saturating_sub(viewport.x),
+            1,
+        ),
+        left_style,
+    );
+    surface.set_style(
+        Rect::new(
+            left_end,
+            viewport.y,
+            right_start.saturating_sub(left_end),
+            1,
+        ),
+        center_style,
+    );
+    surface.set_style(
+        Rect::new(right_start, viewport.y, end.saturating_sub(right_start), 1),
+        right_style,
+    );
+
+    surface.set_spans(viewport.x, viewport.y, &context.parts.left, left_width);
+    surface.set_spans(right_start, viewport.y, &context.parts.right, right_width);
     surface.set_spans(
         viewport.x + viewport.width / 2 - center_width / 2,
         viewport.y,
@@ -172,16 +189,17 @@ where
     let visible = context.focused;
     let config = context.editor.config();
     let modenames = &config.statusline.mode;
+    let short = config
+        .statusline
+        .mode_short_width
+        .is_some_and(|width| context.view.area.width <= width);
     let mode_str = match context.editor.mode() {
+        Mode::Insert if short => &modenames.insert_short,
         Mode::Insert => &modenames.insert,
+        Mode::Select if short => &modenames.select_short,
         Mode::Select => &modenames.select,
+        Mode::Normal if short => &modenames.normal_short,
         Mode::Normal => &modenames.normal,
-    };
-    let mode_str = match config.statusline.mode_short_width {
-        Some(width) if context.view.area.width < width => {
-            mode_str.chars().take(3).collect::<String>()
-        }
-        _ => mode_str.clone(),
     };
     let content = if visible {
         format!(" {mode_str} ")
