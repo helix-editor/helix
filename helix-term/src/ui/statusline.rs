@@ -140,6 +140,26 @@ pub fn render(
     let left_end = viewport.x.saturating_add(left_width).min(end);
     let right_start = end.saturating_sub(right_width);
 
+    let mut left_content_width = 0;
+    let mut width = 0;
+    for span in &context.parts.left.0 {
+        for grapheme in span.content.graphemes(true) {
+            width += grapheme.width();
+            if !grapheme.chars().all(char::is_whitespace) {
+                left_content_width = width;
+            }
+        }
+    }
+    let text_start = if left_content_width == 0 {
+        viewport.x
+    } else {
+        viewport
+            .x
+            .saturating_add(left_content_width as u16)
+            .saturating_add(1)
+    }
+    .min(right_start);
+
     surface.set_style(
         Rect::new(
             viewport.x,
@@ -173,18 +193,21 @@ pub fn render(
     );
 
     if command {
-        let start = left_end.saturating_add(1).min(right_start);
         render_command_line(
             context,
             surface,
-            Rect::new(start, viewport.y, right_start.saturating_sub(start), 1),
+            Rect::new(
+                text_start,
+                viewport.y,
+                right_start.saturating_sub(text_start),
+                1,
+            ),
             center_style,
         );
     }
 
     if context.focused {
-        let start = left_end.saturating_add(1).min(right_start);
-        Some((start, right_start, center_style))
+        Some((text_start, right_start, center_style))
     } else {
         None
     }
