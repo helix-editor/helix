@@ -944,13 +944,12 @@ impl EditorView {
         cxt: &mut commands::Context,
         event: KeyEvent,
     ) -> Option<KeymapResult> {
-        let dashboard = mode == Mode::Normal && cxt.editor.dashboard;
+        let dashboard = mode == Mode::Normal && cxt.editor.dashboard_visible();
         let pending_before = !self.keymaps.pending().is_empty();
 
         if dashboard && !pending_before {
             if let Some(action) = dashboard_action(cxt.editor, event) {
                 run_dashboard_action(cxt, &action);
-                cxt.editor.dashboard = false;
                 return None;
             }
         }
@@ -963,14 +962,11 @@ impl EditorView {
         // On the dashboard only leader sequences and command mode get through.
         // Any other key is swallowed so it cannot edit the scratch buffer or
         // dismiss the dashboard by accident.
-        let mut dismiss = false;
         if dashboard {
             match &key_result {
                 KeymapResult::Pending(_) => {}
                 KeymapResult::Matched(command) if command.name() == "command_mode" => {}
-                KeymapResult::Matched(_) | KeymapResult::MatchedSequence(_) if pending_before => {
-                    dismiss = true;
-                }
+                KeymapResult::Matched(_) | KeymapResult::MatchedSequence(_) if pending_before => {}
                 _ => return None,
             }
         }
@@ -1011,9 +1007,6 @@ impl EditorView {
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
-        }
-        if dismiss {
-            cxt.editor.dashboard = false;
         }
         None
     }
@@ -1710,7 +1703,7 @@ impl Component for EditorView {
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
         }
 
-        if cx.editor.dashboard {
+        if cx.editor.dashboard_visible() {
             let dashboard_area = area.clip_bottom(1);
             surface.clear_with(dashboard_area, cx.editor.theme.get("ui.background"));
             let dashboard_config = cx.editor.config().dashboard.clone();
@@ -1822,7 +1815,7 @@ impl Component for EditorView {
     }
 
     fn cursor(&self, _area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        if editor.dashboard {
+        if editor.dashboard_visible() {
             return (None, CursorKind::Hidden);
         }
         match editor.cursor() {

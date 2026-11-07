@@ -1653,6 +1653,19 @@ impl Editor {
         self.config.load()
     }
 
+    /// Whether the startup dashboard should be shown. It stays visible until a
+    /// file is loaded into the focused view.
+    pub fn dashboard_visible(&self) -> bool {
+        if !self.dashboard {
+            return false;
+        }
+        let view = self.tree.get(self.tree.focus);
+        let Some(doc) = self.documents.get(&view.doc) else {
+            return false;
+        };
+        doc.path().is_none() && !doc.is_modified()
+    }
+
     /// Call if the config has changed to let the editor update all
     /// relevant members.
     pub fn refresh_config(&mut self, old_config: &Config) {
