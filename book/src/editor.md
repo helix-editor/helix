@@ -326,7 +326,8 @@ tables are not decorated yet.
 
 With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
 when the terminal supports Kitty graphics. Paths resolve relative to the note
-and then the vault root. PNG, JPEG, and GIF dimensions are read locally; images
+and then the vault root. PNGs are sent directly; JPEG/GIF are converted with
+`ffmpeg` and SVG with `rsvg-convert` into `~/.cache/rx-helix/images`. Images
 are capped at 50% of the window height and re-placed on scroll. Remote URLs are
 skipped and only the focused view is drawn.
 

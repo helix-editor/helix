@@ -241,9 +241,10 @@ images = true
 ```
 
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
-vault root. PNG, JPEG, and GIF dimensions are read locally; each image is
-scaled to at most 50% of the window height and re-placed as you scroll. Only
-the focused view is drawn. Remote URLs are skipped.
+vault root. PNG images are sent directly; JPEG/GIF are converted with `ffmpeg`
+and SVG with `rsvg-convert` into a cache under `~/.cache/rx-helix/images`. Each
+image is scaled to at most 50% of the window height and re-placed as you
+scroll. Only the focused view is drawn. Remote URLs are skipped.
 
 ## Obsidian
 
