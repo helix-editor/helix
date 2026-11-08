@@ -222,16 +222,22 @@ Optional display-only markdown rendering:
 render = true
 ```
 
-Headings lose their `#` markers and gain level icons, bullet lists use `•`,
-task boxes use `󰄱`/`󰱒`, block quotes use `│`, and horizontal rules use `─`.
-The buffer text is unchanged: rendering is built from single-grapheme overlays,
-so movement, editing, saving, and searching still see ordinary markdown. Only
-visible lines are scanned.
+Headings lose their `#` markers and gain level icons (`󰲡`–`󰲫`), bullet lists
+use `● ○ ◆ ◇` by nesting depth, task boxes use `󰄱`/`󰱒`, block quotes use `▋`,
+and horizontal rules (`---`/`***`/`___`) become a full-width `─` line. Heading
+rows get a full-width background from existing theme scopes (`ui.selection`,
+`ui.menu`, `ui.popup`, `ui.cursorline`); icons use `markup.heading.1`–`.6`;
+rules use `ui.linenr`; code blocks get a full-width `ui.cursorline` background
+with a `󰅩 language` header on the fence line and inline code gets a background.
+The buffer text is unchanged: rendering paints over the rendered document after
+each line, so movement, editing, saving, and searching still see ordinary
+markdown. The cursor line and visual selections show raw markdown so markers
+stay editable and readable.
 
-Code fences are left as-is and keep their tree-sitter highlighting. Links,
-callouts, and tables are not decorated yet.
+Code fences keep their tree-sitter highlighting. Links, callouts, and tables
+are not decorated yet.
 
-Local images can be drawn inline when the terminal speaks the Kitty graphics
+Local images are drawn inline when the terminal speaks the Kitty graphics
 protocol:
 
 ```toml
@@ -241,10 +247,14 @@ images = true
 ```
 
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
-vault root. PNG images are sent directly; JPEG/GIF are converted with `ffmpeg`
-and SVG with `rsvg-convert` into a cache under `~/.cache/rx-helix/images`. Each
-image is scaled to at most 50% of the window height and re-placed as you
-scroll. Only the focused view is drawn. Remote URLs are skipped.
+vault root. Each image reserves virtual lines after its anchor (like
+image.nvim's `with_virtual_padding`), so following text reflows instead of
+being covered. PNG images are sent directly; JPEG/GIF are converted with
+`ffmpeg` and SVG with `rsvg-convert` into a cache under
+`~/.cache/rx-helix/images`. Each image is scaled to at most 50% of the window
+height and re-placed as you scroll. Only the focused view is drawn and images
+are hidden while a picker/prompt/menu covers the editor. Remote URLs are
+skipped.
 
 ## Obsidian
 
