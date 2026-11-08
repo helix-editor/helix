@@ -33,3 +33,35 @@ signal to the Helix process, such as by using the command `pkill -USR1 hx`.
 Finally, you can have a `config.toml` and a `languages.toml` local to a project by putting it under a `.helix` directory in your repository.
 Its settings will be merged with the configuration directory and the built-in configuration.
 
+## Modular configuration
+
+`config.toml` can be split into modules. After loading the main `config.toml`,
+Helix scans `config.d/*.toml` next to it (e.g. `~/.config/helix/config.d/*.toml`
+or, for `--config path/to/config.toml`, `path/to/config.d/*.toml`) and merges
+each file alphabetically on top of the main file using `merge_toml_values`
+(depth 3). This lets you keep `config.toml` small and enable/disable features
+by adding or removing a file:
+
+```
+~/.config/helix/
+  config.toml
+  config.d/
+    10-editor.toml      # [editor] tweaks
+    20-vim.toml         # Vim muscle-memory (see contrib/config.d/vim.toml)
+    30-obsidian.toml    # Obsidian pickers
+```
+
+`20-vim.toml` in this repository is a direct copy of
+[`LGUG2Z/helix-vim`](https://github.com/LGUG2Z/helix-vim) (`contrib/config.d/vim.toml`
+and `contrib/rx-helix/config.d/vim.toml`). Enable it with:
+
+```sh
+mkdir -p ~/.config/helix/config.d
+cp contrib/config.d/vim.toml ~/.config/helix/config.d/vim.toml
+# reload inside Helix:
+:config-reload
+```
+
+Files are merged in sorted order, so prefix with `10-`, `20-` to control
+precedence. Invalid TOML in any module is reported as `Bad config` on startup.
+
