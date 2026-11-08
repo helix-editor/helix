@@ -228,9 +228,10 @@ fn choose_layout(
 }
 
 fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16, menu_gap: u16) -> Block {
-    let item_style = dashboard_style(theme, "item", "ui.text");
-    let icon_style = dashboard_style(theme, "icon", "ui.text.inactive");
-    let key_style = dashboard_style(theme, "key", "ui.text.inactive");
+    // Icons, labels, and keys all use the same accent color.
+    let icon_style = dashboard_style(theme, "icon", "ui.text");
+    let item_style = icon_style;
+    let key_style = icon_style;
 
     let icon_width = config
         .items
