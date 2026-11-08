@@ -573,7 +573,12 @@ impl Component for Completion {
 
         if cx.editor.popup_border() {
             use tui::widgets::{Block, Widget};
-            Widget::render(Block::bordered(), doc_area, surface);
+            let border_style = crate::ui::panel_border_style(&cx.editor.theme, "ui.popup");
+            Widget::render(
+                Block::bordered().border_style(border_style),
+                doc_area,
+                surface,
+            );
         }
 
         markdown_doc.render(doc_area, surface, cx);

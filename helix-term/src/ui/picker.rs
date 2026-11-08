@@ -724,19 +724,28 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 .min(snapshot.matched_item_count().saturating_sub(1))
         }
 
-        let text_style = cx.editor.theme.get("ui.text");
-        let selected = cx.editor.theme.get("ui.text.focus");
-        let highlight_style = cx.editor.theme.get("special").add_modifier(Modifier::BOLD);
+        let text_style = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
+        let selected = Style::default()
+            .fg(crate::ui::secondary_color(&cx.editor.theme))
+            .bg(crate::ui::primary_color(&cx.editor.theme))
+            .add_modifier(Modifier::BOLD);
+        let highlight_style = Style::default()
+            .fg(crate::ui::secondary_color(&cx.editor.theme))
+            .add_modifier(Modifier::BOLD);
 
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        const BLOCK: Block<'_> = Block::bordered();
+        let border_style = Style::new()
+            .fg(crate::ui::primary_color(&cx.editor.theme))
+            .bg(background.bg.unwrap_or(helix_view::theme::Color::Reset));
         let block = match &self.title {
-            Some(title) => BLOCK.title(Span::raw(title.clone())),
-            None => BLOCK,
+            Some(title) => Block::bordered()
+                .border_style(border_style)
+                .title(Span::styled(title.clone(), border_style)),
+            None => Block::bordered().border_style(border_style),
         };
 
         // calculate the inner area inside the box
@@ -939,14 +948,17 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let directory = cx.editor.theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
-        const BLOCK: Block<'_> = Block::bordered();
+        let border_style = Style::new()
+            .fg(crate::ui::primary_color(&cx.editor.theme))
+            .bg(background.bg.unwrap_or(helix_view::theme::Color::Reset));
+        let block = Block::bordered().border_style(border_style);
 
         // calculate the inner area inside the box
-        let inner = BLOCK.inner(area);
+        let inner = block.inner(area);
         // 1 column gap on either side
         let margin = Margin::horizontal(1);
         let inner = inner.inner(margin);
-        BLOCK.render(area, surface);
+        block.render(area, surface);
 
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {

@@ -425,8 +425,16 @@ impl Prompt {
     pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.menu");
-        let selected_color = theme.get("ui.menu.selected");
+        let completion_color = helix_view::theme::Style::default()
+            .fg(crate::ui::tertiary_color(theme))
+            .bg(theme
+                .get("ui.menu")
+                .bg
+                .unwrap_or(helix_view::theme::Color::Reset));
+        let selected_color = helix_view::theme::Style::default()
+            .fg(crate::ui::secondary_color(theme))
+            .bg(crate::ui::primary_color(theme))
+            .add_modifier(helix_view::graphics::Modifier::BOLD);
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
         // completion
@@ -463,7 +471,13 @@ impl Prompt {
 
         if height > 0 && !self.completion.is_empty() {
             let background = theme.get("ui.menu");
-            let border_style = crate::ui::panel_border_style(theme, "ui.menu");
+            let border_style = if self.is_command {
+                crate::ui::prompt_border_style(theme, "command")
+            } else if self.is_search {
+                crate::ui::prompt_border_style(theme, "search")
+            } else {
+                crate::ui::panel_border_style(theme, "ui.menu")
+            };
             let inner = completion_area.inner(Margin::all(1));
 
             let items = height as usize * cols as usize;
@@ -532,9 +546,23 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            let block = Block::bordered()
-                // .title(self.title.as_str())
-                .border_style(crate::ui::panel_border_style(theme, "ui.help"));
+            let mut border_style = crate::ui::panel_border_style(theme, "ui.help");
+            if self.is_command {
+                if let Some(c) = theme
+                    .try_get("ui.statusline.command")
+                    .and_then(|s| s.bg.or(s.fg))
+                {
+                    border_style = border_style.fg(c);
+                }
+            } else if self.is_search {
+                if let Some(c) = theme
+                    .try_get("ui.statusline.search")
+                    .and_then(|s| s.bg.or(s.fg))
+                {
+                    border_style = border_style.fg(c);
+                }
+            }
+            let block = Block::bordered().border_style(border_style);
 
             let inner = block.inner(area).inner(Margin::horizontal(1));
 

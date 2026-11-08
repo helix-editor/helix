@@ -601,7 +601,7 @@ fn dashboard_style(theme: &Theme, name: &str, fallback: &str) -> Style {
         "header" => {
             accent_style(theme, "ui.statusline.normal", fallback).add_modifier(Modifier::BOLD)
         }
-        "icon" => accent_style(theme, "ui.statusline.normal", fallback),
+        "icon" => accent_style(theme, "ui.statusline.select", fallback),
         _ => theme.get(fallback),
     }
 }
