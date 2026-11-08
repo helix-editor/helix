@@ -284,8 +284,8 @@ Notes:
 - The quick-switch picker uses a telescope-like footer: `<CR>` opens the
   selected note, `<C-x>` creates a note from the typed query, and `<C-l>`
   inserts `[[Title]]` for the selected note into the current buffer.
-- Automatic `[[` completion while typing is not implemented yet; use the
-  visual link commands or the quick-switch `<C-l>` action.
+- Typing `[[` in a markdown note opens the note picker and completes a wiki
+  link after you choose a note.
 
 A mergeable snippet lives in
 [`contrib/rx-helix/obsidian.example.toml`](../contrib/rx-helix/obsidian.example.toml).
