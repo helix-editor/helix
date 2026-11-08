@@ -8,11 +8,27 @@ enable = true
 vault = "~/Documents/Obsidian/Lessons"
 notes-subdir = "6 - Main Notes"
 templates-subdir = "5 - Templates"
+attachments-subdir = "assets"
+date-format = "%d-%m-%Y %H:%M %p"
+time-format = "%H:%M"
 
-# Phase 1 commands. More Obsidian commands are added in later phases.
 [keys.normal.space.o]
 o = ":obsidian-quick-switch"
 g = ":obsidian-search"
 n = ":obsidian-new"
+m = ":obsidian-rename"
+r = ":obsidian-rename"
+t = ":obsidian-template"
 f = ":obsidian-follow-link"
 b = ":obsidian-backlinks"
+i = ":obsidian-paste-image"
+c = ":obsidian-toggle-checkbox"
+d = ":obsidian-toc"
+l = ":obsidian-links"
+s = ":obsidian-tags"
+
+# Visual mode (Helix calls it select mode).
+[keys.select.space.o]
+l = ":obsidian-link"
+n = ":obsidian-link-new"
+e = ":obsidian-extract-note"

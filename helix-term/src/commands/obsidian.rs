@@ -1,5 +1,6 @@
+use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{bail, ensure, Context as _};
@@ -32,6 +33,17 @@ struct BacklinkItem {
     relative: String,
     line: usize,
     text: String,
+}
+
+struct TemplateItem {
+    path: PathBuf,
+    relative: String,
+}
+
+struct LinkItem {
+    path: Option<PathBuf>,
+    target: String,
+    line: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -454,25 +466,7 @@ fn open_note(cx: &mut CompositorContext, path: &Path, line: Option<usize>, actio
 }
 
 fn create_and_open(cx: &mut CompositorContext, title: &str) -> anyhow::Result<()> {
-    let title = title.trim();
-    ensure!(!title.is_empty(), "note title cannot be empty");
-    ensure!(
-        !title.contains(['/', '\\', '\0']),
-        "note title contains characters that are not allowed in a file name"
-    );
-
-    let (vault, config) = vault_config(cx)?;
-    let dir = if config.notes_subdir.is_empty() {
-        vault
-    } else {
-        vault.join(&config.notes_subdir)
-    };
-    fs::create_dir_all(&dir)?;
-    let path = dir.join(format!("{title}.md"));
-    if !path.exists() {
-        fs::write(&path, "")?;
-    }
-
+    let path = create_note(cx, title)?;
     open_note(cx, &path, None, Action::Replace);
     Ok(())
 }
@@ -697,6 +691,765 @@ fn wiki_target_matches(target: &str, title: &str, vault: &Path, source: &Path) -
             .eq_ignore_ascii_case(target)
 }
 
+pub fn rename(cx: &mut CompositorContext, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let title = args.join(" ");
+    if title.trim().is_empty() {
+        let current = current_note_path(cx)?;
+        let title = note_title(&current);
+        push_component(cx, move |editor, compositor| {
+            let prompt = ui::Prompt::new(
+                "rename note:".into(),
+                None,
+                ui::completers::none,
+                |cx, input, event| {
+                    if event != PromptEvent::Validate {
+                        return;
+                    }
+                    if let Err(err) = rename_note(cx, input) {
+                        cx.editor.set_error(err.to_string());
+                    }
+                },
+            )
+            .with_line(title, editor);
+            compositor.push(Box::new(prompt));
+        });
+    } else {
+        rename_note(cx, &title)?;
+    }
+
+    Ok(())
+}
+
+pub fn template(cx: &mut CompositorContext, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (vault, config) = vault_config(cx)?;
+    let dir = templates_dir(&vault, &config).context("templates folder is not configured")?;
+    ensure!(
+        dir.is_dir(),
+        "templates folder not found: {}",
+        dir.display()
+    );
+
+    let mut items = Vec::new();
+    for entry in fs::read_dir(&dir)? {
+        let path = entry?.path();
+        if path.extension().and_then(|ext| ext.to_str()) == Some("md") {
+            items.push(TemplateItem {
+                relative: relative_path(&vault, &path),
+                path,
+            });
+        }
+    }
+    items.sort_by_key(|item| item.relative.to_lowercase());
+    ensure!(!items.is_empty(), "no templates found in {}", dir.display());
+
+    let name = args.join(" ");
+    if name.trim().is_empty() {
+        push_template_picker(cx, items);
+    } else {
+        let name = name.trim();
+        let item = items
+            .into_iter()
+            .find(|item| note_title(&item.path).eq_ignore_ascii_case(name))
+            .with_context(|| format!("template not found: {name}"))?;
+        apply_template(cx, &item.path)?;
+    }
+
+    Ok(())
+}
+
+pub fn link(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let items = note_items(cx)?;
+    push_link_picker(cx, items);
+    Ok(())
+}
+
+pub fn link_new(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let texts = selection_texts(cx)?;
+    let title = texts
+        .first()
+        .map(|text| text.trim())
+        .filter(|text| !text.is_empty())
+        .context("select the text to use as the note title")?;
+    let title = sanitize_title(title);
+    let path = create_note(cx, &title)?;
+    let title = note_title(&path);
+    replace_selections(cx, &format!("[[{title}]]"))?;
+    Ok(())
+}
+
+pub fn extract_note(
+    cx: &mut CompositorContext,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let texts = selection_texts(cx)?;
+    let content = texts.join("\n");
+    let first_line = content
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or_default()
+        .trim();
+    ensure!(!first_line.is_empty(), "select some text to extract");
+
+    let title = sanitize_title(&first_line.chars().take(80).collect::<String>());
+    let (vault, config) = vault_config(cx)?;
+    let dir = notes_dir(&vault, &config);
+    fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{title}.md"));
+    ensure!(!path.exists(), "a note named `{title}` already exists");
+    fs::write(&path, content.trim_end())?;
+    replace_selections(cx, &format!("[[{title}]]"))?;
+    Ok(())
+}
+
+pub fn paste_image(
+    cx: &mut CompositorContext,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (vault, config) = vault_config(cx)?;
+    let types = Command::new("wl-paste")
+        .arg("--list-types")
+        .output()
+        .context("failed to run wl-paste")?;
+    let types = String::from_utf8_lossy(&types.stdout);
+    let (mime, extension) = if types.lines().any(|line| line.trim() == "image/png") {
+        ("image/png", "png")
+    } else if types
+        .lines()
+        .any(|line| matches!(line.trim(), "image/jpeg" | "image/jpg"))
+    {
+        ("image/jpeg", "jpg")
+    } else {
+        bail!("the clipboard does not contain a PNG or JPEG image");
+    };
+
+    let dir = notes_dir(&vault, &config).join(&config.attachments_subdir);
+    fs::create_dir_all(&dir)?;
+    let stamp = command_stdout("date", &["+%Y%m%d%H%M%S".to_string()]);
+    let name = format!("Pasted image {stamp}.{extension}");
+    let path = dir.join(&name);
+    let file = std::fs::File::create(&path)?;
+    let status = Command::new("wl-paste")
+        .args(["--type", mime])
+        .stdout(file)
+        .status()
+        .context("failed to run wl-paste")?;
+    ensure!(status.success(), "wl-paste failed to write the image");
+
+    let link = current_note_path(cx)
+        .ok()
+        .and_then(|note| note.parent().map(Path::to_path_buf))
+        .map(|base| relative_path_from(&base, &path))
+        .unwrap_or_else(|| path.strip_prefix(&vault).unwrap_or(&path).to_path_buf());
+    let link = link.display().to_string().replace('\\', "/");
+    let link = link.replace(' ', "%20");
+    insert_text(cx, &format!("![]({link})"))
+}
+
+pub fn toggle_checkbox(
+    cx: &mut CompositorContext,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = cx
+        .editor
+        .documents
+        .get_mut(&doc_id)
+        .context("no document in the current view")?;
+    let text = doc.text().slice(..);
+
+    let mut changes = Vec::new();
+    for range in doc.selection(view_id).iter() {
+        let line_idx = range.cursor_line(text);
+        let line = text.line(line_idx).to_string();
+        let Some(pos) = checkbox_position(&line) else {
+            continue;
+        };
+        let marker = if matches!(line.as_bytes()[pos + 1], b'x' | b'X') {
+            " "
+        } else {
+            "x"
+        };
+        let line_start = text.line_to_char(line_idx);
+        changes.push((
+            line_start + pos + 1,
+            line_start + pos + 2,
+            Some(Tendril::from(marker)),
+        ));
+    }
+
+    if changes.is_empty() {
+        cx.editor.set_status("no checkbox on the current line");
+        return Ok(());
+    }
+
+    let transaction = Transaction::change(doc.text(), changes.into_iter());
+    doc.apply(&transaction, view_id);
+    Ok(())
+}
+
+pub fn toc(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let text = current_doc_text(cx)?;
+    let mut lines = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        let heading = trimmed.trim_start_matches('#');
+        let level = trimmed.len() - heading.len();
+        let heading = heading.trim();
+        if level == 0 || heading.is_empty() {
+            continue;
+        }
+        let indent = "  ".repeat(level.saturating_sub(1));
+        lines.push(format!("{indent}- [[#{heading}]]"));
+    }
+
+    ensure!(!lines.is_empty(), "the current note has no headings");
+    insert_text(cx, &format!("{}\n", lines.join("\n")))
+}
+
+pub fn links(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (vault, config) = vault_config(cx)?;
+    let source = current_note_path(cx)?;
+    let text = current_doc_text(cx)?;
+    let mut items = Vec::new();
+    for (line_idx, line) in text.lines().enumerate() {
+        for link in wiki_links(line).into_iter().chain(markdown_links(line)) {
+            let path = resolve_link(&vault, &config, &source, &link)
+                .into_iter()
+                .next();
+            items.push(LinkItem {
+                path,
+                target: link.target,
+                line: line_idx,
+            });
+        }
+    }
+
+    if items.is_empty() {
+        cx.editor.set_status("the current note has no links");
+        return Ok(());
+    }
+
+    push_link_list_picker(cx, items);
+    Ok(())
+}
+
+pub fn tags(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (vault, config) = vault_config(cx)?;
+    let templates = templates_dir(&vault, &config);
+    let mut tags = BTreeSet::new();
+    for path in note_paths(&vault, templates.as_deref()) {
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for word in text.split_whitespace() {
+            let Some(tag) = word.strip_prefix('#') else {
+                continue;
+            };
+            let tag = tag.trim_matches(|ch: char| !ch.is_alphanumeric() && ch != '/' && ch != '_');
+            if tag.chars().next().is_some_and(char::is_alphanumeric) {
+                tags.insert(format!("#{tag}"));
+            }
+        }
+    }
+
+    ensure!(!tags.is_empty(), "no tags found in the vault");
+    push_tag_picker(cx, tags.into_iter().collect());
+    Ok(())
+}
+
+pub fn smart_action(
+    cx: &mut CompositorContext,
+    _args: Args,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_, line, col) = current_line(cx)?;
+    if link_at(&line, col).is_some() {
+        follow_link(cx, Args::default(), PromptEvent::Validate)
+    } else {
+        toggle_checkbox(cx, Args::default(), PromptEvent::Validate)
+    }
+}
+
+fn rename_note(cx: &mut CompositorContext, new_title: &str) -> anyhow::Result<()> {
+    let new_title = new_title.trim();
+    ensure!(!new_title.is_empty(), "note title cannot be empty");
+    ensure!(
+        !new_title.contains(['/', '\\', '\0']),
+        "note title contains characters that are not allowed in a file name"
+    );
+
+    let (vault, config) = vault_config(cx)?;
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let (old_path, modified, contents) = {
+        let doc = cx
+            .editor
+            .documents
+            .get(&doc_id)
+            .context("no document in the current view")?;
+        let path = doc
+            .path()
+            .map(Path::to_path_buf)
+            .context("the current buffer has no file path")?;
+        (path, doc.is_modified(), doc.text().to_string())
+    };
+    ensure!(
+        old_path.starts_with(&vault),
+        "the current note is not inside the vault"
+    );
+
+    let old_title = note_title(&old_path);
+    let new_path = old_path.with_file_name(format!("{new_title}.md"));
+    ensure!(
+        new_path != old_path,
+        "the new title is the same as the current title"
+    );
+    ensure!(
+        !new_path.exists(),
+        "a note named `{new_title}` already exists"
+    );
+
+    let old_relative = relative_path(&vault, &old_path);
+    let new_relative = relative_path(&vault, &new_path);
+    let templates = templates_dir(&vault, &config);
+    for path in note_paths(&vault, templates.as_deref()) {
+        if path == old_path {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let updated = rewrite_links(
+            &text,
+            &old_title,
+            &old_relative,
+            new_title,
+            &new_relative,
+            &vault,
+            &path,
+        );
+        if updated != text {
+            fs::write(&path, updated)?;
+        }
+    }
+
+    if modified {
+        fs::write(&old_path, contents)?;
+    }
+    fs::rename(&old_path, &new_path)?;
+    cx.editor.set_doc_path(doc_id, &new_path);
+    cx.editor.set_status(format!("renamed note to {new_title}"));
+    Ok(())
+}
+
+fn rewrite_links(
+    text: &str,
+    old_title: &str,
+    old_relative: &str,
+    new_title: &str,
+    new_relative: &str,
+    vault: &Path,
+    source: &Path,
+) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut offset = 0;
+    while let Some(found) = text[offset..].find("[[") {
+        let start = offset + found;
+        let Some(close) = text[start + 2..].find("]]") else {
+            break;
+        };
+        let inner_start = start + 2;
+        let inner_end = inner_start + close;
+        out.push_str(&text[offset..start]);
+        let inner = &text[inner_start..inner_end];
+        let (target, suffix) = split_target(inner);
+        if target_matches(target, old_title, old_relative) {
+            let replacement = if target.contains(['/', '\\']) {
+                new_relative.trim_end_matches(".md").to_string()
+            } else {
+                new_title.to_string()
+            };
+            out.push_str(&format!("[[{replacement}{suffix}]]"));
+        } else {
+            out.push_str(&format!("[[{inner}]]"));
+        }
+        offset = inner_end + 2;
+    }
+    out.push_str(&text[offset..]);
+
+    rewrite_markdown_links(out, old_title, old_relative, new_title, vault, source)
+}
+
+fn rewrite_markdown_links(
+    mut text: String,
+    old_title: &str,
+    old_relative: &str,
+    new_title: &str,
+    vault: &Path,
+    source: &Path,
+) -> String {
+    let old_path = vault.join(old_relative);
+    let old_canonical = fs::canonicalize(&old_path).ok();
+    let mut offset = 0;
+    while let Some(found) = text[offset..].find("](") {
+        let target_start = offset + found + 2;
+        let Some(close) = text[target_start..].find(')') else {
+            break;
+        };
+        let target_end = target_start + close;
+        let target = text[target_start..target_end].to_string();
+        let (path_part, suffix) = match target.find('#') {
+            Some(index) => (&target[..index], &target[index..]),
+            None => (target.as_str(), ""),
+        };
+        let cleaned = path_part.trim().trim_matches(|ch| ch == '<' || ch == '>');
+        let Some(cleaned) = Some(cleaned).filter(|cleaned| !cleaned.is_empty()) else {
+            offset = target_end + 1;
+            continue;
+        };
+        let resolved = resolve_markdown_path(source, vault, cleaned);
+        let matched = resolved
+            .and_then(|path| fs::canonicalize(path).ok())
+            .is_some_and(|path| Some(&path) == old_canonical.as_ref())
+            || cleaned
+                .trim_end_matches(".md")
+                .eq_ignore_ascii_case(old_title);
+        if matched {
+            let replacement = if path_part.ends_with(".md") {
+                format!("{new_title}.md{suffix}")
+            } else {
+                format!("{new_title}{suffix}")
+            };
+            text.replace_range(target_start..target_end, &replacement);
+            offset = target_start + replacement.len();
+        } else {
+            offset = target_end + 1;
+        }
+    }
+    text
+}
+
+fn split_target(inner: &str) -> (&str, &str) {
+    let index = inner.find(['|', '#']).unwrap_or(inner.len());
+    (&inner[..index], &inner[index..])
+}
+
+fn target_matches(target: &str, title: &str, relative: &str) -> bool {
+    let target = target.trim().trim_end_matches(".md");
+    target.eq_ignore_ascii_case(title)
+        || target.eq_ignore_ascii_case(relative.trim_end_matches(".md"))
+}
+
+fn note_items(cx: &CompositorContext) -> anyhow::Result<Vec<NoteItem>> {
+    let (vault, config) = vault_config(cx)?;
+    let templates = templates_dir(&vault, &config);
+    let paths = note_paths(&vault, templates.as_deref());
+    ensure!(
+        !paths.is_empty(),
+        "no markdown notes found in {}",
+        vault.display()
+    );
+    Ok(paths
+        .into_iter()
+        .map(|path| NoteItem {
+            relative: relative_path(&vault, &path),
+            path,
+        })
+        .collect())
+}
+
+fn push_link_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
+    push_component(cx, move |_editor, compositor| {
+        let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
+            format!("󰈔 {}", item.relative).into()
+        })];
+        let picker = Picker::new(columns, 0, items, (), |cx, item, _action| {
+            let title = note_title(&item.path);
+            if let Err(err) = replace_selections(cx, &format!("[[{title}]]")) {
+                cx.editor.set_error(err.to_string());
+            }
+        })
+        .with_title("Insert Link")
+        .with_help("<CR> insert link  <C-t> preview")
+        .truncate_start(false)
+        .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
+        compositor.push(Box::new(overlaid(picker)));
+    });
+}
+
+fn push_link_list_picker(cx: &mut CompositorContext, items: Vec<LinkItem>) {
+    push_component(cx, move |_editor, compositor| {
+        let columns = [PickerColumn::new("Results", |item: &LinkItem, _: &()| {
+            if item.path.is_some() {
+                format!("󰌷 {} (line {})", item.target, item.line + 1).into()
+            } else {
+                format!("󰌷 {} (missing)", item.target).into()
+            }
+        })];
+        let picker = Picker::new(columns, 0, items, (), |cx, item, action| {
+            if let Some(path) = &item.path {
+                open_note(cx, path, Some(item.line), action);
+            } else if let Err(err) = create_and_open(cx, &item.target) {
+                cx.editor.set_error(err.to_string());
+            }
+        })
+        .with_title("Links")
+        .with_help("<CR> follow  <C-t> preview")
+        .truncate_start(false)
+        .with_preview(|_editor, item| {
+            item.path
+                .as_ref()
+                .map(|path| (path.as_path().into(), Some((item.line, item.line))))
+        });
+        compositor.push(Box::new(overlaid(picker)));
+    });
+}
+
+fn push_template_picker(cx: &mut CompositorContext, items: Vec<TemplateItem>) {
+    push_component(cx, move |_editor, compositor| {
+        let columns = [PickerColumn::new(
+            "Results",
+            |item: &TemplateItem, _: &()| format!("󰈔 {}", item.relative).into(),
+        )];
+        let picker = Picker::new(columns, 0, items, (), |cx, item, _action| {
+            if let Err(err) = apply_template(cx, &item.path) {
+                cx.editor.set_error(err.to_string());
+            }
+        })
+        .with_title("Templates")
+        .with_help("<CR> apply  <C-t> preview")
+        .truncate_start(false)
+        .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
+        compositor.push(Box::new(overlaid(picker)));
+    });
+}
+
+fn push_tag_picker(cx: &mut CompositorContext, tags: Vec<String>) {
+    push_component(cx, move |_editor, compositor| {
+        let columns = [PickerColumn::new("Results", |tag: &String, _: &()| {
+            tag.clone().into()
+        })];
+        let picker = Picker::new(columns, 0, tags, (), |cx, tag, _action| {
+            if let Err(err) = insert_text(cx, tag) {
+                cx.editor.set_error(err.to_string());
+            }
+        })
+        .with_title("Tags")
+        .with_help("<CR> insert tag  <C-t> preview");
+        compositor.push(Box::new(overlaid(picker)));
+    });
+}
+
+fn apply_template(cx: &mut CompositorContext, path: &Path) -> anyhow::Result<()> {
+    let (_, config) = vault_config(cx)?;
+    let template = fs::read_to_string(path)?;
+    let title = current_note_path(cx)
+        .map(|path| note_title(&path))
+        .unwrap_or_default();
+    let rendered = render_template(&template, &title, &config);
+    insert_text(cx, &rendered)
+}
+
+fn render_template(template: &str, title: &str, config: &ObsidianConfig) -> String {
+    let date = command_stdout("date", &[format!("+{}", config.date_format)]);
+    let time = command_stdout("date", &[format!("+{}", config.time_format)]);
+    template
+        .replace("{{title}}", title)
+        .replace("{{date}}", &date)
+        .replace("{{time}}", &time)
+}
+
+fn command_stdout(program: &str, args: &[String]) -> String {
+    Command::new(program)
+        .args(args)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+fn current_note_path(cx: &CompositorContext) -> anyhow::Result<PathBuf> {
+    let view = cx.editor.tree.get(cx.editor.tree.focus);
+    let doc = cx
+        .editor
+        .documents
+        .get(&view.doc)
+        .context("no document in the current view")?;
+    doc.path()
+        .map(Path::to_path_buf)
+        .context("the current buffer has no file path")
+}
+
+fn current_doc_text(cx: &CompositorContext) -> anyhow::Result<String> {
+    let view = cx.editor.tree.get(cx.editor.tree.focus);
+    let doc = cx
+        .editor
+        .documents
+        .get(&view.doc)
+        .context("no document in the current view")?;
+    Ok(doc.text().to_string())
+}
+
+fn selection_texts(cx: &CompositorContext) -> anyhow::Result<Vec<String>> {
+    let view = cx.editor.tree.get(cx.editor.tree.focus);
+    let doc = cx
+        .editor
+        .documents
+        .get(&view.doc)
+        .context("no document in the current view")?;
+    let text = doc.text().slice(..);
+    Ok(doc
+        .selection(view.id)
+        .slices(text)
+        .map(|slice| slice.to_string())
+        .collect())
+}
+
+fn replace_selections(cx: &mut CompositorContext, replacement: &str) -> anyhow::Result<()> {
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = cx
+        .editor
+        .documents
+        .get_mut(&doc_id)
+        .context("no document in the current view")?;
+    let selection = doc.selection(view_id).clone();
+    let transaction = Transaction::change_by_selection(doc.text(), &selection, |range| {
+        (range.from(), range.to(), Some(Tendril::from(replacement)))
+    });
+    doc.apply(&transaction, view_id);
+    Ok(())
+}
+
+fn insert_text(cx: &mut CompositorContext, text: &str) -> anyhow::Result<()> {
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = cx
+        .editor
+        .documents
+        .get_mut(&doc_id)
+        .context("no document in the current view")?;
+    let selection = doc.selection(view_id).clone();
+    let transaction = Transaction::insert(doc.text(), &selection, Tendril::from(text));
+    doc.apply(&transaction, view_id);
+    Ok(())
+}
+
+fn notes_dir(vault: &Path, config: &ObsidianConfig) -> PathBuf {
+    if config.notes_subdir.is_empty() {
+        vault.to_path_buf()
+    } else {
+        vault.join(&config.notes_subdir)
+    }
+}
+
+fn create_note(cx: &mut CompositorContext, title: &str) -> anyhow::Result<PathBuf> {
+    let title = title.trim();
+    ensure!(!title.is_empty(), "note title cannot be empty");
+    ensure!(
+        !title.contains(['/', '\\', '\0']),
+        "note title contains characters that are not allowed in a file name"
+    );
+
+    let (vault, config) = vault_config(cx)?;
+    let dir = notes_dir(&vault, &config);
+    fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{title}.md"));
+    if !path.exists() {
+        fs::write(&path, "")?;
+    }
+    Ok(path)
+}
+
+fn sanitize_title(title: &str) -> String {
+    title
+        .trim()
+        .chars()
+        .map(|ch| {
+            if matches!(ch, '/' | '\\' | '\0') {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+fn checkbox_position(line: &str) -> Option<usize> {
+    line.as_bytes().windows(3).position(|window| {
+        window[0] == b'[' && window[2] == b']' && matches!(window[1], b' ' | b'x' | b'X')
+    })
+}
+
+fn relative_path_from(base: &Path, target: &Path) -> PathBuf {
+    let base: Vec<Component> = base.components().collect();
+    let target: Vec<Component> = target.components().collect();
+    let common = base
+        .iter()
+        .zip(target.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+    let mut result = PathBuf::new();
+    for _ in common..base.len() {
+        result.push("..");
+    }
+    for component in &target[common..] {
+        result.push(component.as_os_str());
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -729,5 +1482,58 @@ mod tests {
     #[test]
     fn note_title_is_the_file_stem() {
         assert_eq!(note_title(Path::new("/vault/6 - Main Notes/Foo.md")), "Foo");
+    }
+
+    #[test]
+    fn rewrites_wiki_links_when_renaming() {
+        let text = "[[Old]] [[Old|alias]] [[Old#Heading]] [[Other]] ![[Old]]";
+        let rewritten = rewrite_links(
+            text,
+            "Old",
+            "6 - Main Notes/Old.md",
+            "New",
+            "6 - Main Notes/New.md",
+            Path::new("/vault"),
+            Path::new("/vault/6 - Main Notes/Source.md"),
+        );
+        assert_eq!(
+            rewritten,
+            "[[New]] [[New|alias]] [[New#Heading]] [[Other]] ![[New]]"
+        );
+    }
+
+    #[test]
+    fn split_target_keeps_heading_and_alias() {
+        assert_eq!(
+            split_target("Note#Heading|alias"),
+            ("Note", "#Heading|alias")
+        );
+        assert_eq!(split_target("Note"), ("Note", ""));
+    }
+
+    #[test]
+    fn finds_checkbox_markers() {
+        assert_eq!(checkbox_position("- [ ] task"), Some(2));
+        assert_eq!(checkbox_position("- [x] done"), Some(2));
+        assert_eq!(checkbox_position("- [X] done"), Some(2));
+        assert_eq!(checkbox_position("- plain"), None);
+    }
+
+    #[test]
+    fn builds_relative_attachment_paths() {
+        assert_eq!(
+            relative_path_from(
+                Path::new("/vault/6 - Main Notes"),
+                Path::new("/vault/6 - Main Notes/assets/img.png"),
+            ),
+            Path::new("assets/img.png")
+        );
+        assert_eq!(
+            relative_path_from(
+                Path::new("/vault/1 - Rough Notes"),
+                Path::new("/vault/6 - Main Notes/assets/img.png"),
+            ),
+            Path::new("../6 - Main Notes/assets/img.png")
+        );
     }
 }
