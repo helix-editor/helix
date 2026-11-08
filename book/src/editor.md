@@ -252,7 +252,7 @@ action = "file_picker"
 | `items` | List of shortcut rows, see below | `[]` |
 | `menu-style` | `space-between` (keys right-aligned) or `key-left` (keys left-aligned) | `"space-between"` |
 | `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
-| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `8` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0`. A number applies to both layouts; a table can set `vertical`/`horizontal` separately | `8` |
 | `key-width` | Width reserved for keys with `key-left` | `16` |
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |

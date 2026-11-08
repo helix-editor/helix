@@ -114,16 +114,18 @@ impl Renderer {
             &config.subtitle,
             dashboard_style(theme, "subtitle", "ui.text.inactive"),
         );
-        let items_min = items_block(config, theme, 0);
-        let items_min_width = items_min.width();
-        let items = items_block(config, theme, config.menu_width);
+        let vertical_gap = config.menu_gap.for_layout(DashboardLayout::Vertical);
+        let horizontal_gap = config.menu_gap.for_layout(DashboardLayout::Horizontal);
+        let items_vertical = items_block(config, theme, config.menu_width, vertical_gap);
+        let items_horizontal_min = items_block(config, theme, 0, horizontal_gap);
+        let items_min_width = items_horizontal_min.width();
         let footer = text_block(
             &config.footer,
             dashboard_style(theme, "footer", "ui.text.inactive"),
         );
 
         let right_min = stack(
-            [subtitle.clone(), items_min, footer.clone()],
+            [subtitle.clone(), items_horizontal_min, footer.clone()],
             config.section_gap,
         );
         let gap = if header_horizontal.is_empty() || right_min.is_empty() {
@@ -136,7 +138,7 @@ impl Renderer {
             [
                 header_vertical.clone(),
                 subtitle.clone(),
-                items.clone(),
+                items_vertical,
                 footer.clone(),
             ],
             config.section_gap,
@@ -165,11 +167,7 @@ impl Renderer {
                     (area.width as usize).saturating_sub(header_horizontal.width() + gap);
                 let menu_width = (config.menu_width as usize).min(available.max(items_min_width));
                 let menu_width = menu_width.min(u16::MAX as usize) as u16;
-                let items = if menu_width == config.menu_width {
-                    items
-                } else {
-                    items_block(config, theme, menu_width)
-                };
+                let items = items_block(config, theme, menu_width, horizontal_gap);
                 let right = stack([subtitle, items, footer], config.section_gap);
                 let horizontal_size = (
                     header_horizontal.width() + gap + right.width(),
@@ -229,7 +227,7 @@ fn choose_layout(
     }
 }
 
-fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16) -> Block {
+fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16, menu_gap: u16) -> Block {
     let item_style = dashboard_style(theme, "item", "ui.text");
     let icon_style = dashboard_style(theme, "icon", "ui.text.inactive");
     let key_style = dashboard_style(theme, "key", "ui.text.inactive");
@@ -262,7 +260,7 @@ fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16) -> Bloc
         (0, 0)
     };
     let menu_width = if space_between {
-        let dynamic = max_left + max_key + config.menu_gap as usize;
+        let dynamic = max_left + max_key + menu_gap as usize;
         let requested = menu_width as usize;
         let width = if requested > 0 { requested } else { dynamic };
         width.max(max_left + max_key + 1)

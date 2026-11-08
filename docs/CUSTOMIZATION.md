@@ -131,10 +131,22 @@ warning is printed in the statusline.
 | `item-gap` | Blank lines between items | `0` |
 | `menu-style` | `space-between` or `key-left` | `"space-between"` |
 | `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
-| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `8` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0`. A number applies to both layouts; a table can set `vertical`/`horizontal` separately | `8` |
 | `key-width` | Key column width for `key-left` | `16` |
 | `column-gap` | Gap between columns in horizontal layout | `8` |
 | `default-logo` | Use the built-in logo when no header is set | `true` |
+
+`menu-gap` accepts either form:
+
+```toml
+# same gap in both layouts
+menu-gap = 8
+
+# or per layout
+[editor.dashboard.menu-gap]
+vertical = 8
+horizontal = 12
+```
 
 ### Header and logo
 

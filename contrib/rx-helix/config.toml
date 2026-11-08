@@ -71,7 +71,6 @@ item-gap = 1
 # key-left: key left-aligned to key-width, then the description.
 menu-style = "space-between"
 menu-width = 0
-menu-gap = 8
 key-width = 16
 column-gap = 8
 
@@ -83,6 +82,11 @@ default-logo = true
 #   your ascii art
 # """
 # header-file = "~/.config/helix/logo.txt"
+
+# Gap between descriptions and keys, per layout.
+[editor.dashboard.menu-gap]
+vertical = 48
+horizontal = 38
 
 # Each item runs any Helix command name (file_picker) or ex-command (:new).
 # Omit `action` for a static, informational row.
