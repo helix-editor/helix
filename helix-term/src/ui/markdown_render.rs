@@ -5,10 +5,11 @@
 //! turn thematic breaks into full-width rules.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::{Mutex, OnceLock};
 
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
-use helix_view::{editor::MarkdownLinkIcon, Document, Theme, View};
+use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
@@ -81,6 +82,107 @@ struct InlineCode {
     style: Style,
 }
 
+/// Prefix state needed to render a markdown line without rescanning the
+/// document from the top on every frame.
+#[derive(Clone, Copy, Default)]
+struct LineMeta {
+    /// Code fence active before this line.
+    in_code: Option<CodeFence>,
+    /// Callout block style inherited by a quote continuation line.
+    callout: Option<&'static str>,
+    /// Nesting level for a task/unordered list line.
+    list_level: Option<usize>,
+}
+
+#[derive(Default)]
+struct MarkdownCache {
+    version: i32,
+    lines: Vec<LineMeta>,
+}
+
+fn markdown_cache() -> &'static Mutex<HashMap<DocumentId, MarkdownCache>> {
+    static CACHE: OnceLock<Mutex<HashMap<DocumentId, MarkdownCache>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn visible_line_meta(
+    doc: &Document,
+    text: helix_core::RopeSlice,
+    start_line: usize,
+    end_line: usize,
+) -> Vec<LineMeta> {
+    let mut cache = markdown_cache().lock().unwrap();
+    let entry = cache.entry(doc.id()).or_default();
+    if entry.version != doc.version() {
+        entry.version = doc.version();
+        entry.lines = build_line_meta(text);
+    }
+    entry
+        .lines
+        .get(start_line..end_line.min(entry.lines.len()))
+        .unwrap_or_default()
+        .to_vec()
+}
+
+fn build_line_meta(text: helix_core::RopeSlice) -> Vec<LineMeta> {
+    let mut meta = Vec::with_capacity(text.len_lines());
+    let mut in_code: Option<CodeFence> = None;
+    let mut callout: Option<&'static str> = None;
+    let mut list_indents: Vec<usize> = Vec::new();
+
+    for line_idx in 0..text.len_lines() {
+        let raw = text.line(line_idx).to_string();
+        let line = raw.trim_end_matches(['\r', '\n']);
+        let chars: Vec<char> = line.chars().collect();
+        let indent = chars.iter().take_while(|ch| **ch == ' ').count();
+        let mut line_meta = LineMeta {
+            in_code,
+            ..Default::default()
+        };
+
+        if let Some(fence) = in_code {
+            if is_fence(line.trim_start(), fence.marker, fence.len) {
+                in_code = None;
+            }
+            meta.push(line_meta);
+            continue;
+        }
+
+        if let Some((marker, len)) = fence_start(line) {
+            callout = None;
+            in_code = Some(CodeFence { marker, len });
+            meta.push(line_meta);
+            continue;
+        }
+
+        if indent < chars.len() && chars[indent] == '>' {
+            let mut cursor = indent + 1;
+            if chars.get(cursor) == Some(&' ') {
+                cursor += 1;
+            }
+            if let Some((_, _, style)) = parse_callout(&chars, cursor) {
+                callout = Some(style);
+            } else {
+                line_meta.callout = callout;
+            }
+        } else {
+            callout = None;
+        }
+
+        if task_list(&chars, indent).is_some() {
+            update_list_indent(&mut list_indents, indent);
+        } else if indent < chars.len()
+            && matches!(chars[indent], '-' | '*' | '+')
+            && chars.get(indent + 1) == Some(&' ')
+        {
+            line_meta.list_level = Some(update_list_indent(&mut list_indents, indent));
+        }
+
+        meta.push(line_meta);
+    }
+    meta
+}
+
 impl MarkdownRender {
     /// Prepare rendering data for the visible section of a markdown document.
     pub fn prepare(doc: &Document, view: &View, anchor: usize, height: u16, theme: &Theme) -> Self {
@@ -139,23 +241,20 @@ impl MarkdownRender {
         // Only classify rows near the viewport. Scanning to the end of the
         // document here made table detection O(file size) on every frame.
         let table_kinds = detect_tables(text, start_line.saturating_sub(8), end_line);
-        let callout_body_styles: HashMap<usize, Style> = detect_callout_bodies(text, 0, end_line)
-            .into_iter()
-            .map(|(line, name)| (line, theme.try_get(name).unwrap_or(quote_style)))
-            .collect();
+        // Prefix state is cached per document version, so scrolling and
+        // redraws only parse the visible lines.
+        let line_meta = visible_line_meta(doc, text, start_line, end_line);
 
-        let mut list_indents: Vec<usize> = Vec::new();
-        let mut in_code: Option<CodeFence> = None;
-
-        for line_idx in 0..end_line {
+        for (offset, line_idx) in (start_line..end_line).enumerate() {
+            let meta = line_meta.get(offset).copied().unwrap_or_default();
             let line_start = text.line_to_char(line_idx);
             let raw = text.line(line_idx).to_string();
             let line = raw.trim_end_matches(['\r', '\n']);
             let chars: Vec<char> = line.chars().collect();
             let indent = chars.iter().take_while(|ch| **ch == ' ').count();
-            let visible = line_idx >= start_line;
+            let visible = true;
 
-            if let Some(fence) = &in_code {
+            if let Some(fence) = meta.in_code {
                 let trimmed = line.trim_start();
                 if is_fence(trimmed, fence.marker, fence.len) {
                     if visible {
@@ -170,7 +269,6 @@ impl MarkdownRender {
                             },
                         );
                     }
-                    in_code = None;
                     continue;
                 }
 
@@ -180,7 +278,7 @@ impl MarkdownRender {
                 continue;
             }
 
-            if let Some((marker, len)) = fence_start(line) {
+            if let Some((marker, _)) = fence_start(line) {
                 let language = line
                     .trim_start()
                     .trim_start_matches(marker)
@@ -205,7 +303,6 @@ impl MarkdownRender {
                         },
                     );
                 }
-                in_code = Some(CodeFence { marker, len });
                 continue;
             }
 
@@ -311,7 +408,9 @@ impl MarkdownRender {
                     let callout = parse_callout(&chars, cursor);
                     // Continuation lines of a callout block reuse its
                     // highlight for the quote markers.
-                    let body_style = callout_body_styles.get(&line_idx).copied();
+                    let body_style = meta
+                        .callout
+                        .map(|name| theme.try_get(name).unwrap_or(quote_style));
                     if visible {
                         if let Some((name_end, rendered, style_name)) = &callout {
                             let style = theme.try_get(style_name).unwrap_or(quote_style);
@@ -368,7 +467,6 @@ impl MarkdownRender {
             // Task lists: `- [ ] todo` / `- [x] done`.
             if !handled_block {
                 if let Some(task) = task_list(&chars, indent) {
-                    update_list_indent(&mut list_indents, indent);
                     let (checked, bracket_col) = task;
                     if visible {
                         let style = if checked {
@@ -404,7 +502,7 @@ impl MarkdownRender {
                 && matches!(chars[indent], '-' | '*' | '+')
                 && chars.get(indent + 1) == Some(&' ')
             {
-                let level = update_list_indent(&mut list_indents, indent);
+                let level = meta.list_level.unwrap_or(1);
                 if visible {
                     let icon = ["●", "○", "◆", "◇"][(level.saturating_sub(1)) % 4];
                     render
@@ -584,6 +682,7 @@ impl Decoration for MarkdownRender {
     }
 }
 
+#[derive(Clone, Copy)]
 struct CodeFence {
     marker: char,
     len: usize,
@@ -713,6 +812,7 @@ fn capitalize(name: &str) -> String {
 /// callout block starts at a `> [!NAME]` title; following consecutive
 /// blockquote lines (including bare `>` lines) belong to the block until a
 /// blank or non-quote line ends it.
+#[allow(dead_code)]
 fn detect_callout_bodies(
     text: helix_core::RopeSlice,
     from: usize,
@@ -1237,6 +1337,21 @@ mod tests {
         assert_eq!(bodies.get(&2), Some(&"diagnostic.info"));
         assert_eq!(bodies.get(&0), None);
         assert_eq!(bodies.get(&4), None);
+    }
+
+    #[test]
+    fn prefix_cache_tracks_fences_lists_and_callouts() {
+        use helix_core::Rope;
+        let text = Rope::from(
+            "```rust\nfn main() {}\n```\n\n- [ ] task\n  - nested\n\n> [!NOTE] Title\n> body\n",
+        );
+        let meta = build_line_meta(text.slice(..));
+        assert!(meta[0].in_code.is_none());
+        assert!(meta[1].in_code.is_some());
+        assert!(meta[2].in_code.is_some());
+        assert!(meta[3].in_code.is_none());
+        assert_eq!(meta[5].list_level, Some(2));
+        assert_eq!(meta[8].callout, Some("diagnostic.info"));
     }
 
     #[test]
