@@ -238,7 +238,16 @@ Links, wiki links, and callouts are decorated without shifting text:
 `[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts an
 icon where the destination was, `<url>` shows its icon plus the address,
 images show `󰥶`, and footnotes show `󰯔`. Inline-link icons adapt to the
-destination host (`󰊤` GitHub, `󰊭` Google, `󰖟` generic web, etc.). Links inside
+destination host (`󰊤` GitHub, `󰊭` Google, `󰖟` generic web, etc.), with custom
+icons taking precedence:
+
+```toml
+[[editor.markdown.link-icons]]
+pattern = "intranet"
+icon = "󰢩"
+```
+
+Links inside
 headings, list items, quotes, tables, and callout titles are all decorated.
 Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render their icon and
 title with diagnostic highlights, and the `▋` markers of following quote

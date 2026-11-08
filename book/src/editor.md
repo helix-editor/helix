@@ -311,6 +311,17 @@ Optional display-only markdown rendering. Disabled by default.
 | `render` | Replace markdown markers with icons and frame characters | `false` |
 | `images` | Draw local images inline with the Kitty graphics protocol | `false` |
 | `download_remote_images` | Download remote `http(s)` images with `curl` | `true` |
+| `link_icons` | Custom `{ pattern, icon }` link icons (checked before built-ins) | `[]` |
+
+```toml
+[editor.markdown]
+render = true
+images = true
+
+[[editor.markdown.link-icons]]
+pattern = "intranet"
+icon = "󰢩"
+```
 
 ```toml
 [editor.markdown]

@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Rect, Style};
-use helix_view::{Document, Theme, View};
+use helix_view::{editor::MarkdownLinkIcon, Document, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
@@ -129,6 +129,7 @@ impl MarkdownRender {
         let table_head_background =
             background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
 
+        let link_custom: Vec<MarkdownLinkIcon> = doc.config.load().markdown.link_icons.clone();
         let table_kinds = detect_tables(text, start_line.saturating_sub(8), text.len_lines());
         let callout_body_styles: HashMap<usize, Style> = detect_callout_bodies(text, 0, end_line)
             .into_iter()
@@ -234,7 +235,14 @@ impl MarkdownRender {
                     }
                 }
                 if visible {
-                    paint_inline_links(&mut render, line_idx, &chars, 0, link_icon_style);
+                    paint_inline_links(
+                        &mut render,
+                        line_idx,
+                        &chars,
+                        0,
+                        link_icon_style,
+                        &link_custom,
+                    );
                     if let Some(style) = inline_code_background {
                         paint_inline_code(&mut render, line_idx, line_start, &chars, style);
                     }
@@ -427,7 +435,14 @@ impl MarkdownRender {
             // Inline links, then inline code. Both paint over markers while
             // keeping widths stable so text never shifts.
             if visible {
-                paint_inline_links(&mut render, line_idx, &chars, inline_skip, link_icon_style);
+                paint_inline_links(
+                    &mut render,
+                    line_idx,
+                    &chars,
+                    inline_skip,
+                    link_icon_style,
+                    &link_custom,
+                );
                 if let Some(style) = inline_code_background {
                     paint_inline_code(&mut render, line_idx, line_start, &chars, style);
                 }
@@ -724,11 +739,17 @@ fn detect_callout_bodies(
     bodies
 }
 
-/// Per-domain link icons, mirroring render-markdown's `link.custom` table.
-/// Matched case-insensitively against the destination; `None` keeps the
+/// Per-destination link icons, mirroring render-markdown's `link.custom`
+/// table. User-configured patterns are checked first (case-insensitive
+/// substring match), then the built-in host table; `None` keeps the
 /// generic hyperlink icon.
-fn domain_icon(dest: &str) -> Option<&'static str> {
+fn domain_icon<'a>(dest: &str, custom: &'a [MarkdownLinkIcon]) -> Option<&'a str> {
     let lower = dest.to_lowercase();
+    for custom in custom {
+        if !custom.pattern.is_empty() && lower.contains(&custom.pattern.to_lowercase()) {
+            return Some(custom.icon.as_str());
+        }
+    }
     // Specific hosts first; generic `http` match last.
     const DOMAINS: &[(&str, &str)] = &[
         ("github.com", "󰊤"),
@@ -771,6 +792,7 @@ fn paint_inline_links(
     chars: &[char],
     skip_until: usize,
     icon_style: Style,
+    custom_icons: &[MarkdownLinkIcon],
 ) {
     let mut index = skip_until.max(0);
     while index < chars.len() {
@@ -884,7 +906,7 @@ fn paint_inline_links(
                 if chars.get(label_end + 1) == Some(&'(') {
                     if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
                         let dest: String = chars[label_end + 2..dest_end].iter().collect();
-                        let icon = domain_icon(&dest).unwrap_or("󰌹");
+                        let icon = domain_icon(&dest, custom_icons).unwrap_or("󰌹");
                         // Cover `(dest)` inclusive: width is end - start + 1.
                         let width = dest_end - (label_end + 1) + 1;
                         let mut text = String::from(icon);
@@ -916,7 +938,7 @@ fn paint_inline_links(
                 let icon = if inner.contains('@') {
                     "󰀓"
                 } else {
-                    domain_icon(&inner).unwrap_or("󰌹")
+                    domain_icon(&inner, custom_icons).unwrap_or("󰌹")
                 };
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
@@ -1157,11 +1179,35 @@ mod tests {
 
     #[test]
     fn detects_domain_icons() {
-        assert_eq!(domain_icon("https://github.com/x"), Some("󰊤"));
-        assert_eq!(domain_icon("https://www.google.com/search"), Some("󰊭"));
-        assert_eq!(domain_icon("https://example.com"), Some("󰖟"));
-        assert_eq!(domain_icon("https://neovim.io/doc"), Some("\u{e6ae}"));
-        assert_eq!(domain_icon("notes/other.md"), None);
+        let empty: &[MarkdownLinkIcon] = &[];
+        assert_eq!(
+            domain_icon("https://github.com/x", empty),
+            Some("\u{F02A4}")
+        );
+        assert_eq!(
+            domain_icon("https://www.google.com/search", empty),
+            Some("\u{F02AD}")
+        );
+        assert_eq!(domain_icon("https://example.com", empty), Some("\u{F059F}"));
+        assert_eq!(
+            domain_icon("https://neovim.io/doc", empty),
+            Some("\u{e6ae}")
+        );
+        assert_eq!(domain_icon("notes/other.md", empty), None);
+    }
+
+    #[test]
+    fn custom_icons_take_precedence() {
+        let custom = [MarkdownLinkIcon {
+            pattern: "intranet".to_string(),
+            icon: "X".to_string(),
+        }];
+        assert_eq!(domain_icon("https://intranet.corp/x", &custom), Some("X"));
+        // Built-ins still apply when no custom pattern matches.
+        assert_eq!(
+            domain_icon("https://github.com/x", &custom),
+            Some("\u{F02A4}")
+        );
     }
 
     #[test]
@@ -1169,7 +1215,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "see [code](https://github.com/x/y) end".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
         assert!(paints.iter().any(|p| p.text.starts_with("󰊤")));
     }
@@ -1190,7 +1236,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "see [[Target|Alias]] and [[Plain]] end".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
         // [[Target|Alias]]: icon + concealed target + concealed brackets.
         assert!(paints.iter().any(|p| p.col == 4 && p.text == "󱗖 "));
@@ -1201,7 +1247,7 @@ mod tests {
 
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "a [label](https://x.y) b".chars().collect();
-        paint_inline_links(&mut render, 1, &line, 0, style);
+        paint_inline_links(&mut render, 1, &line, 0, style, &[]);
         let paints = &render.lines.get(&1).unwrap().paints;
         assert!(paints.iter().any(|p| p.col == 9 && p.text.starts_with("󰖟")));
     }
@@ -1211,7 +1257,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "a <https://x.y> b [^fn]".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
         assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰖟"));
         assert!(paints.iter().any(|p| p.col == 18 && p.text == "󰯔 "));
