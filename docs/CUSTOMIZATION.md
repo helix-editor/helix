@@ -234,8 +234,13 @@ each line, so movement, editing, saving, and searching still see ordinary
 markdown. The cursor line and visual selections show raw markdown so markers
 stay editable and readable.
 
-Code fences keep their tree-sitter highlighting. Links, callouts, and tables
-are not decorated yet.
+Links, wiki links, and callouts are decorated without shifting text:
+`[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts a
+`󰌹` where the destination was, `<url>` shows `󰌹 url`, images show `󰥶`, and
+footnotes show `󰯔`. Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render
+their icon and title with diagnostic highlights. Pipe tables replace `|` with
+`│` (delimiter `-`/`:` become `─`/`━`) and give the header row a background.
+Code fences keep their tree-sitter highlighting.
 
 Local images are drawn inline when the terminal speaks the Kitty graphics
 protocol:
@@ -249,12 +254,13 @@ images = true
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
 vault root. Each image reserves virtual lines after its anchor (like
 image.nvim's `with_virtual_padding`), so following text reflows instead of
-being covered. PNG images are sent directly; JPEG/GIF are converted with
+being covered. Remote `http(s)` images download once with `curl` into the
+cache and appear on later frames. Opening an image file directly shows it
+full-view. PNG images are sent directly; JPEG/GIF are converted with
 `ffmpeg` and SVG with `rsvg-convert` into a cache under
 `~/.cache/rx-helix/images`. Each image is scaled to at most 50% of the window
 height and re-placed as you scroll. Only the focused view is drawn and images
-are hidden while a picker/prompt/menu covers the editor. Remote URLs are
-skipped.
+are hidden while a picker/prompt/menu covers the editor.
 
 ## Obsidian
 

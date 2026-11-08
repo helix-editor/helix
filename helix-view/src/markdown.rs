@@ -5,8 +5,9 @@
 //! `helix-view`, where both cursor positioning and rendering can use it.
 
 use std::cell::Cell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
@@ -30,10 +31,14 @@ pub struct ImageLayout {
 }
 
 /// Compute inline image layouts for the visible section of a markdown buffer.
+/// Image files opened directly get a single full-view layout (hijack).
 pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
     let config = doc.config.load();
-    if !config.markdown.images || doc.language_name() != Some("markdown") || !kitty_supported() {
+    if !config.markdown.images || !kitty_supported() {
         return Vec::new();
+    }
+    if doc.language_name() != Some("markdown") {
+        return hijacked_image(doc, view);
     }
     let Some(source) = doc.path().map(Path::to_path_buf) else {
         return Vec::new();
@@ -72,7 +77,7 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
             let Some(path) = resolve_image(&source, vault.as_deref(), &target) else {
                 continue;
             };
-            let Some((width_px, height_px)) = image_dimensions(&path) else {
+            let Some((path, width_px, height_px)) = dimensions_or_converted(&path) else {
                 continue;
             };
             let (cols, rows) = fit_cells(
@@ -240,12 +245,11 @@ fn resolve_image(source: &Path, vault: Option<&Path>, target: &str) -> Option<Pa
         .split('?')
         .next()
         .unwrap_or_default();
-    if target.is_empty()
-        || target.starts_with("http://")
-        || target.starts_with("https://")
-        || target.starts_with("data:")
-    {
+    if target.is_empty() || target.starts_with("data:") {
         return None;
+    }
+    if target.starts_with("http://") || target.starts_with("https://") {
+        return resolve_remote(target);
     }
     let target = percent_decode(target);
     let target = Path::new(&target);
@@ -265,6 +269,189 @@ fn resolve_image(source: &Path, vault: Option<&Path>, target: &str) -> Option<Pa
         }
     }
     candidates.into_iter().find(|path| path.is_file())
+}
+
+/// Download a remote image in the background and return its cached path once
+/// available. The first call spawns `curl` and returns `None`; later frames
+/// pick the file up once it exists.
+fn resolve_remote(url: &str) -> Option<PathBuf> {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    url.hash(&mut hasher);
+    let digest = {
+        use std::hash::Hasher;
+        hasher.finish()
+    };
+    let ext = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or_default()
+        .rsplit('.')
+        .next()
+        .filter(|ext| ext.len() <= 5 && ext.chars().all(|ch| ch.is_ascii_alphanumeric()))
+        .map(|ext| format!(".{ext}"))
+        .unwrap_or_default();
+    let path = cache_dir()?
+        .join("rx-helix")
+        .join("images")
+        .join(format!("remote-{digest:016x}{ext}"));
+    if path.is_file() {
+        return Some(path);
+    }
+    {
+        let mut in_progress = remote_downloads().lock().unwrap();
+        if in_progress.contains(url) {
+            return None;
+        }
+        in_progress.insert(url.to_string());
+    }
+    let url = url.to_string();
+    std::thread::spawn(move || {
+        let part = path.with_extension("part");
+        let ok = std::process::Command::new("curl")
+            .args(["-L", "-s", "--max-time", "30", "-o"])
+            .arg(&part)
+            .arg(&url)
+            .status()
+            .is_ok_and(|status| status.success())
+            && part.is_file();
+        if ok {
+            let _ = std::fs::rename(&part, &path);
+        } else {
+            let _ = std::fs::remove_file(&part);
+        }
+        remote_downloads().lock().unwrap().remove(&url);
+    });
+    None
+}
+
+fn remote_downloads() -> &'static Mutex<HashSet<String>> {
+    static DOWNLOADS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    DOWNLOADS.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+/// Image extensions recognized when opening a file directly.
+const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
+
+/// Single full-view layout for an image file opened directly.
+fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
+    let Some(path) = doc.path() else {
+        return Vec::new();
+    };
+    let is_image = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            IMAGE_EXTENSIONS
+                .iter()
+                .any(|known| known.eq_ignore_ascii_case(ext))
+        });
+    if !is_image {
+        return Vec::new();
+    }
+    let inner = view.inner_area(doc);
+    if inner.width == 0 || inner.height == 0 {
+        return Vec::new();
+    }
+    let Some((path, width_px, height_px)) = dimensions_or_converted(path) else {
+        return Vec::new();
+    };
+    let (cell_width, cell_height) = cell_size();
+    let (cols, rows) = fit_cells(
+        width_px,
+        height_px,
+        cell_width,
+        cell_height,
+        inner.width,
+        inner.height,
+    );
+    if cols == 0 || rows == 0 {
+        return Vec::new();
+    }
+    vec![ImageLayout {
+        path,
+        char_idx: 0,
+        line: 0,
+        rows,
+        cols,
+        offset_rows: 0,
+    }]
+}
+
+/// Measure an image, converting through PNG first when the native reader
+/// cannot sniff the format (e.g. SVG). Returns the path Kitty should read.
+fn dimensions_or_converted(path: &Path) -> Option<(PathBuf, u32, u32)> {
+    if let Some(dimensions) = image_dimensions(path) {
+        return Some((path.to_path_buf(), dimensions.0, dimensions.1));
+    }
+    let converted = ensure_png(path)?;
+    let dimensions = image_dimensions(&converted)?;
+    Some((converted, dimensions.0, dimensions.1))
+}
+
+fn is_png(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut signature = [0u8; 8];
+    std::io::Read::read_exact(&mut file, &mut signature).is_ok()
+        && signature == *b"\x89PNG\r\n\x1a\n"
+}
+
+fn cache_dir() -> Option<PathBuf> {
+    if let Some(dir) = std::env::var_os("XDG_CACHE_HOME") {
+        if !dir.is_empty() {
+            return Some(PathBuf::from(dir));
+        }
+    }
+    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache"))
+}
+
+/// Kitty only understands PNG (or raw pixels). Convert other formats to a
+/// cached PNG with ffmpeg (SVG uses rsvg-convert when available).
+pub fn ensure_png(path: &Path) -> Option<PathBuf> {
+    if is_png(path) {
+        return Some(path.to_path_buf());
+    }
+
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    modified.hash(&mut hasher);
+    let out = cache_dir()?
+        .join("rx-helix")
+        .join("images")
+        .join(format!("{:016x}.png", {
+            use std::hash::Hasher;
+            hasher.finish()
+        }));
+    if out.is_file() {
+        return Some(out);
+    }
+    if let Some(parent) = out.parent() {
+        fs::create_dir_all(parent).ok()?;
+    }
+
+    let svg = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+    let converted = if svg {
+        std::process::Command::new("rsvg-convert")
+            .arg("-o")
+            .arg(&out)
+            .arg(path)
+            .status()
+            .ok()?
+    } else {
+        std::process::Command::new("ffmpeg")
+            .args(["-v", "error", "-y", "-i"])
+            .arg(path)
+            .args(["-frames:v", "1"])
+            .arg(&out)
+            .status()
+            .ok()?
+    };
+    converted.success().then_some(out)
 }
 
 fn percent_decode(input: &str) -> String {
