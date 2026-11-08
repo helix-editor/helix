@@ -594,6 +594,13 @@ fn pad(text: &str, width: usize) -> String {
 }
 
 fn dashboard_style(theme: &Theme, name: &str, fallback: &str) -> Style {
+    // Keep the dashboard readable even if a generated theme drops the dashboard
+    // scopes: the header and icons fall back to the mode chip color instead of
+    // plain text.
+    let fallback = match name {
+        "header" | "icon" => "ui.statusline.normal",
+        _ => fallback,
+    };
     theme
         .try_get(&format!("ui.dashboard.{name}"))
         .unwrap_or_else(|| theme.get(fallback))

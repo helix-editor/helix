@@ -17,7 +17,6 @@ use crate::ui::{self, overlay::overlaid, Picker, PickerColumn, PromptEvent};
 
 struct NoteItem {
     path: PathBuf,
-    title: String,
     relative: String,
 }
 
@@ -70,7 +69,6 @@ pub fn quick_switch(
     let items = paths
         .into_iter()
         .map(|path| NoteItem {
-            title: note_title(&path),
             relative: relative_path(&vault, &path),
             path,
         })
@@ -191,7 +189,6 @@ pub fn follow_link(
             let items = matches
                 .into_iter()
                 .map(|path| NoteItem {
-                    title: note_title(&path),
                     relative: relative_path(&vault, &path),
                     path,
                 })
@@ -341,15 +338,14 @@ where
 
 fn push_note_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
     push_component(cx, move |_editor, compositor| {
-        let columns = [
-            PickerColumn::new("note", |item: &NoteItem, _: &()| item.title.clone().into()),
-            PickerColumn::new("path", |item: &NoteItem, _: &()| {
-                item.relative.clone().into()
-            }),
-        ];
+        let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
+            format!("󰈔 {}", item.relative).into()
+        })];
         let picker = Picker::new(columns, 0, items, (), |cx, item, action| {
             open_note(cx, &item.path, None, action);
         })
+        .truncate_start(false)
+        .with_title("Quick Switch")
         .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
         compositor.push(Box::new(overlaid(picker)));
     });
@@ -357,15 +353,14 @@ fn push_note_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
 
 fn push_search_picker(cx: &mut CompositorContext, items: Vec<SearchItem>) {
     push_component(cx, move |_editor, compositor| {
-        let columns = [
-            PickerColumn::new("path", |item: &SearchItem, _: &()| {
-                format!("{}:{}", item.relative, item.line + 1).into()
-            }),
-            PickerColumn::new("text", |item: &SearchItem, _: &()| item.text.clone().into()),
-        ];
-        let picker = Picker::new(columns, 1, items, (), |cx, item, action| {
+        let columns = [PickerColumn::new("Results", |item: &SearchItem, _: &()| {
+            format!("󰈔 {}:{} {}", item.relative, item.line + 1, item.text).into()
+        })];
+        let picker = Picker::new(columns, 0, items, (), |cx, item, action| {
             open_note(cx, &item.path, Some(item.line), action);
         })
+        .with_title("Results")
+        .truncate_start(false)
         .with_preview(|_editor, item| {
             Some((item.path.as_path().into(), Some((item.line, item.line))))
         });
@@ -375,17 +370,17 @@ fn push_search_picker(cx: &mut CompositorContext, items: Vec<SearchItem>) {
 
 fn push_backlink_picker(cx: &mut CompositorContext, items: Vec<BacklinkItem>) {
     push_component(cx, move |_editor, compositor| {
-        let columns = [
-            PickerColumn::new("path", |item: &BacklinkItem, _: &()| {
-                format!("{}:{}", item.relative, item.line + 1).into()
-            }),
-            PickerColumn::new("text", |item: &BacklinkItem, _: &()| {
-                item.text.clone().into()
-            }),
-        ];
-        let picker = Picker::new(columns, 1, items, (), |cx, item, action| {
+        let columns = [PickerColumn::new(
+            "Results",
+            |item: &BacklinkItem, _: &()| {
+                format!("󰈔 {}:{} {}", item.relative, item.line + 1, item.text).into()
+            },
+        )];
+        let picker = Picker::new(columns, 0, items, (), |cx, item, action| {
             open_note(cx, &item.path, Some(item.line), action);
         })
+        .with_title("Results")
+        .truncate_start(false)
         .with_preview(|_editor, item| {
             Some((item.path.as_path().into(), Some((item.line, item.line))))
         });
