@@ -6,7 +6,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::editor::{
     DashboardAlign, DashboardConfig, DashboardLayout, DashboardMenuStyle, DashboardVerticalAlign,
 };
-use helix_view::graphics::{Rect, Style};
+use helix_view::graphics::{Modifier, Rect, Style};
 use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
@@ -396,24 +396,14 @@ fn horizontal_logo(theme: &Theme) -> Block {
 }
 
 fn dots_logo(theme: &Theme) -> Block {
-    let header = dashboard_style(theme, "header", "ui.text");
-    let icon = dashboard_style(theme, "icon", "ui.text.inactive");
-    let subtitle = dashboard_style(theme, "subtitle", "ui.text.inactive");
-    let key = dashboard_style(theme, "key", "ui.text.inactive");
-    let styles = [
-        theme
-            .try_get_exact("ui.dashboard.logo.purple")
-            .unwrap_or(header),
-        theme
-            .try_get_exact("ui.dashboard.logo.purple-dark")
-            .unwrap_or(subtitle),
-        theme
-            .try_get_exact("ui.dashboard.logo.blue")
-            .unwrap_or(icon),
-        theme
-            .try_get_exact("ui.dashboard.logo.blue-dark")
-            .unwrap_or(key),
-    ];
+    // Reuse the mode-chip accent colors instead of custom dashboard scopes:
+    // generated themes (matugen/Noctalia) keep the statusline scopes but may
+    // drop anything dashboard-specific on the next wallpaper change.
+    let primary = accent_style(theme, "ui.statusline.normal", "ui.text");
+    let secondary = accent_style(theme, "ui.statusline.select", "ui.text.inactive");
+    let tertiary = accent_style(theme, "ui.statusline.insert", "ui.text.inactive");
+    let muted = theme.get("ui.text.inactive");
+    let styles = [primary, secondary, tertiary, muted];
 
     Block {
         lines: LOGO_DOTS
@@ -593,17 +583,26 @@ fn pad(text: &str, width: usize) -> String {
     }
 }
 
-fn dashboard_style(theme: &Theme, name: &str, fallback: &str) -> Style {
-    // Keep the dashboard readable even if a generated theme drops the dashboard
-    // scopes: the header and icons fall back to the mode chip color instead of
-    // plain text.
-    let fallback = match name {
-        "header" | "icon" => "ui.statusline.normal",
-        _ => fallback,
-    };
+/// Use a theme's existing accent color, without any dashboard-specific scope.
+///
+/// Mode chips (`ui.statusline.normal`/`.select`/`.insert`) are defined by every
+/// theme and carry the primary/secondary/tertiary colors in their background.
+fn accent_style(theme: &Theme, scope: &str, fallback: &str) -> Style {
     theme
-        .try_get(&format!("ui.dashboard.{name}"))
+        .try_get(scope)
+        .and_then(|style| style.bg.or(style.fg))
+        .map(|color| Style::default().fg(color))
         .unwrap_or_else(|| theme.get(fallback))
+}
+
+fn dashboard_style(theme: &Theme, name: &str, fallback: &str) -> Style {
+    match name {
+        "header" => {
+            accent_style(theme, "ui.statusline.normal", fallback).add_modifier(Modifier::BOLD)
+        }
+        "icon" => accent_style(theme, "ui.statusline.normal", fallback),
+        _ => theme.get(fallback),
+    }
 }
 
 #[cfg(test)]

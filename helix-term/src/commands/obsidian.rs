@@ -5,7 +5,7 @@ use std::process::Command;
 use anyhow::{bail, ensure, Context as _};
 use helix_core::{
     command_line::Args, coords_at_pos, pos_at_coords, str_utils::char_to_byte_idx, Position,
-    Selection,
+    Selection, Tendril, Transaction,
 };
 use helix_stdx::path::expand_tilde;
 use helix_view::editor::{Action, ObsidianConfig};
@@ -346,6 +346,35 @@ fn push_note_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
         })
         .truncate_start(false)
         .with_title("Quick Switch")
+        .with_help("<CR> open  <C-x> new note  <C-l> insert link")
+        .with_extra_action(crate::ctrl!('x'), |cx, query, _| {
+            let title = query.trim();
+            if title.is_empty() {
+                cx.editor.set_error("type a note title first");
+                return false;
+            }
+            match create_and_open(cx, title) {
+                Ok(()) => true,
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    false
+                }
+            }
+        })
+        .with_extra_action(crate::ctrl!('l'), |cx, _query, selection| {
+            let Some(item) = selection else {
+                cx.editor.set_error("no note selected");
+                return false;
+            };
+            let title = note_title(&item.path);
+            match insert_link(cx, &title) {
+                Ok(()) => true,
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    false
+                }
+            }
+        })
         .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
         compositor.push(Box::new(overlaid(picker)));
     });
@@ -361,6 +390,7 @@ fn push_search_picker(cx: &mut CompositorContext, items: Vec<SearchItem>) {
         })
         .with_title("Results")
         .truncate_start(false)
+        .with_help("<CR> open  <C-t> preview")
         .with_preview(|_editor, item| {
             Some((item.path.as_path().into(), Some((item.line, item.line))))
         });
@@ -381,11 +411,27 @@ fn push_backlink_picker(cx: &mut CompositorContext, items: Vec<BacklinkItem>) {
         })
         .with_title("Results")
         .truncate_start(false)
+        .with_help("<CR> open  <C-t> preview")
         .with_preview(|_editor, item| {
             Some((item.path.as_path().into(), Some((item.line, item.line))))
         });
         compositor.push(Box::new(overlaid(picker)));
     });
+}
+
+fn insert_link(cx: &mut CompositorContext, title: &str) -> anyhow::Result<()> {
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let doc = cx
+        .editor
+        .documents
+        .get_mut(&doc_id)
+        .context("no document in the current view")?;
+    let selection = doc.selection(view_id).clone();
+    let link = format!("[[{title}]]");
+    let transaction = Transaction::insert(doc.text(), &selection, Tendril::from(link));
+    doc.apply(&transaction, view_id);
+    Ok(())
 }
 
 fn open_note(cx: &mut CompositorContext, path: &Path, line: Option<usize>, action: Action) {
