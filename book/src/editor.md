@@ -443,7 +443,13 @@ e = ":obsidian-extract-note"
 ### `[editor.cursor-shape]` Section
 
 Defines the shape of cursor in each mode.
-Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
+Valid values for these options are `block`, `block-hardware`, `bar`,
+`underline`, or `hidden`.
+
+`block` is drawn entirely by Helix and can be fully themed. `block-hardware`
+draws the same themed block but leaves the terminal cursor visible on top of
+it. Use `block-hardware` (or `bar`/`underline`) when a terminal feature needs
+to follow the native cursor, such as Kitty's `cursor_trail` animation.
 
 > 💡 Due to limitations of the terminal environment, only the primary cursor can
 > change shape.

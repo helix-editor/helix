@@ -439,24 +439,32 @@ impl Prompt {
             .unwrap_or(BASE_WIDTH)
             .max(BASE_WIDTH);
 
-        let cols = std::cmp::max(1, area.width / max_len);
-        let col_width = (area.width.saturating_sub(cols)) / cols;
+        // The completion list gets a themed border. Reserve two columns and
+        // two rows for it, plus the prompt row at the bottom.
+        let list_width = area.width.saturating_sub(2);
+        let cols = std::cmp::max(1, list_width / max_len);
+        let col_width = (list_width.saturating_sub(cols)) / cols;
 
         let height = (self.completion.len() as u16)
             .div_ceil(cols)
             .min(10) // at most 10 rows (or less)
-            .min(area.height.saturating_sub(1));
+            .min(area.height.saturating_sub(3));
 
-        let completion_area = Rect::new(
-            area.x,
-            (area.height - height).saturating_sub(1),
-            area.width,
-            height,
-        );
+        let completion_area = if height > 0 {
+            Rect::new(
+                area.x,
+                area.height.saturating_sub(height + 3),
+                area.width,
+                height + 2,
+            )
+        } else {
+            Rect::new(area.x, area.height.saturating_sub(1), area.width, 0)
+        };
 
-        if completion_area.height > 0 && !self.completion.is_empty() {
-            let area = completion_area;
+        if height > 0 && !self.completion.is_empty() {
             let background = theme.get("ui.menu");
+            let border_style = crate::ui::panel_border_style(theme, "ui.menu");
+            let inner = completion_area.inner(Margin::all(1));
 
             let items = height as usize * cols as usize;
 
@@ -465,7 +473,10 @@ impl Prompt {
                 .map(|selection| selection / items * items)
                 .unwrap_or_default();
 
-            surface.clear_with(area, background);
+            surface.clear_with(completion_area, background);
+            Block::bordered()
+                .border_style(border_style)
+                .render(completion_area, surface);
 
             let mut row = 0;
             let mut col = 0;
@@ -482,15 +493,15 @@ impl Prompt {
                 };
 
                 surface.set_stringn(
-                    area.x + col * (1 + col_width),
-                    area.y + row,
+                    inner.x + col * (1 + col_width),
+                    inner.y + row,
                     &completion.content,
                     col_width.saturating_sub(1) as usize,
                     completion_item_style,
                 );
 
                 row += 1;
-                if row > area.height - 1 {
+                if row > inner.height - 1 {
                     row = 0;
                     col += 1;
                 }
@@ -523,7 +534,7 @@ impl Prompt {
 
             let block = Block::bordered()
                 // .title(self.title.as_str())
-                .border_style(background);
+                .border_style(crate::ui::panel_border_style(theme, "ui.help"));
 
             let inner = block.inner(area).inner(Margin::horizontal(1));
 
