@@ -131,7 +131,7 @@ warning is printed in the statusline.
 | `item-gap` | Blank lines between items | `0` |
 | `menu-style` | `space-between` or `key-left` | `"space-between"` |
 | `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
-| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `4` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `8` |
 | `key-width` | Key column width for `key-left` | `16` |
 | `column-gap` | Gap between columns in horizontal layout | `8` |
 | `default-logo` | Use the built-in logo when no header is set | `true` |
@@ -150,9 +150,9 @@ header-file = "~/.config/helix/logo.txt"
 ```
 
 When both are empty, the built-in logo is drawn. Horizontal uses the dot-matrix
-mark; vertical pairs the dot mark with the `HELIX` wordmark. Set
-`default-logo = false` to draw nothing instead. Content wider or taller than the
-terminal is clipped and reported once in the statusline.
+mark with a small `ʜᴇʟɪx` caption; vertical pairs the dot mark with the `HELIX`
+wordmark. Set `default-logo = false` to draw nothing instead. Content wider or
+taller than the terminal is clipped and reported once in the statusline.
 
 ### Items
 

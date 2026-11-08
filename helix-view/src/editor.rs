@@ -776,7 +776,7 @@ pub struct DashboardConfig {
     pub items: Vec<DashboardItem>,
     pub menu_style: DashboardMenuStyle,
     pub menu_width: u16,
-    pub menu_gap: u16,
+    pub menu_gap: MenuGap,
     pub key_width: u16,
     pub section_gap: u16,
     pub item_gap: u16,
@@ -798,7 +798,7 @@ impl Default for DashboardConfig {
             items: Vec::new(),
             menu_style: DashboardMenuStyle::SpaceBetween,
             menu_width: 0,
-            menu_gap: 4,
+            menu_gap: MenuGap::default(),
             key_width: 16,
             section_gap: 1,
             item_gap: 0,
@@ -858,6 +858,46 @@ pub enum DashboardMenuStyle {
     #[default]
     SpaceBetween,
     KeyLeft,
+}
+
+/// Gap between item descriptions and keys.
+///
+/// Either one value for both layouts (`menu-gap = 8`) or a table with
+/// per-layout values (`[editor.dashboard.menu-gap] vertical = 8`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum MenuGap {
+    Both(u16),
+    PerLayout {
+        #[serde(default)]
+        vertical: Option<u16>,
+        #[serde(default)]
+        horizontal: Option<u16>,
+    },
+}
+
+pub const DEFAULT_MENU_GAP: u16 = 8;
+
+impl Default for MenuGap {
+    fn default() -> Self {
+        Self::Both(DEFAULT_MENU_GAP)
+    }
+}
+
+impl MenuGap {
+    pub fn for_layout(&self, layout: DashboardLayout) -> u16 {
+        match self {
+            Self::Both(gap) => *gap,
+            Self::PerLayout {
+                vertical,
+                horizontal,
+            } => match layout {
+                DashboardLayout::Vertical => vertical.unwrap_or(DEFAULT_MENU_GAP),
+                DashboardLayout::Horizontal => horizontal.unwrap_or(DEFAULT_MENU_GAP),
+                DashboardLayout::Auto => DEFAULT_MENU_GAP,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]

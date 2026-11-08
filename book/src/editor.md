@@ -217,7 +217,7 @@ section-gap = 1
 item-gap = 0
 menu-style = "space-between"
 menu-width = 0
-menu-gap = 4
+menu-gap = 8
 key-width = 16
 column-gap = 8
 
@@ -252,7 +252,7 @@ action = "file_picker"
 | `items` | List of shortcut rows, see below | `[]` |
 | `menu-style` | `space-between` (keys right-aligned) or `key-left` (keys left-aligned) | `"space-between"` |
 | `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
-| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `4` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `8` |
 | `key-width` | Width reserved for keys with `key-left` | `16` |
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |
@@ -294,7 +294,7 @@ The dashboard uses these theme scopes, each falling back to an existing scope:
 | `ui.dashboard.key` | `ui.text.inactive` |
 | `ui.dashboard.footer` | `ui.text.inactive` |
 
-The built-in logo has two forms. The horizontal form is the dot-matrix mark and
+The built-in logo has two forms. The horizontal form is the dot-matrix mark with a small `ʜᴇʟɪx` caption and
 is drawn with four shades that can be overridden through
 `ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
 `ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`; without overrides
