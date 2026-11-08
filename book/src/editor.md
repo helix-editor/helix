@@ -301,6 +301,37 @@ is drawn with four shades that can be overridden through
 the shades come from the theme. The vertical form pairs the dot mark with the
 `HELIX` wordmark and uses the header style.
 
+### `[editor.obsidian]` Section
+
+Optional integration for an Obsidian vault. Disabled by default. Vault search
+requires `rg` in `$PATH`.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `enable` | Enable the Obsidian commands | `false` |
+| `vault` | Path to the vault root | unset |
+| `notes-subdir` | Folder for newly created notes | `"6 - Main Notes"` |
+| `templates-subdir` | Folder excluded from note pickers | `"5 - Templates"` |
+
+Commands:
+
+- `:obsidian-quick-switch` — fuzzy picker of notes in the vault.
+- `:obsidian-search [query]` — ripgrep the vault; omit the query to be prompted.
+- `:obsidian-new [title]` — create a note in `notes-subdir` and open it.
+- `:obsidian-follow-link` — open the wiki or markdown link under the cursor.
+- `:obsidian-backlinks` — picker of notes linking to the current note.
+
+Example keymaps:
+
+```toml
+[keys.normal.space.o]
+o = ":obsidian-quick-switch"
+g = ":obsidian-search"
+n = ":obsidian-new"
+f = ":obsidian-follow-link"
+b = ":obsidian-backlinks"
+```
+
 ### `[editor.lsp]` Section
 
 | Key                   | Description                                                 | Default |

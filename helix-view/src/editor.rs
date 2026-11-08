@@ -371,6 +371,8 @@ pub struct Config {
     pub statusline: StatusLineConfig,
     /// Configuration of the dashboard shown when Helix starts without files.
     pub dashboard: DashboardConfig,
+    /// Configuration of the optional Obsidian vault integration.
+    pub obsidian: ObsidianConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -779,6 +781,26 @@ impl Default for DashboardConfig {
             section_gap: 1,
             item_gap: 0,
             column_gap: 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ObsidianConfig {
+    pub enable: bool,
+    pub vault: Option<String>,
+    pub notes_subdir: String,
+    pub templates_subdir: String,
+}
+
+impl Default for ObsidianConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            vault: None,
+            notes_subdir: String::from("6 - Main Notes"),
+            templates_subdir: String::from("5 - Templates"),
         }
     }
 }
@@ -1359,6 +1381,7 @@ impl Default for Config {
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             dashboard: DashboardConfig::default(),
+            obsidian: ObsidianConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,

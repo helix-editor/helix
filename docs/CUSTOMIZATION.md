@@ -214,6 +214,49 @@ The horizontal built-in logo derives its shades from the theme when the
 `ui.dashboard.logo.*` scopes are not defined. The vertical wordmark uses
 `ui.dashboard.header`.
 
+## Obsidian
+
+Optional vault integration. Requires `rg` for vault search and a vault path.
+
+```toml
+[editor.obsidian]
+enable = true
+vault = "~/Documents/Obsidian/Lessons"
+notes-subdir = "6 - Main Notes"
+templates-subdir = "5 - Templates"
+```
+
+| Command | Description |
+| ------- | ----------- |
+| `:obsidian-quick-switch` | Fuzzy note picker across the vault |
+| `:obsidian-search [query]` | Ripgrep the vault; prompts when no query is given |
+| `:obsidian-new [title]` | Create `notes-subdir/<title>.md` and open it |
+| `:obsidian-follow-link` | Open a `[[wiki]]` or `[markdown](link)` under the cursor |
+| `:obsidian-backlinks` | Picker of notes that link to the current note |
+
+Suggested keymaps:
+
+```toml
+[keys.normal.space.o]
+o = ":obsidian-quick-switch"
+g = ":obsidian-search"
+n = ":obsidian-new"
+f = ":obsidian-follow-link"
+b = ":obsidian-backlinks"
+```
+
+Notes:
+
+- Note IDs are file stems; links resolve by title or vault-relative path.
+- Templates are excluded from quick switch and backlinks.
+- New notes are created empty; templates and visual link commands are coming in
+  the next phase.
+- `follow-link` and `backlinks` require the current buffer to be a file inside
+  the vault.
+
+A mergeable snippet lives in
+[`contrib/rx-helix/obsidian.example.toml`](../contrib/rx-helix/obsidian.example.toml).
+
 ## Complete example
 
 The full drop-in sample lives at
