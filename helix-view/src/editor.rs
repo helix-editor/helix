@@ -796,11 +796,11 @@ impl Default for DashboardConfig {
             footer: String::new(),
             items: Vec::new(),
             menu_style: DashboardMenuStyle::SpaceBetween,
-            menu_width: 50,
+            menu_width: 46,
             key_width: 16,
             section_gap: 1,
             item_gap: 0,
-            column_gap: 4,
+            column_gap: 8,
         }
     }
 }

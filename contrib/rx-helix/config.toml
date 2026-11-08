@@ -69,9 +69,9 @@ item-gap = 1
 # space-between: description left, key right-aligned to menu-width.
 # key-left: key left-aligned to key-width, then the description.
 menu-style = "space-between"
-menu-width = 54
+menu-width = 46
 key-width = 16
-column-gap = 4
+column-gap = 8
 
 # Use the built-in logo when header/header-file are empty.
 default-logo = true

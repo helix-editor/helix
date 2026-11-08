@@ -211,15 +211,15 @@ columns.
 ```toml
 [editor.dashboard]
 enable = true
-layout = "vertical"
+layout = "auto"
 align = "center"
 vertical-align = "center"
 section-gap = 1
 item-gap = 0
 menu-style = "space-between"
-menu-width = 50
+menu-width = 46
 key-width = 16
-column-gap = 4
+column-gap = 8
 
 header = """
   your ascii art
@@ -251,11 +251,11 @@ action = "file_picker"
 | `footer` | Multiline footer text | unset |
 | `items` | List of shortcut rows, see below | `[]` |
 | `menu-style` | `space-between` (keys right-aligned) or `key-left` (keys left-aligned) | `"space-between"` |
-| `menu-width` | Minimum width of the item block for `space-between` | `50` |
+| `menu-width` | Minimum width of the item block for `space-between` | `46` |
 | `key-width` | Width reserved for keys with `key-left` | `16` |
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |
-| `column-gap` | Blank columns between the two columns in the horizontal layout | `4` |
+| `column-gap` | Blank columns between the two columns in the horizontal layout | `8` |
 
 `%{version}` in any text block is replaced with the Helix version.
 
