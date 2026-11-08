@@ -313,14 +313,28 @@ requires `rg` in `$PATH`.
 | `vault` | Path to the vault root | unset |
 | `notes-subdir` | Folder for newly created notes | `"6 - Main Notes"` |
 | `templates-subdir` | Folder excluded from note pickers | `"5 - Templates"` |
+| `attachments-subdir` | Folder for pasted images | `"assets"` |
+| `date-format` | `date` format for `{{date}}` | `"%d-%m-%Y %H:%M %p"` |
+| `time-format` | `date` format for `{{time}}` | `"%H:%M"` |
 
 Commands:
 
 - `:obsidian-quick-switch` — fuzzy picker of notes in the vault.
 - `:obsidian-search [query]` — ripgrep the vault; omit the query to be prompted.
 - `:obsidian-new [title]` — create a note in `notes-subdir` and open it.
+- `:obsidian-rename [title]` — rename the current note and rewrite links to it.
+- `:obsidian-template [name]` — apply a template at the cursor.
 - `:obsidian-follow-link` — open the wiki or markdown link under the cursor.
 - `:obsidian-backlinks` — picker of notes linking to the current note.
+- `:obsidian-link` — replace the selection with a link to a picked note.
+- `:obsidian-link-new` — create a note from the selection and link it.
+- `:obsidian-extract-note` — move the selection into a new note and link it.
+- `:obsidian-paste-image` — paste a clipboard PNG/JPEG into `attachments-subdir`.
+- `:obsidian-toggle-checkbox` — toggle `[ ]` / `[x]` on the current line.
+- `:obsidian-toc` — insert a heading table of contents.
+- `:obsidian-links` — pick and follow a link in the current note.
+- `:obsidian-tags` — pick a vault tag and insert it.
+- `:obsidian-smart-action` — follow a link or toggle a checkbox under the cursor.
 
 The quick-switch picker footer shows `<CR> open`, `<C-x> new note` (from the
 typed query), and `<C-l> insert link` (inserts `[[Title]]` for the selected
@@ -333,8 +347,21 @@ Example keymaps:
 o = ":obsidian-quick-switch"
 g = ":obsidian-search"
 n = ":obsidian-new"
+m = ":obsidian-rename"
+r = ":obsidian-rename"
+t = ":obsidian-template"
 f = ":obsidian-follow-link"
 b = ":obsidian-backlinks"
+i = ":obsidian-paste-image"
+c = ":obsidian-toggle-checkbox"
+d = ":obsidian-toc"
+l = ":obsidian-links"
+s = ":obsidian-tags"
+
+[keys.select.space.o]
+l = ":obsidian-link"
+n = ":obsidian-link-new"
+e = ":obsidian-extract-note"
 ```
 
 ### `[editor.lsp]` Section

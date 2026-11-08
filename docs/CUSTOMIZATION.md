@@ -223,6 +223,9 @@ enable = true
 vault = "~/Documents/Obsidian/Lessons"
 notes-subdir = "6 - Main Notes"
 templates-subdir = "5 - Templates"
+attachments-subdir = "assets"
+date-format = "%d-%m-%Y %H:%M %p"
+time-format = "%H:%M"
 ```
 
 | Command | Description |
@@ -230,8 +233,19 @@ templates-subdir = "5 - Templates"
 | `:obsidian-quick-switch` | Fuzzy note picker across the vault |
 | `:obsidian-search [query]` | Ripgrep the vault; prompts when no query is given |
 | `:obsidian-new [title]` | Create `notes-subdir/<title>.md` and open it |
+| `:obsidian-rename [title]` | Rename the current note and rewrite links to it |
+| `:obsidian-template [name]` | Apply a template at the cursor |
 | `:obsidian-follow-link` | Open a `[[wiki]]` or `[markdown](link)` under the cursor |
 | `:obsidian-backlinks` | Picker of notes that link to the current note |
+| `:obsidian-link` | Replace the selection with a link to a picked note |
+| `:obsidian-link-new` | Create a note from the selection and link it |
+| `:obsidian-extract-note` | Move the selection into a new note and link it |
+| `:obsidian-paste-image` | Paste a clipboard PNG/JPEG into `attachments-subdir` |
+| `:obsidian-toggle-checkbox` | Toggle `[ ]` / `[x]` on the current line |
+| `:obsidian-toc` | Insert a heading table of contents |
+| `:obsidian-links` | Pick and follow a link in the current note |
+| `:obsidian-tags` | Pick a vault tag and insert it |
+| `:obsidian-smart-action` | Follow a link or toggle a checkbox under the cursor |
 
 Suggested keymaps:
 
@@ -240,21 +254,38 @@ Suggested keymaps:
 o = ":obsidian-quick-switch"
 g = ":obsidian-search"
 n = ":obsidian-new"
+m = ":obsidian-rename"
+r = ":obsidian-rename"
+t = ":obsidian-template"
 f = ":obsidian-follow-link"
 b = ":obsidian-backlinks"
+i = ":obsidian-paste-image"
+c = ":obsidian-toggle-checkbox"
+d = ":obsidian-toc"
+l = ":obsidian-links"
+s = ":obsidian-tags"
+
+[keys.select.space.o]
+l = ":obsidian-link"
+n = ":obsidian-link-new"
+e = ":obsidian-extract-note"
 ```
 
 Notes:
 
 - Note IDs are file stems; links resolve by title or vault-relative path.
 - Templates are excluded from quick switch and backlinks.
-- New notes are created empty; templates and visual link commands are coming in
-  the next phase.
-- `follow-link` and `backlinks` require the current buffer to be a file inside
-  the vault.
+- Templates replace `{{title}}`, `{{date}}`, and `{{time}}` placeholders.
+- Rename rewrites wiki links and markdown note links across the vault.
+- `paste-image` requires `wl-paste` and a PNG/JPEG image on the Wayland
+  clipboard.
+- `follow-link`, `backlinks`, `links`, and `toc` require the current buffer to
+  be a file inside the vault.
 - The quick-switch picker uses a telescope-like footer: `<CR>` opens the
   selected note, `<C-x>` creates a note from the typed query, and `<C-l>`
   inserts `[[Title]]` for the selected note into the current buffer.
+- Automatic `[[` completion while typing is not implemented yet; use the
+  visual link commands or the quick-switch `<C-l>` action.
 
 A mergeable snippet lives in
 [`contrib/rx-helix/obsidian.example.toml`](../contrib/rx-helix/obsidian.example.toml).

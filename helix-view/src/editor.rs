@@ -792,6 +792,9 @@ pub struct ObsidianConfig {
     pub vault: Option<String>,
     pub notes_subdir: String,
     pub templates_subdir: String,
+    pub attachments_subdir: String,
+    pub date_format: String,
+    pub time_format: String,
 }
 
 impl Default for ObsidianConfig {
@@ -801,6 +804,9 @@ impl Default for ObsidianConfig {
             vault: None,
             notes_subdir: String::from("6 - Main Notes"),
             templates_subdir: String::from("5 - Templates"),
+            attachments_subdir: String::from("assets"),
+            date_format: String::from("%d-%m-%Y %H:%M %p"),
+            time_format: String::from("%H:%M"),
         }
     }
 }
