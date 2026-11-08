@@ -37,7 +37,8 @@ Shown when Helix starts without files:
 - `auto`, `vertical`, or `horizontal` layout. `auto` recomputes on resize, makes
   the item block shrink to fit, and falls back to the orientation with the
   smallest overflow.
-- Optional header text, `header-file`, or the built-in RXHX / dot-matrix logo.
+- Optional header text, `header-file`, or the built-in dot-matrix mark (paired
+  with the `HELIX` wordmark in vertical layout).
 - Shortcut rows with icons, descriptions, and any Helix command as the action.
 - Key-hint and hover popups stay above the statusline.
 - Unbound keys are swallowed while the dashboard is visible; cancelling a picker

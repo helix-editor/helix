@@ -246,6 +246,30 @@ fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16) -> Bloc
         .iter()
         .any(|item| item.key.as_deref().is_some_and(|key| !key.is_empty()));
 
+    let space_between = matches!(config.menu_style, DashboardMenuStyle::SpaceBetween);
+    let (max_left, max_key) = if space_between {
+        config
+            .items
+            .iter()
+            .fold((0, 0), |(max_left, max_key), item| {
+                let icon_column = if icon_width > 0 { icon_width + 1 } else { 0 };
+                (
+                    max_left.max(icon_column + item.desc.width()),
+                    max_key.max(item.key.as_deref().unwrap_or("").width()),
+                )
+            })
+    } else {
+        (0, 0)
+    };
+    let menu_width = if space_between {
+        let dynamic = max_left + max_key + config.menu_gap as usize;
+        let requested = menu_width as usize;
+        let width = if requested > 0 { requested } else { dynamic };
+        width.max(max_left + max_key + 1)
+    } else {
+        menu_width as usize
+    };
+
     let mut lines = Vec::new();
     for (index, item) in config.items.iter().enumerate() {
         if index > 0 {
@@ -274,8 +298,8 @@ fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16) -> Bloc
                 if !key.is_empty() {
                     let desc_width = line_width(&spans);
                     let key_width = key.width();
-                    let width = (menu_width as usize).max(desc_width + key_width + 1);
-                    spans.push(Span::raw(" ".repeat(width - desc_width - key_width)));
+                    let filler = menu_width.saturating_sub(desc_width + key_width).max(1);
+                    spans.push(Span::raw(" ".repeat(filler)));
                     spans.push(Span::styled(key.to_string(), key_style));
                 }
             }
@@ -390,7 +414,6 @@ fn dots_logo(theme: &Theme) -> Block {
 
 fn vertical_logo(theme: &Theme) -> Block {
     let header = dashboard_style(theme, "header", "ui.text");
-    let icon = dashboard_style(theme, "icon", "ui.text.inactive");
     let dots = dots_logo(theme);
     let helix = letters_block(&[&LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X], header);
 
@@ -401,10 +424,7 @@ fn vertical_logo(theme: &Theme) -> Block {
     let dots_offset = (height - dots.height()) / 2;
     let helix_offset = (height - helix.height()) / 2;
 
-    let mut lines = vec![vec![Span::styled(
-        format!("{}  ランサム", "━".repeat(49)),
-        header,
-    )]];
+    let mut lines = Vec::new();
     for row in 0..height {
         let mut spans = Vec::new();
         if let Some(line) = row.checked_sub(dots_offset).and_then(|i| dots.lines.get(i)) {
@@ -430,12 +450,6 @@ fn vertical_logo(theme: &Theme) -> Block {
         }
         lines.push(spans);
     }
-    lines.push(vec![
-        Span::raw(" ".repeat(4)),
-        Span::styled("󰘬 ", icon),
-        Span::styled("━".repeat(49), header),
-        Span::raw(" ".repeat(4)),
-    ]);
 
     Block { lines }
 }
@@ -493,19 +507,33 @@ fn text_block(text: &str, style: Style) -> Block {
 }
 
 fn stack(blocks: impl IntoIterator<Item = Block>, gap: u16) -> Block {
+    let blocks: Vec<Block> = blocks
+        .into_iter()
+        .filter(|block| !block.is_empty())
+        .collect();
+    let width = blocks.iter().map(Block::width).max().unwrap_or(0);
+
     let mut lines = Vec::new();
-    let mut empty = true;
-    for block in blocks {
-        if block.is_empty() {
-            continue;
-        }
-        if !empty {
+    for (index, block) in blocks.into_iter().enumerate() {
+        if index > 0 {
             for _ in 0..gap {
                 lines.push(Vec::new());
             }
         }
-        lines.extend(block.lines);
-        empty = false;
+        let pad = width.saturating_sub(block.width()) / 2;
+        for line in block.lines {
+            let line_width = line_width(&line);
+            let mut new_line = Vec::new();
+            if pad > 0 {
+                new_line.push(Span::raw(" ".repeat(pad)));
+            }
+            new_line.extend(line);
+            let trailing = width.saturating_sub(pad + line_width);
+            if trailing > 0 {
+                new_line.push(Span::raw(" ".repeat(trailing)));
+            }
+            lines.push(new_line);
+        }
     }
     Block { lines }
 }

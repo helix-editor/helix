@@ -205,8 +205,7 @@ With `layout = "auto"` the dashboard picks the orientation that fits the
 terminal. If both fit, horizontal is used on wide terminals (width at least
 three times the height) and vertical otherwise. If neither fits, the orientation
 with the smallest overflow is used. In the horizontal layout the item block
-shrinks from `menu-width` down to its content width to fit the available
-columns.
+shrinks the item block to its content width to fit the available columns.
 
 ```toml
 [editor.dashboard]
@@ -217,7 +216,8 @@ vertical-align = "center"
 section-gap = 1
 item-gap = 0
 menu-style = "space-between"
-menu-width = 46
+menu-width = 0
+menu-gap = 4
 key-width = 16
 column-gap = 8
 
@@ -251,7 +251,8 @@ action = "file_picker"
 | `footer` | Multiline footer text | unset |
 | `items` | List of shortcut rows, see below | `[]` |
 | `menu-style` | `space-between` (keys right-aligned) or `key-left` (keys left-aligned) | `"space-between"` |
-| `menu-width` | Minimum width of the item block for `space-between` | `46` |
+| `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `4` |
 | `key-width` | Width reserved for keys with `key-left` | `16` |
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |
@@ -297,8 +298,8 @@ The built-in logo has two forms. The horizontal form is the dot-matrix mark and
 is drawn with four shades that can be overridden through
 `ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
 `ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`; without overrides
-the shades come from the theme. The vertical form is the block `RXHX` wordmark
-with the Japanese label and helix rule, and uses the header/icon styles.
+the shades come from the theme. The vertical form pairs the dot mark with the
+`HELIX` wordmark and uses the header style.
 
 ### `[editor.lsp]` Section
 
