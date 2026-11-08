@@ -13,8 +13,12 @@
 [editor]
 # Color the mode chip per mode. Without this the chips are plain text.
 color-modes = true
+# Highlight the current line(s).
+cursorline = true
 # Matches the default; set to "always" for a permanent bufferline.
 bufferline = "multiple"
+# Keep completion/hover/menu panels on the terminal background.
+transparent-popups = true
 
 [editor.statusline]
 left = [

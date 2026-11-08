@@ -74,6 +74,19 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
         .and_then(|path| path.parent().map(|path| path.to_path_buf().join(RT_DIR)))
         .unwrap();
     rt_dirs.push(exe_rt_dir);
+
+    // Development fallback: the source tree this binary was compiled from.
+    // `cargo install` does not copy the runtime next to the installed binary,
+    // and running `./target/debug/hx` directly does not set
+    // `CARGO_MANIFEST_DIR`. The compile-time path keeps both working while the
+    // source tree exists; `HELIX_RUNTIME` still overrides it.
+    if let Some(manifest_dir) = option_env!("CARGO_MANIFEST_DIR") {
+        let path = PathBuf::from(manifest_dir).parent().unwrap().join(RT_DIR);
+        if path.exists() {
+            rt_dirs.push(path);
+        }
+    }
+
     rt_dirs
 }
 

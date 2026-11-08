@@ -32,8 +32,9 @@ use crate::{
 use log::{debug, error, info, warn};
 use std::{
     io::{stdin, IsTerminal},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
+    time::{Duration, Instant, SystemTime},
 };
 
 #[cfg_attr(windows, allow(unused_imports))]
@@ -79,6 +80,81 @@ pub struct Application {
     lsp_progress: LspProgressMap,
 
     theme_mode: Option<theme::Mode>,
+    theme_watcher: ThemeWatcher,
+}
+
+const THEME_POLL_INTERVAL: Duration = Duration::from_millis(250);
+const THEME_RELOAD_DEBOUNCE: Duration = Duration::from_millis(200);
+const TRANSPARENT_POPUP_SCOPES: &[&str] = &["ui.popup", "ui.popup.info", "ui.menu", "ui.help"];
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct FileStamp {
+    modified: Option<SystemTime>,
+    len: u64,
+}
+
+/// Polls the active theme file and reloads it after the file has been stable
+/// for a short debounce window. Polling avoids adding a filesystem watcher
+/// dependency for a single file and works with atomic renames.
+struct ThemeWatcher {
+    path: Option<PathBuf>,
+    stamp: Option<FileStamp>,
+    pending: Option<(FileStamp, Instant)>,
+}
+
+impl ThemeWatcher {
+    fn new(path: Option<PathBuf>) -> Self {
+        let stamp = path.as_deref().and_then(Self::file_stamp);
+        Self {
+            path,
+            stamp,
+            pending: None,
+        }
+    }
+
+    fn file_stamp(path: &Path) -> Option<FileStamp> {
+        let metadata = std::fs::metadata(path).ok()?;
+        Some(FileStamp {
+            modified: metadata.modified().ok(),
+            len: metadata.len(),
+        })
+    }
+
+    fn watch(&mut self, path: Option<PathBuf>) {
+        if self.path == path {
+            return;
+        }
+        self.path = path;
+        self.stamp = self.path.as_deref().and_then(Self::file_stamp);
+        self.pending = None;
+    }
+
+    fn poll(&mut self, now: Instant) -> bool {
+        let Some(path) = self.path.as_deref() else {
+            return false;
+        };
+        let Some(stamp) = Self::file_stamp(path) else {
+            return false;
+        };
+        if Some(stamp) == self.stamp {
+            self.pending = None;
+            return false;
+        }
+        match self.pending {
+            Some((pending_stamp, since)) if pending_stamp == stamp => {
+                if now.duration_since(since) < THEME_RELOAD_DEBOUNCE {
+                    return false;
+                }
+                self.stamp = Some(stamp);
+                self.pending = None;
+                true
+            }
+            _ => {
+                self.pending = Some((stamp, now));
+                false
+            }
+        }
+    }
 }
 
 #[cfg(feature = "integration")]
@@ -136,6 +212,12 @@ impl Application {
             workspace_trust,
         );
         Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
+        let theme_path = config.load().theme.as_ref().and_then(|theme_config| {
+            editor
+                .theme_loader
+                .theme_path(theme_config.choose(theme_mode))
+        });
+        let theme_watcher = ThemeWatcher::new(theme_path);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -263,6 +345,7 @@ impl Application {
             jobs,
             lsp_progress: LspProgressMap::new(),
             theme_mode,
+            theme_watcher,
         };
 
         Ok(app)
@@ -328,12 +411,18 @@ impl Application {
     where
         S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
+        let mut theme_tick = tokio::time::interval(THEME_POLL_INTERVAL);
+        theme_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
         loop {
             if self.editor.should_close() {
                 return false;
             }
 
             use futures_util::StreamExt;
+
+            #[cfg(feature = "integration")]
+            let mut reset_idle_timer = true;
 
             tokio::select! {
                 biased;
@@ -383,13 +472,27 @@ impl Application {
                         }
                     }
                 }
+                _ = theme_tick.tick() => {
+                    // Polling must not count as activity for integration tests,
+                    // otherwise the idle timer never expires.
+                    #[cfg(feature = "integration")]
+                    {
+                        reset_idle_timer = false;
+                    }
+                    if self.theme_watcher.poll(Instant::now()) {
+                        self.reload_configured_theme();
+                        self.render().await;
+                    }
+                }
             }
 
             // for integration tests only, reset the idle timer after every
             // event to signal when test events are done processing
             #[cfg(feature = "integration")]
             {
-                self.editor.reset_idle_timer();
+                if reset_idle_timer {
+                    self.editor.reset_idle_timer();
+                }
             }
         }
     }
@@ -418,6 +521,11 @@ impl Application {
                         .try_get_exact("ui.background")
                         .and_then(|style| style.bg),
                 );
+                let path = self
+                    .editor
+                    .theme_loader
+                    .theme_path(self.editor.theme.name());
+                self.theme_watcher.watch(path);
                 return;
             }
         }
@@ -473,6 +581,7 @@ impl Application {
             self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
+            self.sync_theme_watcher();
             Ok(())
         };
 
@@ -486,6 +595,51 @@ impl Application {
         }
     }
 
+    fn sync_theme_watcher(&mut self) {
+        let path = {
+            let config = self.config.load();
+            config.theme.as_ref().and_then(|theme_config| {
+                self.editor
+                    .theme_loader
+                    .theme_path(theme_config.choose(self.theme_mode))
+            })
+        };
+        self.theme_watcher.watch(path);
+    }
+
+    /// Reload the active theme after its file changed on disk. Unlike startup
+    /// loading this keeps the current theme if the new file cannot be parsed,
+    /// so a partially written theme never flashes the fallback theme.
+    fn reload_configured_theme(&mut self) {
+        let config = self.config.load();
+        let Some(theme_config) = config.theme.as_ref() else {
+            return;
+        };
+        let name = theme_config.choose(self.theme_mode);
+        let true_color = self.terminal.backend().supports_true_color()
+            || config.editor.true_color
+            || crate::true_color();
+        match self.editor.theme_loader.load(name) {
+            Ok(mut theme) => {
+                if !true_color && !theme.is_16_color() {
+                    log::warn!(
+                        "reloaded theme `{}` but cannot use it because true color \
+                        support is not enabled",
+                        theme.name()
+                    );
+                    return;
+                }
+                if config.editor.transparent_popups {
+                    theme.clear_backgrounds(TRANSPARENT_POPUP_SCOPES);
+                }
+                if let Err(err) = self.editor.set_theme(theme) {
+                    log::warn!("failed to apply reloaded theme `{}` - {}", name, err);
+                }
+            }
+            Err(err) => log::warn!("failed to reload theme `{}` - {}", name, err),
+        }
+    }
+
     /// Load the theme set in configuration
     fn load_configured_theme(
         editor: &mut Editor,
@@ -496,7 +650,7 @@ impl Application {
         let true_color = terminal.backend().supports_true_color()
             || config.editor.true_color
             || crate::true_color();
-        let theme = config
+        let mut theme = config
             .theme
             .as_ref()
             .and_then(|theme_config| {
@@ -522,6 +676,9 @@ impl Application {
                     })
             })
             .unwrap_or_else(|| editor.theme_loader.default_theme(true_color));
+        if config.editor.transparent_popups {
+            theme.clear_backgrounds(TRANSPARENT_POPUP_SCOPES);
+        }
         let _ = editor.set_theme(theme);
     }
 

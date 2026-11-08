@@ -95,6 +95,30 @@ The chip values come from `mode.command` / `mode.command-short` and
 
 Command and search currently use the normal-mode chip colors.
 
+## Editor chrome
+
+```toml
+[editor]
+cursorline = true
+bufferline = "multiple"     # always | never | multiple
+transparent-popups = true
+```
+
+`cursorline` highlights the line of every cursor with `ui.cursorline`.
+`bufferline` renders open buffers at the top; `multiple` shows it only when
+more than one buffer is open.
+
+`transparent-popups` replaces the background of completion docs, hover and
+signature help, menus, and prompt completion with the terminal default. It
+patches only those scopes at theme-load time (`ui.popup`, `ui.popup.info`,
+`ui.menu`, `ui.help`), so foreground colors and generated theme files are left
+untouched. Alternatively, set `bg = "none"` on individual scopes.
+
+The active theme file is watched for changes and reloaded automatically with a
+short debounce. Generated themes can therefore rewrite
+`~/.config/helix/themes/<name>.toml` while the editor is open. A parse error
+keeps the current theme instead of falling back to the default.
+
 ## Dashboard
 
 The dashboard replaces the empty buffer when Helix starts without files. It is
@@ -368,9 +392,11 @@ cp contrib/rx-helix/config.toml ~/.config/helix/config.toml
 
 ## Troubleshooting
 
-**No syntax highlighting.** The source build was launched directly. Use
-`cargo run -p helix-term -- file` or
-`HELIX_RUNTIME="$PWD/runtime" ./target/debug/hx file`.
+**No syntax highlighting.** The source build was launched directly and the
+runtime could not be found. `cargo run -p helix-term -- file` sets the runtime
+automatically. A binary built from this checkout also falls back to the source
+tree's `runtime/` directory at compile time, so an installed `hx` keeps working
+while that checkout exists. Otherwise set `HELIX_RUNTIME="$PWD/runtime"`.
 
 **No dashboard.** Check `enable = true`, that Helix was started without files,
 and that the focused buffer is the startup scratch. `:new`, `:vnew`, `:hnew`,
