@@ -373,6 +373,8 @@ pub struct Config {
     pub dashboard: DashboardConfig,
     /// Configuration of the optional Obsidian vault integration.
     pub obsidian: ObsidianConfig,
+    /// Configuration of the markdown renderer.
+    pub markdown: MarkdownConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -808,6 +810,19 @@ impl Default for ObsidianConfig {
             date_format: String::from("%d-%m-%Y %H:%M %p"),
             time_format: String::from("%H:%M"),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MarkdownConfig {
+    /// Render markdown syntax markers with icons and conceals.
+    pub render: bool,
+}
+
+impl Default for MarkdownConfig {
+    fn default() -> Self {
+        Self { render: false }
     }
 }
 
@@ -1388,6 +1403,7 @@ impl Default for Config {
             statusline: StatusLineConfig::default(),
             dashboard: DashboardConfig::default(),
             obsidian: ObsidianConfig::default(),
+            markdown: MarkdownConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,

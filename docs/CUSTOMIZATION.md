@@ -213,6 +213,24 @@ foreground color so no background block is drawn. If a statusline scope is
 missing, the dashboard falls back to `ui.text`. This means wallpaper changes
 and theme regeneration cannot leave the dashboard uncolored.
 
+## Markdown rendering
+
+Optional display-only markdown rendering:
+
+```toml
+[editor.markdown]
+render = true
+```
+
+Headings lose their `#` markers and gain level icons, bullet lists use `•`,
+task boxes use `󰄱`/`󰱒`, block quotes use `│`, and horizontal rules use `─`.
+The buffer text is unchanged: rendering is built from single-grapheme overlays,
+so movement, editing, saving, and searching still see ordinary markdown. Only
+visible lines are scanned.
+
+Code fences are left as-is and keep their tree-sitter highlighting. Links,
+callouts, and tables are not decorated yet.
+
 ## Obsidian
 
 Optional vault integration. Requires `rg` for vault search and a vault path.

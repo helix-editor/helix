@@ -67,6 +67,12 @@ Optional built-in vault integration:
 - `:obsidian-follow-link` for `[[wiki]]` and markdown links.
 - `:obsidian-backlinks` for the current note.
 
+### Markdown rendering
+
+`[editor.markdown] render = true` replaces heading markers with icons, bullets
+with `•`, task boxes with `󰄱`/`󰱒`, quotes with `│`, and rules with `─` using
+buffer overlays, so the file text is unchanged.
+
 ### Upstream sync
 
 A daily GitHub Actions workflow fast-forwards `master`, rebases `main`, runs a
