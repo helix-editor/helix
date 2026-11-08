@@ -177,7 +177,7 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
     let mut placements = Vec::new();
 
     for image in helix_view::markdown::visible_images(doc, &view) {
-        let Some(path) = helix_view::markdown::ensure_png(&image.path) else {
+        let Some(path) = helix_view::markdown::ensure_png_async(&image.path) else {
             continue;
         };
         let rows_total = image.rows.max(1) as usize;
