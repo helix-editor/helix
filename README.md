@@ -1,64 +1,119 @@
-<div align="center">
+# rx-helix
 
-<h1>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Helix" height="128" src="logo_light.svg">
-</picture>
-</h1>
+A personal fork of [Helix](https://github.com/helix-editor/helix) with UI and
+quality-of-life changes built around one idea: everything the editor shows on
+its last line should be useful, compact, and configurable.
 
-[![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
-[![Documentation](https://shields.io/badge/-documentation-452859)](https://docs.helix-editor.com/)
-[![GitHub contributors](https://img.shields.io/github/contributors/helix-editor/helix)](https://github.com/helix-editor/helix/graphs/contributors)
-[![Matrix Space](https://img.shields.io/matrix/helix-community:matrix.org)](https://matrix.to/#/#helix-community:matrix.org)
+The fork tracks upstream `master` automatically. `master` is a pure mirror of
+Helix; all custom work lives on `main`.
 
-</div>
+## Features
 
-![Screenshot](./screenshot.png)
+### One-line statusbar
 
-A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
+The statusline and the command/status area share a single bottom row.
 
-The editing model is very heavily based on Kakoune; during development I found
-myself agreeing with most of Kakoune's design decisions.
+- `:` opens an inline command line: a `COMMAND` / `C` chip, one blank cell, then
+  the command text and cursor. The `:` prefix is not echoed.
+- `/` opens an inline search prompt: a `SEARCH` / `S` chip, the pattern, and the
+  current `line:column` right-aligned with the accent style.
+- Status messages and pending keys render in the middle region instead of
+  painting over the mode chip and the right-side modules.
 
-For more information, see the [website](https://helix-editor.com) or
-[documentation](https://docs.helix-editor.com/).
+### Statusbar configuration
 
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
+- Per-region transparency (`left`, `center`, `right`).
+- Responsive mode labels: full labels on wide terminals, short labels below a
+  configurable column count.
+- Configurable labels for normal, insert, select, command, and search.
+- `reserve-space` to stop empty spinner/modification elements from leaving
+  padded blocks.
+- `accent` to paint selected elements with the current mode colors.
 
-[Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+### Dashboard
 
-# Features
+Shown when Helix starts without files:
 
-- Vim-like modal editing
-- Multiple selections
-- Built-in language server support
-- Smart, incremental syntax highlighting and code editing via tree-sitter
+- `auto`, `vertical`, or `horizontal` layout. `auto` recomputes on resize, makes
+  the item block shrink to fit, and falls back to the orientation with the
+  smallest overflow.
+- Optional header text, `header-file`, or the built-in RXHX logo.
+- Shortcut rows with icons, descriptions, and any Helix command as the action.
+- Key-hint and hover popups stay above the statusline.
+- Unbound keys are swallowed while the dashboard is visible; cancelling a picker
+  returns to it, opening a file dismisses it.
 
-Although it's primarily a terminal-based editor, I am interested in exploring
-a custom renderer (similar to Emacs) using wgpu.
+### Upstream sync
 
-Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.scm`.
+A daily GitHub Actions workflow fast-forwards `master`, rebases `main`, runs a
+build check, and opens an issue if a human is needed. See
+[FORK.md](FORK.md).
 
-# Installation
+## Build and run
 
-[Installation documentation](https://docs.helix-editor.com/install.html).
+```sh
+cargo build -p helix-term
+cargo run -p helix-term -- path/to/file
+```
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg?exclude_unsupported=1)](https://repology.org/project/helix-editor/versions)
+> **Important:** run the development build through `cargo run`, or point it at
+> the repo's runtime explicitly:
+>
+> ```sh
+> HELIX_RUNTIME="$PWD/runtime" ./target/debug/hx path/to/file
+> ```
+>
+> Running `./target/debug/hx` without `HELIX_RUNTIME` opens files without
+> grammar queries, so syntax highlighting is missing.
 
-# Contributing
+First build note: `helix-term/build.rs` fetches tree-sitter grammars. If your
+DNS is flaky, the fetch can take minutes; once the grammars and `.so` files are
+built, later builds only do fast revision checks.
 
-Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
+## Configuration
 
-# Getting help
+Helix reads `~/.config/helix/config.toml` and `~/.config/helix/themes/*.toml`.
 
-Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
+A complete drop-in example is in
+[`contrib/rx-helix/config.toml`](contrib/rx-helix/config.toml). Copy it to
+`~/.config/helix/config.toml` to see all the fork features at once:
 
-Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
+```sh
+mkdir -p ~/.config/helix
+cp contrib/rx-helix/config.toml ~/.config/helix/config.toml
+```
 
-# Credits
+You must actually use the config for the fork features to appear: with no
+`[editor.statusline]`/`[editor.dashboard]` section, Helix uses its upstream
+defaults. The dashboard is disabled unless `enable = true`.
 
-Thanks to [@jakenvac](https://github.com/jakenvac) for designing the logo!
+Detailed documentation:
+
+- [Customization guide](docs/CUSTOMIZATION.md) — statusline, dashboard, themes,
+  sample config, and troubleshooting.
+- [Statusline reference](book/src/editor.md#editorstatusline-section)
+- [Dashboard reference](book/src/editor.md#editordashboard-section)
+
+`:config-reload` re-reads the config. Dashboard layout changes take effect on the
+next redraw and orientation switches live as the terminal is resized.
+
+## What this fork is not
+
+- Not a Vim emulation layer. Helix motions are the point; learn them and keep
+  the selection-first model.
+- Not a plugin-based configuration. Everything is compiled in; configuration is
+  data-driven through `config.toml` and themes.
+
+## Credits
+
+- [Helix](https://github.com/helix-editor/helix) — the editor this fork is built
+  on.
+- [rx-neovim](https://github.com/RanXom) — the statusline and dashboard layout
+  this fork ports to Helix.
+- The dot-matrix logo shading scheme comes from a
+  [Helix PR discussion](https://github.com/helix-editor/helix) about ASCII logo
+  coloring.
+
+## License
+
+MPL-2.0, same as Helix. See [LICENSE](LICENSE).
