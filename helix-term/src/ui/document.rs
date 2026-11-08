@@ -454,8 +454,8 @@ impl<'a> TextRenderer<'a> {
         if start >= end {
             return;
         }
-        let amount = (to - from) as u16;
-        if amount == 0 || start.saturating_add(amount) >= end {
+        let amount = (to - from).min((end - start) as usize) as u16;
+        if amount == 0 {
             return;
         }
         let copy_end = end - amount;
@@ -463,7 +463,11 @@ impl<'a> TextRenderer<'a> {
             let cell = self.surface[(x + amount, y)].clone();
             self.surface[(x, y)] = cell;
         }
-        let blank_style = self.surface[(end - 1, y)].style();
+        // Keep only the background. Copying the full rightmost cell style
+        // would spread link underlines/italics into the vacated tail whenever
+        // a long destination reached the right edge of the viewport.
+        let bg = self.surface[(end - 1, y)].bg;
+        let blank_style = Style::default().bg(bg);
         for x in copy_end..end {
             let cell = &mut self.surface[(x, y)];
             cell.reset();

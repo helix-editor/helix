@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
 use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
-use helix_view::graphics::{Rect, Style};
+use helix_view::graphics::{Modifier, Rect, Style};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
@@ -67,6 +67,41 @@ enum TableKind {
     Header,
     Delimiter,
     Body,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum TableAlignment {
+    Default,
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Clone, Debug)]
+struct TableColumn {
+    width: usize,
+    content_width: usize,
+    padding_left: usize,
+    padding_right: usize,
+    alignment: TableAlignment,
+}
+
+/// Layout for one pipe table. `end` is exclusive.
+#[derive(Clone, Debug)]
+struct TableLayout {
+    columns: Vec<TableColumn>,
+    indent: usize,
+    header: usize,
+    end: usize,
+}
+
+/// Style with inherited emphasis/underline modifiers cleared. Painting over
+/// cells that used to hold a link destination must not keep its underline.
+fn plain(style: Style) -> Style {
+    Style {
+        sub_modifier: Modifier::all(),
+        ..style
+    }
 }
 
 struct Paint {
@@ -248,9 +283,49 @@ impl MarkdownRender {
             background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
 
         let link_custom: Vec<MarkdownLinkIcon> = doc.config.load().markdown.link_icons.clone();
+        let available_width = view.inner_width(doc) as usize;
+        // Walk back to the start of a table that straddles the top of the
+        // viewport so a scrolled-off header still has a known layout.
+        let mut table_from = start_line.saturating_sub(8);
+        while table_from > 0 && is_table_row(&text.line(table_from - 1).to_string()) {
+            table_from -= 1;
+        }
         // Only classify rows near the viewport. Scanning to the end of the
         // document here made table detection O(file size) on every frame.
-        let table_kinds = detect_tables(text, start_line.saturating_sub(8), end_line);
+        let table_kinds = detect_tables(text, table_from, end_line);
+        let mut table_layouts: HashMap<usize, TableLayout> = HashMap::new();
+        let mut table_borders: HashMap<usize, String> = HashMap::new();
+        let mut seen_table_headers = HashSet::new();
+        for (&header, &kind) in &table_kinds {
+            if kind != TableKind::Header || !seen_table_headers.insert(header) {
+                continue;
+            }
+            let Some(layout) = parse_table_layout(text, header, available_width) else {
+                continue;
+            };
+            for row in layout.header..layout.end {
+                table_layouts.insert(row, layout.clone());
+            }
+            // render-markdown.nvim draws the outer border on adjacent blank
+            // lines when possible, and only falls back to virtual lines.
+            let prefix = " ".repeat(layout.indent);
+            if header > 0 && text.line(header - 1).to_string().trim().is_empty() {
+                let border = format_table_border(&layout.columns, '┌', '┬', '┐');
+                table_borders.insert(header - 1, format!("{prefix}{border}"));
+            }
+            if layout.end < text.len_lines() && text.line(layout.end).to_string().trim().is_empty()
+            {
+                let border = format_table_border(&layout.columns, '└', '┴', '┘');
+                table_borders.insert(layout.end, format!("{prefix}{border}"));
+            }
+        }
+        for (line, border) in &table_borders {
+            render.lines.entry(*line).or_default().paints.push(Paint {
+                col: 0,
+                text: border.clone(),
+                style: plain(table_border_style),
+            });
+        }
         // Prefix state is cached per document version, so scrolling and
         // redraws only parse the visible lines.
         let line_meta = visible_line_meta(doc, text, start_line, end_line);
@@ -322,45 +397,32 @@ impl MarkdownRender {
 
             // Pipe tables take precedence over lists/quotes: rows start with
             // `|` which no other block marker uses.
-            if let Some(kind) = table_kinds.get(&line_idx) {
+            if let (Some(kind), Some(layout)) =
+                (table_kinds.get(&line_idx), table_layouts.get(&line_idx))
+            {
                 if visible {
                     let line_render = render.lines.entry(line_idx).or_default();
                     line_render.table = Some(*kind);
-                    for (col, ch) in chars.iter().enumerate() {
-                        if *ch == '|' {
-                            line_render.paints.push(Paint {
-                                col,
-                                text: "│".to_string(),
-                                style: table_border_style,
-                            });
-                        } else if *kind == TableKind::Delimiter && matches!(*ch, '-' | ':') {
-                            line_render.paints.push(Paint {
-                                col,
-                                text: if *ch == '-' {
-                                    "─".to_string()
-                                } else {
-                                    "━".to_string()
-                                },
-                                style: table_border_style,
-                            });
-                        }
-                    }
                     if *kind == TableKind::Header {
                         line_render.background = table_head_background;
                     }
-                }
-                if visible {
-                    paint_inline_links(
-                        &mut render,
-                        line_idx,
-                        &chars,
-                        0,
-                        link_icon_style,
-                        &link_custom,
-                    );
-                    paint_inline_emphasis(&mut render, line_idx, &chars, 0);
-                    if let Some(style) = inline_code_background {
-                        paint_inline_code(&mut render, line_idx, line_start, &chars, style);
+                    let border_style = plain(table_border_style);
+                    if *kind == TableKind::Delimiter {
+                        line_render.paints.push(Paint {
+                            col: layout.indent,
+                            text: format_table_separator(&layout.columns),
+                            style: border_style,
+                        });
+                    } else {
+                        let cells = table_cells(line);
+                        paint_table_row(
+                            line_render,
+                            layout.indent,
+                            &cells,
+                            &layout.columns,
+                            plain(theme.get("ui.text")),
+                            border_style,
+                        );
                     }
                 }
                 continue;
@@ -770,6 +832,240 @@ fn is_delimiter_row(line: &str) -> bool {
             .all(|ch| matches!(ch, '|' | '-' | ':' | ' ' | '\t'))
 }
 
+/// Split a pipe-table row into `(trimmed content, raw display width)` for
+/// each cell. The raw width includes the spaces between the pipes so column
+/// widths can start from the delimiter row's formatting.
+fn table_cells(line: &str) -> Vec<(String, usize)> {
+    let line = line.trim_end_matches(['\r', '\n']);
+    let chars: Vec<char> = line.chars().collect();
+    let Some(first_pipe) = chars.iter().position(|ch| *ch == '|') else {
+        return Vec::new();
+    };
+    let leading_pipe = chars[..first_pipe].iter().all(|ch| ch.is_whitespace());
+    let mut cells = Vec::new();
+    let mut start = if leading_pipe { first_pipe + 1 } else { 0 };
+    let mut index = start;
+    while index <= chars.len() {
+        let at_pipe = index < chars.len() && chars[index] == '|';
+        if at_pipe || index == chars.len() {
+            let raw = &chars[start..index];
+            let only_space = raw.iter().all(|ch| ch.is_whitespace());
+            // Ignore the empty cell produced by a trailing pipe.
+            if !only_space || (!leading_pipe && start == 0 && !raw.is_empty()) {
+                let content: String = raw.iter().collect::<String>().trim().to_string();
+                let width = raw.iter().map(|ch| ch.width().unwrap_or(0)).sum::<usize>();
+                cells.push((content, width));
+            }
+            start = index + 1;
+        }
+        index += 1;
+    }
+    cells
+}
+
+fn parse_table_layout(
+    text: helix_core::RopeSlice,
+    header: usize,
+    available_width: usize,
+) -> Option<TableLayout> {
+    if header + 1 >= text.len_lines() {
+        return None;
+    }
+    let header_line = text.line(header).to_string();
+    let delimiter_line = text.line(header + 1).to_string();
+    if !is_delimiter_row(&delimiter_line) {
+        return None;
+    }
+    let delimiter_cells = table_cells(&delimiter_line);
+    if delimiter_cells.is_empty() {
+        return None;
+    }
+    let mut columns: Vec<TableColumn> = delimiter_cells
+        .iter()
+        .map(|(content, raw_width)| {
+            let alignment = if content.starts_with(':') && content.ends_with(':') {
+                TableAlignment::Center
+            } else if content.starts_with(':') {
+                TableAlignment::Left
+            } else if content.ends_with(':') {
+                TableAlignment::Right
+            } else {
+                TableAlignment::Default
+            };
+            let content_width = (*raw_width).saturating_sub(2).max(content.width()).max(1);
+            TableColumn {
+                width: content_width + 2,
+                content_width,
+                padding_left: 1,
+                padding_right: 1,
+                alignment,
+            }
+        })
+        .collect();
+
+    let header_cells = table_cells(&header_line);
+    for (index, (content, _)) in header_cells.iter().enumerate() {
+        if let Some(column) = columns.get_mut(index) {
+            column.content_width = column.content_width.max(content.width());
+        }
+    }
+
+    let mut end = header + 2;
+    while end < text.len_lines() {
+        let line = text.line(end).to_string();
+        if !is_table_row(&line) {
+            break;
+        }
+        for (index, (content, _)) in table_cells(&line).iter().enumerate() {
+            if let Some(column) = columns.get_mut(index) {
+                column.content_width = column.content_width.max(content.width());
+            }
+        }
+        end += 1;
+    }
+
+    let indent = header_line.chars().take_while(|ch| *ch == ' ').count();
+    for column in &mut columns {
+        column.width = column.content_width + column.padding_left + column.padding_right;
+    }
+    fit_table_columns(&mut columns, available_width, indent);
+    Some(TableLayout {
+        columns,
+        indent,
+        header,
+        end,
+    })
+}
+
+/// Shrink column padding until the table fits the text viewport. Wrapping a
+/// cell would require extra visual lines, so prefer a tighter table over
+/// clipping the rightmost columns.
+fn fit_table_columns(columns: &mut [TableColumn], available_width: usize, indent: usize) {
+    let separators = columns.len() + 1;
+    let field_space = available_width.saturating_sub(indent + separators);
+    let mut total: usize = columns.iter().map(|column| column.width).sum();
+    while total > field_space {
+        let Some(column) = columns
+            .iter_mut()
+            .filter(|column| column.padding_right > 0)
+            .max_by_key(|column| column.width)
+        else {
+            break;
+        };
+        column.padding_right = 0;
+        column.width -= 1;
+        total -= 1;
+    }
+    while total > field_space {
+        let Some(column) = columns
+            .iter_mut()
+            .filter(|column| column.padding_left > 0)
+            .max_by_key(|column| column.width)
+        else {
+            break;
+        };
+        column.padding_left = 0;
+        column.width -= 1;
+        total -= 1;
+    }
+    // Content wider than the viewport can only be clipped, but keep the
+    // column widths at least as wide as their content.
+    for column in columns {
+        column.width = column
+            .width
+            .max(column.content_width + column.padding_left + column.padding_right);
+    }
+}
+
+fn format_table_separator(columns: &[TableColumn]) -> String {
+    let mut out = String::from("├");
+    for (index, column) in columns.iter().enumerate() {
+        let mut part: Vec<char> = std::iter::repeat_n('─', column.width).collect();
+        // render-markdown highlights explicit column alignment with a thick
+        // line character at the aligned edge (or both edges for center).
+        if column.width >= 3 {
+            match column.alignment {
+                TableAlignment::Left => part[0] = '━',
+                TableAlignment::Right => part[column.width - 1] = '━',
+                TableAlignment::Center => {
+                    part[0] = '━';
+                    part[column.width - 1] = '━';
+                }
+                TableAlignment::Default => {}
+            }
+        }
+        out.extend(part);
+        out.push(if index + 1 == columns.len() {
+            '┤'
+        } else {
+            '┼'
+        });
+    }
+    out
+}
+
+fn format_table_border(columns: &[TableColumn], left: char, cross: char, right: char) -> String {
+    let mut out = String::new();
+    out.push(left);
+    for (index, column) in columns.iter().enumerate() {
+        out.push_str(&"─".repeat(column.width));
+        if index + 1 < columns.len() {
+            out.push(cross);
+        }
+    }
+    out.push(right);
+    out
+}
+
+fn paint_table_row(
+    line_render: &mut LineRender,
+    indent: usize,
+    cells: &[(String, usize)],
+    columns: &[TableColumn],
+    text_style: Style,
+    border_style: Style,
+) {
+    let mut col = indent;
+    line_render.paints.push(Paint {
+        col,
+        text: "│".to_string(),
+        style: border_style,
+    });
+    col += 1;
+    for (index, column) in columns.iter().enumerate() {
+        let content = cells
+            .get(index)
+            .map(|(content, _)| content.as_str())
+            .unwrap_or("");
+        let content_width = content.width();
+        let inner = column
+            .width
+            .saturating_sub(column.padding_left + column.padding_right);
+        let pad = inner.saturating_sub(content_width);
+        let (align_left, align_right) = match column.alignment {
+            TableAlignment::Right => (pad, 0),
+            TableAlignment::Center => (pad / 2, pad - pad / 2),
+            TableAlignment::Default | TableAlignment::Left => (0, pad),
+        };
+        let mut field = String::with_capacity(column.width);
+        field.push_str(&" ".repeat(column.padding_left + align_left));
+        field.push_str(content);
+        field.push_str(&" ".repeat(align_right + column.padding_right));
+        line_render.paints.push(Paint {
+            col,
+            text: field,
+            style: text_style,
+        });
+        col += column.width;
+        line_render.paints.push(Paint {
+            col,
+            text: "│".to_string(),
+            style: border_style,
+        });
+        col += 1;
+    }
+}
+
 /// Parse an Obsidian callout marker at `start` (e.g. `[!NOTE]` with an
 /// optional `-`/`+` fold suffix). Returns the end column, the rendered title
 /// text, and the theme scope for the callout.
@@ -901,9 +1197,6 @@ fn domain_icon<'a>(dest: &str, custom: &'a [MarkdownLinkIcon]) -> Option<&'a str
             return Some(icon);
         }
     }
-    if lower.starts_with("http") {
-        return Some("󰖟");
-    }
     None
 }
 
@@ -912,7 +1205,7 @@ fn domain_icon<'a>(dest: &str, custom: &'a [MarkdownLinkIcon]) -> Option<&'a str
 ///
 /// - `[[target|alias]]` → `󱗖 alias` (target concealed)
 /// - `[[target]]` → `󱗖 target` (brackets concealed)
-/// - `[label](dest)` → `[label]󰌹…` (icon where the destination was)
+/// - `[label](dest)` → `󰌹 label` (destination concealed)
 /// - `![alt](dest)` / `![[file]]` → image icon variants
 /// - `<url>` / `<mail>` → icon over `<`, space over `>`
 /// - `[^footnote]` → `󰯔 footnote`
@@ -1057,27 +1350,24 @@ fn paint_inline_links(
             index += 1;
             continue;
         }
-        // Image link: `![alt](dest)`.
+        // Image link: `![alt](dest)` → `󰥶 alt`.
         if chars[index] == '!' && chars.get(index + 1) == Some(&'[') {
             if let Some(label_end) = find_char(chars, index + 2, ']') {
                 if chars.get(label_end + 1) == Some(&'(') {
                     if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
-                        // Cover `(dest)` inclusive: width is end - start + 1.
-                        let width = dest_end - (label_end + 1) + 1;
-                        let mut text = String::from("󰥶");
-                        while text.width() < width {
-                            text.push(' ');
-                        }
-                        render
-                            .lines
-                            .entry(line_idx)
-                            .or_default()
-                            .paints
-                            .push(Paint {
-                                col: display_col(&chars, label_end + 1),
-                                text,
-                                style: icon_style,
-                            });
+                        let alt: String = chars[index + 2..label_end].iter().collect();
+                        let line_render = render.lines.entry(line_idx).or_default();
+                        // The replacement covers `![alt]` exactly; the
+                        // destination is removed afterwards.
+                        line_render.paints.push(Paint {
+                            col: display_col(&chars, index),
+                            text: format!("󰥶 {alt} "),
+                            style: plain(icon_style),
+                        });
+                        line_render.removals.push((
+                            display_col(&chars, label_end + 1),
+                            display_col(&chars, dest_end + 1),
+                        ));
                         index = dest_end + 1;
                         continue;
                     }
@@ -1090,25 +1380,28 @@ fn paint_inline_links(
         if chars[index] == '[' && chars.get(index + 1) == Some(&'[') {
             if let Some(end) = find_closing(chars, index + 2, "]]") {
                 let inner: String = chars[index + 2..end].iter().collect();
-                let line_render = render.lines.entry(line_idx).or_default();
-                line_render.paints.push(Paint {
-                    col: display_col(&chars, index),
-                    text: "󱗖 ".to_string(),
-                    style: icon_style,
-                });
-                if let Some(pipe) = inner.find('|') {
-                    let target_len = pipe + 1;
-                    line_render.paints.push(Paint {
-                        col: display_col(&chars, index + 2),
-                        text: " ".repeat(target_len),
-                        style: Style::default(),
-                    });
+                let (target, alias) = match inner.split_once('|') {
+                    Some((target, alias)) => (target, Some(alias)),
+                    None => (inner.as_str(), None),
+                };
+                let display = alias.unwrap_or(target);
+                let region_width = display_col(&chars, end + 2) - display_col(&chars, index);
+                let mut text = format!("󱗖 {display}");
+                // Cover the whole `[[...]]` region so no stale brackets or
+                // concealed target remain.
+                while text.width() < region_width {
+                    text.push(' ');
                 }
-                line_render.paints.push(Paint {
-                    col: display_col(&chars, end),
-                    text: "  ".to_string(),
-                    style: Style::default(),
-                });
+                render
+                    .lines
+                    .entry(line_idx)
+                    .or_default()
+                    .paints
+                    .push(Paint {
+                        col: display_col(&chars, index),
+                        text,
+                        style: plain(icon_style),
+                    });
                 index = end + 2;
                 continue;
             }
@@ -1119,6 +1412,7 @@ fn paint_inline_links(
         if chars[index] == '[' {
             if chars.get(index + 1) == Some(&'^') {
                 if let Some(end) = find_char(chars, index + 2, ']') {
+                    let label: String = chars[index + 2..end].iter().collect();
                     render
                         .lines
                         .entry(line_idx)
@@ -1126,8 +1420,8 @@ fn paint_inline_links(
                         .paints
                         .push(Paint {
                             col: display_col(&chars, index),
-                            text: "󰯔 ".to_string(),
-                            style: icon_style,
+                            text: format!("󰯔 {label} "),
+                            style: plain(icon_style),
                         });
                     index = end + 1;
                     continue;
@@ -1139,25 +1433,21 @@ fn paint_inline_links(
                 if chars.get(label_end + 1) == Some(&'(') {
                     if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
                         let dest: String = chars[label_end + 2..dest_end].iter().collect();
+                        let label: String = chars[index + 1..label_end].iter().collect();
                         let icon = domain_icon(&dest, custom_icons).unwrap_or("󰌹");
-                        // Cover `(dest)` inclusive: width is end - start + 1.
-                        let width = dest_end - (label_end + 1) + 1;
-                        let mut text = String::from(icon);
-                        while text.width() < width {
-                            text.push(' ');
-                        }
                         let line_render = render.lines.entry(line_idx).or_default();
-                        // Conceal the label brackets; the content and the
-                        // destination icon shift left afterwards.
-                        let open_col = display_col(&chars, index);
-                        let close_col = display_col(&chars, label_end);
-                        line_render.removals.push((open_col, open_col + 1));
-                        line_render.removals.push((close_col, close_col + 1));
+                        // `[label]` and `󰌹 label` are the same width. Paint
+                        // the icon before the label (matching render-markdown)
+                        // and remove `(destination)` as a single range.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, label_end + 1),
-                            text,
-                            style: icon_style,
+                            col: display_col(&chars, index),
+                            text: format!("{icon} {label}"),
+                            style: plain(icon_style),
                         });
+                        line_render.removals.push((
+                            display_col(&chars, label_end + 1),
+                            display_col(&chars, dest_end + 1),
+                        ));
                         index = dest_end + 1;
                         continue;
                     }
@@ -1424,6 +1714,32 @@ mod tests {
     }
 
     #[test]
+    fn table_layout_uses_content_widths() {
+        use helix_core::Rope;
+        let text = Rope::from(
+            "| Features | TCP | UDP |\n| --- | --- | --- |\n| Connection | Requires an established connection | Connectionless |\n",
+        );
+        let layout = parse_table_layout(text.slice(..), 0, 200).unwrap();
+        assert_eq!(layout.columns.len(), 3);
+        assert_eq!(layout.columns[0].width, 12);
+        assert_eq!(layout.columns[1].width, 36);
+        assert_eq!(layout.columns[2].width, 16);
+        assert_eq!(layout.end, 3);
+        let separator = format_table_separator(&layout.columns);
+        assert_eq!(separator.width(), 12 + 36 + 16 + 4);
+        assert!(separator.starts_with('├'));
+        assert!(separator.ends_with('┤'));
+
+        // Narrower viewports lose trailing padding before any cell content.
+        let layout = parse_table_layout(text.slice(..), 0, 66).unwrap();
+        assert_eq!(layout.columns[0].width, 12);
+        assert_eq!(layout.columns[1].width, 35);
+        assert_eq!(layout.columns[2].width, 15);
+        assert_eq!(layout.columns[1].padding_right, 0);
+        assert_eq!(layout.columns[2].padding_right, 0);
+    }
+
+    #[test]
     fn detects_domain_icons() {
         let empty: &[MarkdownLinkIcon] = &[];
         assert_eq!(
@@ -1434,7 +1750,7 @@ mod tests {
             domain_icon("https://www.google.com/search", empty),
             Some("\u{F02AD}")
         );
-        assert_eq!(domain_icon("https://example.com", empty), Some("\u{F059F}"));
+        assert_eq!(domain_icon("https://example.com", empty), None);
         assert_eq!(
             domain_icon("https://neovim.io/doc", empty),
             Some("\u{e6ae}")
@@ -1498,10 +1814,10 @@ mod tests {
         let mut render = MarkdownRender::default();
         paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
-        // The destination starts after `日 ` (3 cells), `[x]` (3 cells).
+        // `[` starts after `日 ` (3 cells) and the icon replaces it.
         assert!(paints
             .iter()
-            .any(|p| p.col == 6 && p.text.starts_with('\u{F0339}')));
+            .any(|p| p.col == 3 && p.text.starts_with('\u{F0339}')));
     }
 
     #[test]
@@ -1552,18 +1868,22 @@ mod tests {
         let line: Vec<char> = "see [[Target|Alias]] and [[Plain]] end".chars().collect();
         paint_inline_links(&mut render, 0, &line, 0, style, &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
-        // [[Target|Alias]]: icon + concealed target + concealed brackets.
-        assert!(paints.iter().any(|p| p.col == 4 && p.text == "󱗖 "));
-        assert!(paints.iter().any(|p| p.col == 6 && p.text == " ".repeat(7)));
-        // [[Plain]]: icon at 25, concealed close at 32.
-        assert!(paints.iter().any(|p| p.col == 25 && p.text == "󱗖 "));
-        assert!(paints.iter().any(|p| p.col == 32 && p.text == "  "));
+        // [[Target|Alias]]: icon + alias over the whole wiki-link region.
+        assert!(paints
+            .iter()
+            .any(|p| p.col == 4 && p.text.starts_with("󱗖 Alias")));
+        // [[Plain]]: icon + target.
+        assert!(paints
+            .iter()
+            .any(|p| p.col == 25 && p.text.starts_with("󱗖 Plain")));
 
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "a [label](https://x.y) b".chars().collect();
         paint_inline_links(&mut render, 1, &line, 0, style, &[]);
         let paints = &render.lines.get(&1).unwrap().paints;
-        assert!(paints.iter().any(|p| p.col == 9 && p.text.starts_with("󰖟")));
+        assert!(paints
+            .iter()
+            .any(|p| p.col == 2 && p.text.starts_with("󰌹 label")));
     }
 
     #[test]
@@ -1573,7 +1893,9 @@ mod tests {
         let line: Vec<char> = "a <https://x.y> b [^fn]".chars().collect();
         paint_inline_links(&mut render, 0, &line, 0, style, &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
-        assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰖟"));
-        assert!(paints.iter().any(|p| p.col == 18 && p.text == "󰯔 "));
+        assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰌹"));
+        assert!(paints
+            .iter()
+            .any(|p| p.col == 18 && p.text.starts_with("󰯔 fn")));
     }
 }
