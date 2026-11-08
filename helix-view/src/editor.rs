@@ -711,10 +711,12 @@ pub struct ModeConfig {
     pub insert: String,
     pub select: String,
     pub command: String,
+    pub search: String,
     pub normal_short: String,
     pub insert_short: String,
     pub select_short: String,
     pub command_short: String,
+    pub search_short: String,
 }
 
 impl Default for ModeConfig {
@@ -724,10 +726,12 @@ impl Default for ModeConfig {
             insert: String::from("INS"),
             select: String::from("SEL"),
             command: String::from("COMMAND"),
+            search: String::from("SEARCH"),
             normal_short: String::from("NOR"),
             insert_short: String::from("INS"),
             select_short: String::from("SEL"),
             command_short: String::from("COM"),
+            search_short: String::from("S"),
         }
     }
 }
@@ -1389,6 +1393,8 @@ pub struct PromptState {
     pub cursor: usize,
     /// Whether this is the `:` command line rather than another prompt.
     pub is_command: bool,
+    /// Whether this is the `/` search prompt.
+    pub is_search: bool,
 }
 
 pub struct Editor {

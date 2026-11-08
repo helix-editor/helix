@@ -50,6 +50,8 @@ pub struct Prompt {
     language: Option<(&'static str, Arc<ArcSwap<syntax::Loader>>)>,
     /// The `:` command line is rendered by the statusline instead of the prompt row.
     is_command: bool,
+    /// The `/` search prompt is rendered by the statusline.
+    is_search: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -107,6 +109,7 @@ impl Prompt {
             next_char_handler: None,
             language: None,
             is_command: false,
+            is_search: false,
         }
     }
 
@@ -114,6 +117,13 @@ impl Prompt {
     /// statusline.
     pub fn command_line(mut self) -> Self {
         self.is_command = true;
+        self
+    }
+
+    /// Marks this prompt as the `/` search prompt, which is drawn by the
+    /// statusline.
+    pub fn search(mut self) -> Self {
+        self.is_search = true;
         self
     }
 
@@ -521,8 +531,8 @@ impl Prompt {
             text.render(inner, surface, cx);
         }
 
-        // The command line is drawn by the statusline.
-        if self.is_command {
+        // The command line and search prompt are drawn by the statusline.
+        if self.is_command || self.is_search {
             return;
         }
 
@@ -786,6 +796,7 @@ impl Component for Prompt {
             line: self.line.clone(),
             cursor: self.cursor,
             is_command: self.is_command,
+            is_search: self.is_search,
         })
     }
 
@@ -794,7 +805,7 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        if self.is_command {
+        if self.is_command || self.is_search {
             return (
                 editor.prompt_cursor.get(),
                 editor.config().cursor_shape.from_mode(Mode::Insert),

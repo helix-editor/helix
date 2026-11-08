@@ -79,6 +79,16 @@ pub fn render(
         ));
     }
 
+    let search = context.focused
+        && context
+            .editor
+            .prompt
+            .as_ref()
+            .is_some_and(|prompt| prompt.is_search);
+    if search {
+        return Some(render_search_status(context, viewport, surface, base_style));
+    }
+
     let region_style = |region: StatusLineRegion| {
         if config.statusline.transparent.contains(&region) {
             base_style.bg(Color::Reset)
@@ -224,7 +234,7 @@ fn render_command_status(
         .saturating_add(mode_width)
         .saturating_add(1)
         .min(end);
-    render_command_line(
+    render_prompt_line(
         context,
         surface,
         Rect::new(start, viewport.y, end.saturating_sub(start), 1),
@@ -232,6 +242,64 @@ fn render_command_status(
     );
 
     (start, end, transparent)
+}
+
+/// Renders the statusline while the `/` search prompt is open: the mode chip,
+/// the pattern, and the current position right-aligned with the accent style.
+fn render_search_status(
+    context: &mut RenderContext,
+    viewport: Rect,
+    surface: &mut Surface,
+    base_style: Style,
+) -> (u16, u16, Style) {
+    let transparent = base_style.bg(Color::Reset);
+    surface.set_style(viewport.with_height(1), transparent);
+
+    render_mode(context, |context, span| {
+        append(&mut context.parts.left, span, transparent)
+    });
+    let mode_width = context.parts.left.width() as u16;
+    surface.set_spans(viewport.x, viewport.y, &context.parts.left, mode_width);
+
+    let end = viewport.x.saturating_add(viewport.width);
+    let start = viewport
+        .x
+        .saturating_add(mode_width)
+        .saturating_add(1)
+        .min(end);
+
+    let position = get_position(context);
+    let position_text = format!(" {}:{} ", position.row + 1, position.col + 1);
+    let position_width = position_text.width() as u16;
+    let position_style = if context
+        .editor
+        .config()
+        .statusline
+        .accent
+        .contains(&StatusLineElementID::Position)
+    {
+        mode_style(context)
+    } else {
+        transparent.patch(context.editor.theme.get("ui.text"))
+    };
+    let position_start = end.saturating_sub(position_width).max(start);
+    surface.set_stringn(
+        position_start,
+        viewport.y,
+        &position_text,
+        end.saturating_sub(position_start) as usize,
+        position_style,
+    );
+
+    let prompt_end = position_start.saturating_sub(1).max(start);
+    render_prompt_line(
+        context,
+        surface,
+        Rect::new(start, viewport.y, prompt_end.saturating_sub(start), 1),
+        transparent,
+    );
+
+    (start, position_start, transparent)
 }
 
 /// Width of the spans up to the last span that contains visible content, plus
@@ -253,12 +321,12 @@ fn content_width(spans: &Spans) -> u16 {
     content as u16
 }
 
-fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rect, style: Style) {
+fn render_prompt_line(context: &RenderContext, surface: &mut Surface, area: Rect, style: Style) {
     let Some(prompt) = context
         .editor
         .prompt
         .as_ref()
-        .filter(|prompt| prompt.is_command)
+        .filter(|prompt| prompt.is_command || prompt.is_search)
     else {
         return;
     };
@@ -386,16 +454,20 @@ where
         .statusline
         .mode_short_width
         .is_some_and(|width| context.view.area.width <= width);
-    let command = context
-        .editor
-        .prompt
-        .as_ref()
-        .is_some_and(|prompt| prompt.is_command);
+    let prompt = context.editor.prompt.as_ref();
+    let command = prompt.is_some_and(|prompt| prompt.is_command);
+    let search = prompt.is_some_and(|prompt| prompt.is_search);
     let mode_str = if command {
         if short {
             &modenames.command_short
         } else {
             &modenames.command
+        }
+    } else if search {
+        if short {
+            &modenames.search_short
+        } else {
+            &modenames.search
         }
     } else {
         match context.editor.mode() {
