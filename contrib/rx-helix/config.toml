@@ -1,0 +1,117 @@
+# rx-helix sample configuration
+#
+# Copy this file to ~/.config/helix/config.toml:
+#
+#   mkdir -p ~/.config/helix
+#   cp contrib/rx-helix/config.toml ~/.config/helix/config.toml
+#
+# The fork features only appear when the relevant sections are present. In
+# particular the dashboard needs `enable = true`.
+#
+# Theme scopes used by this config are described in docs/CUSTOMIZATION.md.
+
+[editor]
+# Color the mode chip per mode. Without this the chips are plain text.
+color-modes = true
+# Matches the default; set to "always" for a permanent bufferline.
+bufferline = "multiple"
+
+[editor.statusline]
+left = [
+  "mode",
+  "spacer",
+  "version-control",
+  "diagnostics",
+  "spinner",
+  "file-name",
+]
+center = []
+right = ["position", "file-type", "file-line-ending", "total-line-numbers"]
+
+separator = "│"
+
+# Keep the statusline itself transparent in the middle; modules at the edges
+# stay opaque.
+transparent = ["center"]
+
+# Do not reserve blank cells for an idle spinner / unmodified buffer.
+reserve-space = false
+
+# Paint the position with the current mode colors.
+accent = ["position"]
+
+# Use the short labels at or below this many columns.
+mode-short-width = 100
+
+mode.normal = "NORMAL"
+mode.insert = "INSERT"
+mode.select = "SELECT"
+mode.command = "COMMAND"
+mode.search = "SEARCH"
+
+mode.normal-short = "NOR"
+mode.insert-short = "INS"
+mode.select-short = "SEL"
+mode.command-short = "COM"
+mode.search-short = "S"
+
+[editor.dashboard]
+enable = true
+
+# auto = vertical or horizontal depending on the terminal size.
+# The layout is recomputed on resize; no restart is needed.
+layout = "auto"
+align = "center"
+vertical-align = "center"
+section-gap = 1
+item-gap = 1
+
+# space-between: description left, key right-aligned to menu-width.
+# key-left: key left-aligned to key-width, then the description.
+menu-style = "space-between"
+menu-width = 54
+key-width = 16
+column-gap = 4
+
+# Use the built-in logo when header/header-file are empty.
+default-logo = true
+
+# Optional: override the built-in logo.
+# header = """
+#   your ascii art
+# """
+# header-file = "~/.config/helix/logo.txt"
+
+# Each item runs any Helix command name (file_picker) or ex-command (:new).
+# Omit `action` for a static, informational row.
+# Icons are optional and need a Nerd Font to render.
+
+[[editor.dashboard.items]]
+key = "f"
+desc = "Find File"
+action = "file_picker"
+
+[[editor.dashboard.items]]
+key = "n"
+desc = "New File"
+action = ":new"
+
+[[editor.dashboard.items]]
+key = "g"
+desc = "Find Text"
+action = "global_search"
+
+[[editor.dashboard.items]]
+key = "r"
+desc = "Buffers"
+action = "buffer_picker"
+
+[[editor.dashboard.items]]
+key = "c"
+desc = "Config"
+action = ":config-open"
+
+[[editor.dashboard.items]]
+key = "q"
+desc = "Quit"
+action = ":quit"
