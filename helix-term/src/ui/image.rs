@@ -4,10 +4,13 @@
 //! allows placing an image at a terminal cell without changing the TUI buffer,
 //! so the editor keeps showing ordinary text underneath.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
 
@@ -33,6 +36,7 @@ struct CachedImage {
 struct ImageState {
     next_id: u32,
     cache: HashMap<PathBuf, CachedImage>,
+    rendered: bool,
 }
 
 fn state() -> &'static Mutex<ImageState> {
@@ -42,16 +46,29 @@ fn state() -> &'static Mutex<ImageState> {
 
 pub fn render(editor: &Editor) {
     let config = editor.config();
-    if !config.markdown.images || !kitty_supported() {
+    if !kitty_supported() {
+        return;
+    }
+    if !config.markdown.images {
+        let was_rendered = {
+            let mut state = state().lock().unwrap();
+            std::mem::take(&mut state.rendered)
+        };
+        if was_rendered {
+            clear();
+        }
         return;
     }
 
     let placements = compute_placements(editor);
     let mut out = String::new();
 
-    // Drop placements from the previous frame before drawing new ones.
-    out.push_str("\x1b_Ga=d,d=A\x1b\\");
+    // Drop placements from the previous frame before drawing new ones. All
+    // commands use `q=2` so Kitty never writes a response back into the input
+    // stream (which Helix would interpret as typed keys).
+    out.push_str("\x1b_Ga=d,d=A,q=2\x1b\\");
     if placements.is_empty() {
+        state().lock().unwrap().rendered = false;
         flush_output(&out);
         return;
     }
@@ -62,7 +79,7 @@ pub fn render(editor: &Editor) {
     for placement in placements {
         let id = transmit(&mut state, &placement.path, &mut out);
         out.push_str(&format!(
-            "\x1b[{};{}H\x1b_Ga=p,i={id},p={id},c={},r={},C=1\x1b\\",
+            "\x1b[{};{}H\x1b_Ga=p,i={id},p={id},c={},r={},q=2,z=-1,C=1\x1b\\",
             placement.y + 1,
             placement.x + 1,
             placement.cols,
@@ -70,7 +87,17 @@ pub fn render(editor: &Editor) {
         ));
     }
     out.push_str("\x1b8");
+    state.rendered = true;
+    drop(state);
     flush_output(&out);
+}
+
+/// Remove all image placements. Called on exit.
+pub fn clear() {
+    if kitty_supported() {
+        state().lock().unwrap().rendered = false;
+        flush_output("\x1b_Ga=d,d=A,q=2\x1b\\");
+    }
 }
 
 fn flush_output(output: &str) {
@@ -147,6 +174,9 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
         let line = text.line(line_idx).to_string();
         for (column, target) in image_links(&line) {
             let Some(path) = resolve_image(&source, vault.as_deref(), &target) else {
+                continue;
+            };
+            let Some(path) = ensure_png(&path) else {
                 continue;
             };
             let Some(pos) = view.screen_coords_at_pos(doc, text, line_start + column) else {
@@ -292,6 +322,69 @@ fn hex(byte: u8) -> Option<u8> {
         b'A'..=b'F' => Some(byte - b'A' + 10),
         _ => None,
     }
+}
+
+fn is_png(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut signature = [0u8; 8];
+    std::io::Read::read_exact(&mut file, &mut signature).is_ok()
+        && signature == *b"\x89PNG\r\n\x1a\n"
+}
+
+fn cache_dir() -> Option<PathBuf> {
+    if let Some(dir) = std::env::var_os("XDG_CACHE_HOME") {
+        if !dir.is_empty() {
+            return Some(PathBuf::from(dir));
+        }
+    }
+    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache"))
+}
+
+/// Kitty only understands PNG (or raw pixels). Convert other formats to a
+/// cached PNG with ffmpeg, which is commonly available where ImageMagick is not.
+fn ensure_png(path: &Path) -> Option<PathBuf> {
+    if is_png(path) {
+        return Some(path.to_path_buf());
+    }
+
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let mut hasher = DefaultHasher::new();
+    path.hash(&mut hasher);
+    modified.hash(&mut hasher);
+    let out = cache_dir()?
+        .join("rx-helix")
+        .join("images")
+        .join(format!("{:016x}.png", hasher.finish()));
+    if out.is_file() {
+        return Some(out);
+    }
+    if let Some(parent) = out.parent() {
+        fs::create_dir_all(parent).ok()?;
+    }
+
+    let svg = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
+    let converted = if svg {
+        Command::new("rsvg-convert")
+            .arg("-o")
+            .arg(&out)
+            .arg(path)
+            .status()
+            .ok()?
+    } else {
+        Command::new("ffmpeg")
+            .args(["-v", "error", "-y", "-i"])
+            .arg(path)
+            .args(["-frames:v", "1"])
+            .arg(&out)
+            .status()
+            .ok()?
+    };
+    converted.success().then_some(out)
 }
 
 fn image_size(path: &Path) -> Option<(u32, u32)> {

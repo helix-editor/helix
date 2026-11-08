@@ -1285,6 +1285,7 @@ impl Application {
 
     fn restore_term(&mut self) -> std::io::Result<()> {
         use helix_view::graphics::CursorKind;
+        crate::ui::image::clear();
         self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
