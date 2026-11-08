@@ -100,16 +100,23 @@ impl EditorView {
 
         let view_offset = doc.view_offset(view.id);
 
-        let markdown_layers = if config.markdown.render {
-            markdown_render::overlays(doc, view_offset.anchor, inner.height)
+        let markdown_render = if config.markdown.render {
+            Some(markdown_render::MarkdownRender::prepare(
+                doc,
+                view,
+                view_offset.anchor,
+                inner.height,
+                theme,
+            ))
         } else {
-            Vec::new()
+            None
         };
-        let mut text_annotations = view.text_annotations(doc, Some(theme));
-        for (scope, overlays) in &markdown_layers {
-            text_annotations.add_overlay(overlays, theme.find_highlight(scope));
-        }
+        let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
+
+        if let Some(markdown_render) = markdown_render {
+            decorations.add_decoration(markdown_render);
+        }
 
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));

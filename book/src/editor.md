@@ -317,18 +317,24 @@ render = true
 images = true
 ```
 
-Headings lose their `#` markers and gain level icons, bullet lists use `•`,
-task boxes use `󰄱`/`󰱒`, block quotes use `│`, and horizontal rules use `─`.
-Rendering uses single-grapheme overlays, so the buffer text is unchanged and
-editing/saving/searching still see ordinary markdown. Only visible lines are
-scanned. Code fences keep their tree-sitter highlighting; links, callouts, and
-tables are not decorated yet.
+Headings lose their `#` markers and gain level icons (`󰲡`–`󰲫`), bullet lists
+use `● ○ ◆ ◇` by nesting depth, task boxes use `󰄱`/`󰱒`, block quotes use `▋`,
+and horizontal rules become a full-width `─` line. Heading rows get a
+full-width background from existing theme scopes; icons use
+`markup.heading.1`–`.6`. Code blocks get a full-width background with a
+`󰅩 language` header and inline code gets a background. Rendering paints over
+the rendered document, so the buffer text is unchanged and
+editing/saving/searching still see ordinary markdown. The cursor line and
+selections show raw markdown. Code fences keep their tree-sitter highlighting;
+links, callouts, and tables are not decorated yet.
 
 With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
 when the terminal supports Kitty graphics. Paths resolve relative to the note
-and then the vault root. PNGs are sent directly; JPEG/GIF are converted with
-`ffmpeg` and SVG with `rsvg-convert` into `~/.cache/rx-helix/images`. Images
-are capped at 50% of the window height and re-placed on scroll. Remote URLs are
+and then the vault root. Each image reserves virtual lines so following text
+reflows instead of being covered. PNGs are sent directly; JPEG/GIF are
+converted with `ffmpeg` and SVG with `rsvg-convert` into
+`~/.cache/rx-helix/images`. Images are capped at 50% of the window height and
+re-placed on scroll, hidden while overlays cover the editor. Remote URLs are
 skipped and only the focused view is drawn.
 
 ### `[editor.obsidian]` Section
