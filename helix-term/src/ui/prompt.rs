@@ -783,7 +783,6 @@ impl Component for Prompt {
 
     fn prompt_state(&self) -> Option<PromptState> {
         Some(PromptState {
-            prompt: self.prompt.to_string(),
             line: self.line.clone(),
             cursor: self.cursor,
             is_command: self.is_command,

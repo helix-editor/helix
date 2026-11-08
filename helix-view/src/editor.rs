@@ -1407,9 +1407,7 @@ type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
 /// command line.
 #[derive(Debug, Clone, Default)]
 pub struct PromptState {
-    /// The static prompt prefix, e.g. `":"`.
-    pub prompt: String,
-    /// The text typed after the prefix.
+    /// The text typed after the prompt prefix.
     pub line: String,
     /// Byte offset of the cursor within `line`.
     pub cursor: usize,

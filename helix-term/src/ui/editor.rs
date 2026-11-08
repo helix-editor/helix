@@ -949,7 +949,7 @@ impl EditorView {
 
         if dashboard && !pending_before {
             if let Some(action) = dashboard_action(cxt.editor, event) {
-                run_dashboard_action(cxt, &action);
+                self.run_dashboard_action(cxt, &action);
                 return None;
             }
         }
@@ -972,28 +972,7 @@ impl EditorView {
         }
 
         let mut execute_command = |command: &commands::MappableCommand| {
-            command.execute(cxt);
-            helix_event::dispatch(PostCommand { command, cx: cxt });
-
-            let current_mode = cxt.editor.mode();
-            if current_mode != last_mode {
-                helix_event::dispatch(OnModeSwitch {
-                    old_mode: last_mode,
-                    new_mode: current_mode,
-                    cx: cxt,
-                });
-
-                // HAXX: if we just entered insert mode from normal, clear key buf
-                // and record the command that got us into this mode.
-                if current_mode == Mode::Insert {
-                    // how we entered insert mode is important, and we should track that so
-                    // we can repeat the side effect.
-                    self.last_insert.0 = command.clone();
-                    self.last_insert.1.clear();
-                }
-            }
-
-            last_mode = current_mode;
+            execute_mappable_command(cxt, command, &mut last_mode, &mut self.last_insert);
         };
 
         match &key_result {
@@ -1009,6 +988,16 @@ impl EditorView {
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
         }
         None
+    }
+
+    fn run_dashboard_action(&mut self, cxt: &mut commands::Context, action: &str) {
+        match action.parse::<commands::MappableCommand>() {
+            Ok(command) => {
+                let mut last_mode = cxt.editor.mode();
+                execute_mappable_command(cxt, &command, &mut last_mode, &mut self.last_insert);
+            }
+            Err(err) => cxt.editor.set_error(format!("dashboard: {err}")),
+        }
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
@@ -1207,17 +1196,34 @@ fn dashboard_action(editor: &Editor, event: KeyEvent) -> Option<String> {
     })
 }
 
-fn run_dashboard_action(cxt: &mut commands::Context, action: &str) {
-    match action.parse::<commands::MappableCommand>() {
-        Ok(command) => {
-            command.execute(cxt);
-            helix_event::dispatch(PostCommand {
-                command: &command,
-                cx: cxt,
-            });
+fn execute_mappable_command(
+    cxt: &mut commands::Context,
+    command: &commands::MappableCommand,
+    last_mode: &mut Mode,
+    last_insert: &mut (commands::MappableCommand, Vec<InsertEvent>),
+) {
+    command.execute(cxt);
+    helix_event::dispatch(PostCommand { command, cx: cxt });
+
+    let current_mode = cxt.editor.mode();
+    if current_mode != *last_mode {
+        helix_event::dispatch(OnModeSwitch {
+            old_mode: *last_mode,
+            new_mode: current_mode,
+            cx: cxt,
+        });
+
+        // HAXX: if we just entered insert mode from normal, clear key buf
+        // and record the command that got us into this mode.
+        if current_mode == Mode::Insert {
+            // how we entered insert mode is important, and we should track that so
+            // we can repeat the side effect.
+            last_insert.0 = command.clone();
+            last_insert.1.clear();
         }
-        Err(err) => cxt.editor.set_error(format!("dashboard: {err}")),
     }
+
+    *last_mode = current_mode;
 }
 
 /// Whether the focused doc's workspace is in restricted mode and running `trust` would
@@ -1704,7 +1710,11 @@ impl Component for EditorView {
         }
 
         if cx.editor.dashboard_visible() {
-            let dashboard_area = area.clip_bottom(1);
+            let dashboard_area = if use_bufferline {
+                area.clip_top(1).clip_bottom(1)
+            } else {
+                area.clip_bottom(1)
+            };
             surface.clear_with(dashboard_area, cx.editor.theme.get("ui.background"));
             let dashboard_config = cx.editor.config().dashboard.clone();
             let (width, height) =
@@ -1719,6 +1729,9 @@ impl Component for EditorView {
                     "dashboard is {width}x{height} but the terminal is {}x{}; clipped",
                     dashboard_area.width, dashboard_area.height
                 ));
+            }
+            if let Some(error) = self.dashboard.take_error() {
+                cx.editor.set_status(error);
             }
         }
 

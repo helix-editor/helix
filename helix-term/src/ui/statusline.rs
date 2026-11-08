@@ -263,6 +263,7 @@ fn render_command_line(context: &RenderContext, surface: &mut Surface, area: Rec
         return;
     };
     if area.width == 0 {
+        context.editor.prompt_cursor.set(None);
         return;
     }
 
