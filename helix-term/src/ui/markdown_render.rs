@@ -98,7 +98,13 @@ impl MarkdownRender {
         render.cursor_line = text.char_to_line(cursor);
         for range in doc.selection(view.id).iter() {
             let start = text.char_to_line(range.from());
-            let end = text.char_to_line(range.to());
+            // `to()` is exclusive: if it sits at a line start, don't mark
+            // that line as selected (it has no selected characters).
+            let end = if range.to() > range.from() {
+                text.char_to_line(range.to().saturating_sub(1))
+            } else {
+                start
+            };
             for line in start..=end {
                 render.selected_lines.insert(line);
             }
@@ -130,7 +136,9 @@ impl MarkdownRender {
             background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
 
         let link_custom: Vec<MarkdownLinkIcon> = doc.config.load().markdown.link_icons.clone();
-        let table_kinds = detect_tables(text, start_line.saturating_sub(8), text.len_lines());
+        // Only classify rows near the viewport. Scanning to the end of the
+        // document here made table detection O(file size) on every frame.
+        let table_kinds = detect_tables(text, start_line.saturating_sub(8), end_line);
         let callout_body_styles: HashMap<usize, Style> = detect_callout_bodies(text, 0, end_line)
             .into_iter()
             .map(|(line, name)| (line, theme.try_get(name).unwrap_or(quote_style)))

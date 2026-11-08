@@ -1507,6 +1507,8 @@ pub struct PromptState {
     pub is_command: bool,
     /// Whether this is the `/` search prompt.
     pub is_search: bool,
+    /// Whether this is a `select:`/regex selection prompt.
+    pub is_select: bool,
 }
 
 pub struct Editor {

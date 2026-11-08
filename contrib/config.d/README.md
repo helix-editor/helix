@@ -6,9 +6,10 @@ Helix now supports modular configuration via `~/.config/helix/config.d/*.toml`.
 
 `helix-term/src/config.rs` loads `~/.config/helix/config.toml` first, then
 alphabetically merges every `*.toml` in `~/.config/helix/config.d/` on top of
-it (and on top of each other) using `merge_toml_values(..., 3)`. If you pass
-`hx -c /path/to/config.toml`, the sibling `config.d` next to that file is used
-instead.
+it (and on top of each other). Tables are deep-merged, so overriding one nested
+key keeps its siblings; arrays and scalar values are replaced. If you pass
+`hx -c /path/to/config.toml`, only the sibling `config.d` next to that file is
+used.
 
 This lets you split your config into logical modules:
 

@@ -438,9 +438,12 @@ impl Theme {
     /// foreground colors without opaque popup panels.
     pub fn clear_backgrounds(&mut self, scopes: &[&str]) {
         for scope in scopes {
-            if let Some(style) = self.styles.get_mut(*scope) {
-                style.bg = Some(Color::Reset);
-            }
+            // Resolve through the normal dotted fallback first: a theme may
+            // define only a broad `ui.popup`/`ui` style, in which case the
+            // popup still needs an exact transparent override.
+            let mut style = self.try_get(scope).unwrap_or_default();
+            style.bg = Some(Color::Reset);
+            self.styles.insert((*scope).to_string(), style);
         }
         for (index, name) in self.scopes.iter().enumerate() {
             if scopes.contains(&name.as_str()) {
@@ -771,6 +774,18 @@ mod tests {
         assert_eq!(theme.get("ui.popup").bg, Some(Color::Reset));
         assert_eq!(theme.get("ui.popup").fg, Some(Color::Rgb(255, 255, 255)));
         assert_eq!(theme.get("ui.menu").bg, Some(Color::Rgb(17, 17, 17)));
+    }
+
+    #[test]
+    fn clear_backgrounds_handles_dotted_fallback() {
+        let mut theme = Theme::from(Value::Table(toml::toml! {
+            "ui" = { fg = "#ffffff", bg = "#000000" }
+        }));
+
+        theme.clear_backgrounds(&["ui.popup"]);
+
+        assert_eq!(theme.get("ui.popup").bg, Some(Color::Reset));
+        assert_eq!(theme.get("ui.popup").fg, Some(Color::Rgb(255, 255, 255)));
     }
 
     // tests for parsing an RGB `Highlight`

@@ -202,11 +202,14 @@ impl View {
     }
 
     pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+        // The statusline and the one-row visual gap above it are chrome, not
+        // text. Keep them out of the document viewport so scrolling and
+        // cursor visibility agree with what is actually rendered.
+        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(2)
     }
 
     pub fn inner_height(&self) -> usize {
-        self.area.clip_bottom(1).height.into() // -1 for statusline
+        self.area.clip_bottom(2).height.into()
     }
 
     pub fn inner_width(&self, doc: &Document) -> u16 {
@@ -539,7 +542,7 @@ impl View {
         ignore_virtual_text: bool,
     ) -> Option<usize> {
         let inner = self.inner_area(doc);
-        // 1 for status
+        // statusline + one-row visual gap
         if row < inner.top() || row >= inner.bottom() {
             return None;
         }

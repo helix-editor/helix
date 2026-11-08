@@ -10,7 +10,7 @@ use std::fs;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 
 use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::text_annotations::LineAnnotation;
@@ -242,7 +242,14 @@ fn image_links(line: &str) -> Vec<(usize, String)> {
             let end = start + 3 + close;
             links.push((
                 line[..start].chars().count(),
-                line[start + 3..end].trim().to_string(),
+                // Obsidian embeds can carry a width/alias after `|`:
+                // `![[image.png|300]]`.
+                line[start + 3..end]
+                    .split('|')
+                    .next()
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string(),
             ));
             offset = end + 2;
             continue;
@@ -256,10 +263,15 @@ fn image_links(line: &str) -> Vec<(usize, String)> {
             break;
         };
         let end = target_start + close;
-        links.push((
-            line[..start].chars().count(),
-            line[target_start..end].trim().to_string(),
-        ));
+        let target = line[target_start..end].trim();
+        // `![alt](path "title")` / `![alt](<path with spaces>)`: keep only
+        // the destination, not the optional title or angle brackets.
+        let target = if let Some(inner) = target.strip_prefix('<') {
+            inner.split('>').next().unwrap_or(inner).trim()
+        } else {
+            target.split_whitespace().next().unwrap_or(target)
+        };
+        links.push((line[..start].chars().count(), target.to_string()));
         offset = end + 1;
     }
     links
@@ -274,6 +286,9 @@ fn resolve_image(
     let target = target
         .trim()
         .trim_matches(|ch| ch == '<' || ch == '>')
+        .split('|')
+        .next()
+        .unwrap_or_default()
         .split('#')
         .next()
         .unwrap_or_default()
@@ -333,17 +348,40 @@ fn resolve_remote(url: &str) -> Option<PathBuf> {
         return Some(path);
     }
     {
-        let mut in_progress = remote_downloads().lock().unwrap();
-        if in_progress.contains(url) {
+        let mut downloads = remote_downloads().lock().unwrap();
+        if downloads.in_progress.contains(url) {
             return None;
         }
-        in_progress.insert(url.to_string());
+        if downloads
+            .failed
+            .get(url)
+            .is_some_and(|failed_at| failed_at.elapsed() < REMOTE_RETRY_BACKOFF)
+        {
+            return None;
+        }
+        downloads.failed.remove(url);
+        downloads.in_progress.insert(url.to_string());
     }
     let url = url.to_string();
     std::thread::spawn(move || {
         let part = path.with_extension("part");
         let ok = std::process::Command::new("curl")
-            .args(["-L", "-s", "--max-time", "30", "-o"])
+            // Only web URLs, including redirects. Markdown can be untrusted
+            // and must not be able to make curl read `file://` or other
+            // protocols.
+            .args([
+                "-L",
+                "-s",
+                "--proto",
+                "=http,https",
+                "--proto-redir",
+                "=http,https",
+                "--max-filesize",
+                "52428800",
+                "--max-time",
+                "30",
+                "-o",
+            ])
             .arg(&part)
             .arg(&url)
             .status()
@@ -354,14 +392,29 @@ fn resolve_remote(url: &str) -> Option<PathBuf> {
         } else {
             let _ = std::fs::remove_file(&part);
         }
-        remote_downloads().lock().unwrap().remove(&url);
+        let mut downloads = remote_downloads().lock().unwrap();
+        downloads.in_progress.remove(&url);
+        if ok {
+            downloads.failed.remove(&url);
+        } else {
+            // Back off instead of respawning curl on every rendered frame.
+            downloads.failed.insert(url, Instant::now());
+        }
     });
     None
 }
 
-fn remote_downloads() -> &'static Mutex<HashSet<String>> {
-    static DOWNLOADS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
-    DOWNLOADS.get_or_init(|| Mutex::new(HashSet::new()))
+const REMOTE_RETRY_BACKOFF: Duration = Duration::from_secs(60);
+
+#[derive(Default)]
+struct RemoteDownloads {
+    in_progress: HashSet<String>,
+    failed: HashMap<String, Instant>,
+}
+
+fn remote_downloads() -> &'static Mutex<RemoteDownloads> {
+    static DOWNLOADS: OnceLock<Mutex<RemoteDownloads>> = OnceLock::new();
+    DOWNLOADS.get_or_init(|| Mutex::new(RemoteDownloads::default()))
 }
 
 /// Image extensions recognized when opening a file directly.
@@ -409,7 +462,11 @@ fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
 /// Measure an image, converting through PNG first when the native reader
 /// cannot sniff the format (e.g. SVG). Returns the path Kitty should read.
 fn dimensions_or_converted(path: &Path) -> Option<(PathBuf, u32, u32)> {
-    if let Some(dimensions) = image_dimensions(path) {
+    // Kitty's graphics protocol accepts PNG (or raw pixels), not JPEG/GIF/
+    // WebP/SVG. Detect dimensions alone is not enough: always route non-PNG
+    // files through the converter, even when we can read their dimensions.
+    if is_png(path) {
+        let dimensions = image_dimensions(path)?;
         return Some((path.to_path_buf(), dimensions.0, dimensions.1));
     }
     let converted = ensure_png(path)?;
@@ -456,6 +513,15 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
     if out.is_file() {
         return Some(out);
     }
+    {
+        // A malformed image (or a missing ffmpeg/rsvg-convert) would otherwise
+        // spawn a converter process on every frame. The output path includes
+        // the source mtime, so editing the source naturally retries.
+        let failed = conversion_failures().lock().unwrap();
+        if failed.contains(&out) {
+            return None;
+        }
+    }
     if let Some(parent) = out.parent() {
         fs::create_dir_all(parent).ok()?;
     }
@@ -470,7 +536,7 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
             .arg(&out)
             .arg(path)
             .status()
-            .ok()?
+            .ok()
     } else {
         std::process::Command::new("ffmpeg")
             .args(["-v", "error", "-y", "-i"])
@@ -478,9 +544,20 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
             .args(["-frames:v", "1"])
             .arg(&out)
             .status()
-            .ok()?
+            .ok()
     };
-    converted.success().then_some(out)
+    if converted.is_some_and(|status| status.success()) && out.is_file() {
+        conversion_failures().lock().unwrap().remove(&out);
+        Some(out)
+    } else {
+        conversion_failures().lock().unwrap().insert(out);
+        None
+    }
+}
+
+fn conversion_failures() -> &'static Mutex<HashSet<PathBuf>> {
+    static FAILURES: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
+    FAILURES.get_or_init(|| Mutex::new(HashSet::new()))
 }
 
 fn percent_decode(input: &str) -> String {
@@ -574,6 +651,11 @@ fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
             continue;
         }
         let length = u16::from_be_bytes([data[index], data[index + 1]]) as usize;
+        if length < 2 {
+            // A segment length includes its own two bytes. A smaller value
+            // would make the scan stall on malformed input.
+            return None;
+        }
         if (0xC0..=0xCF).contains(&marker)
             && !matches!(marker, 0xC4 | 0xC8 | 0xCC)
             && index + 7 < data.len()
@@ -657,6 +739,16 @@ mod tests {
         assert_eq!(links.len(), 2);
         assert_eq!(links[0].1, "assets/a.png");
         assert_eq!(links[1].1, "b.png");
+    }
+
+    #[test]
+    fn strips_image_titles_and_obsidian_widths() {
+        let links =
+            image_links(r#"![alt](assets/a.png "title") ![alt](<assets/b c.png>) ![[d.png|300]]"#);
+        assert_eq!(links.len(), 3);
+        assert_eq!(links[0].1, "assets/a.png");
+        assert_eq!(links[1].1, "assets/b c.png");
+        assert_eq!(links[2].1, "d.png");
     }
 
     #[test]

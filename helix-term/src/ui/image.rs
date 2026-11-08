@@ -58,14 +58,24 @@ pub fn render(editor: &Editor) {
     let mut out = String::new();
     let mut state = state().lock().unwrap();
 
+    // Nothing to draw and no existing placement to remove: avoid writing a
+    // save/restore cursor sequence on every frame for ordinary buffers.
+    if placements.is_empty() && state.placed.is_empty() {
+        return;
+    }
+
     // Save the cursor the TUI positioned, then restore it after placing images.
     out.push_str("\x1b7");
 
     let mut current: HashMap<u32, PathBuf> = HashMap::new();
-    for placement in placements {
+    for (placement_index, placement) in placements.into_iter().enumerate() {
         let id = transmit(&mut state, &placement.path, &mut out);
         current.insert(id, placement.path.clone());
-        // Re-placing the same image/placement id moves it without flicker.
+        // Re-placing the same placement id moves it without flicker. Use a
+        // distinct placement id per occurrence so the same image linked twice
+        // in one note gets two placements (Kitty treats `p` as the placement
+        // key, separate from the transmitted `i` image key).
+        let placement_id = placement_index as u32 + 1;
         // A source rect (x,y,w,h) crops partially scrolled images instead
         // of squishing them.
         let crop = placement
@@ -73,7 +83,7 @@ pub fn render(editor: &Editor) {
             .map(|(x, y, w, h)| format!(",x={x},y={y},w={w},h={h}"))
             .unwrap_or_default();
         out.push_str(&format!(
-            "\x1b[{};{}H\x1b_Ga=p,i={id},p={id},c={},r={}{crop},q=2,C=1\x1b\\",
+            "\x1b[{};{}H\x1b_Ga=p,i={id},p={placement_id},c={},r={}{crop},q=2,C=1\x1b\\",
             placement.y + 1,
             placement.x + 1,
             placement.cols,

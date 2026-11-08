@@ -60,8 +60,11 @@ impl HeaderCache {
             self.error = Some(format!("dashboard: cannot read {}", path.display()));
             self.path = Some(path);
             self.modified = modified;
-            self.text.clear();
-            return config.header.clone();
+            // Keep the inline fallback in the cache: the next frame hits the
+            // `path == self.path && modified == self.modified` branch and must
+            // keep showing `header` instead of an empty cache entry.
+            self.text = config.header.clone();
+            return self.text.clone();
         };
         self.path = Some(path);
         self.modified = modified;
@@ -635,6 +638,20 @@ mod tests {
         let block = stack(blocks, 1);
         assert_eq!(block.height(), 4);
         assert_eq!(block.width(), 1);
+    }
+
+    #[test]
+    fn missing_header_file_keeps_inline_fallback() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = DashboardConfig::default();
+        config.header = "fallback".to_string();
+        config.header_file = Some(dir.path().join("missing.txt").display().to_string());
+        let mut cache = HeaderCache::default();
+
+        assert_eq!(cache.resolve(&config), "fallback");
+        // A cached miss must keep returning the inline header, not an empty
+        // cached string.
+        assert_eq!(cache.resolve(&config), "fallback");
     }
 
     #[test]
