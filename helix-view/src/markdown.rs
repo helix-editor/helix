@@ -28,6 +28,10 @@ pub struct ImageLayout {
     pub rows: u16,
     pub cols: u16,
     pub offset_rows: u16,
+    /// Pixel dimensions of `path` (post-conversion). Used for source-rect
+    /// cropping when an image is partially scrolled out of view.
+    pub width_px: u32,
+    pub height_px: u32,
 }
 
 /// Compute inline image layouts for the visible section of a markdown buffer.
@@ -97,6 +101,8 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
                 rows,
                 cols,
                 offset_rows,
+                width_px,
+                height_px,
             });
         }
     }
@@ -374,6 +380,8 @@ fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
         rows,
         cols,
         offset_rows: 0,
+        width_px,
+        height_px,
     }]
 }
 

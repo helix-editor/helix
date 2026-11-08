@@ -19,6 +19,8 @@ struct Placement {
     y: u16,
     cols: u16,
     rows: u16,
+    /// Source-rectangle crop in image pixels. `None` shows the full image.
+    crop: Option<(u32, u32, u32, u32)>,
 }
 
 struct CachedImage {
@@ -61,8 +63,14 @@ pub fn render(editor: &Editor) {
         let id = transmit(&mut state, &placement.path, &mut out);
         current.insert(id, ());
         // Re-placing the same image/placement id moves it without flicker.
+        // A source rect (x,y,w,h) crops partially scrolled images instead
+        // of squishing them.
+        let crop = placement
+            .crop
+            .map(|(x, y, w, h)| format!(",x={x},y={y},w={w},h={h}"))
+            .unwrap_or_default();
         out.push_str(&format!(
-            "\x1b[{};{}H\x1b_Ga=p,i={id},p={id},c={},r={},q=2,C=1\x1b\\",
+            "\x1b[{};{}H\x1b_Ga=p,i={id},p={id},c={},r={}{crop},q=2,C=1\x1b\\",
             placement.y + 1,
             placement.x + 1,
             placement.cols,
@@ -136,34 +144,84 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
     };
 
     let text = doc.text().slice(..);
+    if text.len_lines() == 0 {
+        return Vec::new();
+    }
     let inner = view.inner_area(doc);
+    if inner.width == 0 || inner.height == 0 {
+        return Vec::new();
+    }
+    let anchor = doc.view_offset(view.id).anchor.min(text.len_chars());
+    let topline = text.char_to_line(anchor);
     let mut placements = Vec::new();
 
     for image in helix_view::markdown::visible_images(doc, &view) {
         let Some(path) = helix_view::markdown::ensure_png(&image.path) else {
             continue;
         };
-        let Some(pos) = view.screen_coords_at_pos(doc, text, image.char_idx) else {
-            continue;
-        };
-        // Clamp to the visible viewport so images anchored near the bottom
-        // don't spill into the statusline. Reserved virtual lines may exceed
-        // the displayed rows; the text gap this leaves is preferable to
-        // overflow. Full pixel-crop of partially scrolled images is future work.
-        let avail_cols = inner.width.saturating_sub(pos.col as u16).max(1);
-        let avail_rows = inner.height.saturating_sub(pos.row as u16).max(1);
-        let cols = image.cols.min(avail_cols).max(1);
-        let rows = image.rows.min(avail_rows).max(1);
-        placements.push(Placement {
-            path,
-            x: inner.x.saturating_add(pos.col as u16),
-            y: inner
-                .y
-                .saturating_add(pos.row as u16)
-                .saturating_add(image.offset_rows),
-            cols,
-            rows,
-        });
+        let rows_total = image.rows.max(1) as usize;
+
+        if let Some(pos) = view.screen_coords_at_pos(doc, text, image.char_idx) {
+            // Anchor on screen. Crop the bottom if the image runs past the
+            // viewport instead of squishing it.
+            let eff_row = pos.row as usize + image.offset_rows as usize;
+            if eff_row >= inner.height as usize {
+                continue;
+            }
+            let avail_rows = (inner.height as usize - eff_row).max(1);
+            let rows_vis = (image.rows as usize).min(avail_rows).max(1);
+            let avail_cols = inner.width.saturating_sub(pos.col as u16).max(1);
+            let cols = image.cols.min(avail_cols).max(1);
+            let crop = if rows_vis != image.rows as usize {
+                // Show the top rows_vis/rows of the source image.
+                let h = ((rows_vis as u64 * image.height_px as u64) / rows_total as u64)
+                    .clamp(1, image.height_px as u64) as u32;
+                Some((0, 0, image.width_px, h))
+            } else {
+                None
+            };
+            placements.push(Placement {
+                path,
+                x: inner.x.saturating_add(pos.col as u16),
+                y: inner.y.saturating_add(eff_row as u16),
+                cols,
+                rows: rows_vis as u16,
+                crop,
+            });
+        } else if image.line < topline {
+            // Anchor scrolled above the viewport: keep the visible tail
+            // on screen with a cropped source rect (image.nvim overlap).
+            let scrolled = topline - image.line;
+            let top_cut = scrolled.saturating_sub(image.offset_rows as usize);
+            if top_cut >= rows_total {
+                continue;
+            }
+            let y_off = (image.offset_rows as usize).saturating_sub(scrolled);
+            if y_off >= inner.height as usize {
+                continue;
+            }
+            let avail_rows = (inner.height as usize - y_off).max(1);
+            let rows_vis = (rows_total - top_cut).min(avail_rows).max(1);
+            let col = image.char_idx.saturating_sub(text.line_to_char(image.line)) as u16;
+            let cols = image
+                .cols
+                .min(inner.width.saturating_sub(col).max(1))
+                .max(1);
+            let y_src = ((top_cut as u64 * image.height_px as u64) / rows_total as u64)
+                .min(image.height_px as u64) as u32;
+            let h_max = (image.height_px as u64).saturating_sub(y_src as u64).max(1);
+            let h_src = ((rows_vis as u64 * image.height_px as u64) / rows_total as u64)
+                .clamp(1, h_max) as u32;
+            placements.push(Placement {
+                path,
+                x: inner.x.saturating_add(col),
+                y: inner.y.saturating_add(y_off as u16),
+                cols,
+                rows: rows_vis as u16,
+                crop: Some((0, y_src, image.width_px, h_src)),
+            });
+        }
+        // Anchor below the viewport: skip until scrolled into view.
     }
 
     placements

@@ -326,15 +326,18 @@ full-width background from existing theme scopes; icons use
 the rendered document, so the buffer text is unchanged and
 editing/saving/searching still see ordinary markdown. The cursor line and
 selections show raw markdown. Code fences keep their tree-sitter highlighting.
-Links and wiki links show icons while destinations are concealed, Obsidian
-callouts render their icon and title, and pipe tables get `│` borders with a
-header background.
+Links and wiki links show icons while destinations are concealed, with
+per-host icons for known sites, and links inside headings, lists, quotes,
+tables, and callout titles are decorated. Obsidian callouts render their icon
+and title, recolor the markers of following quote lines, and pipe tables get
+`│` borders with a header background.
 
 With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
 when the terminal supports Kitty graphics. Paths resolve relative to the note
 and then the vault root. Each image reserves virtual lines so following text
-reflows instead of being covered. Remote `http(s)` images download once with
-`curl` into the cache; opening an image file directly shows it full-view.
+reflows instead of being covered. Partially scrolled images are cropped to
+the visible rows. Remote `http(s)` images download once with `curl` into the
+cache; opening an image file directly shows it full-view.
 PNGs are sent directly; JPEG/GIF are converted with `ffmpeg` and SVG with
 `rsvg-convert` into `~/.cache/rx-helix/images`. Images are capped at 50% of
 the window height and re-placed on scroll, hidden while overlays cover the

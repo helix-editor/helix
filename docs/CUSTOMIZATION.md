@@ -235,11 +235,16 @@ markdown. The cursor line and visual selections show raw markdown so markers
 stay editable and readable.
 
 Links, wiki links, and callouts are decorated without shifting text:
-`[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts a
-`󰌹` where the destination was, `<url>` shows `󰌹 url`, images show `󰥶`, and
-footnotes show `󰯔`. Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render
-their icon and title with diagnostic highlights. Pipe tables replace `|` with
-`│` (delimiter `-`/`:` become `─`/`━`) and give the header row a background.
+`[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts an
+icon where the destination was, `<url>` shows its icon plus the address,
+images show `󰥶`, and footnotes show `󰯔`. Inline-link icons adapt to the
+destination host (`󰊤` GitHub, `󰊭` Google, `󰖟` generic web, etc.). Links inside
+headings, list items, quotes, tables, and callout titles are all decorated.
+Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render their icon and
+title with diagnostic highlights, and the `▋` markers of following quote
+lines reuse the same color until a blank or non-quote line ends the block.
+Pipe tables replace `|` with `│` (delimiter `-`/`:` become `─`/`━`) and give
+the header row a background.
 Code fences keep their tree-sitter highlighting.
 
 Local images are drawn inline when the terminal speaks the Kitty graphics
@@ -254,13 +259,14 @@ images = true
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
 vault root. Each image reserves virtual lines after its anchor (like
 image.nvim's `with_virtual_padding`), so following text reflows instead of
-being covered. Remote `http(s)` images download once with `curl` into the
-cache and appear on later frames. Opening an image file directly shows it
-full-view. PNG images are sent directly; JPEG/GIF are converted with
-`ffmpeg` and SVG with `rsvg-convert` into a cache under
-`~/.cache/rx-helix/images`. Each image is scaled to at most 50% of the window
-height and re-placed as you scroll. Only the focused view is drawn and images
-are hidden while a picker/prompt/menu covers the editor.
+being covered. Images that scroll partially out of view are cropped to the
+visible rows via a source rectangle instead of being squished. Remote
+`http(s)` images download once with `curl` into the cache and appear on later
+frames. Opening an image file directly shows it full-view. PNG images are sent
+directly; JPEG/GIF are converted with `ffmpeg` and SVG with `rsvg-convert`
+into a cache under `~/.cache/rx-helix/images`. Each image is scaled to at most
+50% of the window height and re-placed as you scroll. Only the focused view is
+drawn and images are hidden while a picker/prompt/menu covers the editor.
 
 ## Obsidian
 
