@@ -48,13 +48,21 @@ const fn byte_from_hex(mut h: [u8; 2]) -> Option<u8> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
 /// UNSTABLE
 #[derive(Default)]
 pub enum CursorKind {
     /// █
+    ///
+    /// Drawn by Helix so it can be themed. The terminal cursor is hidden.
     #[default]
     Block,
+    /// █
+    ///
+    /// Helix still draws the themed block, but the terminal cursor is left
+    /// visible on top of it. This lets terminal cursor effects such as Kitty's
+    /// `cursor_trail` follow the cursor.
+    BlockHardware,
     /// |
     Bar,
     /// _

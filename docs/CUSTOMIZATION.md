@@ -102,17 +102,35 @@ Command and search currently use the normal-mode chip colors.
 cursorline = true
 bufferline = "multiple"     # always | never | multiple
 transparent-popups = true
+popup-border = "all"        # none | popup | menu | all
 ```
 
 `cursorline` highlights the line of every cursor with `ui.cursorline`.
 `bufferline` renders open buffers at the top; `multiple` shows it only when
-more than one buffer is open.
+more than one buffer is open. The tab row follows `ui.background`, so it is
+transparent with `ui.background = "none"`. The current tab uses
+`ui.bufferline.active` and stays opaque; inactive tabs use a lightened blend of
+the active background. A blank row separates the tabs from the editor content.
+
+The command palette completion list always uses a themed border.
+`popup-border` additionally draws themed borders around hover, completion,
+signature, and menu popups. Border foregrounds use an accent taken from
+existing theme scopes in this order: `ui.menu.selected` background,
+`ui.cursor.primary` background, `ui.statusline.normal` background, then
+`ui.window` foreground. Border backgrounds follow the panel, so transparent
+panels keep transparent borders. No fork-only theme scope is required.
 
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It
 patches only those scopes at theme-load time (`ui.popup`, `ui.popup.info`,
 `ui.menu`, `ui.help`), so foreground colors and generated theme files are left
 untouched. Alternatively, set `bg = "none"` on individual scopes.
+
+Terminal cursor effects (for example Kitty's `cursor_trail`) follow the native
+terminal cursor. Helix's default `block` cursor is drawn in software and hides
+that native cursor. Use `normal = "block-hardware"` in
+`[editor.cursor-shape]` to keep the native cursor visible on top of the themed
+block, or use `bar`/`underline`.
 
 The active theme file is watched for changes and reloaded automatically with a
 short debounce. Generated themes can therefore rewrite
