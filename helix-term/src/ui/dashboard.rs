@@ -109,11 +109,23 @@ impl Renderer {
             &config.subtitle,
             dashboard_style(theme, "subtitle", "ui.text.inactive"),
         );
-        let items = items_block(config, theme);
+        let items_min = items_block(config, theme, 0);
+        let items_min_width = items_min.width();
+        let items = items_block(config, theme, config.menu_width);
         let footer = text_block(
             &config.footer,
             dashboard_style(theme, "footer", "ui.text.inactive"),
         );
+
+        let right_min = stack(
+            [subtitle.clone(), items_min, footer.clone()],
+            config.section_gap,
+        );
+        let gap = if header.is_empty() || right_min.is_empty() {
+            0
+        } else {
+            config.column_gap as usize
+        };
 
         let vertical = stack(
             [
@@ -124,19 +136,12 @@ impl Renderer {
             ],
             config.section_gap,
         );
-        let right = stack([subtitle, items, footer], config.section_gap);
-        let gap = if header.is_empty() || right.is_empty() {
-            0
-        } else {
-            config.column_gap as usize
-        };
-
         let vertical_size = (vertical.width(), vertical.height());
-        let horizontal_size = (
-            header.width() + gap + right.width(),
-            header.height().max(right.height()),
+        let horizontal_min_size = (
+            header.width() + gap + right_min.width(),
+            header.height().max(right_min.height()),
         );
-        let layout = choose_layout(config.layout, area, vertical_size, horizontal_size);
+        let layout = choose_layout(config.layout, area, vertical_size, horizontal_min_size);
 
         match layout {
             DashboardLayout::Vertical | DashboardLayout::Auto => {
@@ -151,14 +156,30 @@ impl Renderer {
                 vertical_size
             }
             DashboardLayout::Horizontal => {
+                let available = (area.width as usize).saturating_sub(header.width() + gap);
+                let menu_width = (config.menu_width as usize).min(available.max(items_min_width));
+                let menu_width = menu_width.min(u16::MAX as usize) as u16;
+                let items = if menu_width == config.menu_width {
+                    items
+                } else {
+                    items_block(config, theme, menu_width)
+                };
+                let right = stack([subtitle, items, footer], config.section_gap);
+                let horizontal_size = (
+                    header.width() + gap + right.width(),
+                    header.height().max(right.height()),
+                );
                 let x = area.x + area.width.saturating_sub(horizontal_size.0 as u16) / 2;
 
-                let header_y = vertical_y(area, header.height(), config.vertical_align);
-                draw(&header, x, header_y, area, surface);
+                let y = vertical_y(
+                    area,
+                    header.height().max(right.height()),
+                    config.vertical_align,
+                );
+                draw(&header, x, y, area, surface);
 
                 let right_x = x + header.width() as u16 + gap as u16;
-                let right_y = vertical_y(area, right.height(), config.vertical_align);
-                draw(&right, right_x, right_y, area, surface);
+                draw(&right, right_x, y, area, surface);
                 horizontal_size
             }
         }
@@ -203,7 +224,7 @@ fn choose_layout(
     }
 }
 
-fn items_block(config: &DashboardConfig, theme: &Theme) -> Block {
+fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16) -> Block {
     let item_style = dashboard_style(theme, "item", "ui.text");
     let icon_style = dashboard_style(theme, "icon", "ui.text.inactive");
     let key_style = dashboard_style(theme, "key", "ui.text.inactive");
@@ -248,7 +269,7 @@ fn items_block(config: &DashboardConfig, theme: &Theme) -> Block {
                 if !key.is_empty() {
                     let desc_width = line_width(&spans);
                     let key_width = key.width();
-                    let width = (config.menu_width as usize).max(desc_width + key_width + 1);
+                    let width = (menu_width as usize).max(desc_width + key_width + 1);
                     spans.push(Span::raw(" ".repeat(width - desc_width - key_width)));
                     spans.push(Span::styled(key.to_string(), key_style));
                 }

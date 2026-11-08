@@ -198,7 +198,8 @@ and `footer`. A block is only drawn if it contains text.
 With `layout = "auto"` the dashboard picks the orientation that fits the
 terminal. If both fit, horizontal is used on wide terminals (width at least
 twice the height) and vertical otherwise. If neither fits, the orientation with
-the smallest overflow is used.
+the smallest overflow is used. In the horizontal layout the item block shrinks
+from `menu-width` down to its content width to fit the available columns.
 
 ```toml
 [editor.dashboard]
