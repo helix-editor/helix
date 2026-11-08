@@ -302,6 +302,26 @@ The built-in logo has two forms. The horizontal form is the dot-matrix mark with
 uses the primary/secondary/tertiary accents above. The vertical form pairs the
 dot mark with the `HELIX` wordmark and uses the header style.
 
+### `[editor.markdown]` Section
+
+Optional display-only markdown rendering. Disabled by default.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `render` | Replace markdown markers with icons and frame characters | `false` |
+
+```toml
+[editor.markdown]
+render = true
+```
+
+Headings lose their `#` markers and gain level icons, bullet lists use `•`,
+task boxes use `󰄱`/`󰱒`, block quotes use `│`, and horizontal rules use `─`.
+Rendering uses single-grapheme overlays, so the buffer text is unchanged and
+editing/saving/searching still see ordinary markdown. Only visible lines are
+scanned. Code fences keep their tree-sitter highlighting; links, callouts, and
+tables are not decorated yet.
+
 ### `[editor.obsidian]` Section
 
 Optional integration for an Obsidian vault. Disabled by default. Vault search

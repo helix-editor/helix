@@ -8,7 +8,7 @@ use crate::{
     ui::{
         dashboard,
         document::{render_document, LinePos, TextRenderer},
-        statusline,
+        markdown_render, statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
         Completion, ProgressSpinners,
     },
@@ -100,7 +100,15 @@ impl EditorView {
 
         let view_offset = doc.view_offset(view.id);
 
-        let text_annotations = view.text_annotations(doc, Some(theme));
+        let markdown_layers = if config.markdown.render {
+            markdown_render::overlays(doc, view_offset.anchor, inner.height)
+        } else {
+            Vec::new()
+        };
+        let mut text_annotations = view.text_annotations(doc, Some(theme));
+        for (scope, overlays) in &markdown_layers {
+            text_annotations.add_overlay(overlays, theme.find_highlight(scope));
+        }
         let mut decorations = DecorationManager::default();
 
         if is_focused && config.cursorline {
