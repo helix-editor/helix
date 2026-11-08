@@ -34,6 +34,25 @@ pub struct ImageLayout {
     pub height_px: u32,
 }
 
+/// Whether the current buffer is an image file shown full-view instead of
+/// as text. Shared by layout, placement, and viewport blanking.
+pub fn is_hijacked_image(doc: &Document) -> bool {
+    let config = doc.config.load();
+    if !config.markdown.images || !kitty_supported() {
+        return false;
+    }
+    if doc.language_name() == Some("markdown") {
+        return false;
+    }
+    doc.path()
+        .and_then(|path| path.extension())
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            IMAGE_EXTENSIONS
+                .iter()
+                .any(|known| known.eq_ignore_ascii_case(ext))
+        })
+}
 /// Compute inline image layouts for the visible section of a markdown buffer.
 /// Image files opened directly get a single full-view layout (hijack).
 pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
@@ -78,7 +97,12 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
         let line_start = text.line_to_char(line_idx);
         let line = text.line(line_idx).to_string();
         for (column, target) in image_links(&line) {
-            let Some(path) = resolve_image(&source, vault.as_deref(), &target) else {
+            let Some(path) = resolve_image(
+                &source,
+                vault.as_deref(),
+                &target,
+                config.markdown.download_remote_images,
+            ) else {
                 continue;
             };
             let Some((path, width_px, height_px)) = dimensions_or_converted(&path) else {
@@ -241,7 +265,12 @@ fn image_links(line: &str) -> Vec<(usize, String)> {
     links
 }
 
-fn resolve_image(source: &Path, vault: Option<&Path>, target: &str) -> Option<PathBuf> {
+fn resolve_image(
+    source: &Path,
+    vault: Option<&Path>,
+    target: &str,
+    download_remote: bool,
+) -> Option<PathBuf> {
     let target = target
         .trim()
         .trim_matches(|ch| ch == '<' || ch == '>')
@@ -255,7 +284,7 @@ fn resolve_image(source: &Path, vault: Option<&Path>, target: &str) -> Option<Pa
         return None;
     }
     if target.starts_with("http://") || target.starts_with("https://") {
-        return resolve_remote(target);
+        return download_remote.then(|| resolve_remote(target)).flatten();
     }
     let target = percent_decode(target);
     let target = Path::new(&target);
@@ -340,20 +369,12 @@ const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg", 
 
 /// Single full-view layout for an image file opened directly.
 fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
+    if !is_hijacked_image(doc) {
+        return Vec::new();
+    }
     let Some(path) = doc.path() else {
         return Vec::new();
     };
-    let is_image = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| {
-            IMAGE_EXTENSIONS
-                .iter()
-                .any(|known| known.eq_ignore_ascii_case(ext))
-        });
-    if !is_image {
-        return Vec::new();
-    }
     let inner = view.inner_area(doc);
     if inner.width == 0 || inner.height == 0 {
         return Vec::new();

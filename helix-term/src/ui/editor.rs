@@ -118,6 +118,10 @@ impl EditorView {
             decorations.add_decoration(markdown_render);
         }
 
+        if helix_view::markdown::is_hijacked_image(doc) {
+            decorations.add_decoration(markdown_render::BlankViewport::new(theme));
+        }
+
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }

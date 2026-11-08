@@ -820,6 +820,9 @@ pub struct MarkdownConfig {
     pub render: bool,
     /// Render local images in markdown buffers with the Kitty graphics protocol.
     pub images: bool,
+    /// Download remote `http(s)` images with `curl` into the cache.
+    /// Mirrors image.nvim's `download_remote_images`.
+    pub download_remote_images: bool,
 }
 
 impl Default for MarkdownConfig {
@@ -827,6 +830,7 @@ impl Default for MarkdownConfig {
         Self {
             render: false,
             images: false,
+            download_remote_images: true,
         }
     }
 }
