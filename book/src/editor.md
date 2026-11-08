@@ -292,8 +292,8 @@ it uncolored:
 | Header, icons, primary logo shade | `ui.statusline.normal` accent |
 | Secondary logo shade | `ui.statusline.select` accent |
 | Tertiary logo shade | `ui.statusline.insert` accent |
-| Items | `ui.text` |
-| Subtitle, keys, footer, muted logo shade | `ui.text.inactive` |
+| Menu items, keys, and icons | `ui.statusline.normal` accent |
+| Subtitle, footer, muted logo shade | `ui.text.inactive` |
 
 The accent is the background color of the statusline scope, reused as a
 foreground color. Missing statusline scopes fall back to `ui.text`.
