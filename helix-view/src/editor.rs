@@ -818,11 +818,16 @@ impl Default for ObsidianConfig {
 pub struct MarkdownConfig {
     /// Render markdown syntax markers with icons and conceals.
     pub render: bool,
+    /// Render local images in markdown buffers with the Kitty graphics protocol.
+    pub images: bool,
 }
 
 impl Default for MarkdownConfig {
     fn default() -> Self {
-        Self { render: false }
+        Self {
+            render: false,
+            images: false,
+        }
     }
 }
 

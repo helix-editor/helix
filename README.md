@@ -71,7 +71,8 @@ Optional built-in vault integration:
 
 `[editor.markdown] render = true` replaces heading markers with icons, bullets
 with `•`, task boxes with `󰄱`/`󰱒`, quotes with `│`, and rules with `─` using
-buffer overlays, so the file text is unchanged.
+buffer overlays, so the file text is unchanged. `images = true` additionally
+draws local markdown images inline in Kitty-compatible terminals.
 
 ### Upstream sync
 
