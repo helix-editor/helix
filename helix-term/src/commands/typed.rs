@@ -4108,6 +4108,46 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: exclude_workspace,
         completer: CommandCompleter::none(),
         signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "obsidian-quick-switch",
+        aliases: &[],
+        doc: "Open a note picker for the configured Obsidian vault.",
+        fun: obsidian::quick_switch,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "obsidian-search",
+        aliases: &[],
+        doc: "Search the configured Obsidian vault with ripgrep.",
+        fun: obsidian::search,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "obsidian-new",
+        aliases: &[],
+        doc: "Create a new note in the configured Obsidian vault.",
+        fun: obsidian::new_note,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, None), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "obsidian-follow-link",
+        aliases: &[],
+        doc: "Open the wiki or markdown link under the cursor in the current note.",
+        fun: obsidian::follow_link,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
+    },
+    TypableCommand {
+        name: "obsidian-backlinks",
+        aliases: &[],
+        doc: "Open a picker of notes that link to the current note.",
+        fun: obsidian::backlinks,
+        completer: CommandCompleter::none(),
+        signature: Signature { positionals: (0, Some(0)), ..Signature::DEFAULT },
     }
 ];
 

@@ -57,6 +57,16 @@ Shown when Helix starts without files:
 - Unbound keys are swallowed while the dashboard is visible; cancelling a picker
   returns to it, opening a file dismisses it.
 
+### Obsidian vault
+
+Optional built-in vault integration:
+
+- `:obsidian-quick-switch` note picker.
+- `:obsidian-search` vault-wide ripgrep search.
+- `:obsidian-new` notes in the configured notes folder.
+- `:obsidian-follow-link` for `[[wiki]]` and markdown links.
+- `:obsidian-backlinks` for the current note.
+
 ### Upstream sync
 
 A daily GitHub Actions workflow fast-forwards `master`, rebases `main`, runs a
