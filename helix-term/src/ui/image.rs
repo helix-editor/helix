@@ -1,16 +1,13 @@
 //! Kitty graphics protocol image rendering for markdown buffers.
 //!
 //! Layout (including virtual lines reserved for each image) lives in
-//! [`helix_view::markdown`]. This module converts images to PNG, transmits them
-//! once, and moves placements after each editor frame.
+//! [`helix_view::markdown`]. This module transmits images once and moves
+//! placements after each editor frame.
 
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fs;
-use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::SystemTime;
 
@@ -143,12 +140,20 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
     let mut placements = Vec::new();
 
     for image in helix_view::markdown::visible_images(doc, &view) {
-        let Some(path) = ensure_png(&image.path) else {
+        let Some(path) = helix_view::markdown::ensure_png(&image.path) else {
             continue;
         };
         let Some(pos) = view.screen_coords_at_pos(doc, text, image.char_idx) else {
             continue;
         };
+        // Clamp to the visible viewport so images anchored near the bottom
+        // don't spill into the statusline. Reserved virtual lines may exceed
+        // the displayed rows; the text gap this leaves is preferable to
+        // overflow. Full pixel-crop of partially scrolled images is future work.
+        let avail_cols = inner.width.saturating_sub(pos.col as u16).max(1);
+        let avail_rows = inner.height.saturating_sub(pos.row as u16).max(1);
+        let cols = image.cols.min(avail_cols).max(1);
+        let rows = image.rows.min(avail_rows).max(1);
         placements.push(Placement {
             path,
             x: inner.x.saturating_add(pos.col as u16),
@@ -156,75 +161,12 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
                 .y
                 .saturating_add(pos.row as u16)
                 .saturating_add(image.offset_rows),
-            cols: image.cols,
-            rows: image.rows,
+            cols,
+            rows,
         });
     }
 
     placements
-}
-
-fn is_png(path: &Path) -> bool {
-    let Ok(mut file) = fs::File::open(path) else {
-        return false;
-    };
-    let mut signature = [0u8; 8];
-    std::io::Read::read_exact(&mut file, &mut signature).is_ok()
-        && signature == *b"\x89PNG\r\n\x1a\n"
-}
-
-fn cache_dir() -> Option<PathBuf> {
-    if let Some(dir) = std::env::var_os("XDG_CACHE_HOME") {
-        if !dir.is_empty() {
-            return Some(PathBuf::from(dir));
-        }
-    }
-    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache"))
-}
-
-/// Kitty only understands PNG (or raw pixels). Convert other formats to a
-/// cached PNG with ffmpeg, which is commonly available where ImageMagick is not.
-fn ensure_png(path: &Path) -> Option<PathBuf> {
-    if is_png(path) {
-        return Some(path.to_path_buf());
-    }
-
-    let modified = fs::metadata(path).ok()?.modified().ok()?;
-    let mut hasher = DefaultHasher::new();
-    path.hash(&mut hasher);
-    modified.hash(&mut hasher);
-    let out = cache_dir()?
-        .join("rx-helix")
-        .join("images")
-        .join(format!("{:016x}.png", hasher.finish()));
-    if out.is_file() {
-        return Some(out);
-    }
-    if let Some(parent) = out.parent() {
-        fs::create_dir_all(parent).ok()?;
-    }
-
-    let svg = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"));
-    let converted = if svg {
-        Command::new("rsvg-convert")
-            .arg("-o")
-            .arg(&out)
-            .arg(path)
-            .status()
-            .ok()?
-    } else {
-        Command::new("ffmpeg")
-            .args(["-v", "error", "-y", "-i"])
-            .arg(path)
-            .args(["-frames:v", "1"])
-            .arg(&out)
-            .status()
-            .ok()?
-    };
-    converted.success().then_some(out)
 }
 
 fn base64_encode(input: &[u8]) -> String {

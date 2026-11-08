@@ -27,6 +27,14 @@ struct LineRender {
     paints: Vec<Paint>,
     rule: Option<Style>,
     fence: Option<FenceRender>,
+    table: Option<TableKind>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum TableKind {
+    Header,
+    Delimiter,
+    Body,
 }
 
 struct Paint {
@@ -87,6 +95,14 @@ impl MarkdownRender {
         let code_info_style = theme
             .try_get("label")
             .unwrap_or_else(|| theme.get("ui.text.inactive"));
+        let link_icon_style = theme
+            .try_get("markup.link.label")
+            .unwrap_or_else(|| theme.get("markup.link"));
+        let table_border_style = theme.get("markup.raw");
+        let table_head_background =
+            background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
+
+        let table_kinds = detect_tables(text, start_line.saturating_sub(8), text.len_lines());
 
         let mut list_indents: Vec<usize> = Vec::new();
         let mut in_code: Option<CodeFence> = None;
@@ -157,16 +173,56 @@ impl MarkdownRender {
                 continue;
             }
 
+            // Pipe tables take precedence over lists/quotes: rows start with
+            // `|` which no other block marker uses.
+            if let Some(kind) = table_kinds.get(&line_idx) {
+                if visible {
+                    let line_render = render.lines.entry(line_idx).or_default();
+                    line_render.table = Some(*kind);
+                    for (col, ch) in chars.iter().enumerate() {
+                        if *ch == '|' {
+                            line_render.paints.push(Paint {
+                                col,
+                                text: "│".to_string(),
+                                style: table_border_style,
+                            });
+                        } else if *kind == TableKind::Delimiter && matches!(*ch, '-' | ':') {
+                            line_render.paints.push(Paint {
+                                col,
+                                text: if *ch == '-' {
+                                    "─".to_string()
+                                } else {
+                                    "━".to_string()
+                                },
+                                style: table_border_style,
+                            });
+                        }
+                    }
+                    if *kind == TableKind::Header {
+                        line_render.background = table_head_background;
+                    }
+                }
+                if visible {
+                    paint_inline_links(&mut render, line_idx, &chars, 0, link_icon_style);
+                    if let Some(style) = inline_code_background {
+                        paint_inline_code(&mut render, line_idx, line_start, &chars, style);
+                    }
+                }
+                continue;
+            }
+
             // ATX headings: `### Title`.
+            let mut inline_skip = 0;
+            let mut handled_block = false;
             if chars[indent] == '#' {
                 let level = chars[indent..].iter().take_while(|ch| **ch == '#').count();
                 let after = chars.get(indent + level);
                 if (1..=6).contains(&level) && matches!(after, None | Some(' ')) {
+                    let marker_width = level + usize::from(after == Some(&' '));
                     if visible {
                         let style = theme
                             .try_get(&format!("markup.heading.{level}"))
                             .unwrap_or(heading_fallback);
-                        let marker_width = level + usize::from(after == Some(&' '));
                         let icon = format!("{} ", heading_icon(level));
                         let icon_width = icon.width();
                         let text = if icon_width < marker_width {
@@ -181,66 +237,115 @@ impl MarkdownRender {
                             style,
                         });
                         line_render.background = heading_background(theme, level);
+                        // Fall through to inline link scanning for heading content.
+                        inline_skip = indent + marker_width;
                     }
-                    continue;
+                    handled_block = true;
+                    if !visible {
+                        continue;
+                    }
                 }
+                // Not a heading: fall through to the other block checks.
             }
 
-            // Block quotes, including nested `>>`.
-            let mut cursor = indent;
-            let mut quoted = false;
-            while chars.get(cursor) == Some(&'>') {
-                quoted = true;
-                if visible {
-                    render
-                        .lines
-                        .entry(line_idx)
-                        .or_default()
-                        .paints
-                        .push(Paint {
-                            col: cursor,
-                            text: "▋".to_string(),
-                            style: quote_style,
-                        });
-                }
-                cursor += 1;
-                if chars.get(cursor) == Some(&' ') {
+            // Block quotes, including nested `>>` and Obsidian callouts.
+            if !handled_block {
+                let mut cursor = indent;
+                let mut markers = Vec::new();
+                while chars.get(cursor) == Some(&'>') {
+                    markers.push(cursor);
                     cursor += 1;
+                    if chars.get(cursor) == Some(&' ') {
+                        cursor += 1;
+                    }
                 }
-            }
-            if quoted {
-                continue;
+                if !markers.is_empty() {
+                    // Obsidian callout: `> [!NOTE] Title`.
+                    let callout = parse_callout(&chars, cursor);
+                    if visible {
+                        if let Some((name_end, rendered, style_name)) = &callout {
+                            let style = theme.try_get(style_name).unwrap_or(quote_style);
+                            let line_render = render.lines.entry(line_idx).or_default();
+                            for col in &markers {
+                                line_render.paints.push(Paint {
+                                    col: *col,
+                                    text: "▋".to_string(),
+                                    style,
+                                });
+                            }
+                            let width = name_end - cursor;
+                            let mut text = rendered.clone();
+                            while text.width() < width {
+                                text.push(' ');
+                            }
+                            line_render.paints.push(Paint {
+                                col: cursor,
+                                text,
+                                style,
+                            });
+                        } else {
+                            let line_render = render.lines.entry(line_idx).or_default();
+                            for col in &markers {
+                                line_render.paints.push(Paint {
+                                    col: *col,
+                                    text: "▋".to_string(),
+                                    style: quote_style,
+                                });
+                            }
+                        }
+                    }
+                    if callout.is_some() {
+                        // Callout titles may contain links; a full inline scan
+                        // is a follow-up. Markers are already painted.
+                        continue;
+                    }
+                    inline_skip = cursor;
+                    handled_block = true;
+                    if !visible {
+                        continue;
+                    }
+                }
             }
 
             // Task lists: `- [ ] todo` / `- [x] done`.
-            if let Some(task) = task_list(&chars, indent) {
-                update_list_indent(&mut list_indents, indent);
-                if visible {
+            if !handled_block {
+                if let Some(task) = task_list(&chars, indent) {
+                    update_list_indent(&mut list_indents, indent);
                     let (checked, bracket_col) = task;
-                    let style = if checked {
-                        checked_style
-                    } else {
-                        unchecked_style
-                    };
-                    let line_render = render.lines.entry(line_idx).or_default();
-                    // Conceal the bullet.
-                    line_render.paints.push(Paint {
-                        col: indent,
-                        text: " ".to_string(),
-                        style,
-                    });
-                    // Overlay `[x]` with the icon plus padding.
-                    line_render.paints.push(Paint {
-                        col: bracket_col,
-                        text: format!("{}  ", if checked { "󰱒" } else { "󰄱" }),
-                        style,
-                    });
+                    if visible {
+                        let style = if checked {
+                            checked_style
+                        } else {
+                            unchecked_style
+                        };
+                        let line_render = render.lines.entry(line_idx).or_default();
+                        // Conceal the bullet.
+                        line_render.paints.push(Paint {
+                            col: indent,
+                            text: " ".to_string(),
+                            style,
+                        });
+                        // Overlay `[x]` with the icon plus padding.
+                        line_render.paints.push(Paint {
+                            col: bracket_col,
+                            text: format!("{}  ", if checked { "󰱒" } else { "󰄱" }),
+                            style,
+                        });
+                        // Fall through to inline link scanning for item content.
+                        inline_skip = bracket_col + 4;
+                    }
+                    handled_block = true;
+                    if !visible {
+                        continue;
+                    }
                 }
-                continue;
             }
 
             // Unordered lists.
-            if matches!(chars[indent], '-' | '*' | '+') && chars.get(indent + 1) == Some(&' ') {
+            if !handled_block
+                && matches!(chars[indent], '-' | '*' | '+')
+                && chars.get(indent + 1) == Some(&' ')
+            {
                 let level = update_list_indent(&mut list_indents, indent);
                 if visible {
                     let icon = ["●", "○", "◆", "◇"][(level.saturating_sub(1)) % 4];
@@ -254,45 +359,35 @@ impl MarkdownRender {
                             text: icon.to_string(),
                             style: list_style,
                         });
+                    // Fall through to inline link scanning for item content.
+                    inline_skip = indent + 2;
                 }
-                continue;
+                handled_block = true;
+                if !visible {
+                    continue;
+                }
             }
 
             // Horizontal rules.
-            let trimmed = &chars[indent..];
-            if trimmed.len() >= 3
-                && matches!(trimmed[0], '-' | '*' | '_')
-                && trimmed.iter().all(|ch| *ch == trimmed[0])
-            {
-                if visible {
-                    render.lines.entry(line_idx).or_default().rule = Some(rule_style);
+            if !handled_block {
+                let trimmed = &chars[indent..];
+                if trimmed.len() >= 3
+                    && matches!(trimmed[0], '-' | '*' | '_')
+                    && trimmed.iter().all(|ch| *ch == trimmed[0])
+                {
+                    if visible {
+                        render.lines.entry(line_idx).or_default().rule = Some(rule_style);
+                    }
+                    continue;
                 }
-                continue;
             }
 
-            // Inline code. Paint over the backticks and record the content
-            // range so `decorate_grapheme` can give it a background.
+            // Inline links, then inline code. Both paint over markers while
+            // keeping widths stable so text never shifts.
             if visible {
+                paint_inline_links(&mut render, line_idx, &chars, inline_skip, link_icon_style);
                 if let Some(style) = inline_code_background {
-                    for (open_start, open_end, close_start, close_end) in inline_code_ranges(&chars)
-                    {
-                        let line_render = render.lines.entry(line_idx).or_default();
-                        line_render.paints.push(Paint {
-                            col: open_start,
-                            text: " ".repeat(open_end - open_start),
-                            style,
-                        });
-                        line_render.paints.push(Paint {
-                            col: close_start,
-                            text: " ".repeat(close_end - close_start),
-                            style,
-                        });
-                        render.inline_code.push(InlineCode {
-                            start: line_start + open_end,
-                            end: line_start + close_start,
-                            style,
-                        });
-                    }
+                    paint_inline_code(&mut render, line_idx, line_start, &chars, style);
                 }
             }
         }
@@ -444,6 +539,331 @@ fn is_fence(line: &str, marker: char, min_len: usize) -> bool {
     len >= min_len && line.chars().skip(len).all(|ch| ch == ' ' || ch == '\t')
 }
 
+/// Detect pipe-table blocks. Only lines inside `from..len_lines` are
+/// considered; callers filter to the visible range. `from` should be a few
+/// lines above the viewport so bodies whose header scrolled off are still
+/// classified.
+fn detect_tables(
+    text: helix_core::RopeSlice,
+    from: usize,
+    len_lines: usize,
+) -> HashMap<usize, TableKind> {
+    let mut kinds = HashMap::new();
+    let mut index = from;
+    while index < len_lines {
+        let line = text.line(index).to_string();
+        if is_table_row(&line) && index + 1 < len_lines {
+            let next = text.line(index + 1).to_string();
+            if is_delimiter_row(&next) {
+                kinds.insert(index, TableKind::Header);
+                kinds.insert(index + 1, TableKind::Delimiter);
+                let mut body = index + 2;
+                while body < len_lines && is_table_row(&text.line(body).to_string()) {
+                    kinds.insert(body, TableKind::Body);
+                    body += 1;
+                }
+                index = body;
+                continue;
+            }
+        }
+        index += 1;
+    }
+    kinds
+}
+
+fn is_table_row(line: &str) -> bool {
+    line.contains('|') && !line.trim().is_empty()
+}
+
+fn is_delimiter_row(line: &str) -> bool {
+    let trimmed = line.trim();
+    trimmed.contains('|')
+        && trimmed.contains('-')
+        && trimmed
+            .chars()
+            .all(|ch| matches!(ch, '|' | '-' | ':' | ' ' | '\t'))
+}
+
+/// Parse an Obsidian callout marker at `start` (e.g. `[!NOTE]` with an
+/// optional `-`/`+` fold suffix). Returns the end column, the rendered title
+/// text, and the theme scope for the callout.
+fn parse_callout(chars: &[char], start: usize) -> Option<(usize, String, &'static str)> {
+    if chars.get(start) != Some(&'[') || chars.get(start + 1) != Some(&'!') {
+        return None;
+    }
+    let close = (start + 2..chars.len()).find(|idx| chars[*idx] == ']')?;
+    let mut name: String = chars[start + 2..close].iter().collect();
+    let mut end = close + 1;
+    // Foldable callouts: `[!NOTE]-` / `[!NOTE]+`.
+    if chars.get(end) == Some(&'-') || chars.get(end) == Some(&'+') {
+        end += 1;
+    }
+    name = name.to_uppercase();
+    let (rendered, scope) = match name.as_str() {
+        "NOTE" | "ABSTRACT" | "SUMMARY" | "TLDR" | "INFO" | "TODO" => {
+            let title = capitalize(&name);
+            (format!("󰋽 {title}"), "diagnostic.info")
+        }
+        "TIP" | "HINT" | "SUCCESS" | "CHECK" | "DONE" | "IMPORTANT" | "EXAMPLE" => {
+            let title = capitalize(&name);
+            let icon = match name.as_str() {
+                "TIP" | "HINT" => "󰌶",
+                "IMPORTANT" => "󰅾",
+                "EXAMPLE" => "󰉹",
+                _ => "󰄬",
+            };
+            (format!("{icon} {title}"), "diagnostic.hint")
+        }
+        "QUESTION" | "HELP" | "FAQ" | "ATTENTION" | "WARNING" | "CAUTION" => {
+            let title = capitalize(&name);
+            (format!("󰀪 {title}"), "diagnostic.warning")
+        }
+        "FAILURE" | "FAIL" | "MISSING" | "DANGER" | "ERROR" | "BUG" => {
+            let title = capitalize(&name);
+            let icon = match name.as_str() {
+                "DANGER" | "ERROR" => "󱐌",
+                "BUG" => "󰨰",
+                _ => "󰅖",
+            };
+            (format!("{icon} {title}"), "diagnostic.error")
+        }
+        "QUOTE" | "CITE" => {
+            let title = capitalize(&name);
+            (format!("󱆨 {title}"), "markup.quote")
+        }
+        _ => return None,
+    };
+    Some((end, rendered, scope))
+}
+
+fn capitalize(name: &str) -> String {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) => format!("{first}{}", chars.as_str().to_lowercase()),
+        None => String::new(),
+    }
+}
+
+/// Paint inline link markers with icons while concealing destinations. All
+/// replacements preserve width so text never shifts:
+///
+/// - `[[target|alias]]` → `󱗖 alias` (target concealed)
+/// - `[[target]]` → `󱗖 target` (brackets concealed)
+/// - `[label](dest)` → `[label]󰌹…` (icon where the destination was)
+/// - `![alt](dest)` / `![[file]]` → image icon variants
+/// - `<url>` / `<mail>` → icon over `<`, space over `>`
+/// - `[^footnote]` → `󰯔 footnote`
+fn paint_inline_links(
+    render: &mut MarkdownRender,
+    line_idx: usize,
+    chars: &[char],
+    skip_until: usize,
+    icon_style: Style,
+) {
+    let mut index = skip_until.max(0);
+    while index < chars.len() {
+        // Image wiki link: `![[file]]`.
+        if chars[index] == '!'
+            && chars.get(index + 1) == Some(&'[')
+            && chars.get(index + 2) == Some(&'[')
+        {
+            if let Some(end) = find_closing(chars, index + 3, "]]") {
+                let line_render = render.lines.entry(line_idx).or_default();
+                line_render.paints.push(Paint {
+                    col: index,
+                    text: "󰥶 ".to_string(),
+                    style: icon_style,
+                });
+                line_render.paints.push(Paint {
+                    col: index + 2,
+                    text: " ".to_string(),
+                    style: Style::default(),
+                });
+                line_render.paints.push(Paint {
+                    col: end,
+                    text: "  ".to_string(),
+                    style: Style::default(),
+                });
+                index = end + 2;
+                continue;
+            }
+            index += 1;
+            continue;
+        }
+        // Image link: `![alt](dest)`.
+        if chars[index] == '!' && chars.get(index + 1) == Some(&'[') {
+            if let Some(label_end) = find_char(chars, index + 2, ']') {
+                if chars.get(label_end + 1) == Some(&'(') {
+                    if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
+                        // Cover `(dest)` inclusive: width is end - start + 1.
+                        let width = dest_end - (label_end + 1) + 1;
+                        let mut text = String::from("󰥶");
+                        while text.width() < width {
+                            text.push(' ');
+                        }
+                        render
+                            .lines
+                            .entry(line_idx)
+                            .or_default()
+                            .paints
+                            .push(Paint {
+                                col: label_end + 1,
+                                text,
+                                style: icon_style,
+                            });
+                        index = dest_end + 1;
+                        continue;
+                    }
+                }
+            }
+            index += 1;
+            continue;
+        }
+        // Wiki link: `[[target|alias]]` or `[[target]]`.
+        if chars[index] == '[' && chars.get(index + 1) == Some(&'[') {
+            if let Some(end) = find_closing(chars, index + 2, "]]") {
+                let inner: String = chars[index + 2..end].iter().collect();
+                let line_render = render.lines.entry(line_idx).or_default();
+                line_render.paints.push(Paint {
+                    col: index,
+                    text: "󱗖 ".to_string(),
+                    style: icon_style,
+                });
+                if let Some(pipe) = inner.find('|') {
+                    let target_len = pipe + 1;
+                    line_render.paints.push(Paint {
+                        col: index + 2,
+                        text: " ".repeat(target_len),
+                        style: Style::default(),
+                    });
+                }
+                line_render.paints.push(Paint {
+                    col: end,
+                    text: "  ".to_string(),
+                    style: Style::default(),
+                });
+                index = end + 2;
+                continue;
+            }
+            index += 1;
+            continue;
+        }
+        // Inline link `[label](dest)` or footnote `[^x]`.
+        if chars[index] == '[' {
+            if chars.get(index + 1) == Some(&'^') {
+                if let Some(end) = find_char(chars, index + 2, ']') {
+                    render
+                        .lines
+                        .entry(line_idx)
+                        .or_default()
+                        .paints
+                        .push(Paint {
+                            col: index,
+                            text: "󰯔 ".to_string(),
+                            style: icon_style,
+                        });
+                    index = end + 1;
+                    continue;
+                }
+                index += 1;
+                continue;
+            }
+            if let Some(label_end) = find_char(chars, index + 1, ']') {
+                if chars.get(label_end + 1) == Some(&'(') {
+                    if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
+                        // Cover `(dest)` inclusive: width is end - start + 1.
+                        let width = dest_end - (label_end + 1) + 1;
+                        let mut text = String::from("󰌹");
+                        while text.width() < width {
+                            text.push(' ');
+                        }
+                        render
+                            .lines
+                            .entry(line_idx)
+                            .or_default()
+                            .paints
+                            .push(Paint {
+                                col: label_end + 1,
+                                text,
+                                style: icon_style,
+                            });
+                        index = dest_end + 1;
+                        continue;
+                    }
+                }
+            }
+            index += 1;
+            continue;
+        }
+        // Autolink `<https://…>` or `<mail@…>`.
+        if chars[index] == '<' {
+            if let Some(end) = find_char(chars, index + 1, '>') {
+                let inner: String = chars[index + 1..end].iter().collect();
+                let icon = if inner.contains('@') { "󰀓" } else { "󰌹" };
+                let line_render = render.lines.entry(line_idx).or_default();
+                line_render.paints.push(Paint {
+                    col: index,
+                    text: icon.to_string(),
+                    style: icon_style,
+                });
+                line_render.paints.push(Paint {
+                    col: end,
+                    text: " ".to_string(),
+                    style: Style::default(),
+                });
+                index = end + 1;
+                continue;
+            }
+            index += 1;
+            continue;
+        }
+        index += 1;
+    }
+}
+
+fn find_char(chars: &[char], from: usize, target: char) -> Option<usize> {
+    (from..chars.len()).find(|idx| chars[*idx] == target)
+}
+
+fn find_closing(chars: &[char], from: usize, closing: &str) -> Option<usize> {
+    let closing: Vec<char> = closing.chars().collect();
+    (from..chars.len()).find(|idx| {
+        chars[*idx..]
+            .iter()
+            .zip(closing.iter())
+            .all(|(a, b)| a == b)
+            && chars.len() - idx >= closing.len()
+    })
+}
+
+/// Paint over inline-code backticks and record content ranges for background.
+fn paint_inline_code(
+    render: &mut MarkdownRender,
+    line_idx: usize,
+    line_start: usize,
+    chars: &[char],
+    style: Style,
+) {
+    for (open_start, open_end, close_start, close_end) in inline_code_ranges(chars) {
+        let line_render = render.lines.entry(line_idx).or_default();
+        line_render.paints.push(Paint {
+            col: open_start,
+            text: " ".repeat(open_end - open_start),
+            style,
+        });
+        line_render.paints.push(Paint {
+            col: close_start,
+            text: " ".repeat(close_end - close_start),
+            style,
+        });
+        render.inline_code.push(InlineCode {
+            start: line_start + open_end,
+            end: line_start + close_start,
+            style,
+        });
+    }
+}
+
 fn task_list(chars: &[char], indent: usize) -> Option<(bool, usize)> {
     if indent + 4 >= chars.len()
         || !matches!(chars[indent], '-' | '*' | '+')
@@ -571,5 +991,81 @@ mod tests {
         assert_eq!(fence_start("plain"), None);
         assert!(is_fence("```", '`', 3));
         assert!(!is_fence("```rust", '`', 3));
+    }
+
+    #[test]
+    fn detects_callouts() {
+        let line: Vec<char> = "[!NOTE] Title".chars().collect();
+        let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(end, 7);
+        assert_eq!(rendered, "󰋽 Note");
+        assert_eq!(scope, "diagnostic.info");
+
+        let line: Vec<char> = "[!warning]- Foldable".chars().collect();
+        let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(end, 11);
+        assert_eq!(rendered, "󰀪 Warning");
+        assert_eq!(scope, "diagnostic.warning");
+
+        let line: Vec<char> = "[!bogus] x".chars().collect();
+        assert!(parse_callout(&line, 0).is_none());
+
+        let line: Vec<char> = "plain".chars().collect();
+        assert!(parse_callout(&line, 0).is_none());
+    }
+
+    #[test]
+    fn detects_table_rows() {
+        assert!(is_table_row("| a | b |"));
+        assert!(is_table_row("a | b"));
+        assert!(!is_table_row("plain"));
+        assert!(!is_table_row(""));
+        assert!(is_delimiter_row("| --- | :---: | ---: |"));
+        assert!(is_delimiter_row("|---|---|"));
+        assert!(!is_delimiter_row("| a | b |"));
+        assert!(!is_delimiter_row("plain"));
+    }
+
+    #[test]
+    fn detects_table_blocks() {
+        use helix_core::Rope;
+        let text = Rope::from("| a | b |\n| --- | --- |\n| c | d |\n\nplain\n");
+        let kinds = detect_tables(text.slice(..), 0, text.len_lines());
+        assert_eq!(kinds.get(&0), Some(&TableKind::Header));
+        assert_eq!(kinds.get(&1), Some(&TableKind::Delimiter));
+        assert_eq!(kinds.get(&2), Some(&TableKind::Body));
+        assert_eq!(kinds.get(&4), None);
+    }
+
+    #[test]
+    fn paints_wiki_and_inline_links() {
+        let style = Style::default();
+        let mut render = MarkdownRender::default();
+        let line: Vec<char> = "see [[Target|Alias]] and [[Plain]] end".chars().collect();
+        paint_inline_links(&mut render, 0, &line, 0, style);
+        let paints = &render.lines.get(&0).unwrap().paints;
+        // [[Target|Alias]]: icon + concealed target + concealed brackets.
+        assert!(paints.iter().any(|p| p.col == 4 && p.text == "󱗖 "));
+        assert!(paints.iter().any(|p| p.col == 6 && p.text == " ".repeat(7)));
+        // [[Plain]]: icon at 25, concealed close at 32.
+        assert!(paints.iter().any(|p| p.col == 25 && p.text == "󱗖 "));
+        assert!(paints.iter().any(|p| p.col == 32 && p.text == "  "));
+
+        let mut render = MarkdownRender::default();
+        let line: Vec<char> = "a [label](https://x.y) b".chars().collect();
+        paint_inline_links(&mut render, 1, &line, 0, style);
+        let paints = &render.lines.get(&1).unwrap().paints;
+        assert!(paints.iter().any(|p| p.col == 9 && p.text.starts_with("󰌹")));
+    }
+
+    #[test]
+    fn paints_autolinks_and_footnotes() {
+        let style = Style::default();
+        let mut render = MarkdownRender::default();
+        let line: Vec<char> = "a <https://x.y> b [^fn]".chars().collect();
+        paint_inline_links(&mut render, 0, &line, 0, style);
+        let paints = &render.lines.get(&0).unwrap().paints;
+        assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰌹"));
+        assert!(paints.iter().any(|p| p.col == 18 && p.text == "󰯔 "));
     }
 }
