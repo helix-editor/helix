@@ -71,7 +71,7 @@ item-gap = 1
 # key-left: key left-aligned to key-width, then the description.
 menu-style = "space-between"
 menu-width = 0
-menu-gap = 4
+menu-gap = 8
 key-width = 16
 column-gap = 8
 

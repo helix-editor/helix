@@ -374,10 +374,27 @@ xxxx,       .::
 
 fn default_logo(theme: &Theme, layout: DashboardLayout) -> Block {
     if layout == DashboardLayout::Horizontal {
-        dots_logo(theme)
+        horizontal_logo(theme)
     } else {
         vertical_logo(theme)
     }
+}
+
+fn horizontal_logo(theme: &Theme) -> Block {
+    let mut block = dots_logo(theme);
+    let width = block.width();
+    let caption = "· ʜᴇʟɪx ·";
+    let caption_width = caption.width();
+    let pad = width.saturating_sub(caption_width) / 2;
+    block.lines.push(vec![
+        Span::raw(" ".repeat(pad)),
+        Span::styled(
+            caption,
+            dashboard_style(theme, "subtitle", "ui.text.inactive"),
+        ),
+        Span::raw(" ".repeat(width.saturating_sub(pad + caption_width))),
+    ]);
+    block
 }
 
 fn dots_logo(theme: &Theme) -> Block {
