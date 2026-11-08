@@ -442,6 +442,36 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
+    /// Shift the cells after `from` left by `to - from` columns. Used by
+    /// markdown concealment so removed delimiters do not leave gaps.
+    pub fn shift_line_left(&mut self, row: u16, from: usize, to: usize) {
+        if to <= from || from < self.offset.col || (row as usize) < self.offset.row {
+            return;
+        }
+        let y = self.viewport.y + (row - self.offset.row as u16);
+        let start = self.viewport.x + (from - self.offset.col) as u16;
+        let end = self.viewport.right();
+        if start >= end {
+            return;
+        }
+        let amount = (to - from) as u16;
+        if amount == 0 || start.saturating_add(amount) >= end {
+            return;
+        }
+        let copy_end = end - amount;
+        for x in start..copy_end {
+            let cell = self.surface[(x + amount, y)].clone();
+            self.surface[(x, y)] = cell;
+        }
+        let blank_style = self.surface[(end - 1, y)].style();
+        for x in copy_end..end {
+            let cell = &mut self.surface[(x, y)];
+            cell.reset();
+            cell.set_symbol(" ");
+            cell.set_style(blank_style);
+        }
+    }
+
     /// Sets the style of an area **within the text viewport* this accounts
     /// both for the renderers vertical offset and its viewport
     pub fn set_style(&mut self, mut area: Rect, style: Style) {

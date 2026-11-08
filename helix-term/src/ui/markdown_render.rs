@@ -53,6 +53,10 @@ pub struct MarkdownRender {
 struct LineRender {
     background: Option<Style>,
     paints: Vec<Paint>,
+    /// Display-column ranges to remove after painting (emphasis/link
+    /// delimiters). Content to the right is shifted left, matching Neovim
+    /// conceal rather than leaving a gap.
+    removals: Vec<(usize, usize)>,
     rule: Option<Style>,
     fence: Option<FenceRender>,
     table: Option<TableKind>,
@@ -111,10 +115,14 @@ fn visible_line_meta(
     start_line: usize,
     end_line: usize,
 ) -> Vec<LineMeta> {
+    let version = doc.version();
     let mut cache = markdown_cache().lock().unwrap();
-    let entry = cache.entry(doc.id()).or_default();
-    if entry.version != doc.version() {
-        entry.version = doc.version();
+    let entry = cache.entry(doc.id()).or_insert_with(|| MarkdownCache {
+        version,
+        lines: build_line_meta(text),
+    });
+    if entry.version != version {
+        entry.version = version;
         entry.lines = build_line_meta(text);
     }
     entry
@@ -155,27 +163,29 @@ fn build_line_meta(text: helix_core::RopeSlice) -> Vec<LineMeta> {
             continue;
         }
 
+        let mut content_indent = indent;
         if indent < chars.len() && chars[indent] == '>' {
             let mut cursor = indent + 1;
-            if chars.get(cursor) == Some(&' ') {
+            while chars.get(cursor) == Some(&' ') {
                 cursor += 1;
             }
             if let Some((_, _, style)) = parse_callout(&chars, cursor) {
                 callout = Some(style);
             } else {
                 line_meta.callout = callout;
+                content_indent = cursor;
             }
         } else {
             callout = None;
         }
 
-        if task_list(&chars, indent).is_some() {
-            update_list_indent(&mut list_indents, indent);
-        } else if indent < chars.len()
-            && matches!(chars[indent], '-' | '*' | '+')
-            && chars.get(indent + 1) == Some(&' ')
+        if task_list(&chars, content_indent).is_some() {
+            update_list_indent(&mut list_indents, content_indent);
+        } else if content_indent < chars.len()
+            && matches!(chars[content_indent], '-' | '*' | '+')
+            && chars.get(content_indent + 1) == Some(&' ')
         {
-            line_meta.list_level = Some(update_list_indent(&mut list_indents, indent));
+            line_meta.list_level = Some(update_list_indent(&mut list_indents, content_indent));
         }
 
         meta.push(line_meta);
@@ -251,7 +261,7 @@ impl MarkdownRender {
             let raw = text.line(line_idx).to_string();
             let line = raw.trim_end_matches(['\r', '\n']);
             let chars: Vec<char> = line.chars().collect();
-            let indent = chars.iter().take_while(|ch| **ch == ' ').count();
+            let mut indent = chars.iter().take_while(|ch| **ch == ' ').count();
             let visible = true;
 
             if let Some(fence) = meta.in_code {
@@ -348,6 +358,7 @@ impl MarkdownRender {
                         link_icon_style,
                         &link_custom,
                     );
+                    paint_inline_emphasis(&mut render, line_idx, &chars, 0);
                     if let Some(style) = inline_code_background {
                         paint_inline_code(&mut render, line_idx, line_start, &chars, style);
                     }
@@ -399,7 +410,7 @@ impl MarkdownRender {
                 while chars.get(cursor) == Some(&'>') {
                     markers.push(cursor);
                     cursor += 1;
-                    if chars.get(cursor) == Some(&' ') {
+                    while chars.get(cursor) == Some(&' ') {
                         cursor += 1;
                     }
                 }
@@ -455,11 +466,11 @@ impl MarkdownRender {
                             continue;
                         }
                     } else {
+                        // The quote marker is painted; continue processing
+                        // the quoted content (lists, links, emphasis) with the
+                        // content start as the new indent.
+                        indent = cursor;
                         inline_skip = cursor;
-                        handled_block = true;
-                        if !visible {
-                            continue;
-                        }
                     }
                 }
             }
@@ -499,6 +510,7 @@ impl MarkdownRender {
 
             // Unordered lists.
             if !handled_block
+                && indent < chars.len()
                 && matches!(chars[indent], '-' | '*' | '+')
                 && chars.get(indent + 1) == Some(&' ')
             {
@@ -525,7 +537,7 @@ impl MarkdownRender {
             }
 
             // Horizontal rules.
-            if !handled_block {
+            if !handled_block && indent < chars.len() {
                 let trimmed = &chars[indent..];
                 if trimmed.len() >= 3
                     && matches!(trimmed[0], '-' | '*' | '_')
@@ -549,6 +561,7 @@ impl MarkdownRender {
                     link_icon_style,
                     &link_custom,
                 );
+                paint_inline_emphasis(&mut render, line_idx, &chars, inline_skip);
                 if let Some(style) = inline_code_background {
                     paint_inline_code(&mut render, line_idx, line_start, &chars, style);
                 }
@@ -645,6 +658,15 @@ impl Decoration for MarkdownRender {
                     (renderer.viewport.right().saturating_sub(x)) as usize,
                     paint.style,
                 );
+            }
+
+            // Apply right-to-left so earlier ranges stay in their original
+            // columns. Painting happened first, so icons/labels shift with
+            // the concealed text and retain their styling.
+            let mut removals = line.removals.clone();
+            removals.sort_unstable_by_key(|(start, _)| std::cmp::Reverse(*start));
+            for (start, end) in removals {
+                renderer.shift_line_left(pos.visual_line, start, end);
             }
         }
     }
@@ -894,6 +916,99 @@ fn domain_icon<'a>(dest: &str, custom: &'a [MarkdownLinkIcon]) -> Option<&'a str
 /// - `![alt](dest)` / `![[file]]` → image icon variants
 /// - `<url>` / `<mail>` → icon over `<`, space over `>`
 /// - `[^footnote]` → `󰯔 footnote`
+/// Conceal emphasis/strong/strikethrough/highlight markers without changing
+/// the line width. Syntax highlighting still styles the content itself.
+fn paint_inline_emphasis(
+    render: &mut MarkdownRender,
+    line_idx: usize,
+    chars: &[char],
+    skip_until: usize,
+) {
+    let code_ranges = inline_code_ranges(chars);
+    let in_code = |index: usize| {
+        code_ranges
+            .iter()
+            .any(|(start, _, _, end)| index >= *start && index < *end)
+    };
+    let mut index = skip_until;
+    while index < chars.len() {
+        if in_code(index) {
+            index += 1;
+            continue;
+        }
+        let marker = chars[index];
+        if !matches!(marker, '*' | '_' | '~' | '=') {
+            index += 1;
+            continue;
+        }
+        let run = chars[index..]
+            .iter()
+            .take_while(|ch| **ch == marker)
+            .count();
+        let marker_len = if marker == '~' || marker == '=' {
+            if run < 2 {
+                index += 1;
+                continue;
+            }
+            2
+        } else if run >= 3 {
+            3
+        } else if run >= 2 {
+            2
+        } else {
+            if chars.get(index + 1).is_none_or(|ch| ch.is_whitespace()) {
+                index += 1;
+                continue;
+            }
+            1
+        };
+        // Avoid treating snake_case underscores as emphasis.
+        let prev_is_word = index > 0 && chars[index - 1].is_alphanumeric();
+        if marker == '_' && prev_is_word {
+            index += 1;
+            continue;
+        }
+
+        let mut close = index + marker_len;
+        let mut found = None;
+        while close < chars.len() {
+            if in_code(close) {
+                close += 1;
+                continue;
+            }
+            if chars[close] == marker {
+                let close_run = chars[close..]
+                    .iter()
+                    .take_while(|ch| **ch == marker)
+                    .count();
+                if close_run >= marker_len
+                    && !chars
+                        .get(close + marker_len)
+                        .is_some_and(|ch| ch.is_alphanumeric() && marker == '_')
+                {
+                    found = Some(close);
+                    break;
+                }
+                close += close_run.max(1);
+            } else {
+                close += 1;
+            }
+        }
+        let Some(close) = found else {
+            index += 1;
+            continue;
+        };
+        let line_render = render.lines.entry(line_idx).or_default();
+        let open_col = display_col(chars, index);
+        let close_col = display_col(chars, close);
+        line_render.removals.push((open_col, open_col + marker_len));
+        line_render
+            .removals
+            .push((close_col, close_col + marker_len));
+        index = close + marker_len;
+    }
+}
+
 fn paint_inline_links(
     render: &mut MarkdownRender,
     line_idx: usize,
@@ -1031,16 +1146,18 @@ fn paint_inline_links(
                         while text.width() < width {
                             text.push(' ');
                         }
-                        render
-                            .lines
-                            .entry(line_idx)
-                            .or_default()
-                            .paints
-                            .push(Paint {
-                                col: display_col(&chars, label_end + 1),
-                                text,
-                                style: icon_style,
-                            });
+                        let line_render = render.lines.entry(line_idx).or_default();
+                        // Conceal the label brackets; the content and the
+                        // destination icon shift left afterwards.
+                        let open_col = display_col(&chars, index);
+                        let close_col = display_col(&chars, label_end);
+                        line_render.removals.push((open_col, open_col + 1));
+                        line_render.removals.push((close_col, close_col + 1));
+                        line_render.paints.push(Paint {
+                            col: display_col(&chars, label_end + 1),
+                            text,
+                            style: icon_style,
+                        });
                         index = dest_end + 1;
                         continue;
                     }
@@ -1388,6 +1505,29 @@ mod tests {
     }
 
     #[test]
+    fn emphasis_markers_are_concealed() {
+        let line: Vec<char> = "**bold** and *italic* and ~~gone~~".chars().collect();
+        let mut render = MarkdownRender::default();
+        paint_inline_emphasis(&mut render, 0, &line, 0);
+        let removals = &render.lines.get(&0).unwrap().removals;
+        assert!(removals.contains(&(0, 2)));
+        assert!(removals.contains(&(6, 8)));
+        assert!(removals.contains(&(13, 14)));
+        assert!(removals.contains(&(20, 21)));
+        assert!(removals.contains(&(26, 28)));
+        assert!(removals.contains(&(32, 34)));
+    }
+
+    #[test]
+    fn quote_list_metadata_uses_content_indent() {
+        use helix_core::Rope;
+        let text = Rope::from("> * item\n>   - nested\n");
+        let meta = build_line_meta(text.slice(..));
+        assert_eq!(meta[0].list_level, Some(1));
+        assert_eq!(meta[1].list_level, Some(2));
+    }
+
+    #[test]
     fn inline_code_is_not_scanned_for_links() {
         let line: Vec<char> = "`[x](https://github.com)` [y](https://github.com)"
             .chars()
@@ -1395,8 +1535,14 @@ mod tests {
         let mut render = MarkdownRender::default();
         paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
         let paints = &render.lines.get(&0).unwrap().paints;
-        assert_eq!(paints.len(), 1);
-        assert!(paints[0].col > 0);
+        let icons = paints
+            .iter()
+            .filter(|p| p.text.starts_with('\u{F02A4}'))
+            .count();
+        assert_eq!(
+            icons, 1,
+            "only the link outside the code span should render"
+        );
     }
 
     #[test]
