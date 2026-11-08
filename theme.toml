@@ -50,6 +50,11 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 "ui.linenr.selected" = { fg = "lilac" }
 "ui.statusline" = { fg = "lilac", bg = "revolver" }
 "ui.statusline.inactive" = { fg = "lavender", bg = "revolver" }
+"ui.statusline.normal" = { fg = "revolver", bg = "lilac", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "revolver", bg = "honey", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "revolver", bg = "apricot", modifiers = ["bold"] }
+"ui.statusline.command" = { fg = "revolver", bg = "delta", modifiers = ["bold"] }
+"ui.statusline.search" = { fg = "white", bg = "bossanova", modifiers = ["bold"] }
 "ui.popup" = { bg = "revolver" }
 "ui.window" = { fg = "bossanova" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }

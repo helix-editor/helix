@@ -436,9 +436,29 @@ fn mode_style(context: &RenderContext) -> Style {
     if !context.focused || !context.editor.config().color_modes {
         return Style::default();
     }
+    // Command/search prompts have their own statusline chips and should not
+    // share the Normal color. Prompt state takes precedence over editor mode.
+    if let Some(prompt) = context.editor.prompt.as_ref() {
+        if prompt.is_command {
+            if let Some(style) = context.editor.theme.try_get("ui.statusline.command") {
+                return style;
+            }
+            return context.editor.theme.get("ui.statusline.normal");
+        }
+        if prompt.is_search {
+            if let Some(style) = context.editor.theme.try_get("ui.statusline.search") {
+                return style;
+            }
+            return context.editor.theme.get("ui.statusline.insert");
+        }
+    }
     match context.editor.mode() {
         Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
-        Mode::Select => context.editor.theme.get("ui.statusline.select"),
+        Mode::Select => context
+            .editor
+            .theme
+            .try_get("ui.statusline.select")
+            .unwrap_or_else(|| context.editor.theme.get("ui.statusline.select")),
         Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
     }
 }
