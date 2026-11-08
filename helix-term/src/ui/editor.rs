@@ -568,7 +568,7 @@ impl EditorView {
         let primary_idx = selection.primary_index();
 
         let cursorkind = cursor_shape_config.from_mode(mode);
-        let cursor_is_block = cursorkind == CursorKind::Block;
+        let cursor_is_block = matches!(cursorkind, CursorKind::Block | CursorKind::BlockHardware);
 
         let selection_scope = theme
             .find_highlight_exact("ui.selection")
@@ -689,15 +689,12 @@ impl EditorView {
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
-        surface.clear_with(
-            viewport,
-            editor
-                .theme
-                .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
-        );
 
-        let bufferline_active = editor
+        // The tab row itself is transparent: it follows the editor background,
+        // which is the terminal default for themes using `ui.background = "none"`.
+        surface.clear_with(viewport, editor.theme.get("ui.background"));
+
+        let mut bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
@@ -706,6 +703,40 @@ impl EditorView {
             .theme
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+
+        // Keep the current tab opaque even if a generated theme forgot to give
+        // the active scope a background.
+        let active_bg = bufferline_active
+            .bg
+            .filter(|color| *color != Color::Reset)
+            .or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline.background")
+                    .and_then(|style| style.bg)
+                    .filter(|color| *color != Color::Reset)
+            })
+            .or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.statusline")
+                    .and_then(|style| style.bg)
+                    .filter(|color| *color != Color::Reset)
+            });
+        if let Some(bg) = active_bg {
+            bufferline_active = bufferline_active.bg(bg);
+        }
+
+        // Inactive tabs are a lighter blend of the active tab color. Palette
+        // colors cannot be blended portably, so fall back to the theme's
+        // existing inactive background in that case.
+        let inactive_bg = active_bg
+            .and_then(|color| crate::ui::lighten(color, 0.15))
+            .or(bufferline_inactive.bg);
+        let bufferline_inactive = match inactive_bg {
+            Some(bg) => bufferline_inactive.bg(bg),
+            None => bufferline_inactive,
+        };
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
@@ -1708,10 +1739,11 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // The statusline occupies the last row of the area; -1 for the bufferline.
+        // The statusline occupies the last row of the area. The bufferline and
+        // a one-row gap sit above the editor content.
         let mut editor_area = area;
         if use_bufferline {
-            editor_area = editor_area.clip_top(1);
+            editor_area = editor_area.clip_top(2);
         }
 
         // if the terminal size suddenly changed, we need to trigger a resize
@@ -1719,6 +1751,10 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
+            surface.clear_with(
+                Rect::new(area.x, area.y + 1, area.width, 1),
+                cx.editor.theme.get("ui.background"),
+            );
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
@@ -1728,7 +1764,7 @@ impl Component for EditorView {
 
         if cx.editor.dashboard_visible() {
             let dashboard_area = if use_bufferline {
-                area.clip_top(1).clip_bottom(1)
+                area.clip_top(2).clip_bottom(1)
             } else {
                 area.clip_bottom(1)
             };
@@ -1850,7 +1886,10 @@ impl Component for EditorView {
             return (None, CursorKind::Hidden);
         }
         match editor.cursor() {
-            // all block cursors are drawn manually
+            // The software block cursor is drawn manually. Hide the terminal
+            // cursor so it does not double up. `BlockHardware` deliberately
+            // falls through so the terminal cursor (and its trail animation)
+            // stays visible.
             (pos, CursorKind::Block) => {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)

@@ -24,7 +24,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
-use helix_view::theme::Style;
+use helix_view::theme::{Color, Style, Theme};
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -33,6 +33,53 @@ pub use prompt::{Prompt, PromptEvent};
 pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
+
+/// Accent color used by popup and menu borders.
+///
+/// This deliberately reuses existing theme scopes instead of introducing
+/// fork-only keys, so regenerating a theme (for example with matugen) keeps
+/// borders themed without extra template changes.
+fn border_accent(theme: &Theme) -> Color {
+    theme
+        .try_get("ui.menu.selected")
+        .and_then(|style| style.bg)
+        .or_else(|| {
+            theme
+                .try_get("ui.cursor.primary")
+                .and_then(|style| style.bg)
+        })
+        .or_else(|| {
+            theme
+                .try_get("ui.statusline.normal")
+                .and_then(|style| style.bg)
+        })
+        .or_else(|| theme.try_get("ui.window").and_then(|style| style.fg))
+        .unwrap_or(Color::Reset)
+}
+
+/// Style for a border drawn around `panel_scope`.
+///
+/// The foreground is the theme accent; the background follows the panel so
+/// transparent popups (`bg = "none"`) stay transparent.
+pub(crate) fn panel_border_style(theme: &Theme, panel_scope: &str) -> Style {
+    let panel = theme.try_get(panel_scope).unwrap_or_default();
+    Style::new()
+        .fg(border_accent(theme))
+        .bg(panel.bg.unwrap_or(Color::Reset))
+}
+
+/// Blend an RGB color toward white by `amount` (0.0..=1.0).
+///
+/// Returns `None` for terminal palette colors, which have no portable RGB
+/// value to blend with.
+pub(crate) fn lighten(color: Color, amount: f32) -> Option<Color> {
+    let Color::Rgb(red, green, blue) = color else {
+        return None;
+    };
+    let amount = amount.clamp(0.0, 1.0);
+    let channel = |value: u8| (value as f32 + (255.0 - value as f32) * amount).round() as u8;
+    Some(Color::Rgb(channel(red), channel(green), channel(blue)))
+}
 
 use helix_view::Editor;
 use tui::text::{Span, Spans};
@@ -845,5 +892,23 @@ mod tests {
         File::create(file).unwrap();
 
         assert_eq!(get_child_if_single_dir(root.path()), None);
+    }
+
+    #[test]
+    fn lighten_rgb_color_toward_white() {
+        assert_eq!(
+            lighten(Color::Rgb(0, 0, 0), 0.5),
+            Some(Color::Rgb(128, 128, 128))
+        );
+        assert_eq!(
+            lighten(Color::Rgb(255, 255, 255), 0.5),
+            Some(Color::Rgb(255, 255, 255))
+        );
+    }
+
+    #[test]
+    fn lighten_ignores_palette_colors() {
+        assert_eq!(lighten(Color::Red, 0.5), None);
+        assert_eq!(lighten(Color::Reset, 0.5), None);
     }
 }

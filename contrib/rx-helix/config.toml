@@ -19,6 +19,16 @@ cursorline = true
 bufferline = "multiple"
 # Keep completion/hover/menu panels on the terminal background.
 transparent-popups = true
+# Draw themed borders around hover, completion, signature, and menu popups.
+popup-border = "all"
+
+[editor.cursor-shape]
+# "block" is drawn entirely by Helix. "block-hardware" keeps the terminal
+# cursor visible on top of it, which enables terminal effects such as Kitty's
+# cursor_trail. Bar/underline always use the terminal cursor.
+normal = "block-hardware"
+insert = "bar"
+select = "underline"
 
 [editor.statusline]
 left = [

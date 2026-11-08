@@ -338,7 +338,11 @@ impl<T: Component> Component for Popup<T> {
         let mut inner = area;
         if render_borders {
             inner = area.inner(Margin::all(1));
-            Widget::render(Block::bordered(), area, surface);
+            let border_style = crate::ui::panel_border_style(
+                &cx.editor.theme,
+                if is_menu { "ui.menu" } else { "ui.popup" },
+            );
+            Widget::render(Block::bordered().border_style(border_style), area, surface);
         }
         let border = usize::from(render_borders);
 
