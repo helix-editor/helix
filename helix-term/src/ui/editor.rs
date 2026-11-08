@@ -92,7 +92,21 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area(doc);
+        // Reserve a 1-cell (~0.5 line) gap between bufferline/editor and
+        // editor/statusline. The top gap is the row carved out in
+        // `EditorView::render` (`area.clip_top(2)`). Here we keep a matching
+        // bottom gap by shrinking the text viewport by one row.
+        let full_inner = view.inner_area(doc);
+        let inner = if full_inner.height > 1 {
+            Rect::new(
+                full_inner.x,
+                full_inner.y,
+                full_inner.width,
+                full_inner.height.saturating_sub(1),
+            )
+        } else {
+            full_inner
+        };
         let area = view.area;
         let theme = &editor.theme;
         let config = editor.config();
@@ -261,6 +275,17 @@ impl EditorView {
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
         {
             Self::render_diagnostics(doc, view, inner, surface, theme);
+        }
+
+        // 0.5 line (~1 cell) margin between editor content and statusline.
+        // `inner` is already shrunk by 1, so the row just above the statusline
+        // is the gap.
+        if view.area.height > 2 {
+            let gap_y = view.area.y + view.area.height - 2;
+            surface.clear_with(
+                Rect::new(view.area.x, gap_y, view.area.width, 1),
+                theme.get("ui.background"),
+            );
         }
 
         let statusline_area = view.area.clip_top(view.area.height.saturating_sub(1));
@@ -687,109 +712,69 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
-    ///
-    /// Matches the reference in the screenshot: an opaque bar with a left
-    /// edge, `│` separators between tabs, and a `×` close hint per tab.
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME);
 
-        // Bar background: opaque `ui.bufferline.background` (or the bufferline
-        // fg's bg) so the row reads as a solid tab bar above the 1-line gap.
-        let bar_bg = editor
-            .theme
-            .try_get("ui.bufferline.background")
-            .and_then(|s| s.bg)
-            .filter(|c| *c != Color::Reset)
-            .or_else(|| {
-                editor
-                    .theme
-                    .try_get("ui.bufferline")
-                    .and_then(|s| s.bg)
-                    .filter(|c| *c != Color::Reset)
-            })
-            .or_else(|| editor.theme.try_get("ui.statusline").and_then(|s| s.bg))
-            .unwrap_or(Color::Reset);
-        let bar_style = Style::default().bg(bar_bg);
-        surface.clear_with(viewport, bar_style);
+        // Transparent bar: follows `ui.background` so the bar blends into
+        // the terminal when the theme uses `bg = "none"`.
+        surface.clear_with(viewport, editor.theme.get("ui.background"));
 
         let mut bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
-        let mut bufferline_inactive = editor
+        let bufferline_inactive = editor
             .theme
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        // Ensure the active tab has an opaque bg; fall back through
-        // bar_bg → statusline if the theme left it as `none`.
+        // Remove the theme's underline and make the active tab italic+bold.
+        bufferline_active.underline_style = None;
+        bufferline_active.underline_color = None;
+        bufferline_active.add_modifier.insert(Modifier::BOLD);
+        bufferline_active.add_modifier.insert(Modifier::ITALIC);
+
+        // Keep the current tab opaque even if a generated theme forgot to give
+        // the active scope a background.
         let active_bg = bufferline_active
             .bg
-            .filter(|c| *c != Color::Reset)
-            .or(Some(bar_bg).filter(|c| *c != Color::Reset))
+            .filter(|color| *color != Color::Reset)
+            .or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline.background")
+                    .and_then(|style| style.bg)
+                    .filter(|color| *color != Color::Reset)
+            })
             .or_else(|| {
                 editor
                     .theme
                     .try_get("ui.statusline")
-                    .and_then(|s| s.bg)
-                    .filter(|c| *c != Color::Reset)
+                    .and_then(|style| style.bg)
+                    .filter(|color| *color != Color::Reset)
             });
-        if let Some(bg) = active_bg.filter(|c| *c != Color::Reset) {
+        if let Some(bg) = active_bg {
             bufferline_active = bufferline_active.bg(bg);
         }
-        // Inactive tabs blend into the bar. Keep their bg on the bar so the
-        // row stays solid; the active tab pops with its own bg + underline.
-        if bufferline_inactive.bg.is_none() || bufferline_inactive.bg == Some(Color::Reset) {
-            bufferline_inactive = bufferline_inactive.bg(bar_bg);
-        }
 
-        let separator_style = editor
-            .theme
-            .try_get("ui.window")
-            .map(|mut s| {
-                s.bg = Some(bar_bg);
-                s
-            })
-            .unwrap_or(bar_style);
+        // Inactive tabs are a lighter blend of the active bg. Palette colors
+        // cannot be blended, so fall back to the theme's inactive bg.
+        let inactive_bg = active_bg
+            .and_then(|color| crate::ui::lighten(color, 0.15))
+            .or(bufferline_inactive.bg);
+        let bufferline_inactive = match inactive_bg {
+            Some(bg) => bufferline_inactive.bg(bg),
+            None => bufferline_inactive,
+        };
 
+        // Fixed-width tabs: each tab occupies the same number of cells,
+        // padded/truncated to `TAB_WIDTH`. This keeps the bar stable when
+        // switching files and matches the request for a uniform tab strip.
+        const TAB_WIDTH: usize = 22;
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        // Left edge like `│ ` in the reference.
-        if x < viewport.right() {
-            surface[(x, viewport.y)]
-                .set_symbol("▎")
-                .set_style(separator_style);
-            x += 1;
-        }
-
-        let docs: Vec<_> = editor.documents().collect();
-        for (idx, doc) in docs.iter().enumerate() {
-            if idx > 0 {
-                if x >= viewport.right() {
-                    break;
-                }
-                surface[(x, viewport.y)]
-                    .set_symbol("│")
-                    .set_style(separator_style);
-                x += 1;
-                if x >= viewport.right() {
-                    break;
-                }
-                // Thin padding after the separator, still on the bar.
-                surface[(x, viewport.y)]
-                    .set_symbol(" ")
-                    .set_style(bar_style);
-                x += 1;
-            }
-
-            let is_active = doc.id() == current_doc;
-            let style = if is_active {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
-
+        for doc in editor.documents() {
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -799,43 +784,38 @@ impl EditorView {
                 .unwrap_or_default();
             let fname = if fname.is_empty() { "[No Name]" } else { fname };
 
-            // ` ls.go  × ` style. Modified buffers keep `[+]` before the close hint.
+            let style = if doc.id() == current_doc {
+                bufferline_active
+            } else {
+                bufferline_inactive
+            };
+
+            // Inside the fixed tab, show ` filename[+]` centered with padding.
             let modified = if doc.is_modified() { "[+]" } else { "" };
-            let text = format!(" {}{}  × ", fname, modified);
+            let raw = format!(" {}{} ", fname, modified);
+            // Pad/truncate to TAB_WIDTH cells. `set_stringn` will truncate
+            // by character count, but we pre-pad so shorter names are centered
+            // with a fixed cell count.
+            let padded = if raw.len() >= TAB_WIDTH {
+                raw.chars().take(TAB_WIDTH).collect::<String>()
+            } else {
+                let pad = TAB_WIDTH - raw.len();
+                let left = pad / 2;
+                let right = pad - left;
+                format!("{}{}{}", " ".repeat(left), raw, " ".repeat(right))
+            };
 
             let rem = viewport.right().saturating_sub(x) as usize;
             if rem == 0 {
                 break;
             }
-            let (next_x, _) = surface.set_stringn(x, viewport.y, &text, rem, style);
-            // Pad one extra bar-colored cell after each tab so the bar shows
-            // through when tabs don't fill the width.
+            let width = rem.min(TAB_WIDTH);
+            let (next_x, _) = surface.set_stringn(x, viewport.y, &padded, width, style);
             x = next_x;
-            if x < viewport.right() {
-                let pad_style = if is_active {
-                    bufferline_active
-                } else {
-                    bar_style
-                };
-                // Keep the gap cell on the active bg for one cell, then bar.
-                surface[(x, viewport.y)]
-                    .set_symbol(" ")
-                    .set_style(pad_style);
-                x += 1;
-            }
 
             if x >= viewport.right() {
                 break;
             }
-        }
-
-        // Fill the remainder of the row with the bar background so the row
-        // never shows the editor bg between the last tab and the right edge.
-        while x < viewport.right() {
-            surface[(x, viewport.y)]
-                .set_symbol(" ")
-                .set_style(bar_style);
-            x += 1;
         }
     }
 
