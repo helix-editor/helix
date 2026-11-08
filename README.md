@@ -1,11 +1,24 @@
-# rx-helix
+# RX-Helix
 
-A personal fork of [Helix](https://github.com/helix-editor/helix) with UI and
-quality-of-life changes built around one idea: everything the editor shows on
-its last line should be useful, compact, and configurable.
+RX-Helix is a custom fork of [Helix](https://github.com/helix-editor/helix) meant
+to provide the best no-hassle experience: a single bottom line, inline
+command/search prompts, and a startup dashboard that stays out of your way —
+all driven by plain `config.toml`, with no plugins or package manager.
 
-The fork tracks upstream `master` automatically. `master` is a pure mirror of
-Helix; all custom work lives on `main`.
+## Highlights
+
+- **One-line UI** — the statusline, `:` command line, and `/` search share the
+  bottom row.
+- **Inline prompts** — `COMMAND` / `SEARCH` chips, inline text and cursor, no
+  echoed `:` prefix.
+- **Configurable statusline** — per-region transparency, responsive short mode
+  labels, reserved-space control, accent elements.
+- **Startup dashboard** — `auto` layout, live resize switching, content-sized
+  menus, built-in dot-matrix/HELIX logo, shortcuts that run any Helix command.
+- **No plugins** — the whole experience is compiled in and configured through
+  `~/.config/helix/config.toml`.
+- **Upstream-safe** — `master` is a pure mirror of Helix; the daily workflow
+  rebases `main` onto it automatically.
 
 ## Features
 
