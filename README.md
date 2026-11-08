@@ -94,8 +94,11 @@ cargo run -p helix-term -- path/to/file
 > HELIX_RUNTIME="$PWD/runtime" ./target/debug/hx path/to/file
 > ```
 >
-> Running `./target/debug/hx` without `HELIX_RUNTIME` opens files without
-> grammar queries, so syntax highlighting is missing.
+> A binary compiled from this checkout also records the source tree's
+> `runtime/` directory at build time and falls back to it when no runtime is
+> found next to the executable. `cargo install --path helix-term` therefore
+> keeps syntax highlighting as long as the checkout stays in place. Set
+> `HELIX_RUNTIME` to override the fallback.
 
 First build note: `helix-term/build.rs` fetches tree-sitter grammars. If your
 DNS is flaky, the fetch can take minutes; once the grammars and `.so` files are

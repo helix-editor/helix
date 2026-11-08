@@ -2,6 +2,12 @@
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
+The active theme file is reloaded automatically when it changes on disk. This is
+useful for generated themes (matugen, Noctalia, pywal) that rewrite the active
+theme file while the editor is running. Reloading is debounced briefly so a
+partially written file is not applied; if the new file cannot be parsed, the
+current theme stays active.
+
 Separate themes can be configured for light and dark modes. On terminals supporting [mode 2031 dark/light detection](https://github.com/contour-terminal/contour/blob/master/docs/vt-extensions/color-palette-update-notifications.md), the theme mode is detected from the terminal.
 
 ```toml
@@ -11,6 +17,13 @@ light = "catppuccin_latte"
 ## Optional. Used if the terminal doesn't declare a preference.
 ## Defaults to the theme set for `dark` if not specified.
 # fallback = "catppuccin_frappe"
+```
+
+A color value of `"none"` is treated as the terminal default color, which is
+useful for transparent UI panels:
+
+```toml
+"ui.popup" = { fg = "text", bg = "none" }
 ```
 
 ## Creating a theme

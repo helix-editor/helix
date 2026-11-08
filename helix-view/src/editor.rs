@@ -310,6 +310,9 @@ pub struct Config {
     pub cursorline: bool,
     /// Highlight the columns cursors are currently on. Defaults to false.
     pub cursorcolumn: bool,
+    /// Render popup and menu backgrounds with the terminal default color
+    /// instead of the theme's panel color. Defaults to false.
+    pub transparent_popups: bool,
     #[serde(deserialize_with = "deserialize_gutter_seq_or_struct")]
     pub gutters: GutterConfig,
     /// Middle click paste support. Defaults to true.
@@ -1429,6 +1432,7 @@ impl Default for Config {
             line_number: LineNumber::Absolute,
             cursorline: false,
             cursorcolumn: false,
+            transparent_popups: false,
             gutters: GutterConfig::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
