@@ -294,7 +294,9 @@ The dashboard uses these theme scopes, each falling back to an existing scope:
 
 The built-in logo is drawn with four shades that can be overridden through
 `ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
-`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`.
+`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`. Without overrides,
+the vertical layout uses the built-in cyan/purple shades and the horizontal
+layout derives its shades from the theme.
 
 ### `[editor.lsp]` Section
 
