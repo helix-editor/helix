@@ -2364,7 +2364,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     // TODO: could probably share with select_on_matches?
     let completions = search_completions(cx, Some(reg));
 
-    ui::regex_prompt(
+    ui::search_prompt(
         cx,
         "search:".into(),
         Some(reg),
