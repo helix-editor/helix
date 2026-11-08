@@ -34,38 +34,69 @@ pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-/// Accent color used by popup and menu borders.
+/// Primary/secondary/tertiary colors reused from existing theme scopes.
 ///
-/// This deliberately reuses existing theme scopes instead of introducing
-/// fork-only keys, so regenerating a theme (for example with matugen) keeps
-/// borders themed without extra template changes.
-fn border_accent(theme: &Theme) -> Color {
+/// These deliberately reuse `ui.statusline.*` (which every matugen/Noctalia
+/// theme defines) so no fork-only palette keys are needed. They also drive
+/// borders and picker/dashboard text per the latest polish request.
+pub(crate) fn primary_color(theme: &Theme) -> Color {
     theme
-        .try_get("ui.menu.selected")
-        .and_then(|style| style.bg)
-        .or_else(|| {
-            theme
-                .try_get("ui.cursor.primary")
-                .and_then(|style| style.bg)
-        })
-        .or_else(|| {
-            theme
-                .try_get("ui.statusline.normal")
-                .and_then(|style| style.bg)
-        })
-        .or_else(|| theme.try_get("ui.window").and_then(|style| style.fg))
+        .try_get("ui.statusline.normal")
+        .and_then(|s| s.bg.or(s.fg))
+        .or_else(|| theme.try_get("ui.menu.selected").and_then(|s| s.bg))
+        .or_else(|| theme.try_get("ui.cursor.primary").and_then(|s| s.bg))
+        .or_else(|| theme.try_get("ui.window").and_then(|s| s.fg))
         .unwrap_or(Color::Reset)
+}
+pub(crate) fn secondary_color(theme: &Theme) -> Color {
+    theme
+        .try_get("ui.statusline.select")
+        .and_then(|s| s.bg.or(s.fg))
+        .or_else(|| theme.try_get("ui.menu.selected").and_then(|s| s.fg))
+        .unwrap_or(Color::Reset)
+}
+pub(crate) fn tertiary_color(theme: &Theme) -> Color {
+    theme
+        .try_get("ui.statusline.insert")
+        .and_then(|s| s.bg.or(s.fg))
+        .or_else(|| theme.try_get("ui.selection").and_then(|s| s.bg))
+        .unwrap_or(Color::Reset)
+}
+
+/// Accent color used by popup and menu borders — now primary.
+fn border_accent(theme: &Theme) -> Color {
+    primary_color(theme)
 }
 
 /// Style for a border drawn around `panel_scope`.
 ///
-/// The foreground is the theme accent; the background follows the panel so
-/// transparent popups (`bg = "none"`) stay transparent.
+/// The foreground is the theme accent (primary); the background follows the
+/// panel so transparent popups (`bg = "none"`) stay transparent.
 pub(crate) fn panel_border_style(theme: &Theme, panel_scope: &str) -> Style {
     let panel = theme.try_get(panel_scope).unwrap_or_default();
     Style::new()
         .fg(border_accent(theme))
         .bg(panel.bg.unwrap_or(Color::Reset))
+}
+
+/// Style for mode-matched prompt completion boxes (command/search).
+pub(crate) fn prompt_border_style(theme: &Theme, mode: &str) -> Style {
+    let color = match mode {
+        "command" => theme
+            .try_get("ui.statusline.command")
+            .and_then(|s| s.bg.or(s.fg))
+            .unwrap_or_else(|| primary_color(theme)),
+        "search" => theme
+            .try_get("ui.statusline.search")
+            .and_then(|s| s.bg.or(s.fg))
+            .unwrap_or_else(|| tertiary_color(theme)),
+        "select" => secondary_color(theme),
+        _ => primary_color(theme),
+    };
+    // Use the same panel bg as `ui.menu` so the box stays consistent with
+    // the completion list itself.
+    let panel = theme.try_get("ui.menu").unwrap_or_default();
+    Style::new().fg(color).bg(panel.bg.unwrap_or(Color::Reset))
 }
 
 /// Blend an RGB color toward white by `amount` (0.0..=1.0).
@@ -288,6 +319,7 @@ fn get_excluded_types() -> ignore::types::Types {
 pub struct FilePickerData {
     root: PathBuf,
     directory_style: Style,
+    file_style: Style,
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
@@ -298,7 +330,8 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     let config = editor.config();
     let data = FilePickerData {
         root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
+        directory_style: Style::default().fg(secondary_color(&editor.theme)),
+        file_style: Style::default().fg(tertiary_color(&editor.theme)),
     };
 
     let now = Instant::now();
@@ -347,7 +380,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
                 .file_name()
                 .expect("normalized paths can't end in `..`")
                 .to_string_lossy();
-            spans.push(Span::raw(filename));
+            spans.push(Span::styled(filename, data.file_style));
             Spans::from(spans).into()
         },
     )];
