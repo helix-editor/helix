@@ -437,6 +437,8 @@ impl Prompt {
             .add_modifier(helix_view::graphics::Modifier::BOLD);
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
+        let is_select_prompt = self.prompt == "select:";
+        let select_prompt_style = theme.get("ui.statusline.select");
         // completion
 
         let max_len = self
@@ -475,6 +477,8 @@ impl Prompt {
                 crate::ui::prompt_border_style(theme, "command")
             } else if self.is_search {
                 crate::ui::prompt_border_style(theme, "search")
+            } else if self.prompt == "select:" {
+                crate::ui::prompt_border_style(theme, "select")
             } else {
                 crate::ui::panel_border_style(theme, "ui.menu")
             };
@@ -561,6 +565,8 @@ impl Prompt {
                 {
                     border_style = border_style.fg(c);
                 }
+            } else if self.prompt == "select:" {
+                border_style = border_style.fg(crate::ui::secondary_color(theme));
             }
             let block = Block::bordered().border_style(border_style);
 
@@ -577,8 +583,14 @@ impl Prompt {
 
         let line = area.height - 1;
         surface.clear_with(area.clip_top(line), background);
-        // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+        // render buffer text; `select:` gets the select-mode color like
+        // command/search chips do.
+        let prompt_style = if is_select_prompt {
+            select_prompt_style
+        } else {
+            prompt_color
+        };
+        surface.set_string(area.x, area.y + line, &self.prompt, prompt_style);
 
         self.line_area = area
             .clip_left(self.prompt.len() as u16)

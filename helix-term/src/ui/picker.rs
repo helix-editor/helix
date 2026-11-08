@@ -944,8 +944,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
-        let text = cx.editor.theme.get("ui.text");
-        let directory = cx.editor.theme.get("ui.text.directory");
+        let text = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
+        let directory = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
         surface.clear_with(area, background);
 
         let border_style = Style::new()
