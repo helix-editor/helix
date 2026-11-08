@@ -52,6 +52,8 @@ pub struct Prompt {
     is_command: bool,
     /// The `/` search prompt is rendered by the statusline.
     is_search: bool,
+    /// The `select:` regex prompt is rendered by the statusline.
+    is_select: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -110,6 +112,7 @@ impl Prompt {
             language: None,
             is_command: false,
             is_search: false,
+            is_select: false,
         }
     }
 
@@ -124,6 +127,13 @@ impl Prompt {
     /// statusline.
     pub fn search(mut self) -> Self {
         self.is_search = true;
+        self
+    }
+
+    /// Marks this prompt as a `select:` regex prompt, which is drawn by the
+    /// statusline with the select-mode colors.
+    pub fn select_line(mut self) -> Self {
+        self.is_select = true;
         self
     }
 
@@ -437,8 +447,6 @@ impl Prompt {
             .add_modifier(helix_view::graphics::Modifier::BOLD);
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
-        let is_select_prompt = self.prompt == "select:";
-        let select_prompt_style = theme.get("ui.statusline.select");
         // completion
 
         let max_len = self
@@ -477,7 +485,7 @@ impl Prompt {
                 crate::ui::prompt_border_style(theme, "command")
             } else if self.is_search {
                 crate::ui::prompt_border_style(theme, "search")
-            } else if self.prompt == "select:" {
+            } else if self.is_select {
                 crate::ui::prompt_border_style(theme, "select")
             } else {
                 crate::ui::panel_border_style(theme, "ui.menu")
@@ -552,20 +560,18 @@ impl Prompt {
 
             let mut border_style = crate::ui::panel_border_style(theme, "ui.help");
             if self.is_command {
-                if let Some(c) = theme
-                    .try_get("ui.statusline.command")
+                let c = theme
+                    .try_get_exact("ui.statusline.command")
                     .and_then(|s| s.bg.or(s.fg))
-                {
-                    border_style = border_style.fg(c);
-                }
+                    .unwrap_or_else(|| crate::ui::secondary_color(theme));
+                border_style = border_style.fg(c);
             } else if self.is_search {
-                if let Some(c) = theme
-                    .try_get("ui.statusline.search")
+                let c = theme
+                    .try_get_exact("ui.statusline.search")
                     .and_then(|s| s.bg.or(s.fg))
-                {
-                    border_style = border_style.fg(c);
-                }
-            } else if self.prompt == "select:" {
+                    .unwrap_or_else(|| crate::ui::tertiary_color(theme));
+                border_style = border_style.fg(c);
+            } else if self.is_select {
                 border_style = border_style.fg(crate::ui::secondary_color(theme));
             }
             let block = Block::bordered().border_style(border_style);
@@ -576,21 +582,16 @@ impl Prompt {
             text.render(inner, surface, cx);
         }
 
-        // The command line and search prompt are drawn by the statusline.
-        if self.is_command || self.is_search {
+        // The command line, search prompt, and select prompt are drawn by the
+        // statusline.
+        if self.is_command || self.is_search || self.is_select {
             return;
         }
 
         let line = area.height - 1;
         surface.clear_with(area.clip_top(line), background);
-        // render buffer text; `select:` gets the select-mode color like
-        // command/search chips do.
-        let prompt_style = if is_select_prompt {
-            select_prompt_style
-        } else {
-            prompt_color
-        };
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_style);
+        // render buffer text
+        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
         self.line_area = area
             .clip_left(self.prompt.len() as u16)
@@ -848,6 +849,7 @@ impl Component for Prompt {
             cursor: self.cursor,
             is_command: self.is_command,
             is_search: self.is_search,
+            is_select: self.is_select,
         })
     }
 
@@ -856,7 +858,7 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        if self.is_command || self.is_search {
+        if self.is_command || self.is_search || self.is_select {
             return (
                 editor.prompt_cursor.get(),
                 editor.config().cursor_shape.from_mode(Mode::Insert),

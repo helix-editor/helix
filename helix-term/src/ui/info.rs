@@ -1,4 +1,5 @@
 use crate::compositor::{Component, Context};
+use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use helix_view::theme::Style;
@@ -49,7 +50,7 @@ impl Component for Info {
                 let desc = &line[sep_pos + 2..];
                 // Key is right-padded to item_width; trim trailing spaces for style but keep width.
                 let key_trimmed = key.trim_end();
-                let key_width = key.len() as u16;
+                let key_width = key.width() as u16;
                 surface.set_stringn(inner.x, y, key_trimmed, key_width as usize, key_style);
                 // Two spaces separator in popup bg
                 surface.set_stringn(inner.x + key_width, y, "  ", 2, popup_bg);

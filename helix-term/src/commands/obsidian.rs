@@ -625,16 +625,24 @@ fn markdown_links(line: &str) -> Vec<Link> {
 fn resolve_link(vault: &Path, config: &ObsidianConfig, source: &Path, link: &Link) -> Vec<PathBuf> {
     let templates = templates_dir(vault, config);
     let notes = note_paths(vault, templates.as_deref());
+    resolve_link_with_notes(vault, &notes, source, link)
+}
 
+fn resolve_link_with_notes(
+    vault: &Path,
+    notes: &[PathBuf],
+    source: &Path,
+    link: &Link,
+) -> Vec<PathBuf> {
     match link.kind {
-        LinkKind::Wiki => find_note_by_target(&notes, vault, &link.target),
+        LinkKind::Wiki => find_note_by_target(notes, vault, &link.target),
         LinkKind::Markdown => {
             let mut matches = Vec::new();
             if let Some(path) = resolve_markdown_path(source, vault, &link.target) {
                 matches.push(path);
             }
             if matches.is_empty() {
-                matches = find_note_by_target(&notes, vault, &link.target);
+                matches = find_note_by_target(notes, vault, &link.target);
             }
             matches
         }
@@ -851,15 +859,28 @@ pub fn paste_image(
     let dir = notes_dir(&vault, &config).join(&config.attachments_subdir);
     fs::create_dir_all(&dir)?;
     let stamp = command_stdout("date", &["+%Y%m%d%H%M%S".to_string()]);
-    let name = format!("Pasted image {stamp}.{extension}");
-    let path = dir.join(&name);
+    let mut path = dir.join(format!("Pasted image {stamp}.{extension}"));
+    let mut suffix = 2;
+    while path.exists() {
+        path = dir.join(format!("Pasted image {stamp}-{suffix}.{extension}"));
+        suffix += 1;
+    }
     let file = std::fs::File::create(&path)?;
-    let status = Command::new("wl-paste")
+    let status = match Command::new("wl-paste")
         .args(["--type", mime])
         .stdout(file)
         .status()
-        .context("failed to run wl-paste")?;
-    ensure!(status.success(), "wl-paste failed to write the image");
+    {
+        Ok(status) => status,
+        Err(err) => {
+            let _ = fs::remove_file(&path);
+            return Err(err).context("failed to run wl-paste");
+        }
+    };
+    if !status.success() {
+        let _ = fs::remove_file(&path);
+        bail!("wl-paste failed to write the image");
+    }
 
     let link = current_note_path(cx)
         .ok()
@@ -893,10 +914,10 @@ pub fn toggle_checkbox(
     for range in doc.selection(view_id).iter() {
         let line_idx = range.cursor_line(text);
         let line = text.line(line_idx).to_string();
-        let Some(pos) = checkbox_position(&line) else {
+        let Some(pos) = checkbox_char_position(&line) else {
             continue;
         };
-        let marker = if matches!(line.as_bytes()[pos + 1], b'x' | b'X') {
+        let marker = if matches!(line.chars().nth(pos + 1), Some('x' | 'X')) {
             " "
         } else {
             "x"
@@ -950,10 +971,14 @@ pub fn links(cx: &mut CompositorContext, _args: Args, event: PromptEvent) -> any
     let (vault, config) = vault_config(cx)?;
     let source = current_note_path(cx)?;
     let text = current_doc_text(cx)?;
+    // Resolve every link against one vault scan instead of walking the vault
+    // once per link.
+    let templates = templates_dir(&vault, &config);
+    let notes = note_paths(&vault, templates.as_deref());
     let mut items = Vec::new();
     for (line_idx, line) in text.lines().enumerate() {
         for link in wiki_links(line).into_iter().chain(markdown_links(line)) {
-            let path = resolve_link(&vault, &config, &source, &link)
+            let path = resolve_link_with_notes(&vault, &notes, &source, &link)
                 .into_iter()
                 .next();
             items.push(LinkItem {
@@ -1219,9 +1244,12 @@ pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
         if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
             return false;
         }
-        let range = doc.selection(view_id).primary();
+        let selection = doc.selection(view_id);
+        if selection.len() != 1 {
+            return false;
+        }
         let text = doc.text().slice(..);
-        let cursor = range.cursor(text);
+        let cursor = selection.primary().cursor(text);
         let Some(range) = wiki_completion_range(&text, cursor) else {
             return false;
         };
@@ -1508,6 +1536,12 @@ fn checkbox_position(line: &str) -> Option<usize> {
     })
 }
 
+/// Char offset of the checkbox marker, converting the byte offset returned by
+/// `checkbox_position` so non-ASCII prefixes don't shift the edit.
+fn checkbox_char_position(line: &str) -> Option<usize> {
+    checkbox_position(line).map(|pos| line[..pos].chars().count())
+}
+
 fn relative_path_from(base: &Path, target: &Path) -> PathBuf {
     let base: Vec<Component> = base.components().collect();
     let target: Vec<Component> = target.components().collect();
@@ -1593,6 +1627,13 @@ mod tests {
         assert_eq!(checkbox_position("- [x] done"), Some(2));
         assert_eq!(checkbox_position("- [X] done"), Some(2));
         assert_eq!(checkbox_position("- plain"), None);
+    }
+
+    #[test]
+    fn checkbox_marker_uses_char_offsets() {
+        // `é` is two bytes, so the byte offset and char offset differ.
+        assert_eq!(checkbox_char_position("é - [ ] task"), Some(4));
+        assert_eq!(checkbox_char_position("- [ ] task"), Some(2));
     }
 
     #[test]

@@ -15,9 +15,10 @@ themes. There are no plugins and no separate config format.
 
 Modular config is implemented in `helix-term/src/config.rs`: the main `config.toml`
 is loaded first, then every `config.d/*.toml` (sorted) is merged with
-`merge_toml_values(..., 3)`. For `hx -c /path/to/config.toml` the sibling
-`config.d` next to that file is used. Workspace `.helix/config.toml` is still
-merged last if trusted.
+Each module's tables are deep-merged (nested keymap prefixes and statusline
+mode tables keep their siblings); arrays and scalar values are replaced. For
+`hx -c /path/to/config.toml` the sibling `config.d` next to that file is used.
+Workspace `.helix/config.toml` is still merged last if trusted.
 
 ```sh
 mkdir -p ~/.config/helix/config.d
@@ -109,7 +110,10 @@ The chip values come from `mode.command` / `mode.command-short` and
 "ui.statusline.select" = { fg = "onSecondary", bg = "secondary", modifiers = ["bold"] }
 ```
 
-Command and search currently use the normal-mode chip colors.
+Command and search use `ui.statusline.command` / `ui.statusline.search` when
+defined; otherwise they fall back to the secondary (`ui.statusline.select`)
+and tertiary (`ui.statusline.insert`) mode chips so they stay distinct from
+Normal. The `select:` regex prompt uses `ui.statusline.select`.
 
 ## Editor chrome
 
@@ -130,11 +134,14 @@ the active background. A blank row separates the tabs from the editor content.
 
 The command palette completion list always uses a themed border.
 `popup-border` additionally draws themed borders around hover, completion,
-signature, and menu popups. Border foregrounds use an accent taken from
-existing theme scopes in this order: `ui.menu.selected` background,
-`ui.cursor.primary` background, `ui.statusline.normal` background, then
-`ui.window` foreground. Border backgrounds follow the panel, so transparent
-panels keep transparent borders. No fork-only theme scope is required.
+signature, and menu popups. Border foregrounds use the primary accent from
+`ui.statusline.normal` (falling back to `ui.menu.selected`, then
+`ui.cursor.primary`, then `ui.window`). Text uses the secondary
+(`ui.statusline.select`) and tertiary (`ui.statusline.insert`) accents.
+Border backgrounds follow the panel, so transparent panels keep transparent
+borders. No fork-only theme scope is required for the fallback colors; a theme
+may optionally define `ui.statusline.command` / `ui.statusline.search` to
+override the Command/Search prompt chips.
 
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It

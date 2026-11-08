@@ -83,11 +83,11 @@ pub(crate) fn panel_border_style(theme: &Theme, panel_scope: &str) -> Style {
 pub(crate) fn prompt_border_style(theme: &Theme, mode: &str) -> Style {
     let color = match mode {
         "command" => theme
-            .try_get("ui.statusline.command")
+            .try_get_exact("ui.statusline.command")
             .and_then(|s| s.bg.or(s.fg))
-            .unwrap_or_else(|| primary_color(theme)),
+            .unwrap_or_else(|| secondary_color(theme)),
         "search" => theme
-            .try_get("ui.statusline.search")
+            .try_get_exact("ui.statusline.search")
             .and_then(|s| s.bg.or(s.fg))
             .unwrap_or_else(|| tertiary_color(theme)),
         "select" => secondary_color(theme),
@@ -170,6 +170,7 @@ pub fn regex_prompt(
         history_register,
         completion_fn,
         false,
+        false,
         move |cx, regex, _, event| fun(cx, regex, event),
     );
 }
@@ -187,6 +188,25 @@ pub fn search_prompt(
         history_register,
         completion_fn,
         true,
+        false,
+        move |cx, regex, _, event| fun(cx, regex, event),
+    );
+}
+
+pub fn select_prompt(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
+) {
+    raw_regex_prompt(
+        cx,
+        prompt,
+        history_register,
+        completion_fn,
+        false,
+        true,
         move |cx, regex, _, event| fun(cx, regex, event),
     );
 }
@@ -197,6 +217,7 @@ pub fn raw_regex_prompt(
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
     is_search: bool,
+    is_select: bool,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
@@ -292,6 +313,8 @@ pub fn raw_regex_prompt(
     .with_language("regex", std::sync::Arc::clone(&cx.editor.syn_loader));
     if is_search {
         prompt = prompt.search();
+    } else if is_select {
+        prompt = prompt.select_line();
     }
     // Calculate initial completion
     prompt.recalculate_completion(cx.editor);

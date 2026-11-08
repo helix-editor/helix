@@ -1,6 +1,5 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
-use helix_loader::merge_toml_values;
 use helix_view::{document::Mode, theme};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -80,7 +79,7 @@ impl Config {
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
                     }
-                    (Some(global), Some(local)) => merge_toml_values(global, local, 3)
+                    (Some(global), Some(local)) => Self::merge_config_values(global, local)
                         .try_into()
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
@@ -125,19 +124,42 @@ impl Config {
         })
     }
 
+    /// Deep-merge tables for `config.d`. Unlike `merge_toml_values`, nested
+    /// keymap prefixes (`[keys.normal.space]`) and statusline mode tables are
+    /// merged rather than replaced wholesale; arrays/scalars are replaced.
+    fn merge_config_values(left: toml::Value, right: toml::Value) -> toml::Value {
+        use toml::Value;
+
+        match (left, right) {
+            (Value::Table(mut left), Value::Table(right)) => {
+                for (key, right_value) in right {
+                    let merged = match left.remove(&key) {
+                        Some(left_value) => Self::merge_config_values(left_value, right_value),
+                        None => right_value,
+                    };
+                    left.insert(key, merged);
+                }
+                Value::Table(left)
+            }
+            (_, right_value) => right_value,
+        }
+    }
+
     fn load_merged_global_value() -> Result<toml::Value, ConfigLoadError> {
         let config_file = helix_loader::config_file();
         let config_dir = helix_loader::config_dir();
 
-        // Collect candidate module directories: the `config.d` next to the main
-        // config file and the default `~/.config/helix/config.d`. Deduplicate
-        // so a custom `--config` inside the default dir isn't scanned twice.
+        // Load `config.d` next to the main file. A custom `--config` gets its
+        // own sibling directory (matching normal `-c` isolation); the default
+        // config also gets `~/.config/helix/config.d`. Deduplicate so a custom
+        // path inside the default dir is not scanned twice.
         let mut module_dirs: Vec<PathBuf> = Vec::new();
         if let Some(parent) = config_file.parent() {
             module_dirs.push(parent.join("config.d"));
         }
+        let default_config = config_dir.join("config.toml");
         let default_d = config_dir.join("config.d");
-        if !module_dirs.iter().any(|p| p == &default_d) {
+        if config_file == default_config && !module_dirs.iter().any(|p| p == &default_d) {
             module_dirs.push(default_d);
         }
 
@@ -149,7 +171,7 @@ impl Config {
             Ok(content) => {
                 let val: toml::Value =
                     toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
-                merged = merge_toml_values(merged, val, 3);
+                merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
@@ -164,7 +186,7 @@ impl Config {
             let mut entries: Vec<PathBuf> = match fs::read_dir(&dir) {
                 Ok(rd) => rd
                     .filter_map(|e| e.ok().map(|e| e.path()))
-                    .filter(|p| p.extension().map(|e| e == "toml").unwrap_or(false))
+                    .filter(|p| p.is_file() && p.extension().map(|e| e == "toml").unwrap_or(false))
                     .collect(),
                 Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
                 Err(err) => return Err(ConfigLoadError::Error(err)),
@@ -174,7 +196,7 @@ impl Config {
                 let content = fs::read_to_string(&path).map_err(ConfigLoadError::Error)?;
                 let val: toml::Value =
                     toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
-                merged = merge_toml_values(merged, val, 3);
+                merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
         }
@@ -307,5 +329,44 @@ mod tests {
         assert!(merged_str.contains("hover"));
         assert!(merged_str.contains("select_prev_sibling"));
         assert!(cfg.keys.contains_key(&Mode::Normal));
+    }
+
+    #[test]
+    fn modular_merge_keeps_nested_tables() {
+        let base: toml::Value = toml::from_str(
+            r#"
+            [keys.normal.space]
+            o = ":obsidian-quick-switch"
+            [editor.statusline.mode]
+            normal = "NORMAL"
+            insert = "INSERT"
+            "#,
+        )
+        .unwrap();
+        let module: toml::Value = toml::from_str(
+            r#"
+            [keys.normal.space]
+            f = "file_picker"
+            [editor.statusline.mode]
+            normal = "N"
+            "#,
+        )
+        .unwrap();
+
+        let merged = Config::merge_config_values(base, module);
+        let space = merged
+            .get("keys")
+            .and_then(|v| v.get("normal"))
+            .and_then(|v| v.get("space"))
+            .unwrap();
+        assert!(space.get("o").is_some(), "nested keymap prefix was dropped");
+        assert!(space.get("f").is_some());
+        let mode = merged
+            .get("editor")
+            .and_then(|v| v.get("statusline"))
+            .and_then(|v| v.get("mode"))
+            .unwrap();
+        assert_eq!(mode.get("normal").unwrap().as_str(), Some("N"));
+        assert_eq!(mode.get("insert").unwrap().as_str(), Some("INSERT"));
     }
 }
