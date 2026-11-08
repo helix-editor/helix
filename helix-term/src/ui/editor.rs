@@ -1001,6 +1001,9 @@ impl EditorView {
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
+        if event.char() == Some('[') && crate::commands::obsidian::complete_link(cx) {
+            return;
+        }
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
             match keyresult {
                 KeymapResult::NotFound => {

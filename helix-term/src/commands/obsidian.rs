@@ -1206,6 +1206,82 @@ fn note_items(cx: &CompositorContext) -> anyhow::Result<Vec<NoteItem>> {
         .collect())
 }
 
+pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
+    let view_id = cx.editor.tree.focus;
+    let doc_id = cx.editor.tree.get(view_id).doc;
+    let (start, end) = {
+        let Some(doc) = cx.editor.documents.get(&doc_id) else {
+            return false;
+        };
+        let Some(path) = doc.path() else {
+            return false;
+        };
+        if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            return false;
+        }
+        let range = doc.selection(view_id).primary();
+        let text = doc.text().slice(..);
+        let cursor = range.cursor(text);
+        let Some(range) = wiki_completion_range(&text, cursor) else {
+            return false;
+        };
+        range
+    };
+
+    let mut cx = CompositorContext {
+        editor: cx.editor,
+        scroll: None,
+        jobs: cx.jobs,
+    };
+    let Ok(items) = note_items(&cx) else {
+        return false;
+    };
+    push_wiki_completion_picker(&mut cx, items, start, end);
+    true
+}
+
+fn wiki_completion_range(text: &helix_core::RopeSlice, cursor: usize) -> Option<(usize, usize)> {
+    if cursor == 0 || text.char(cursor - 1) != '[' {
+        return None;
+    }
+    let end = if cursor < text.len_chars() && text.char(cursor) == ']' {
+        cursor + 1
+    } else {
+        cursor
+    };
+    Some((cursor - 1, end))
+}
+
+fn push_wiki_completion_picker(
+    cx: &mut CompositorContext,
+    items: Vec<NoteItem>,
+    start: usize,
+    end: usize,
+) {
+    push_component(cx, move |_editor, compositor| {
+        let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
+            format!("󰈔 {}", item.relative).into()
+        })];
+        let picker = Picker::new(columns, 0, items, (), move |cx, item, _action| {
+            let title = note_title(&item.path);
+            let view_id = cx.editor.tree.focus;
+            let doc_id = cx.editor.tree.get(view_id).doc;
+            if let Some(doc) = cx.editor.documents.get_mut(&doc_id) {
+                let transaction = Transaction::change(
+                    doc.text(),
+                    std::iter::once((start, end, Some(Tendril::from(format!("[[{title}]]"))))),
+                );
+                doc.apply(&transaction, view_id);
+            }
+        })
+        .with_title("Insert Link")
+        .with_help("<CR> insert link  <C-t> preview")
+        .truncate_start(false)
+        .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
+        compositor.push(Box::new(overlaid(picker)));
+    });
+}
+
 fn push_link_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
     push_component(cx, move |_editor, compositor| {
         let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
@@ -1535,5 +1611,19 @@ mod tests {
             ),
             Path::new("../6 - Main Notes/assets/img.png")
         );
+    }
+
+    #[test]
+    fn detects_wiki_completion_pair() {
+        use helix_core::Rope;
+
+        let text = Rope::from("[]");
+        assert_eq!(wiki_completion_range(&text.slice(..), 1), Some((0, 2)));
+
+        let text = Rope::from("[");
+        assert_eq!(wiki_completion_range(&text.slice(..), 1), Some((0, 1)));
+
+        let text = Rope::from("a");
+        assert_eq!(wiki_completion_range(&text.slice(..), 1), None);
     }
 }

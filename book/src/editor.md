@@ -338,7 +338,8 @@ Commands:
 
 The quick-switch picker footer shows `<CR> open`, `<C-x> new note` (from the
 typed query), and `<C-l> insert link` (inserts `[[Title]]` for the selected
-note into the current buffer).
+note into the current buffer). Typing `[[` in a markdown note also opens the
+note picker and completes the wiki link.
 
 Example keymaps:
 
