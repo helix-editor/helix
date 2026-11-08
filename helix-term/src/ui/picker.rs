@@ -254,6 +254,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     /// Whether to show the preview panel (default true)
     show_preview: bool,
+    /// Optional title shown on the picker border.
+    title: Option<String>,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
@@ -385,6 +387,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             query,
             truncate_start: true,
             show_preview: true,
+            title: None,
             callback_fn: Box::new(callback_fn),
             default_action: Action::Replace,
             completion_height: 0,
@@ -452,6 +455,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_default_action(mut self, action: Action) -> Self {
         self.default_action = action;
+        self
+    }
+
+    pub fn with_title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
         self
     }
 
@@ -699,11 +707,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
+        let block = match &self.title {
+            Some(title) => BLOCK.title(Span::raw(title.clone())),
+            None => BLOCK,
+        };
 
         // calculate the inner area inside the box
-        let inner = BLOCK.inner(area);
+        let inner = block.inner(area);
 
-        BLOCK.render(area, surface);
+        block.render(area, surface);
 
         // -- Render the input bar:
 

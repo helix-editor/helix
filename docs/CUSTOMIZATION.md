@@ -214,6 +214,12 @@ The horizontal built-in logo derives its shades from the theme when the
 `ui.dashboard.logo.*` scopes are not defined. The vertical wordmark uses
 `ui.dashboard.header`.
 
+If your theme is generated (for example by matugen/Noctalia), add these
+dashboard scopes to the generator too. Otherwise a theme regeneration can drop
+them and the dashboard falls back to the statusline/text colors. A mergeable
+snippet is in
+[`contrib/rx-helix/theme-dashboard.toml`](../contrib/rx-helix/theme-dashboard.toml).
+
 ## Obsidian
 
 Optional vault integration. Requires `rg` for vault search and a vault path.
