@@ -231,6 +231,20 @@ visible lines are scanned.
 Code fences are left as-is and keep their tree-sitter highlighting. Links,
 callouts, and tables are not decorated yet.
 
+Local images can be drawn inline when the terminal speaks the Kitty graphics
+protocol:
+
+```toml
+[editor.markdown]
+render = true
+images = true
+```
+
+`![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
+vault root. PNG, JPEG, and GIF dimensions are read locally; each image is
+scaled to at most 50% of the window height and re-placed as you scroll. Only
+the focused view is drawn. Remote URLs are skipped.
+
 ## Obsidian
 
 Optional vault integration. Requires `rg` for vault search and a vault path.

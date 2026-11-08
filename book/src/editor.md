@@ -309,10 +309,12 @@ Optional display-only markdown rendering. Disabled by default.
 | Key | Description | Default |
 | --- | ----------- | ------- |
 | `render` | Replace markdown markers with icons and frame characters | `false` |
+| `images` | Draw local images inline with the Kitty graphics protocol | `false` |
 
 ```toml
 [editor.markdown]
 render = true
+images = true
 ```
 
 Headings lose their `#` markers and gain level icons, bullet lists use `•`,
@@ -321,6 +323,12 @@ Rendering uses single-grapheme overlays, so the buffer text is unchanged and
 editing/saving/searching still see ordinary markdown. Only visible lines are
 scanned. Code fences keep their tree-sitter highlighting; links, callouts, and
 tables are not decorated yet.
+
+With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
+when the terminal supports Kitty graphics. Paths resolve relative to the note
+and then the vault root. PNG, JPEG, and GIF dimensions are read locally; images
+are capped at 50% of the window height and re-placed on scroll. Remote URLs are
+skipped and only the focused view is drawn.
 
 ### `[editor.obsidian]` Section
 
