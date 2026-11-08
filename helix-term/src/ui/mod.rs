@@ -423,7 +423,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
+    let directory_style = Style::default().fg(secondary_color(&editor.theme));
     let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
@@ -799,7 +799,8 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.path.is_empty());
 
-        let directory_color = editor.theme.get("ui.text.directory");
+        let directory_color =
+            helix_view::theme::Style::default().fg(crate::ui::secondary_color(&editor.theme));
         let symlink_color = editor.theme.get("ui.text.symlink");
 
         let style_from_file = |file: Utf8PathBuf| {
