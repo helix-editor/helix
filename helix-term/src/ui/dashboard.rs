@@ -177,15 +177,14 @@ impl Renderer {
                 );
                 let x = area.x + area.width.saturating_sub(horizontal_size.0 as u16) / 2;
 
-                let y = vertical_y(
-                    area,
-                    header_horizontal.height().max(right.height()),
-                    config.vertical_align,
-                );
-                draw(&header_horizontal, x, y, area, surface);
+                let height = header_horizontal.height().max(right.height());
+                let y = vertical_y(area, height, config.vertical_align);
+                let header_y = y + ((height - header_horizontal.height() + 1) / 2) as u16;
+                let right_y = y + ((height - right.height() + 1) / 2) as u16;
+                draw(&header_horizontal, x, header_y, area, surface);
 
                 let right_x = x + header_horizontal.width() as u16 + gap as u16;
-                draw(&right, right_x, y, area, surface);
+                draw(&right, right_x, right_y, area, surface);
                 horizontal_size
             }
         }
@@ -297,15 +296,6 @@ fn icon_spans(icon: &str, icon_width: usize, style: Style) -> Vec<Span<'static>>
     ]
 }
 
-const LOGO_R: [&str; 6] = [
-    "██████╗ ",
-    "██╔══██╗",
-    "██████╔╝",
-    "██╔══██╗",
-    "██║  ██║",
-    "╚═╝  ╚═╝",
-];
-
 const LOGO_H: [&str; 6] = [
     "██╗  ██╗",
     "██║  ██║",
@@ -314,6 +304,26 @@ const LOGO_H: [&str; 6] = [
     "██║  ██║",
     "╚═╝  ╚═╝",
 ];
+
+const LOGO_E: [&str; 6] = [
+    "███████╗",
+    "██╔════╝",
+    "█████╗  ",
+    "██╔══╝  ",
+    "███████╗",
+    "╚══════╝",
+];
+
+const LOGO_L: [&str; 6] = [
+    "██╗     ",
+    "██║     ",
+    "██║     ",
+    "██║     ",
+    "███████╗",
+    "╚══════╝",
+];
+
+const LOGO_I: [&str; 6] = ["██╗", "██║", "██║", "██║", "██║", "╚═╝"];
 
 const LOGO_X: [&str; 6] = [
     "██╗  ██╗",
@@ -381,22 +391,49 @@ fn dots_logo(theme: &Theme) -> Block {
 fn vertical_logo(theme: &Theme) -> Block {
     let header = dashboard_style(theme, "header", "ui.text");
     let icon = dashboard_style(theme, "icon", "ui.text.inactive");
-    let letters = letters_block(&[&LOGO_R, &LOGO_X, &LOGO_H, &LOGO_X], header);
+    let dots = dots_logo(theme);
+    let helix = letters_block(&[&LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X], header);
+
+    let dots_width = dots.width();
+    let helix_width = helix.width();
+    let gap = 4;
+    let height = dots.height().max(helix.height());
+    let dots_offset = (height - dots.height()) / 2;
+    let helix_offset = (height - helix.height()) / 2;
 
     let mut lines = vec![vec![Span::styled(
-        format!("{}  ランサム", "━".repeat(35)),
+        format!("{}  ランサム", "━".repeat(49)),
         header,
     )]];
-    for line in letters.lines {
-        let mut spans = vec![Span::raw(" ".repeat(5))];
-        spans.extend(line);
-        spans.push(Span::raw(" ".repeat(5)));
+    for row in 0..height {
+        let mut spans = Vec::new();
+        if let Some(line) = row.checked_sub(dots_offset).and_then(|i| dots.lines.get(i)) {
+            let mut width = 0;
+            for span in line {
+                width += span.content.width();
+                spans.push(span.clone());
+            }
+            if width < dots_width {
+                spans.push(Span::raw(" ".repeat(dots_width - width)));
+            }
+        } else {
+            spans.push(Span::raw(" ".repeat(dots_width)));
+        }
+        spans.push(Span::raw(" ".repeat(gap)));
+        if let Some(line) = row
+            .checked_sub(helix_offset)
+            .and_then(|i| helix.lines.get(i))
+        {
+            spans.extend(line.iter().cloned());
+        } else {
+            spans.push(Span::raw(" ".repeat(helix_width)));
+        }
         lines.push(spans);
     }
     lines.push(vec![
         Span::raw(" ".repeat(4)),
         Span::styled("󰘬 ", icon),
-        Span::styled("━".repeat(35), header),
+        Span::styled("━".repeat(49), header),
         Span::raw(" ".repeat(4)),
     ]);
 
@@ -405,7 +442,7 @@ fn vertical_logo(theme: &Theme) -> Block {
 
 fn letters_block(letters: &[&[&str; 6]], header: Style) -> Block {
     let mut lines = Vec::new();
-    for row in 0..LOGO_R.len() {
+    for row in 0..6 {
         let mut spans = Vec::new();
         for (index, letter) in letters.iter().enumerate() {
             if index > 0 {
@@ -573,10 +610,13 @@ mod tests {
     }
 
     #[test]
-    fn wordmark_has_expected_size() {
-        let block = letters_block(&[&LOGO_R, &LOGO_X, &LOGO_H, &LOGO_X], Style::default());
+    fn helix_wordmark_has_expected_size() {
+        let block = letters_block(
+            &[&LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X],
+            Style::default(),
+        );
         assert_eq!(block.height(), 6);
-        assert_eq!(block.width(), 35);
+        assert_eq!(block.width(), 39);
     }
 
     #[test]

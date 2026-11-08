@@ -130,9 +130,9 @@ warning is printed in the statusline.
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |
 | `menu-style` | `space-between` or `key-left` | `"space-between"` |
-| `menu-width` | Width of the item block for `space-between` | `50` |
+| `menu-width` | Width of the item block for `space-between` | `46` |
 | `key-width` | Key column width for `key-left` | `16` |
-| `column-gap` | Gap between columns in horizontal layout | `4` |
+| `column-gap` | Gap between columns in horizontal layout | `8` |
 | `default-logo` | Use the built-in logo when no header is set | `true` |
 
 ### Header and logo
