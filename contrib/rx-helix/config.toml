@@ -66,10 +66,12 @@ vertical-align = "center"
 section-gap = 1
 item-gap = 1
 
-# space-between: description left, key right-aligned to menu-width.
+# space-between: description left, keys right-aligned in a content-sized block.
+# Set menu-width to a positive value for a fixed-width block.
 # key-left: key left-aligned to key-width, then the description.
 menu-style = "space-between"
-menu-width = 46
+menu-width = 0
+menu-gap = 4
 key-width = 16
 column-gap = 8
 

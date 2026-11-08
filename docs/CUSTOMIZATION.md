@@ -115,10 +115,10 @@ layout = "auto"
 | `vertical` | Header/subtitle/items/footer stacked and centered |
 | `horizontal` | Header left, subtitle/items/footer right |
 
-`auto` shrinks the item block from `menu-width` down to its content width before
-giving up, so a horizontal layout can still fit a slightly narrow terminal. If
-both orientations fit, vertical is preferred unless the terminal is at least
-three times as wide as it is tall. If
+`auto` shrinks the item block to its content width before giving up, so a
+horizontal layout can still fit a slightly narrow terminal. If both orientations
+fit, vertical is preferred unless the terminal is at least three times as wide
+as it is tall. If
 neither orientation fits, the one with the smallest overflow is used and a
 warning is printed in the statusline.
 
@@ -130,7 +130,8 @@ warning is printed in the statusline.
 | `section-gap` | Blank lines between blocks | `1` |
 | `item-gap` | Blank lines between items | `0` |
 | `menu-style` | `space-between` or `key-left` | `"space-between"` |
-| `menu-width` | Width of the item block for `space-between` | `46` |
+| `menu-width` | Fixed width of the item block for `space-between`; `0` sizes it from content | `0` |
+| `menu-gap` | Gap between descriptions and keys when `menu-width` is `0` | `4` |
 | `key-width` | Key column width for `key-left` | `16` |
 | `column-gap` | Gap between columns in horizontal layout | `8` |
 | `default-logo` | Use the built-in logo when no header is set | `true` |
@@ -149,9 +150,9 @@ header-file = "~/.config/helix/logo.txt"
 ```
 
 When both are empty, the built-in logo is drawn. Horizontal uses the dot-matrix
-mark; vertical uses the block RXHX wordmark with the Japanese label and helix
-rule. Set `default-logo = false` to draw nothing instead. Content wider or taller
-than the terminal is clipped and reported once in the statusline.
+mark; vertical pairs the dot mark with the `HELIX` wordmark. Set
+`default-logo = false` to draw nothing instead. Content wider or taller than the
+terminal is clipped and reported once in the statusline.
 
 ### Items
 
@@ -199,7 +200,7 @@ command mode are swallowed.
 
 The horizontal built-in logo derives its shades from the theme when the
 `ui.dashboard.logo.*` scopes are not defined. The vertical wordmark uses
-`ui.dashboard.header` and `ui.dashboard.icon`.
+`ui.dashboard.header`.
 
 ## Complete example
 
