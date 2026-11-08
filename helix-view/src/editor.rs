@@ -370,6 +370,10 @@ pub struct Config {
     pub statusline: StatusLineConfig,
     /// Configuration of the dashboard shown when Helix starts without files.
     pub dashboard: DashboardConfig,
+    /// Configuration of the optional Obsidian vault integration.
+    pub obsidian: ObsidianConfig,
+    /// Configuration of the markdown renderer.
+    pub markdown: MarkdownConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -805,6 +809,66 @@ impl Default for DashboardConfig {
             column_gap: 8,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct ObsidianConfig {
+    pub enable: bool,
+    pub vault: Option<String>,
+    pub notes_subdir: String,
+    pub templates_subdir: String,
+    pub attachments_subdir: String,
+    pub date_format: String,
+    pub time_format: String,
+}
+
+impl Default for ObsidianConfig {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            vault: None,
+            notes_subdir: String::from("6 - Main Notes"),
+            templates_subdir: String::from("5 - Templates"),
+            attachments_subdir: String::from("assets"),
+            date_format: String::from("%d-%m-%Y %H:%M %p"),
+            time_format: String::from("%H:%M"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MarkdownConfig {
+    /// Render markdown syntax markers with icons and conceals.
+    pub render: bool,
+    /// Render local images in markdown buffers with the Kitty graphics protocol.
+    pub images: bool,
+    /// Download remote `http(s)` images with `curl` into the cache.
+    /// Mirrors image.nvim's `download_remote_images`.
+    pub download_remote_images: bool,
+    /// Custom link icons matched case-insensitively against the destination.
+    /// Checked before the built-in host table. Mirrors render-markdown's
+    /// `link.custom` (icon only; the highlight stays `markup.link.label`).
+    pub link_icons: Vec<MarkdownLinkIcon>,
+}
+
+impl Default for MarkdownConfig {
+    fn default() -> Self {
+        Self {
+            render: false,
+            images: false,
+            download_remote_images: true,
+            link_icons: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MarkdownLinkIcon {
+    pub pattern: String,
+    pub icon: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1383,6 +1447,8 @@ impl Default for Config {
             file_explorer: FileExplorerConfig::default(),
             statusline: StatusLineConfig::default(),
             dashboard: DashboardConfig::default(),
+            obsidian: ObsidianConfig::default(),
+            markdown: MarkdownConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,

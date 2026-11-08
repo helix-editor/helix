@@ -121,3 +121,8 @@ action = ":config-open"
 key = "q"
 desc = "Quit"
 action = ":quit"
+
+# Optional display-only markdown rendering.
+[editor.markdown]
+render = true
+images = true

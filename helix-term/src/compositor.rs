@@ -103,6 +103,11 @@ impl Compositor {
         self.area
     }
 
+    /// Whether an overlay (picker/prompt/menu) is covering the editor.
+    pub fn has_overlay(&self) -> bool {
+        self.layers.len() > 1
+    }
+
     pub fn resize(&mut self, area: Rect) {
         self.area = area;
     }

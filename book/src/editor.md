@@ -283,23 +283,141 @@ Content that is wider than the terminal is clipped, and a status message reports
 the required and available width. Keep `header`/`header-file` lines within the
 terminal width.
 
-The dashboard uses these theme scopes, each falling back to an existing scope:
+The dashboard maps onto existing theme scopes instead of custom
+`ui.dashboard.*` entries, so generated themes (matugen/Noctalia) cannot leave
+it uncolored:
 
-| Scope | Fallback |
-| ----- | -------- |
-| `ui.dashboard.header` | `ui.text` |
-| `ui.dashboard.subtitle` | `ui.text.inactive` |
-| `ui.dashboard.item` | `ui.text` |
-| `ui.dashboard.icon` | `ui.text.inactive` |
-| `ui.dashboard.key` | `ui.text.inactive` |
-| `ui.dashboard.footer` | `ui.text.inactive` |
+| Element | Source |
+| ------- | ------ |
+| Header, icons, primary logo shade | `ui.statusline.normal` accent |
+| Secondary logo shade | `ui.statusline.select` accent |
+| Tertiary logo shade | `ui.statusline.insert` accent |
+| Menu items, keys, and icons | `ui.statusline.normal` accent |
+| Subtitle, footer, muted logo shade | `ui.text.inactive` |
+
+The accent is the background color of the statusline scope, reused as a
+foreground color. Missing statusline scopes fall back to `ui.text`.
 
 The built-in logo has two forms. The horizontal form is the dot-matrix mark with a small `ʜᴇʟɪx` caption and
-is drawn with four shades that can be overridden through
-`ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
-`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`; without overrides
-the shades come from the theme. The vertical form pairs the dot mark with the
-`HELIX` wordmark and uses the header style.
+uses the primary/secondary/tertiary accents above. The vertical form pairs the
+dot mark with the `HELIX` wordmark and uses the header style.
+
+### `[editor.markdown]` Section
+
+Optional display-only markdown rendering. Disabled by default.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `render` | Replace markdown markers with icons and frame characters | `false` |
+| `images` | Draw local images inline with the Kitty graphics protocol | `false` |
+| `download_remote_images` | Download remote `http(s)` images with `curl` | `true` |
+| `link_icons` | Custom `{ pattern, icon }` link icons (checked before built-ins) | `[]` |
+
+```toml
+[editor.markdown]
+render = true
+images = true
+
+[[editor.markdown.link-icons]]
+pattern = "intranet"
+icon = "󰢩"
+```
+
+```toml
+[editor.markdown]
+render = true
+images = true
+```
+
+Headings lose their `#` markers and gain level icons (`󰲡`–`󰲫`), bullet lists
+use `● ○ ◆ ◇` by nesting depth, task boxes use `󰄱`/`󰱒`, block quotes use `▋`,
+and horizontal rules become a full-width `─` line. Heading rows get a
+full-width background from existing theme scopes; icons use
+`markup.heading.1`–`.6`. Code blocks get a full-width background with a
+`󰅩 language` header and inline code gets a background. Rendering paints over
+the rendered document, so the buffer text is unchanged and
+editing/saving/searching still see ordinary markdown. The cursor line and
+selections show raw markdown. Code fences keep their tree-sitter highlighting.
+Links and wiki links show icons while destinations are concealed, with
+per-host icons for known sites, and links inside headings, lists, quotes,
+tables, and callout titles are decorated. Obsidian callouts render their icon
+and title, recolor the markers of following quote lines, and pipe tables get
+`│` borders with a header background.
+
+With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
+when the terminal supports Kitty graphics. Paths resolve relative to the note
+and then the vault root. Each image reserves virtual lines so following text
+reflows instead of being covered. Partially scrolled images are cropped to
+the visible rows. Remote `http(s)` images download once with `curl` into the
+cache (disable with `download_remote_images = false`); opening an image file
+directly shows it full-view with the buffer text blanked.
+PNGs are sent directly; JPEG/GIF are converted with `ffmpeg` and SVG with
+`rsvg-convert` into `~/.cache/rx-helix/images`. Images are capped at 50% of
+the window height and re-placed on scroll, hidden while overlays cover the
+editor. Only the focused view is drawn.
+
+### `[editor.obsidian]` Section
+
+Optional integration for an Obsidian vault. Disabled by default. Vault search
+requires `rg` in `$PATH`.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `enable` | Enable the Obsidian commands | `false` |
+| `vault` | Path to the vault root | unset |
+| `notes-subdir` | Folder for newly created notes | `"6 - Main Notes"` |
+| `templates-subdir` | Folder excluded from note pickers | `"5 - Templates"` |
+| `attachments-subdir` | Folder for pasted images | `"assets"` |
+| `date-format` | `date` format for `{{date}}` | `"%d-%m-%Y %H:%M %p"` |
+| `time-format` | `date` format for `{{time}}` | `"%H:%M"` |
+
+Commands:
+
+- `:obsidian-quick-switch` — fuzzy picker of notes in the vault.
+- `:obsidian-search [query]` — ripgrep the vault; omit the query to be prompted.
+- `:obsidian-new [title]` — create a note in `notes-subdir` and open it.
+- `:obsidian-rename [title]` — rename the current note and rewrite links to it.
+- `:obsidian-template [name]` — apply a template at the cursor.
+- `:obsidian-follow-link` — open the wiki or markdown link under the cursor.
+- `:obsidian-backlinks` — picker of notes linking to the current note.
+- `:obsidian-link` — replace the selection with a link to a picked note.
+- `:obsidian-link-new` — create a note from the selection and link it.
+- `:obsidian-extract-note` — move the selection into a new note and link it.
+- `:obsidian-paste-image` — paste a clipboard PNG/JPEG into `attachments-subdir`.
+- `:obsidian-toggle-checkbox` — toggle `[ ]` / `[x]` on the current line.
+- `:obsidian-toc` — insert a heading table of contents.
+- `:obsidian-links` — pick and follow a link in the current note.
+- `:obsidian-tags` — pick a vault tag and insert it.
+- `:obsidian-smart-action` — follow a link or toggle a checkbox under the cursor.
+
+The quick-switch picker footer shows `<CR> open`, `<C-x> new note` (from the
+typed query), and `<C-l> insert link` (inserts `[[Title]]` for the selected
+note into the current buffer). Typing `[[` in a markdown note also opens the
+note picker and completes the wiki link.
+
+Example keymaps:
+
+```toml
+[keys.normal.space.o]
+o = ":obsidian-quick-switch"
+g = ":obsidian-search"
+n = ":obsidian-new"
+m = ":obsidian-rename"
+r = ":obsidian-rename"
+t = ":obsidian-template"
+f = ":obsidian-follow-link"
+b = ":obsidian-backlinks"
+i = ":obsidian-paste-image"
+c = ":obsidian-toggle-checkbox"
+d = ":obsidian-toc"
+l = ":obsidian-links"
+s = ":obsidian-tags"
+
+[keys.select.space.o]
+l = ":obsidian-link"
+n = ":obsidian-link-new"
+e = ":obsidian-extract-note"
+```
 
 ### `[editor.lsp]` Section
 

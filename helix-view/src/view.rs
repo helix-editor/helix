@@ -467,6 +467,10 @@ impl View {
             text_annotations.add_overlay(labels, style);
         }
 
+        if let Some(annotation) = crate::markdown::image_annotation(doc, self) {
+            text_annotations.add_line_annotation(annotation);
+        }
+
         if let Some(DocumentInlayHints {
             id: _,
             type_inlay_hints,

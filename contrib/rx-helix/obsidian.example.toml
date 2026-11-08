@@ -1,0 +1,34 @@
+# Obsidian vault integration for RX-Helix.
+#
+# Merge this into ~/.config/helix/config.toml. The vault path is expanded with
+# tilde support.
+
+[editor.obsidian]
+enable = true
+vault = "~/Documents/Obsidian/Lessons"
+notes-subdir = "6 - Main Notes"
+templates-subdir = "5 - Templates"
+attachments-subdir = "assets"
+date-format = "%d-%m-%Y %H:%M %p"
+time-format = "%H:%M"
+
+[keys.normal.space.o]
+o = ":obsidian-quick-switch"
+g = ":obsidian-search"
+n = ":obsidian-new"
+m = ":obsidian-rename"
+r = ":obsidian-rename"
+t = ":obsidian-template"
+f = ":obsidian-follow-link"
+b = ":obsidian-backlinks"
+i = ":obsidian-paste-image"
+c = ":obsidian-toggle-checkbox"
+d = ":obsidian-toc"
+l = ":obsidian-links"
+s = ":obsidian-tags"
+
+# Visual mode (Helix calls it select mode).
+[keys.select.space.o]
+l = ":obsidian-link"
+n = ":obsidian-link-new"
+e = ":obsidian-extract-note"

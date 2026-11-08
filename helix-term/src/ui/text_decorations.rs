@@ -33,6 +33,13 @@ pub trait Decoration {
     /// below the line reserved by `LineAnnotation`s as no text will be rendered here.
     fn decorate_line(&mut self, _renderer: &mut TextRenderer, _pos: LinePos) {}
 
+    /// Called **after** a **visual** line has been rendered.
+    ///
+    /// Unlike [`Decoration::decorate_line`], this may draw over the document
+    /// text. It is intended for replacing markdown syntax with icons or
+    /// drawing full-width rules and borders.
+    fn decorate_line_end(&mut self, _renderer: &mut TextRenderer, _pos: LinePos) {}
+
     /// Called **after** a **visual** line is rendered. A visual line does not
     /// necessarily correspond to a single line in a document as soft wrapping can
     /// spread a single document line across multiple visual lines.
@@ -127,6 +134,12 @@ impl<'a> DecorationManager<'a> {
     pub fn decorate_line(&mut self, renderer: &mut TextRenderer, pos: LinePos) {
         for (decoration, _) in &mut self.decorations {
             decoration.decorate_line(renderer, pos);
+        }
+    }
+
+    pub fn decorate_line_end(&mut self, renderer: &mut TextRenderer, pos: LinePos) {
+        for (decoration, _) in &mut self.decorations {
+            decoration.decorate_line_end(renderer, pos);
         }
     }
 

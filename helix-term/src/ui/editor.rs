@@ -8,7 +8,7 @@ use crate::{
     ui::{
         dashboard,
         document::{render_document, LinePos, TextRenderer},
-        statusline,
+        markdown_render, statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
         Completion, ProgressSpinners,
     },
@@ -100,8 +100,27 @@ impl EditorView {
 
         let view_offset = doc.view_offset(view.id);
 
+        let markdown_render = if config.markdown.render {
+            Some(markdown_render::MarkdownRender::prepare(
+                doc,
+                view,
+                view_offset.anchor,
+                inner.height,
+                theme,
+            ))
+        } else {
+            None
+        };
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
+
+        if let Some(markdown_render) = markdown_render {
+            decorations.add_decoration(markdown_render);
+        }
+
+        if helix_view::markdown::is_hijacked_image(doc) {
+            decorations.add_decoration(markdown_render::BlankViewport::new(theme));
+        }
 
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
@@ -1001,6 +1020,9 @@ impl EditorView {
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
+        if event.char() == Some('[') && crate::commands::obsidian::complete_link(cx) {
+            return;
+        }
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
             match keyresult {
                 KeymapResult::NotFound => {

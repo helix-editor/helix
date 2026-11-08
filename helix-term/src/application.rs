@@ -301,6 +301,14 @@ impl Application {
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
+        if self.compositor.has_overlay() {
+            // Keep images from painting over pickers/prompts/menus, mirroring
+            // image.nvim's window_overlap_clear behavior. Virtual lines stay
+            // reserved so text doesn't shift when the overlay closes.
+            crate::ui::image::clear();
+        } else {
+            crate::ui::image::render(&self.editor);
+        }
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -1284,6 +1292,7 @@ impl Application {
 
     fn restore_term(&mut self) -> std::io::Result<()> {
         use helix_view::graphics::CursorKind;
+        crate::ui::image::clear();
         self.terminal
             .backend_mut()
             .show_cursor(CursorKind::Block)
