@@ -7,7 +7,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
 use helix_view::graphics::{Rect, Style};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
@@ -376,7 +376,7 @@ impl MarkdownRender {
                         };
                         let line_render = render.lines.entry(line_idx).or_default();
                         line_render.paints.push(Paint {
-                            col: indent,
+                            col: display_col(&chars, indent),
                             text,
                             style,
                         });
@@ -417,7 +417,7 @@ impl MarkdownRender {
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
-                                    col: *col,
+                                    col: display_col(&chars, *col),
                                     text: "▋".to_string(),
                                     style,
                                 });
@@ -428,7 +428,7 @@ impl MarkdownRender {
                                 text.push(' ');
                             }
                             line_render.paints.push(Paint {
-                                col: cursor,
+                                col: display_col(&chars, cursor),
                                 text,
                                 style,
                             });
@@ -437,7 +437,7 @@ impl MarkdownRender {
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
-                                    col: *col,
+                                    col: display_col(&chars, *col),
                                     text: "▋".to_string(),
                                     style,
                                 });
@@ -477,13 +477,13 @@ impl MarkdownRender {
                         let line_render = render.lines.entry(line_idx).or_default();
                         // Conceal the bullet.
                         line_render.paints.push(Paint {
-                            col: indent,
+                            col: display_col(&chars, indent),
                             text: " ".to_string(),
                             style,
                         });
                         // Overlay `[x]` with the icon plus padding.
                         line_render.paints.push(Paint {
-                            col: bracket_col,
+                            col: display_col(&chars, bracket_col),
                             text: format!("{}  ", if checked { "󰱒" } else { "󰄱" }),
                             style,
                         });
@@ -511,7 +511,7 @@ impl MarkdownRender {
                         .or_default()
                         .paints
                         .push(Paint {
-                            col: indent,
+                            col: display_col(&chars, indent),
                             text: icon.to_string(),
                             style: list_style,
                         });
@@ -902,8 +902,18 @@ fn paint_inline_links(
     icon_style: Style,
     custom_icons: &[MarkdownLinkIcon],
 ) {
-    let mut index = skip_until.max(0);
+    let code_ranges = inline_code_ranges(chars);
+    let in_code = |index: usize| {
+        code_ranges
+            .iter()
+            .any(|(start, _, _, end)| index >= *start && index < *end)
+    };
+    let mut index = skip_until;
     while index < chars.len() {
+        if in_code(index) {
+            index += 1;
+            continue;
+        }
         // Image wiki link: `![[file]]`.
         if chars[index] == '!'
             && chars.get(index + 1) == Some(&'[')
@@ -912,17 +922,17 @@ fn paint_inline_links(
             if let Some(end) = find_closing(chars, index + 3, "]]") {
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: index,
+                    col: display_col(&chars, index),
                     text: "󰥶 ".to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: index + 2,
+                    col: display_col(&chars, index + 2),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
                 line_render.paints.push(Paint {
-                    col: end,
+                    col: display_col(&chars, end),
                     text: "  ".to_string(),
                     style: Style::default(),
                 });
@@ -949,7 +959,7 @@ fn paint_inline_links(
                             .or_default()
                             .paints
                             .push(Paint {
-                                col: label_end + 1,
+                                col: display_col(&chars, label_end + 1),
                                 text,
                                 style: icon_style,
                             });
@@ -967,20 +977,20 @@ fn paint_inline_links(
                 let inner: String = chars[index + 2..end].iter().collect();
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: index,
+                    col: display_col(&chars, index),
                     text: "󱗖 ".to_string(),
                     style: icon_style,
                 });
                 if let Some(pipe) = inner.find('|') {
                     let target_len = pipe + 1;
                     line_render.paints.push(Paint {
-                        col: index + 2,
+                        col: display_col(&chars, index + 2),
                         text: " ".repeat(target_len),
                         style: Style::default(),
                     });
                 }
                 line_render.paints.push(Paint {
-                    col: end,
+                    col: display_col(&chars, end),
                     text: "  ".to_string(),
                     style: Style::default(),
                 });
@@ -1000,7 +1010,7 @@ fn paint_inline_links(
                         .or_default()
                         .paints
                         .push(Paint {
-                            col: index,
+                            col: display_col(&chars, index),
                             text: "󰯔 ".to_string(),
                             style: icon_style,
                         });
@@ -1027,7 +1037,7 @@ fn paint_inline_links(
                             .or_default()
                             .paints
                             .push(Paint {
-                                col: label_end + 1,
+                                col: display_col(&chars, label_end + 1),
                                 text,
                                 style: icon_style,
                             });
@@ -1050,12 +1060,12 @@ fn paint_inline_links(
                 };
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: index,
+                    col: display_col(&chars, index),
                     text: icon.to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: end,
+                    col: display_col(&chars, end),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
@@ -1067,6 +1077,17 @@ fn paint_inline_links(
         }
         index += 1;
     }
+}
+
+/// Convert a char index to a terminal display column. Paint positions are
+/// compared against `TextRenderer.offset.col`, which is in cells, so using
+/// raw char indices shifts icons on lines containing CJK/emoji/combining
+/// characters.
+fn display_col(chars: &[char], index: usize) -> usize {
+    chars[..index.min(chars.len())]
+        .iter()
+        .map(|ch| ch.width().unwrap_or(0))
+        .sum()
 }
 
 fn find_char(chars: &[char], from: usize, target: char) -> Option<usize> {
@@ -1095,12 +1116,12 @@ fn paint_inline_code(
     for (open_start, open_end, close_start, close_end) in inline_code_ranges(chars) {
         let line_render = render.lines.entry(line_idx).or_default();
         line_render.paints.push(Paint {
-            col: open_start,
+            col: display_col(&chars, open_start),
             text: " ".repeat(open_end - open_start),
             style,
         });
         line_render.paints.push(Paint {
-            col: close_start,
+            col: display_col(&chars, close_start),
             text: " ".repeat(close_end - close_start),
             style,
         });
@@ -1352,6 +1373,30 @@ mod tests {
         assert!(meta[3].in_code.is_none());
         assert_eq!(meta[5].list_level, Some(2));
         assert_eq!(meta[8].callout, Some("diagnostic.info"));
+    }
+
+    #[test]
+    fn paint_columns_use_display_cells() {
+        let line: Vec<char> = "日 [x](y)".chars().collect();
+        let mut render = MarkdownRender::default();
+        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
+        let paints = &render.lines.get(&0).unwrap().paints;
+        // The destination starts after `日 ` (3 cells), `[x]` (3 cells).
+        assert!(paints
+            .iter()
+            .any(|p| p.col == 6 && p.text.starts_with('\u{F0339}')));
+    }
+
+    #[test]
+    fn inline_code_is_not_scanned_for_links() {
+        let line: Vec<char> = "`[x](https://github.com)` [y](https://github.com)"
+            .chars()
+            .collect();
+        let mut render = MarkdownRender::default();
+        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
+        let paints = &render.lines.get(&0).unwrap().paints;
+        assert_eq!(paints.len(), 1);
+        assert!(paints[0].col > 0);
     }
 
     #[test]
