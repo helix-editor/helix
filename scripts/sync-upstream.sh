@@ -3,19 +3,19 @@
 #
 # Branch model
 #   master  pure mirror of upstream/master; never commit here
-#   local   your custom commits, rebased onto master; your daily driver
+#   main   your custom commits, rebased onto master; your daily driver
 #
 # Usage: scripts/sync-upstream.sh [--no-build]
 #
 # Exit status
 #   0  synced (or already up to date)
-#   1  rebase conflict; local left untouched
-#   2  check failed; local left untouched
+#   1  rebase conflict; main left untouched
+#   2  check failed; main left untouched
 #   3  unsafe state (dirty tree, diverged mirror, missing remote)
 set -euo pipefail
 
 MIRROR=master
-FORK=local
+FORK=main
 REMOTE=upstream
 CHECK_CMD="HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo check -p helix-term --quiet"
 

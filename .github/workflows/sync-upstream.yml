@@ -2,12 +2,12 @@ name: Sync upstream
 
 # Keeps the fork current with helix-editor/helix without touching an editor:
 #   * fast-forwards `master` to upstream/master (pure mirror)
-#   * rebases `local` (all custom commits) onto it
-#   * only pushes `local` after `cargo check` passes
+#   * rebases `main` (all custom commits) onto it
+#   * only pushes `main` after `cargo check` passes
 #   * opens an issue when a conflict or check failure needs a human
 #
 # Scheduled workflows only run from the repository's default branch, which is
-# `local`. Push credentials for the default token never trigger other
+# `main`. Push credentials for the default token never trigger other
 # workflows, so this will not kick off upstream's release/pages jobs.
 
 on:
@@ -25,7 +25,7 @@ concurrency:
 
 env:
   MIRROR: master
-  FORK: local
+  FORK: main
   UPSTREAM_URL: https://github.com/helix-editor/helix.git
 
 jobs:
@@ -97,15 +97,15 @@ jobs:
           [Sync run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) could not update the fork automatically.
 
           Most likely a rebase conflict or a \`cargo check\` failure caused by upstream changes.
-          \`master\` may already be updated; \`local\` was left untouched.
+          \`master\` may already be updated; \`main\` was left untouched.
 
           \`\`\`sh
           git fetch upstream
-          git switch local
+          git switch main
           git rebase master
           # resolve, then:
           HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1 cargo check -p helix-term
-          git push --force-with-lease origin local
+          git push --force-with-lease origin main
           \`\`\`
           EOF
           )"
