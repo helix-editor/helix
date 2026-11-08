@@ -7,9 +7,25 @@ themes. There are no plugins and no separate config format.
 
 | Path | Purpose |
 | --- | --- |
-| `~/.config/helix/config.toml` | Editor, statusline, and dashboard settings |
+| `~/.config/helix/config.toml` | Editor, statusline, and dashboard settings (main) |
+| `~/.config/helix/config.d/*.toml` | Modular overrides — all `*.toml` are merged alphabetically on top of `config.toml` (e.g. `10-keys.toml`, `20-vim.toml`) |
 | `~/.config/helix/themes/<name>.toml` | Theme and `ui.*` scopes |
 | `contrib/rx-helix/config.toml` | Complete drop-in sample |
+| `contrib/config.d/vim.toml` | Vim muscle-memory module (copy of `LGUG2Z/helix-vim`) |
+
+Modular config is implemented in `helix-term/src/config.rs`: the main `config.toml`
+is loaded first, then every `config.d/*.toml` (sorted) is merged with
+`merge_toml_values(..., 3)`. For `hx -c /path/to/config.toml` the sibling
+`config.d` next to that file is used. Workspace `.helix/config.toml` is still
+merged last if trusted.
+
+```sh
+mkdir -p ~/.config/helix/config.d
+cp contrib/config.d/vim.toml ~/.config/helix/config.d/vim.toml  # vim bindings
+cp contrib/rx-helix/config.d/vim.toml ~/.config/helix/config.d/vim.toml  # rx sample
+# reload
+:config-reload
+```
 
 After editing the config, run `:config-reload` inside Helix. Dashboard layout
 changes (including `layout = "auto"`) are evaluated on the next redraw, so
