@@ -5,6 +5,14 @@
 #   mkdir -p ~/.config/helix
 #   cp contrib/rx-helix/config.toml ~/.config/helix/config.toml
 #
+# Modular config: extra keymaps and overrides live in `config.d/*.toml`.
+# All `~/.config/helix/config.d/*.toml` are merged alphabetically on top of
+# this file. The Vim muscle-memory module is at:
+#
+#   mkdir -p ~/.config/helix/config.d
+#   cp contrib/rx-helix/config.d/vim.toml ~/.config/helix/config.d/vim.toml
+#   cp contrib/config.d/vim.toml ~/.config/helix/config.d/vim.toml  # vanilla helix-vim
+#
 # The fork features only appear when the relevant sections are present. In
 # particular the dashboard needs `enable = true`.
 #

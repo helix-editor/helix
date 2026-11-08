@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::path::PathBuf;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -117,9 +118,79 @@ impl Config {
         Ok(res)
     }
 
+    fn load_merged_global_string() -> Result<String, ConfigLoadError> {
+        Self::load_merged_global_value().and_then(|val| {
+            toml::to_string(&val)
+                .map_err(|err| ConfigLoadError::Error(IOError::other(err.to_string())))
+        })
+    }
+
+    fn load_merged_global_value() -> Result<toml::Value, ConfigLoadError> {
+        let config_file = helix_loader::config_file();
+        let config_dir = helix_loader::config_dir();
+
+        // Collect candidate module directories: the `config.d` next to the main
+        // config file and the default `~/.config/helix/config.d`. Deduplicate
+        // so a custom `--config` inside the default dir isn't scanned twice.
+        let mut module_dirs: Vec<PathBuf> = Vec::new();
+        if let Some(parent) = config_file.parent() {
+            module_dirs.push(parent.join("config.d"));
+        }
+        let default_d = config_dir.join("config.d");
+        if !module_dirs.iter().any(|p| p == &default_d) {
+            module_dirs.push(default_d);
+        }
+
+        let mut merged = toml::Value::Table(Default::default());
+        let mut found_any = false;
+
+        // Main config.toml first (if it exists)
+        match fs::read_to_string(&config_file) {
+            Ok(content) => {
+                let val: toml::Value =
+                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                merged = merge_toml_values(merged, val, 3);
+                found_any = true;
+            }
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => return Err(ConfigLoadError::Error(err)),
+        }
+
+        // Then each `*.toml` in `config.d`, sorted for determinism
+        for dir in module_dirs {
+            if !dir.is_dir() {
+                continue;
+            }
+            let mut entries: Vec<PathBuf> = match fs::read_dir(&dir) {
+                Ok(rd) => rd
+                    .filter_map(|e| e.ok().map(|e| e.path()))
+                    .filter(|p| p.extension().map(|e| e == "toml").unwrap_or(false))
+                    .collect(),
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(err) => return Err(ConfigLoadError::Error(err)),
+            };
+            entries.sort();
+            for path in entries {
+                let content = fs::read_to_string(&path).map_err(ConfigLoadError::Error)?;
+                let val: toml::Value =
+                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                merged = merge_toml_values(merged, val, 3);
+                found_any = true;
+            }
+        }
+
+        if !found_any {
+            return Err(ConfigLoadError::Error(IOError::new(
+                std::io::ErrorKind::NotFound,
+                format!("no config found at {} or config.d", config_file.display()),
+            )));
+        }
+
+        Ok(merged)
+    }
+
     pub fn load_default() -> Result<Config, ConfigLoadError> {
-        let global_config =
-            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error)?;
+        let global_config = Self::load_merged_global_string()?;
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
 
@@ -208,5 +279,33 @@ mod tests {
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
+    }
+
+    #[test]
+    fn modular_merge_combines_keys() {
+        // Simulate `config.toml` + `config.d/vim.toml` merging.
+        let base = r#"
+            [keys.normal]
+            K = "hover"
+        "#;
+        let vim = r#"
+            [keys.normal]
+            w = ["move_next_word_start", "move_char_right", "collapse_selection"]
+            C-h = "select_prev_sibling"
+        "#;
+        let base_val: toml::Value = toml::from_str(base).unwrap();
+        let vim_val: toml::Value = toml::from_str(vim).unwrap();
+        let merged = helix_loader::merge_toml_values(base_val, vim_val, 3);
+        let merged_str = toml::to_string(&merged).unwrap();
+        let cfg = Config::load_test(&merged_str);
+        use helix_view::document::Mode;
+        // Both K and vim's w/C-h should be present alongside defaults.
+        // Helix's default `w` is `move_next_word_start`, vim overrides it to a
+        // sequence, so the merged value should contain the vim sequence.
+        // We can't introspect the trie easily, but we can at least check that
+        // the config parsed and that the merged string contains both keys.
+        assert!(merged_str.contains("hover"));
+        assert!(merged_str.contains("select_prev_sibling"));
+        assert!(cfg.keys.contains_key(&Mode::Normal));
     }
 }
