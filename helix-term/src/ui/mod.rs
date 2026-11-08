@@ -72,6 +72,7 @@ pub(crate) fn panel_border_style(theme: &Theme, panel_scope: &str) -> Style {
 ///
 /// Returns `None` for terminal palette colors, which have no portable RGB
 /// value to blend with.
+#[allow(dead_code)]
 pub(crate) fn lighten(color: Color, amount: f32) -> Option<Color> {
     let Color::Rgb(red, green, blue) = color else {
         return None;
