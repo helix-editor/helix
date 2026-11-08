@@ -8,6 +8,7 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::Hash;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime};
@@ -16,7 +17,7 @@ use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::text_annotations::LineAnnotation;
 use helix_core::Position;
 
-use crate::{Document, View};
+use crate::{Document, DocumentId, View, ViewId};
 
 const MAX_HEIGHT_PERCENT: f32 = 0.5;
 
@@ -33,6 +34,27 @@ pub struct ImageLayout {
     pub width_px: u32,
     pub height_px: u32,
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct ImageLayoutKey {
+    doc: DocumentId,
+    view: ViewId,
+    version: i32,
+    anchor: usize,
+    width: u16,
+    height: u16,
+}
+
+/// `visible_images` is called by both the text annotation pass and the image
+/// renderer in the same frame. Cache the short-lived layout so the filesystem
+/// and remote/conversion checks are not repeated.
+fn image_layout_cache() -> &'static Mutex<Option<(ImageLayoutKey, Instant, Vec<ImageLayout>)>> {
+    static CACHE: OnceLock<Mutex<Option<(ImageLayoutKey, Instant, Vec<ImageLayout>)>>> =
+        OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
+
+const IMAGE_LAYOUT_TTL: Duration = Duration::from_millis(100);
 
 /// Whether the current buffer is an image file shown full-view instead of
 /// as text. Shared by layout, placement, and viewport blanking.
@@ -84,6 +106,19 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
     }
 
     let view_offset = doc.view_offset(view.id);
+    let key = ImageLayoutKey {
+        doc: doc.id(),
+        view: view.id,
+        version: doc.version(),
+        anchor: view_offset.anchor,
+        width: inner.width,
+        height: inner.height,
+    };
+    if let Some((cached_key, cached_at, images)) = image_layout_cache().lock().unwrap().as_ref() {
+        if *cached_key == key && cached_at.elapsed() < IMAGE_LAYOUT_TTL {
+            return images.clone();
+        }
+    }
     let start_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
     let end_line = (start_line + inner.height as usize + 2).min(text.len_lines());
     let (cell_width, cell_height) = cell_size();
@@ -131,6 +166,7 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
         }
     }
 
+    *image_layout_cache().lock().unwrap() = Some((key, Instant::now(), images.clone()));
     images
 }
 
@@ -469,7 +505,7 @@ fn dimensions_or_converted(path: &Path) -> Option<(PathBuf, u32, u32)> {
         let dimensions = image_dimensions(path)?;
         return Some((path.to_path_buf(), dimensions.0, dimensions.1));
     }
-    let converted = ensure_png(path)?;
+    let converted = ensure_png_async(path)?;
     let dimensions = image_dimensions(&converted)?;
     Some((converted, dimensions.0, dimensions.1))
 }
@@ -492,9 +528,7 @@ fn cache_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache"))
 }
 
-/// Kitty only understands PNG (or raw pixels). Convert other formats to a
-/// cached PNG with ffmpeg (SVG uses rsvg-convert when available).
-pub fn ensure_png(path: &Path) -> Option<PathBuf> {
+fn png_output_path(path: &Path) -> Option<PathBuf> {
     if is_png(path) {
         return Some(path.to_path_buf());
     }
@@ -503,13 +537,55 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     path.hash(&mut hasher);
     modified.hash(&mut hasher);
-    let out = cache_dir()?
-        .join("rx-helix")
-        .join("images")
-        .join(format!("{:016x}.png", {
-            use std::hash::Hasher;
-            hasher.finish()
-        }));
+    Some(
+        cache_dir()?
+            .join("rx-helix")
+            .join("images")
+            .join(format!("{:016x}.png", {
+                use std::hash::Hasher;
+                hasher.finish()
+            })),
+    )
+}
+
+/// Convert a non-PNG image in the background. Returns the cached PNG path
+/// once it exists; while a conversion is running, returns `None` so the
+/// renderer can try again on a later frame without blocking the UI.
+pub fn ensure_png_async(path: &Path) -> Option<PathBuf> {
+    let out = png_output_path(path)?;
+    if out.is_file() {
+        return Some(out);
+    }
+    if conversion_failures().lock().unwrap().contains(&out) {
+        return None;
+    }
+    {
+        let mut in_progress = conversion_in_progress().lock().unwrap();
+        if !in_progress.insert(out.clone()) {
+            return None;
+        }
+    }
+
+    let input = path.to_path_buf();
+    std::thread::spawn(move || {
+        let ok = ensure_png(&input).is_some();
+        let mut in_progress = conversion_in_progress().lock().unwrap();
+        in_progress.remove(&out);
+        drop(in_progress);
+        if !ok {
+            conversion_failures().lock().unwrap().insert(out);
+        }
+    });
+    None
+}
+
+/// Kitty only understands PNG (or raw pixels). Convert other formats to a
+/// cached PNG with ffmpeg (SVG uses rsvg-convert when available).
+///
+/// This is the blocking implementation used by the background conversion
+/// worker; UI paths should use [`ensure_png_async`].
+pub fn ensure_png(path: &Path) -> Option<PathBuf> {
+    let out = png_output_path(path)?;
     if out.is_file() {
         return Some(out);
     }
@@ -558,6 +634,11 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
 fn conversion_failures() -> &'static Mutex<HashSet<PathBuf>> {
     static FAILURES: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
     FAILURES.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+fn conversion_in_progress() -> &'static Mutex<HashSet<PathBuf>> {
+    static IN_PROGRESS: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
+    IN_PROGRESS.get_or_init(|| Mutex::new(HashSet::new()))
 }
 
 fn percent_decode(input: &str) -> String {
