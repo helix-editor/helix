@@ -41,6 +41,7 @@ struct HeaderCache {
     path: Option<PathBuf>,
     modified: Option<SystemTime>,
     text: String,
+    error: Option<String>,
 }
 
 impl HeaderCache {
@@ -56,11 +57,16 @@ impl HeaderCache {
         }
 
         let Some(text) = fs::read_to_string(&path).ok() else {
+            self.error = Some(format!("dashboard: cannot read {}", path.display()));
+            self.path = Some(path);
+            self.modified = modified;
+            self.text.clear();
             return config.header.clone();
         };
         self.path = Some(path);
         self.modified = modified;
         self.text = text.clone();
+        self.error = None;
         text
     }
 }
@@ -73,6 +79,11 @@ pub struct Renderer {
 impl Renderer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Returns a header file read error once, if one occurred.
+    pub fn take_error(&mut self) -> Option<String> {
+        self.header.error.take()
     }
 
     /// Draws the dashboard in `area` and returns the size of the chosen
