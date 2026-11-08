@@ -661,7 +661,7 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &mut Editor, viewport: Rect, surface: &mut Surface) {
-        let bufferline_tabs = &mut editor.bufferline_tabs;
+        let bufferline_tabs = &mut editor.buffer_tabs;
 
         surface.clear_with(
             viewport,
