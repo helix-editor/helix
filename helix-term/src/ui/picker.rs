@@ -15,6 +15,7 @@ use crate::{
 };
 use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
+use helix_view::input::KeyEvent;
 use nucleo::pattern::{CaseMatching, Normalization};
 use nucleo::{Config, Nucleo};
 use thiserror::Error;
@@ -256,6 +257,10 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     show_preview: bool,
     /// Optional title shown on the picker border.
     title: Option<String>,
+    /// Optional key-hint line shown on the picker's bottom border.
+    help: Option<String>,
+    /// Extra keybindings that run while the picker is open.
+    extra_actions: Vec<ExtraAction<T>>,
     /// Constraints for tabular formatting
     widths: Vec<Constraint>,
 
@@ -388,6 +393,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             title: None,
+            help: None,
+            extra_actions: Vec::new(),
             callback_fn: Box::new(callback_fn),
             default_action: Action::Replace,
             completion_height: 0,
@@ -460,6 +467,25 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// Show a key-hint line on the picker's bottom border.
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into());
+        self
+    }
+
+    /// Bind an extra key while the picker is open.
+    ///
+    /// The callback receives the current prompt text and selection. Return
+    /// `true` to close the picker after the action runs.
+    pub fn with_extra_action(
+        mut self,
+        key: KeyEvent,
+        action: impl Fn(&mut Context, &str, Option<&T>) -> bool + 'static,
+    ) -> Self {
+        self.extra_actions.push((key, Box::new(action)));
         self
     }
 
@@ -689,6 +715,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn render_picker(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let frame_area = area;
         let status = self.matcher.tick(10);
         let snapshot = self.matcher.snapshot();
         if status.changed {
@@ -889,6 +916,19 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             },
             self.truncate_start,
         );
+
+        if let Some(help) = &self.help {
+            let y = frame_area.y + frame_area.height.saturating_sub(1);
+            let help_style = cx.editor.theme.get("ui.text.inactive");
+            let text = format!(" {help} ");
+            surface.set_stringn(
+                frame_area.x.saturating_add(2),
+                y,
+                &text,
+                frame_area.width.saturating_sub(4) as usize,
+                help_style,
+            );
+        }
     }
 
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -1098,6 +1138,19 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             EventResult::Consumed(Some(callback))
         };
 
+        let extra_action = self
+            .extra_actions
+            .iter()
+            .find(|(key, _)| *key == key_event)
+            .map(|(_, action)| action(ctx, self.prompt.line(), self.selection()));
+        if let Some(close) = extra_action {
+            return if close {
+                close_fn(self)
+            } else {
+                EventResult::Consumed(None)
+            };
+        }
+
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
                 self.move_by(1, Direction::Backward);
@@ -1217,3 +1270,7 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type ExtraAction<T> = (
+    KeyEvent,
+    Box<dyn Fn(&mut Context, &str, Option<&T>) -> bool>,
+);

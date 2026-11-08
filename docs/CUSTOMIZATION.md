@@ -197,28 +197,21 @@ command mode are swallowed.
 
 ### Theme scopes
 
-| Scope | Fallback |
+The dashboard does not need custom `ui.dashboard.*` scopes. It maps onto scopes
+that generated themes (matugen/Noctalia) always keep:
+
+| Element | Source |
 | --- | --- |
-| `ui.dashboard.header` | `ui.text` |
-| `ui.dashboard.subtitle` | `ui.text.inactive` |
-| `ui.dashboard.item` | `ui.text` |
-| `ui.dashboard.icon` | `ui.text.inactive` |
-| `ui.dashboard.key` | `ui.text.inactive` |
-| `ui.dashboard.footer` | `ui.text.inactive` |
-| `ui.dashboard.logo.purple` | built-in shade |
-| `ui.dashboard.logo.purple-dark` | built-in shade |
-| `ui.dashboard.logo.blue` | built-in shade |
-| `ui.dashboard.logo.blue-dark` | built-in shade |
+| Header, icons, primary logo shade | `ui.statusline.normal` accent |
+| Secondary logo shade | `ui.statusline.select` accent |
+| Tertiary logo shade | `ui.statusline.insert` accent |
+| Items | `ui.text` |
+| Subtitle, keys, footer, muted logo shade | `ui.text.inactive` |
 
-The horizontal built-in logo derives its shades from the theme when the
-`ui.dashboard.logo.*` scopes are not defined. The vertical wordmark uses
-`ui.dashboard.header`.
-
-If your theme is generated (for example by matugen/Noctalia), add these
-dashboard scopes to the generator too. Otherwise a theme regeneration can drop
-them and the dashboard falls back to the statusline/text colors. A mergeable
-snippet is in
-[`contrib/rx-helix/theme-dashboard.toml`](../contrib/rx-helix/theme-dashboard.toml).
+The accent is the background color of those statusline scopes, reused as a
+foreground color so no background block is drawn. If a statusline scope is
+missing, the dashboard falls back to `ui.text`. This means wallpaper changes
+and theme regeneration cannot leave the dashboard uncolored.
 
 ## Obsidian
 
@@ -259,6 +252,9 @@ Notes:
   the next phase.
 - `follow-link` and `backlinks` require the current buffer to be a file inside
   the vault.
+- The quick-switch picker uses a telescope-like footer: `<CR>` opens the
+  selected note, `<C-x>` creates a note from the typed query, and `<C-l>`
+  inserts `[[Title]]` for the selected note into the current buffer.
 
 A mergeable snippet lives in
 [`contrib/rx-helix/obsidian.example.toml`](../contrib/rx-helix/obsidian.example.toml).

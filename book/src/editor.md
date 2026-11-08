@@ -283,23 +283,24 @@ Content that is wider than the terminal is clipped, and a status message reports
 the required and available width. Keep `header`/`header-file` lines within the
 terminal width.
 
-The dashboard uses these theme scopes, each falling back to an existing scope:
+The dashboard maps onto existing theme scopes instead of custom
+`ui.dashboard.*` entries, so generated themes (matugen/Noctalia) cannot leave
+it uncolored:
 
-| Scope | Fallback |
-| ----- | -------- |
-| `ui.dashboard.header` | `ui.text` |
-| `ui.dashboard.subtitle` | `ui.text.inactive` |
-| `ui.dashboard.item` | `ui.text` |
-| `ui.dashboard.icon` | `ui.text.inactive` |
-| `ui.dashboard.key` | `ui.text.inactive` |
-| `ui.dashboard.footer` | `ui.text.inactive` |
+| Element | Source |
+| ------- | ------ |
+| Header, icons, primary logo shade | `ui.statusline.normal` accent |
+| Secondary logo shade | `ui.statusline.select` accent |
+| Tertiary logo shade | `ui.statusline.insert` accent |
+| Items | `ui.text` |
+| Subtitle, keys, footer, muted logo shade | `ui.text.inactive` |
+
+The accent is the background color of the statusline scope, reused as a
+foreground color. Missing statusline scopes fall back to `ui.text`.
 
 The built-in logo has two forms. The horizontal form is the dot-matrix mark with a small `ʜᴇʟɪx` caption and
-is drawn with four shades that can be overridden through
-`ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
-`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`; without overrides
-the shades come from the theme. The vertical form pairs the dot mark with the
-`HELIX` wordmark and uses the header style.
+uses the primary/secondary/tertiary accents above. The vertical form pairs the
+dot mark with the `HELIX` wordmark and uses the header style.
 
 ### `[editor.obsidian]` Section
 
@@ -320,6 +321,10 @@ Commands:
 - `:obsidian-new [title]` — create a note in `notes-subdir` and open it.
 - `:obsidian-follow-link` — open the wiki or markdown link under the cursor.
 - `:obsidian-backlinks` — picker of notes linking to the current note.
+
+The quick-switch picker footer shows `<CR> open`, `<C-x> new note` (from the
+typed query), and `<C-l> insert link` (inserts `[[Title]]` for the selected
+note into the current buffer).
 
 Example keymaps:
 
