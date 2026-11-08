@@ -13,6 +13,33 @@ use helix_view::{Document, Theme, View};
 use crate::ui::document::{LinePos, TextRenderer};
 use crate::ui::text_decorations::Decoration;
 
+/// Blanks the text viewport. Used for directly opened image files so the
+/// binary buffer text doesn't show around the placed image.
+pub struct BlankViewport {
+    style: Style,
+}
+
+impl BlankViewport {
+    pub fn new(theme: &Theme) -> Self {
+        Self {
+            style: theme.get("ui.background"),
+        }
+    }
+}
+
+impl Decoration for BlankViewport {
+    fn decorate_line_end(&mut self, renderer: &mut TextRenderer, pos: LinePos) {
+        let blank = " ".repeat(renderer.viewport.width as usize);
+        renderer.set_stringn(
+            renderer.viewport.x,
+            pos.visual_line,
+            &blank,
+            renderer.viewport.width as usize,
+            self.style,
+        );
+    }
+}
+
 #[derive(Default)]
 pub struct MarkdownRender {
     lines: HashMap<usize, LineRender>,

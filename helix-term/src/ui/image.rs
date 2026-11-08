@@ -31,8 +31,11 @@ struct CachedImage {
 #[derive(Default)]
 struct ImageState {
     next_id: u32,
+    /// Paths with image data currently transmitted to Kitty, and their ids.
+    /// Entries are dropped whenever Kitty is told to delete the image so
+    /// the next render re-transmits instead of referencing a dead id.
     cache: HashMap<PathBuf, CachedImage>,
-    placed: HashMap<u32, ()>,
+    placed: HashMap<u32, PathBuf>,
     rendered: bool,
 }
 
@@ -58,10 +61,10 @@ pub fn render(editor: &Editor) {
     // Save the cursor the TUI positioned, then restore it after placing images.
     out.push_str("\x1b7");
 
-    let mut current = HashMap::new();
+    let mut current: HashMap<u32, PathBuf> = HashMap::new();
     for placement in placements {
         let id = transmit(&mut state, &placement.path, &mut out);
-        current.insert(id, ());
+        current.insert(id, placement.path.clone());
         // Re-placing the same image/placement id moves it without flicker.
         // A source rect (x,y,w,h) crops partially scrolled images instead
         // of squishing them.
@@ -78,11 +81,18 @@ pub fn render(editor: &Editor) {
         ));
     }
 
-    // Delete images that scrolled out of view.
-    for id in state.placed.keys() {
-        if !current.contains_key(id) {
-            out.push_str(&format!("\x1b_Ga=d,i={id},q=2\x1b\\"));
-        }
+    // Delete images that scrolled out of view, and forget their ids so a
+    // later render re-transmits the data (a placement referencing a deleted
+    // image id is silently dropped by Kitty).
+    let gone: Vec<(u32, PathBuf)> = state
+        .placed
+        .iter()
+        .filter(|(id, _)| !current.contains_key(id))
+        .map(|(id, path)| (*id, path.clone()))
+        .collect();
+    for (id, path) in gone {
+        out.push_str(&format!("\x1b_Ga=d,d=i,i={id},q=2\x1b\\"));
+        state.cache.remove(&path);
     }
     state.placed = current;
     state.rendered = !state.placed.is_empty();
@@ -102,6 +112,9 @@ pub fn clear() {
         flush_output("\x1b_Ga=d,d=A,q=2\x1b\\");
         state.placed.clear();
         state.rendered = false;
+        // d=A drops transmitted data too: forget every id so the next
+        // render re-transmits instead of placing dead ids.
+        state.cache.clear();
     }
 }
 
@@ -151,8 +164,6 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
     if inner.width == 0 || inner.height == 0 {
         return Vec::new();
     }
-    let anchor = doc.view_offset(view.id).anchor.min(text.len_chars());
-    let topline = text.char_to_line(anchor);
     let mut placements = Vec::new();
 
     for image in helix_view::markdown::visible_images(doc, &view) {
@@ -188,40 +199,12 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
                 rows: rows_vis as u16,
                 crop,
             });
-        } else if image.line < topline {
-            // Anchor scrolled above the viewport: keep the visible tail
-            // on screen with a cropped source rect (image.nvim overlap).
-            let scrolled = topline - image.line;
-            let top_cut = scrolled.saturating_sub(image.offset_rows as usize);
-            if top_cut >= rows_total {
-                continue;
-            }
-            let y_off = (image.offset_rows as usize).saturating_sub(scrolled);
-            if y_off >= inner.height as usize {
-                continue;
-            }
-            let avail_rows = (inner.height as usize - y_off).max(1);
-            let rows_vis = (rows_total - top_cut).min(avail_rows).max(1);
-            let col = image.char_idx.saturating_sub(text.line_to_char(image.line)) as u16;
-            let cols = image
-                .cols
-                .min(inner.width.saturating_sub(col).max(1))
-                .max(1);
-            let y_src = ((top_cut as u64 * image.height_px as u64) / rows_total as u64)
-                .min(image.height_px as u64) as u32;
-            let h_max = (image.height_px as u64).saturating_sub(y_src as u64).max(1);
-            let h_src = ((rows_vis as u64 * image.height_px as u64) / rows_total as u64)
-                .clamp(1, h_max) as u32;
-            placements.push(Placement {
-                path,
-                x: inner.x.saturating_add(col),
-                y: inner.y.saturating_add(y_off as u16),
-                cols,
-                rows: rows_vis as u16,
-                crop: Some((0, y_src, image.width_px, h_src)),
-            });
         }
-        // Anchor below the viewport: skip until scrolled into view.
+        // Anchor at or above the viewport top, or below it: skip. The line
+        // annotation drops virtual rows for off-screen anchors, so text
+        // reflows with no gap and nothing needs covering. (Showing the tail
+        // of a scrolled-off image would require virtual rows *before* the
+        // first rendered line, which the annotation model can't express.)
     }
 
     placements

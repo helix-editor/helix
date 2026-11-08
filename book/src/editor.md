@@ -310,6 +310,7 @@ Optional display-only markdown rendering. Disabled by default.
 | --- | ----------- | ------- |
 | `render` | Replace markdown markers with icons and frame characters | `false` |
 | `images` | Draw local images inline with the Kitty graphics protocol | `false` |
+| `download_remote_images` | Download remote `http(s)` images with `curl` | `true` |
 
 ```toml
 [editor.markdown]
@@ -337,7 +338,8 @@ when the terminal supports Kitty graphics. Paths resolve relative to the note
 and then the vault root. Each image reserves virtual lines so following text
 reflows instead of being covered. Partially scrolled images are cropped to
 the visible rows. Remote `http(s)` images download once with `curl` into the
-cache; opening an image file directly shows it full-view.
+cache (disable with `download_remote_images = false`); opening an image file
+directly shows it full-view with the buffer text blanked.
 PNGs are sent directly; JPEG/GIF are converted with `ffmpeg` and SVG with
 `rsvg-convert` into `~/.cache/rx-helix/images`. Images are capped at 50% of
 the window height and re-placed on scroll, hidden while overlays cover the

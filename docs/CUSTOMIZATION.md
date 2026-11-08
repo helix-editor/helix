@@ -261,8 +261,9 @@ vault root. Each image reserves virtual lines after its anchor (like
 image.nvim's `with_virtual_padding`), so following text reflows instead of
 being covered. Images that scroll partially out of view are cropped to the
 visible rows via a source rectangle instead of being squished. Remote
-`http(s)` images download once with `curl` into the cache and appear on later
-frames. Opening an image file directly shows it full-view. PNG images are sent
+`http(s)` images download once with `curl` into the cache (disable with
+`download_remote_images = false`) and appear on later frames. Opening an
+image file directly shows it full-view with the buffer text blanked. PNG images are sent
 directly; JPEG/GIF are converted with `ffmpeg` and SVG with `rsvg-convert`
 into a cache under `~/.cache/rx-helix/images`. Each image is scaled to at most
 50% of the window height and re-placed as you scroll. Only the focused view is
