@@ -917,6 +917,8 @@ impl Application {
                         &mut self.terminal,
                         self.theme_mode,
                     );
+                    // Follow the newly selected light/dark theme file.
+                    self.sync_theme_watcher();
                     true
                 } else {
                     false

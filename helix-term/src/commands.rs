@@ -2191,7 +2191,7 @@ fn select_all(cx: &mut Context) {
 
 fn select_regex(cx: &mut Context) {
     let reg = cx.register.unwrap_or('/');
-    ui::regex_prompt(
+    ui::select_prompt(
         cx,
         "select:".into(),
         Some(reg),

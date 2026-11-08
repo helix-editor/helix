@@ -342,7 +342,9 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.inactive`          | Statusline (unfocused document)                                                                |
 | `ui.statusline.normal`            | Statusline mode during normal mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
-| `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.select`            | Statusline mode during select mode and the `select:` prompt ([only if `editor.color-modes` is enabled][editor-section]) |
+| `ui.statusline.command`           | Optional Command prompt chip; falls back to `ui.statusline.select`                              |
+| `ui.statusline.search`            | Optional Search prompt chip; falls back to `ui.statusline.insert`                               |
 | `ui.statusline.separator`         | Separator character in statusline                                                              |
 | `ui.bufferline`                   | Style for inactive buffers in the buffer line                                                  |
 | `ui.bufferline.active`            | Style for the active buffer in the buffer line                                                 |

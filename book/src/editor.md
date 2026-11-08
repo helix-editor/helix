@@ -159,7 +159,8 @@ transparent background. Other elements are hidden until the command line closes.
 
 The `/` search prompt is rendered the same way, with the current `line:column`
 right-aligned. The position uses the accent style when `position` is listed in
-`editor.statusline.accent`.
+`editor.statusline.accent`. The `select:` regex prompt uses the same inline
+layout with the `select` mode chip and `ui.statusline.select` colors.
 
 Trailing elements that render only whitespace are not painted, so empty
 elements at the end of a region do not leave a background block.

@@ -59,6 +59,9 @@ pub fn render(
     viewport: Rect,
     surface: &mut Surface,
 ) -> Option<(u16, u16, Style)> {
+    if viewport.width == 0 || viewport.height == 0 {
+        return None;
+    }
     let config = context.editor.config();
     let dashboard = context.editor.dashboard_visible();
     let base_style = if context.focused {
@@ -87,6 +90,16 @@ pub fn render(
             .is_some_and(|prompt| prompt.is_search);
     if search {
         return Some(render_search_status(context, viewport, surface, base_style));
+    }
+
+    let select = context.focused
+        && context
+            .editor
+            .prompt
+            .as_ref()
+            .is_some_and(|prompt| prompt.is_select);
+    if select {
+        return Some(render_select_status(context, viewport, surface, base_style));
     }
 
     let region_style = |region: StatusLineRegion| {
@@ -302,6 +315,39 @@ fn render_search_status(
     (start, position_start, transparent)
 }
 
+/// Renders the statusline while the `select:` regex prompt is open, using the
+/// same chip/input layout as command and search.
+fn render_select_status(
+    context: &mut RenderContext,
+    viewport: Rect,
+    surface: &mut Surface,
+    base_style: Style,
+) -> (u16, u16, Style) {
+    let transparent = base_style.bg(Color::Reset);
+    surface.set_style(viewport.with_height(1), transparent);
+
+    render_mode(context, |context, span| {
+        append(&mut context.parts.left, span, transparent)
+    });
+    let mode_width = context.parts.left.width() as u16;
+    surface.set_spans(viewport.x, viewport.y, &context.parts.left, mode_width);
+
+    let end = viewport.x.saturating_add(viewport.width);
+    let start = viewport
+        .x
+        .saturating_add(mode_width)
+        .saturating_add(1)
+        .min(end);
+    render_prompt_line(
+        context,
+        surface,
+        Rect::new(start, viewport.y, end.saturating_sub(start), 1),
+        transparent,
+    );
+
+    (start, end, transparent)
+}
+
 /// Width of the spans up to the last span that contains visible content, plus
 /// one cell of padding unless that span already ends with whitespace.
 fn content_width(spans: &Spans) -> u16 {
@@ -326,7 +372,7 @@ fn render_prompt_line(context: &RenderContext, surface: &mut Surface, area: Rect
         .editor
         .prompt
         .as_ref()
-        .filter(|prompt| prompt.is_command || prompt.is_search)
+        .filter(|prompt| prompt.is_command || prompt.is_search || prompt.is_select)
     else {
         return;
     };
@@ -440,25 +486,26 @@ fn mode_style(context: &RenderContext) -> Style {
     // share the Normal color. Prompt state takes precedence over editor mode.
     if let Some(prompt) = context.editor.prompt.as_ref() {
         if prompt.is_command {
-            if let Some(style) = context.editor.theme.try_get("ui.statusline.command") {
+            if let Some(style) = context.editor.theme.try_get_exact("ui.statusline.command") {
                 return style;
             }
-            return context.editor.theme.get("ui.statusline.normal");
+            // Keep command distinct from Normal even when a generated theme
+            // does not know the optional `ui.statusline.command` scope.
+            return context.editor.theme.get("ui.statusline.select");
         }
         if prompt.is_search {
-            if let Some(style) = context.editor.theme.try_get("ui.statusline.search") {
+            if let Some(style) = context.editor.theme.try_get_exact("ui.statusline.search") {
                 return style;
             }
             return context.editor.theme.get("ui.statusline.insert");
         }
+        if prompt.is_select {
+            return context.editor.theme.get("ui.statusline.select");
+        }
     }
     match context.editor.mode() {
         Mode::Insert => context.editor.theme.get("ui.statusline.insert"),
-        Mode::Select => context
-            .editor
-            .theme
-            .try_get("ui.statusline.select")
-            .unwrap_or_else(|| context.editor.theme.get("ui.statusline.select")),
+        Mode::Select => context.editor.theme.get("ui.statusline.select"),
         Mode::Normal => context.editor.theme.get("ui.statusline.normal"),
     }
 }
@@ -477,6 +524,7 @@ where
     let prompt = context.editor.prompt.as_ref();
     let command = prompt.is_some_and(|prompt| prompt.is_command);
     let search = prompt.is_some_and(|prompt| prompt.is_search);
+    let select_prompt = prompt.is_some_and(|prompt| prompt.is_select);
     let mode_str = if command {
         if short {
             &modenames.command_short
@@ -488,6 +536,12 @@ where
             &modenames.search_short
         } else {
             &modenames.search
+        }
+    } else if select_prompt {
+        if short {
+            &modenames.select_short
+        } else {
+            &modenames.select
         }
     } else {
         match context.editor.mode() {

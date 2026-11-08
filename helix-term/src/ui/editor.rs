@@ -20,7 +20,7 @@ use helix_core::{
     movement::Direction,
     syntax::{self, OverlayHighlights},
     text_annotations::TextAnnotations,
-    unicode::width::UnicodeWidthStr,
+    unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr},
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
 use helix_view::{
@@ -45,7 +45,7 @@ pub struct EditorView {
     spinners: ProgressSpinners,
     /// Area between the left and right statusline regions, where transient
     /// indicators are drawn so they do not paint over the bar.
-    statusline_text: Cell<Option<(u16, u16, Style)>>,
+    statusline_text: Cell<Option<(u16, u16, u16, Style)>>,
     dashboard: dashboard::Renderer,
     dashboard_warned: bool,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
@@ -92,21 +92,9 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        // Reserve a 1-cell (~0.5 line) gap between bufferline/editor and
-        // editor/statusline. The top gap is the row carved out in
-        // `EditorView::render` (`area.clip_top(2)`). Here we keep a matching
-        // bottom gap by shrinking the text viewport by one row.
-        let full_inner = view.inner_area(doc);
-        let inner = if full_inner.height > 1 {
-            Rect::new(
-                full_inner.x,
-                full_inner.y,
-                full_inner.width,
-                full_inner.height.saturating_sub(1),
-            )
-        } else {
-            full_inner
-        };
+        // `View::inner_area` already excludes the statusline and the one-row
+        // gap above it. The top gap is carved out by `EditorView::render`.
+        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
         let config = editor.config();
@@ -278,9 +266,9 @@ impl EditorView {
         }
 
         // 0.5 line (~1 cell) margin between editor content and statusline.
-        // `inner` is already shrunk by 1, so the row just above the statusline
-        // is the gap.
-        if view.area.height > 2 {
+        // `View::inner_area` excludes this row; clear it so a previous frame
+        // or a background decoration cannot bleed into the gap.
+        if view.area.height >= 2 {
             let gap_y = view.area.y + view.area.height - 2;
             surface.clear_with(
                 Rect::new(view.area.x, gap_y, view.area.width, 1),
@@ -293,8 +281,11 @@ impl EditorView {
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        if let Some(area) = statusline::render(&mut context, statusline_area, surface) {
-            self.statusline_text.set(Some(area));
+        if let Some((start, end, style)) =
+            statusline::render(&mut context, statusline_area, surface)
+        {
+            self.statusline_text
+                .set(Some((start, end, statusline_area.y, style)));
         }
     }
 
@@ -793,13 +784,13 @@ impl EditorView {
             // Inside the fixed tab, show ` filename[+]` centered with padding.
             let modified = if doc.is_modified() { "[+]" } else { "" };
             let raw = format!(" {}{} ", fname, modified);
-            // Pad/truncate to TAB_WIDTH cells. `set_stringn` will truncate
-            // by character count, but we pre-pad so shorter names are centered
-            // with a fixed cell count.
-            let padded = if raw.len() >= TAB_WIDTH {
-                raw.chars().take(TAB_WIDTH).collect::<String>()
+            // Pad/truncate by display width, not bytes/chars: file names can
+            // contain CJK/emoji and `set_stringn` consumes cells.
+            let raw_width = raw.width();
+            let padded = if raw_width >= TAB_WIDTH {
+                Self::truncate_to_width(&raw, TAB_WIDTH)
             } else {
-                let pad = TAB_WIDTH - raw.len();
+                let pad = TAB_WIDTH - raw_width;
                 let left = pad / 2;
                 let right = pad - left;
                 format!("{}{}{}", " ".repeat(left), raw, " ".repeat(right))
@@ -817,6 +808,22 @@ impl EditorView {
                 break;
             }
         }
+    }
+
+    /// Truncate `text` to at most `max_width` terminal cells without splitting
+    /// a grapheme/character. Used by the fixed-width bufferline.
+    fn truncate_to_width(text: &str, max_width: usize) -> String {
+        let mut out = String::new();
+        let mut width = 0;
+        for grapheme in text.graphemes(true) {
+            let grapheme_width = grapheme.width();
+            if width + grapheme_width > max_width {
+                break;
+            }
+            out.push_str(grapheme);
+            width += grapheme_width;
+        }
+        out
     }
 
     pub fn render_gutter<'d>(
@@ -1805,10 +1812,12 @@ impl Component for EditorView {
 
         if use_bufferline {
             Self::render_bufferline(cx.editor, area.with_height(1), surface);
-            surface.clear_with(
-                Rect::new(area.x, area.y + 1, area.width, 1),
-                cx.editor.theme.get("ui.background"),
-            );
+            if area.height > 1 {
+                surface.clear_with(
+                    Rect::new(area.x, area.y + 1, area.width, 1),
+                    cx.editor.theme.get("ui.background"),
+                );
+            }
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
@@ -1818,9 +1827,9 @@ impl Component for EditorView {
 
         if cx.editor.dashboard_visible() {
             let dashboard_area = if use_bufferline {
-                area.clip_top(2).clip_bottom(1)
+                area.clip_top(2).clip_bottom(2)
             } else {
-                area.clip_bottom(1)
+                area.clip_bottom(2)
             };
             surface.clear_with(dashboard_area, cx.editor.theme.get("ui.background"));
             let dashboard_config = cx.editor.config().dashboard.clone();
@@ -1852,10 +1861,12 @@ impl Component for EditorView {
         let key_width = 15u16; // for showing pending keys
         let mut status_msg_width = 0;
 
-        let (text_start, text_end, text_style) =
-            self.statusline_text
-                .get()
-                .unwrap_or((area.x, area.x + area.width, Style::default()));
+        let (text_start, text_end, text_y, text_style) = self.statusline_text.get().unwrap_or((
+            area.x,
+            area.x + area.width,
+            area.y + area.height.saturating_sub(1),
+            Style::default(),
+        ));
         let text_width = text_end.saturating_sub(text_start);
 
         // render status msg
@@ -1868,13 +1879,7 @@ impl Component for EditorView {
                 text_style.patch(cx.editor.theme.get("ui.text"))
             };
 
-            surface.set_stringn(
-                text_start,
-                area.y + area.height.saturating_sub(1),
-                status_msg,
-                text_width as usize,
-                style,
-            );
+            surface.set_stringn(text_start, text_y, status_msg, text_width as usize, style);
         }
 
         if text_width.saturating_sub(status_msg_width as u16) > key_width {
@@ -1900,7 +1905,7 @@ impl Component for EditorView {
                 text_end
                     .saturating_sub(key_width + macro_width + trust_width)
                     .max(text_start),
-                area.y + area.height.saturating_sub(1),
+                text_y,
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
                 style,
@@ -1911,7 +1916,7 @@ impl Component for EditorView {
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
                     text_end.saturating_sub(3 + macro_width).max(text_start),
-                    area.y + area.height.saturating_sub(1),
+                    text_y,
                     "[⚠]",
                     style,
                 );
@@ -1923,7 +1928,7 @@ impl Component for EditorView {
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
                     text_end.saturating_sub(3).max(text_start),
-                    area.y + area.height.saturating_sub(1),
+                    text_y,
                     &disp,
                     style,
                 );

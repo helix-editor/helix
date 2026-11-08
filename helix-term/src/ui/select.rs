@@ -82,8 +82,8 @@ impl<T: Item> Component for Select<T> {
         let width = message_width + 4;
         let height = message_height + 2 + menu_height;
         let area = Rect {
-            x: (area.width / 2) - width / 2,
-            y: (area.height / 2) - height / 2,
+            x: (area.width / 2).saturating_sub(width / 2),
+            y: (area.height / 2).saturating_sub(height / 2),
             width,
             height,
         };
