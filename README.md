@@ -37,7 +37,7 @@ Shown when Helix starts without files:
 - `auto`, `vertical`, or `horizontal` layout. `auto` recomputes on resize, makes
   the item block shrink to fit, and falls back to the orientation with the
   smallest overflow.
-- Optional header text, `header-file`, or the built-in RXHX logo.
+- Optional header text, `header-file`, or the built-in RXHX / dot-matrix logo.
 - Shortcut rows with icons, descriptions, and any Helix command as the action.
 - Key-hint and hover popups stay above the statusline.
 - Unbound keys are swallowed while the dashboard is visible; cancelling a picker
@@ -110,9 +110,8 @@ next redraw and orientation switches live as the terminal is resized.
   on.
 - [rx-neovim](https://github.com/RanXom) — the statusline and dashboard layout
   this fork ports to Helix.
-- The dot-matrix logo shading scheme comes from a
-  [Helix PR discussion](https://github.com/helix-editor/helix) about ASCII logo
-  coloring.
+- The dot-matrix logo and shading scheme come from
+  [helix-editor/helix#13197](https://github.com/helix-editor/helix/pull/13197).
 
 ## License
 
