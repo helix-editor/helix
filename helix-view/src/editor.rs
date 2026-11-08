@@ -847,6 +847,10 @@ pub struct MarkdownConfig {
     /// Download remote `http(s)` images with `curl` into the cache.
     /// Mirrors image.nvim's `download_remote_images`.
     pub download_remote_images: bool,
+    /// Custom link icons matched case-insensitively against the destination.
+    /// Checked before the built-in host table. Mirrors render-markdown's
+    /// `link.custom` (icon only; the highlight stays `markup.link.label`).
+    pub link_icons: Vec<MarkdownLinkIcon>,
 }
 
 impl Default for MarkdownConfig {
@@ -855,8 +859,16 @@ impl Default for MarkdownConfig {
             render: false,
             images: false,
             download_remote_images: true,
+            link_icons: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct MarkdownLinkIcon {
+    pub pattern: String,
+    pub icon: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
