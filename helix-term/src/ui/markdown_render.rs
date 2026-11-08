@@ -103,6 +103,10 @@ impl MarkdownRender {
             background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
 
         let table_kinds = detect_tables(text, start_line.saturating_sub(8), text.len_lines());
+        let callout_body_styles: HashMap<usize, Style> = detect_callout_bodies(text, 0, end_line)
+            .into_iter()
+            .map(|(line, name)| (line, theme.try_get(name).unwrap_or(quote_style)))
+            .collect();
 
         let mut list_indents: Vec<usize> = Vec::new();
         let mut in_code: Option<CodeFence> = None;
@@ -262,6 +266,9 @@ impl MarkdownRender {
                 if !markers.is_empty() {
                     // Obsidian callout: `> [!NOTE] Title`.
                     let callout = parse_callout(&chars, cursor);
+                    // Continuation lines of a callout block reuse its
+                    // highlight for the quote markers.
+                    let body_style = callout_body_styles.get(&line_idx).copied();
                     if visible {
                         if let Some((name_end, rendered, style_name)) = &callout {
                             let style = theme.try_get(style_name).unwrap_or(quote_style);
@@ -284,25 +291,33 @@ impl MarkdownRender {
                                 style,
                             });
                         } else {
+                            let style = body_style.unwrap_or(quote_style);
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
                                     col: *col,
                                     text: "▋".to_string(),
-                                    style: quote_style,
+                                    style,
                                 });
                             }
                         }
                     }
                     if callout.is_some() {
-                        // Callout titles may contain links; a full inline scan
-                        // is a follow-up. Markers are already painted.
-                        continue;
-                    }
-                    inline_skip = cursor;
-                    handled_block = true;
-                    if !visible {
-                        continue;
+                        // Fall through to link scanning for the title text
+                        // after the callout marker.
+                        if let Some((end, _, _)) = &callout {
+                            inline_skip = *end;
+                        }
+                        handled_block = true;
+                        if !visible {
+                            continue;
+                        }
+                    } else {
+                        inline_skip = cursor;
+                        handled_block = true;
+                        if !visible {
+                            continue;
+                        }
                     }
                 }
             }
@@ -644,6 +659,76 @@ fn capitalize(name: &str) -> String {
     }
 }
 
+/// Map visible callout continuation lines to the callout theme scope. A
+/// callout block starts at a `> [!NAME]` title; following consecutive
+/// blockquote lines (including bare `>` lines) belong to the block until a
+/// blank or non-quote line ends it.
+fn detect_callout_bodies(
+    text: helix_core::RopeSlice,
+    from: usize,
+    len_lines: usize,
+) -> HashMap<usize, &'static str> {
+    let mut bodies = HashMap::new();
+    let mut active: Option<&'static str> = None;
+    let mut index = from;
+    while index < len_lines {
+        let raw = text.line(index).to_string();
+        let line = raw.trim_end_matches(['\r', '\n']);
+        let chars: Vec<char> = line.chars().collect();
+        let indent = chars.iter().take_while(|ch| **ch == ' ').count();
+        if indent < chars.len() && chars[indent] == '>' {
+            let mut cursor = indent + 1;
+            if chars.get(cursor) == Some(&' ') {
+                cursor += 1;
+            }
+            if let Some((_, _, style_name)) = parse_callout(&chars, cursor) {
+                active = Some(style_name);
+            } else if let Some(name) = active {
+                bodies.insert(index, name);
+            }
+        } else if indent >= chars.len() {
+            // Blank line ends the callout block.
+            active = None;
+        } else {
+            active = None;
+        }
+        index += 1;
+    }
+    bodies
+}
+
+/// Per-domain link icons, mirroring render-markdown's `link.custom` table.
+/// Matched case-insensitively against the destination; `None` keeps the
+/// generic hyperlink icon.
+fn domain_icon(dest: &str) -> Option<&'static str> {
+    let lower = dest.to_lowercase();
+    // Specific hosts first; generic `http` match last.
+    const DOMAINS: &[(&str, &str)] = &[
+        ("github.com", "󰊤"),
+        ("gitlab.com", "󰮠"),
+        ("google.", "󰊭"),
+        ("microsoft.", ""),
+        ("apple.", ""),
+        ("discord.", "󰙯"),
+        ("slack.", "󰒱"),
+        ("reddit.", "󰑍"),
+        ("stackoverflow.", "󰓌"),
+        ("steampowered.", ""),
+        ("neovim.io", ""),
+        ("ycombinator.", ""),
+        ("linkedin.", "󰌻"),
+    ];
+    for (host, icon) in DOMAINS {
+        if lower.contains(host) {
+            return Some(icon);
+        }
+    }
+    if lower.starts_with("http") {
+        return Some("󰖟");
+    }
+    None
+}
+
 /// Paint inline link markers with icons while concealing destinations. All
 /// replacements preserve width so text never shifts:
 ///
@@ -771,9 +856,11 @@ fn paint_inline_links(
             if let Some(label_end) = find_char(chars, index + 1, ']') {
                 if chars.get(label_end + 1) == Some(&'(') {
                     if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
+                        let dest: String = chars[label_end + 2..dest_end].iter().collect();
+                        let icon = domain_icon(&dest).unwrap_or("󰌹");
                         // Cover `(dest)` inclusive: width is end - start + 1.
                         let width = dest_end - (label_end + 1) + 1;
-                        let mut text = String::from("󰌹");
+                        let mut text = String::from(icon);
                         while text.width() < width {
                             text.push(' ');
                         }
@@ -799,7 +886,11 @@ fn paint_inline_links(
         if chars[index] == '<' {
             if let Some(end) = find_char(chars, index + 1, '>') {
                 let inner: String = chars[index + 1..end].iter().collect();
-                let icon = if inner.contains('@') { "󰀓" } else { "󰌹" };
+                let icon = if inner.contains('@') {
+                    "󰀓"
+                } else {
+                    domain_icon(&inner).unwrap_or("󰌹")
+                };
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
                     col: index,
@@ -1038,6 +1129,36 @@ mod tests {
     }
 
     #[test]
+    fn detects_domain_icons() {
+        assert_eq!(domain_icon("https://github.com/x"), Some("󰊤"));
+        assert_eq!(domain_icon("https://www.google.com/search"), Some("󰊭"));
+        assert_eq!(domain_icon("https://example.com"), Some("󰖟"));
+        assert_eq!(domain_icon("https://neovim.io/doc"), Some("\u{e6ae}"));
+        assert_eq!(domain_icon("notes/other.md"), None);
+    }
+
+    #[test]
+    fn paints_domain_icon_for_links() {
+        let style = Style::default();
+        let mut render = MarkdownRender::default();
+        let line: Vec<char> = "see [code](https://github.com/x/y) end".chars().collect();
+        paint_inline_links(&mut render, 0, &line, 0, style);
+        let paints = &render.lines.get(&0).unwrap().paints;
+        assert!(paints.iter().any(|p| p.text.starts_with("󰊤")));
+    }
+
+    #[test]
+    fn detects_callout_bodies() {
+        use helix_core::Rope;
+        let text = Rope::from("> [!NOTE] Title\n> body one\n> body two\n\nplain\n");
+        let bodies = detect_callout_bodies(text.slice(..), 0, text.len_lines());
+        assert_eq!(bodies.get(&1), Some(&"diagnostic.info"));
+        assert_eq!(bodies.get(&2), Some(&"diagnostic.info"));
+        assert_eq!(bodies.get(&0), None);
+        assert_eq!(bodies.get(&4), None);
+    }
+
+    #[test]
     fn paints_wiki_and_inline_links() {
         let style = Style::default();
         let mut render = MarkdownRender::default();
@@ -1055,7 +1176,7 @@ mod tests {
         let line: Vec<char> = "a [label](https://x.y) b".chars().collect();
         paint_inline_links(&mut render, 1, &line, 0, style);
         let paints = &render.lines.get(&1).unwrap().paints;
-        assert!(paints.iter().any(|p| p.col == 9 && p.text.starts_with("󰌹")));
+        assert!(paints.iter().any(|p| p.col == 9 && p.text.starts_with("󰖟")));
     }
 
     #[test]
@@ -1065,7 +1186,7 @@ mod tests {
         let line: Vec<char> = "a <https://x.y> b [^fn]".chars().collect();
         paint_inline_links(&mut render, 0, &line, 0, style);
         let paints = &render.lines.get(&0).unwrap().paints;
-        assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰌹"));
+        assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰖟"));
         assert!(paints.iter().any(|p| p.col == 18 && p.text == "󰯔 "));
     }
 }
