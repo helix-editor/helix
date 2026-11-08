@@ -257,6 +257,16 @@ impl Loader {
         }
     }
 
+    /// Returns the highest-priority file for a theme, if it is backed by a file.
+    ///
+    /// Built-in themes have no path and return `None`.
+    pub fn theme_path(&self, name: &str) -> Option<PathBuf> {
+        if name == "default" || name == "base16_default" {
+            return None;
+        }
+        self.path(name, &mut HashSet::new()).ok()
+    }
+
     /// Returns the default theme
     pub fn default(&self) -> Theme {
         DEFAULT_THEME.clone()
@@ -423,6 +433,22 @@ impl Theme {
         &self.name
     }
 
+    /// Replaces the background of the given scopes with the terminal default.
+    /// Used by `[editor] transparent-popups` so generated themes can keep their
+    /// foreground colors without opaque popup panels.
+    pub fn clear_backgrounds(&mut self, scopes: &[&str]) {
+        for scope in scopes {
+            if let Some(style) = self.styles.get_mut(*scope) {
+                style.bg = Some(Color::Reset);
+            }
+        }
+        for (index, name) in self.scopes.iter().enumerate() {
+            if scopes.contains(&name.as_str()) {
+                self.highlights[index].bg = Some(Color::Reset);
+            }
+        }
+    }
+
     pub fn get(&self, scope: &str) -> Style {
         self.try_get(scope).unwrap_or_default()
     }
@@ -556,6 +582,9 @@ impl ThemePalette {
     }
 
     fn ansi_string_to_rgb(s: &str) -> Result<Color, String> {
+        if s.eq_ignore_ascii_case("none") {
+            return Ok(Color::Reset);
+        }
         if let Ok(index) = s.parse::<u8>() {
             return Ok(Color::Indexed(index));
         }
@@ -718,6 +747,30 @@ mod tests {
                 .bg(Color::Rgb(0, 0, 0))
                 .add_modifier(Modifier::BOLD)
         );
+    }
+
+    #[test]
+    fn test_none_color_is_reset() {
+        let mut style = Style::default();
+        ThemePalette::default()
+            .parse_style(&mut style, Value::String("none".to_string()))
+            .unwrap();
+
+        assert_eq!(style, Style::default().fg(Color::Reset));
+    }
+
+    #[test]
+    fn clear_backgrounds_only_touches_requested_scopes() {
+        let mut theme = Theme::from(Value::Table(toml::toml! {
+            "ui.popup" = { fg = "#ffffff", bg = "#000000" }
+            "ui.menu" = { fg = "#eeeeee", bg = "#111111" }
+        }));
+
+        theme.clear_backgrounds(&["ui.popup"]);
+
+        assert_eq!(theme.get("ui.popup").bg, Some(Color::Reset));
+        assert_eq!(theme.get("ui.popup").fg, Some(Color::Rgb(255, 255, 255)));
+        assert_eq!(theme.get("ui.menu").bg, Some(Color::Rgb(17, 17, 17)));
     }
 
     // tests for parsing an RGB `Highlight`
