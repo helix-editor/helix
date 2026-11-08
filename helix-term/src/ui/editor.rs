@@ -687,61 +687,109 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
+    ///
+    /// Matches the reference in the screenshot: an opaque bar with a left
+    /// edge, `│` separators between tabs, and a `×` close hint per tab.
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME);
 
-        // The tab row itself is transparent: it follows the editor background,
-        // which is the terminal default for themes using `ui.background = "none"`.
-        surface.clear_with(viewport, editor.theme.get("ui.background"));
+        // Bar background: opaque `ui.bufferline.background` (or the bufferline
+        // fg's bg) so the row reads as a solid tab bar above the 1-line gap.
+        let bar_bg = editor
+            .theme
+            .try_get("ui.bufferline.background")
+            .and_then(|s| s.bg)
+            .filter(|c| *c != Color::Reset)
+            .or_else(|| {
+                editor
+                    .theme
+                    .try_get("ui.bufferline")
+                    .and_then(|s| s.bg)
+                    .filter(|c| *c != Color::Reset)
+            })
+            .or_else(|| editor.theme.try_get("ui.statusline").and_then(|s| s.bg))
+            .unwrap_or(Color::Reset);
+        let bar_style = Style::default().bg(bar_bg);
+        surface.clear_with(viewport, bar_style);
 
         let mut bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
-
-        let bufferline_inactive = editor
+        let mut bufferline_inactive = editor
             .theme
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        // Keep the current tab opaque even if a generated theme forgot to give
-        // the active scope a background.
+        // Ensure the active tab has an opaque bg; fall back through
+        // bar_bg → statusline if the theme left it as `none`.
         let active_bg = bufferline_active
             .bg
-            .filter(|color| *color != Color::Reset)
-            .or_else(|| {
-                editor
-                    .theme
-                    .try_get("ui.bufferline.background")
-                    .and_then(|style| style.bg)
-                    .filter(|color| *color != Color::Reset)
-            })
+            .filter(|c| *c != Color::Reset)
+            .or(Some(bar_bg).filter(|c| *c != Color::Reset))
             .or_else(|| {
                 editor
                     .theme
                     .try_get("ui.statusline")
-                    .and_then(|style| style.bg)
-                    .filter(|color| *color != Color::Reset)
+                    .and_then(|s| s.bg)
+                    .filter(|c| *c != Color::Reset)
             });
-        if let Some(bg) = active_bg {
+        if let Some(bg) = active_bg.filter(|c| *c != Color::Reset) {
             bufferline_active = bufferline_active.bg(bg);
         }
+        // Inactive tabs blend into the bar. Keep their bg on the bar so the
+        // row stays solid; the active tab pops with its own bg + underline.
+        if bufferline_inactive.bg.is_none() || bufferline_inactive.bg == Some(Color::Reset) {
+            bufferline_inactive = bufferline_inactive.bg(bar_bg);
+        }
 
-        // Inactive tabs are a lighter blend of the active tab color. Palette
-        // colors cannot be blended portably, so fall back to the theme's
-        // existing inactive background in that case.
-        let inactive_bg = active_bg
-            .and_then(|color| crate::ui::lighten(color, 0.15))
-            .or(bufferline_inactive.bg);
-        let bufferline_inactive = match inactive_bg {
-            Some(bg) => bufferline_inactive.bg(bg),
-            None => bufferline_inactive,
-        };
+        let separator_style = editor
+            .theme
+            .try_get("ui.window")
+            .map(|mut s| {
+                s.bg = Some(bar_bg);
+                s
+            })
+            .unwrap_or(bar_style);
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
+        // Left edge like `│ ` in the reference.
+        if x < viewport.right() {
+            surface[(x, viewport.y)]
+                .set_symbol("▎")
+                .set_style(separator_style);
+            x += 1;
+        }
+
+        let docs: Vec<_> = editor.documents().collect();
+        for (idx, doc) in docs.iter().enumerate() {
+            if idx > 0 {
+                if x >= viewport.right() {
+                    break;
+                }
+                surface[(x, viewport.y)]
+                    .set_symbol("│")
+                    .set_style(separator_style);
+                x += 1;
+                if x >= viewport.right() {
+                    break;
+                }
+                // Thin padding after the separator, still on the bar.
+                surface[(x, viewport.y)]
+                    .set_symbol(" ")
+                    .set_style(bar_style);
+                x += 1;
+            }
+
+            let is_active = doc.id() == current_doc;
+            let style = if is_active {
+                bufferline_active
+            } else {
+                bufferline_inactive
+            };
+
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -749,24 +797,45 @@ impl EditorView {
                 .unwrap_or_default()
                 .to_str()
                 .unwrap_or_default();
+            let fname = if fname.is_empty() { "[No Name]" } else { fname };
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
+            // ` ls.go  × ` style. Modified buffers keep `[+]` before the close hint.
+            let modified = if doc.is_modified() { "[+]" } else { "" };
+            let text = format!(" {}{}  × ", fname, modified);
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
-
-            x = surface
-                .set_stringn(x, viewport.y, &text, rem_width as usize, style)
-                .0;
-
-            if x >= surface.area.right() {
+            let rem = viewport.right().saturating_sub(x) as usize;
+            if rem == 0 {
                 break;
             }
+            let (next_x, _) = surface.set_stringn(x, viewport.y, &text, rem, style);
+            // Pad one extra bar-colored cell after each tab so the bar shows
+            // through when tabs don't fill the width.
+            x = next_x;
+            if x < viewport.right() {
+                let pad_style = if is_active {
+                    bufferline_active
+                } else {
+                    bar_style
+                };
+                // Keep the gap cell on the active bg for one cell, then bar.
+                surface[(x, viewport.y)]
+                    .set_symbol(" ")
+                    .set_style(pad_style);
+                x += 1;
+            }
+
+            if x >= viewport.right() {
+                break;
+            }
+        }
+
+        // Fill the remainder of the row with the bar background so the row
+        // never shows the editor bg between the last tab and the right edge.
+        while x < viewport.right() {
+            surface[(x, viewport.y)]
+                .set_symbol(" ")
+                .set_style(bar_style);
+            x += 1;
         }
     }
 
