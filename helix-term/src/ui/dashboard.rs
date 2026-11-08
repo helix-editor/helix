@@ -6,7 +6,7 @@ use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::editor::{
     DashboardAlign, DashboardConfig, DashboardLayout, DashboardMenuStyle, DashboardVerticalAlign,
 };
-use helix_view::graphics::{Color, Rect, Style};
+use helix_view::graphics::{Rect, Style};
 use helix_view::Theme;
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
@@ -210,7 +210,7 @@ fn choose_layout(
         (true, false) => DashboardLayout::Vertical,
         (false, true) => DashboardLayout::Horizontal,
         (true, true) => {
-            if area.width as usize >= area.height as usize * 2 {
+            if area.width as usize >= area.height as usize * 3 {
                 DashboardLayout::Horizontal
             } else {
                 DashboardLayout::Vertical
@@ -306,6 +306,15 @@ const LOGO_R: [&str; 6] = [
     "╚═╝  ╚═╝",
 ];
 
+const LOGO_H: [&str; 6] = [
+    "██╗  ██╗",
+    "██║  ██║",
+    "███████║",
+    "██╔══██║",
+    "██║  ██║",
+    "╚═╝  ╚═╝",
+];
+
 const LOGO_X: [&str; 6] = [
     "██╗  ██╗",
     "╚██╗██╔╝",
@@ -315,55 +324,95 @@ const LOGO_X: [&str; 6] = [
     "╚═╝  ╚═╝",
 ];
 
-const LOGO_RIBBON: [&str; 6] = [
-    "==    , ", "xxx, .::", "`xxx::::", " ,:::^xx", ".::` ,;;", "::` ,;;;",
-];
-
-const LOGO_PURPLE: Color = Color::Rgb(153, 123, 200);
-const LOGO_PURPLE_DARK: Color = Color::Rgb(112, 107, 200);
-const LOGO_BLUE: Color = Color::Rgb(85, 197, 228);
-const LOGO_BLUE_DARK: Color = Color::Rgb(132, 221, 234);
+const LOGO_DOTS: &str = "\
+==            ,
+xxxx,       .::
+`xxxxxxxx,:::::
+    `xx::::::`
+   ,::::::^xxx;
+.:::::`    ,;;;
+:::`    ,;;;;;`
+:eee,;;;;;;`
+ ,;;;;;;ee,
+;;;;;^eeeeeeee,
+;;^       `eeee
+`            --";
 
 fn default_logo(theme: &Theme, layout: DashboardLayout) -> Block {
+    if layout == DashboardLayout::Horizontal {
+        dots_logo(theme)
+    } else {
+        vertical_logo(theme)
+    }
+}
+
+fn dots_logo(theme: &Theme) -> Block {
     let header = dashboard_style(theme, "header", "ui.text");
     let icon = dashboard_style(theme, "icon", "ui.text.inactive");
     let subtitle = dashboard_style(theme, "subtitle", "ui.text.inactive");
     let key = dashboard_style(theme, "key", "ui.text.inactive");
-
-    let themed = layout == DashboardLayout::Horizontal;
-    let fallback = |scope: &str, theme_fallback: Style, color: Color| {
-        theme.try_get_exact(scope).unwrap_or(if themed {
-            theme_fallback
-        } else {
-            Style::default().fg(color)
-        })
-    };
-    let ribbon = [
-        fallback("ui.dashboard.logo.purple", header, LOGO_PURPLE),
-        fallback("ui.dashboard.logo.purple-dark", subtitle, LOGO_PURPLE_DARK),
-        fallback("ui.dashboard.logo.blue", icon, LOGO_BLUE),
-        fallback("ui.dashboard.logo.blue-dark", key, LOGO_BLUE_DARK),
+    let styles = [
+        theme
+            .try_get_exact("ui.dashboard.logo.purple")
+            .unwrap_or(header),
+        theme
+            .try_get_exact("ui.dashboard.logo.purple-dark")
+            .unwrap_or(subtitle),
+        theme
+            .try_get_exact("ui.dashboard.logo.blue")
+            .unwrap_or(icon),
+        theme
+            .try_get_exact("ui.dashboard.logo.blue-dark")
+            .unwrap_or(key),
     ];
 
-    let wordmark = wordmark_block(header, ribbon);
-    if themed {
-        wordmark
-    } else {
-        vertical_logo(header, icon, wordmark)
+    Block {
+        lines: LOGO_DOTS
+            .lines()
+            .map(|line| {
+                let mut spans = Vec::new();
+                push_ribbon(&mut spans, line.trim_end(), styles);
+                spans
+            })
+            .collect(),
     }
 }
 
-fn wordmark_block(header: Style, ribbon: [Style; 4]) -> Block {
+fn vertical_logo(theme: &Theme) -> Block {
+    let header = dashboard_style(theme, "header", "ui.text");
+    let icon = dashboard_style(theme, "icon", "ui.text.inactive");
+    let letters = letters_block(&[&LOGO_R, &LOGO_X, &LOGO_H, &LOGO_X], header);
+
+    let mut lines = vec![vec![Span::styled(
+        format!("{}  ランサム", "━".repeat(35)),
+        header,
+    )]];
+    for line in letters.lines {
+        let mut spans = vec![Span::raw(" ".repeat(5))];
+        spans.extend(line);
+        spans.push(Span::raw(" ".repeat(5)));
+        lines.push(spans);
+    }
+    lines.push(vec![
+        Span::raw(" ".repeat(4)),
+        Span::styled("󰘬 ", icon),
+        Span::styled("━".repeat(35), header),
+        Span::raw(" ".repeat(4)),
+    ]);
+
+    Block { lines }
+}
+
+fn letters_block(letters: &[&[&str; 6]], header: Style) -> Block {
     let mut lines = Vec::new();
     for row in 0..LOGO_R.len() {
         let mut spans = Vec::new();
-        push_chars(&mut spans, LOGO_R[row], header);
-        spans.push(Span::raw(" "));
-        push_chars(&mut spans, LOGO_X[row], header);
-        spans.push(Span::raw(" "));
-        push_ribbon(&mut spans, LOGO_RIBBON[row], ribbon);
-        spans.push(Span::raw(" "));
-        push_chars(&mut spans, LOGO_X[row], header);
+        for (index, letter) in letters.iter().enumerate() {
+            if index > 0 {
+                spans.push(Span::raw(" "));
+            }
+            push_chars(&mut spans, letter[row], header);
+        }
         lines.push(spans);
     }
     Block { lines }
@@ -394,27 +443,6 @@ fn push_ribbon(line: &mut Line, text: &str, styles: [Style; 4]) {
             None => line.push(Span::raw(" ")),
         }
     }
-}
-
-fn vertical_logo(header: Style, icon: Style, wordmark: Block) -> Block {
-    let mut lines = vec![vec![Span::styled(
-        format!("{}  rx-helix", "━".repeat(35)),
-        header,
-    )]];
-    for line in wordmark.lines {
-        let mut spans = vec![Span::raw(" ".repeat(5))];
-        spans.extend(line);
-        spans.push(Span::raw(" ".repeat(5)));
-        lines.push(spans);
-    }
-    lines.push(vec![
-        Span::raw(" ".repeat(4)),
-        Span::styled("󰘬 ", icon),
-        Span::styled("━".repeat(35), header),
-        Span::raw(" ".repeat(4)),
-    ]);
-
-    Block { lines }
 }
 
 fn text_block(text: &str, style: Style) -> Block {
@@ -533,48 +561,44 @@ mod tests {
 
     #[test]
     fn default_logo_uses_known_characters() {
-        for line in LOGO_RIBBON {
-            for ch in line.chars() {
-                assert!(
-                    matches!(
-                        ch,
-                        'x' | 'e' | '=' | '`' | '^' | ':' | '.' | ';' | ',' | '-' | ' '
-                    ),
-                    "unexpected character in default logo: {ch:?}"
-                );
-            }
+        for ch in LOGO_DOTS.chars() {
+            assert!(
+                matches!(
+                    ch,
+                    'x' | 'e' | '=' | '`' | '^' | ':' | '.' | ';' | ',' | '-' | ' ' | '\n'
+                ),
+                "unexpected character in default logo: {ch:?}"
+            );
         }
     }
 
     #[test]
     fn wordmark_has_expected_size() {
-        let block = wordmark_block(
-            Style::default(),
-            [
-                Style::default(),
-                Style::default(),
-                Style::default(),
-                Style::default(),
-            ],
-        );
+        let block = letters_block(&[&LOGO_R, &LOGO_X, &LOGO_H, &LOGO_X], Style::default());
         assert_eq!(block.height(), 6);
         assert_eq!(block.width(), 35);
     }
 
     #[test]
-    fn default_logo_variants_have_expected_shapes() {
-        let wordmark = wordmark_block(
-            Style::default(),
-            [
-                Style::default(),
-                Style::default(),
-                Style::default(),
-                Style::default(),
-            ],
+    fn dot_logo_has_expected_size() {
+        assert_eq!(LOGO_DOTS.lines().count(), 12);
+        assert!(
+            LOGO_DOTS
+                .lines()
+                .map(|line| line.trim_end().len())
+                .max()
+                .unwrap()
+                >= 15
         );
-        let vertical = vertical_logo(Style::default(), Style::default(), wordmark);
-        assert_eq!(vertical.height(), 8);
-        assert!(vertical.width() >= 45);
+    }
+
+    #[test]
+    fn auto_layout_prefers_vertical_unless_clearly_wide() {
+        let area = Rect::new(0, 0, 120, 60);
+        assert_eq!(
+            choose_layout(DashboardLayout::Auto, area, (45, 20), (74, 12)),
+            DashboardLayout::Vertical
+        );
     }
 
     #[test]

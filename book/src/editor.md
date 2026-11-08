@@ -203,9 +203,10 @@ and `footer`. A block is only drawn if it contains text.
 
 With `layout = "auto"` the dashboard picks the orientation that fits the
 terminal. If both fit, horizontal is used on wide terminals (width at least
-twice the height) and vertical otherwise. If neither fits, the orientation with
-the smallest overflow is used. In the horizontal layout the item block shrinks
-from `menu-width` down to its content width to fit the available columns.
+three times the height) and vertical otherwise. If neither fits, the orientation
+with the smallest overflow is used. In the horizontal layout the item block
+shrinks from `menu-width` down to its content width to fit the available
+columns.
 
 ```toml
 [editor.dashboard]
@@ -245,7 +246,7 @@ action = "file_picker"
 | `vertical-align` | `top` or `center` | `"center"` |
 | `header` | Multiline header text | unset |
 | `header-file` | Read the header from a file instead of `header` (takes precedence) | unset |
-| `default-logo` | Draw the built-in dot logo when no header is configured | `true` |
+| `default-logo` | Draw the built-in logo when no header is configured | `true` |
 | `subtitle` | Multiline text shown between the header and the items | unset |
 | `footer` | Multiline footer text | unset |
 | `items` | List of shortcut rows, see below | `[]` |
@@ -292,11 +293,12 @@ The dashboard uses these theme scopes, each falling back to an existing scope:
 | `ui.dashboard.key` | `ui.text.inactive` |
 | `ui.dashboard.footer` | `ui.text.inactive` |
 
-The built-in logo is drawn with four shades that can be overridden through
+The built-in logo has two forms. The horizontal form is the dot-matrix mark and
+is drawn with four shades that can be overridden through
 `ui.dashboard.logo.purple`, `ui.dashboard.logo.purple-dark`,
-`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`. Without overrides,
-the vertical layout uses the built-in cyan/purple shades and the horizontal
-layout derives its shades from the theme.
+`ui.dashboard.logo.blue`, and `ui.dashboard.logo.blue-dark`; without overrides
+the shades come from the theme. The vertical form is the block `RXHX` wordmark
+with the Japanese label and helix rule, and uses the header/icon styles.
 
 ### `[editor.lsp]` Section
 

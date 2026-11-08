@@ -117,6 +117,8 @@ layout = "auto"
 
 `auto` shrinks the item block from `menu-width` down to its content width before
 giving up, so a horizontal layout can still fit a slightly narrow terminal. If
+both orientations fit, vertical is preferred unless the terminal is at least
+three times as wide as it is tall. If
 neither orientation fits, the one with the smallest overflow is used and a
 warning is printed in the statusline.
 
@@ -146,9 +148,10 @@ header = """
 header-file = "~/.config/helix/logo.txt"
 ```
 
-When both are empty, the built-in RXHX logo is drawn. Set
-`default-logo = false` to draw nothing instead. Content wider or taller than the
-terminal is clipped and reported once in the statusline.
+When both are empty, the built-in logo is drawn. Horizontal uses the dot-matrix
+mark; vertical uses the block RXHX wordmark with the Japanese label and helix
+rule. Set `default-logo = false` to draw nothing instead. Content wider or taller
+than the terminal is clipped and reported once in the statusline.
 
 ### Items
 
@@ -195,7 +198,8 @@ command mode are swallowed.
 | `ui.dashboard.logo.blue-dark` | built-in shade |
 
 The horizontal built-in logo derives its shades from the theme when the
-`ui.dashboard.logo.*` scopes are not defined.
+`ui.dashboard.logo.*` scopes are not defined. The vertical wordmark uses
+`ui.dashboard.header` and `ui.dashboard.icon`.
 
 ## Complete example
 
