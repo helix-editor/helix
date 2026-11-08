@@ -1084,9 +1084,18 @@ fn rename_note(cx: &mut CompositorContext, new_title: &str) -> anyhow::Result<()
 
     let old_relative = relative_path(&vault, &old_path);
     let new_relative = relative_path(&vault, &new_path);
+    if modified {
+        fs::write(&old_path, contents)?;
+    }
+    // Rename before touching links: if the rename fails (permissions, a
+    // concurrent file, etc.) no other note has been rewritten to a title that
+    // does not exist on disk.
+    fs::rename(&old_path, &new_path)?;
+    cx.editor.set_doc_path(doc_id, &new_path);
+
     let templates = templates_dir(&vault, &config);
     for path in note_paths(&vault, templates.as_deref()) {
-        if path == old_path {
+        if path == new_path {
             continue;
         }
         let Ok(text) = fs::read_to_string(&path) else {
@@ -1105,12 +1114,6 @@ fn rename_note(cx: &mut CompositorContext, new_title: &str) -> anyhow::Result<()
             fs::write(&path, updated)?;
         }
     }
-
-    if modified {
-        fs::write(&old_path, contents)?;
-    }
-    fs::rename(&old_path, &new_path)?;
-    cx.editor.set_doc_path(doc_id, &new_path);
     cx.editor.set_status(format!("renamed note to {new_title}"));
     Ok(())
 }
