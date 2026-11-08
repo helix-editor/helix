@@ -335,7 +335,10 @@ fn resolve_image(
         return None;
     }
     if target.starts_with("http://") || target.starts_with("https://") {
-        return download_remote.then(|| resolve_remote(target)).flatten();
+        if !download_remote || !remote_url_allowed(target) {
+            return None;
+        }
+        return resolve_remote(target);
     }
     let target = percent_decode(target);
     let target = Path::new(&target);
@@ -355,6 +358,73 @@ fn resolve_image(
         }
     }
     candidates.into_iter().find(|path| path.is_file())
+}
+
+fn remote_url_host(url: &str) -> Option<&str> {
+    let rest = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))?;
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let authority = authority.rsplit('@').next().unwrap_or(authority);
+    if let Some(rest) = authority.strip_prefix('[') {
+        return rest.split(']').next();
+    }
+    authority.split(':').next()
+}
+
+/// Reject localhost/private-literal destinations. This cannot stop DNS
+/// rebinding, but prevents the common accidental/localhost SSRF cases while
+/// keeping remote image rendering useful.
+fn remote_url_allowed(url: &str) -> bool {
+    let Some(host) = remote_url_host(url) else {
+        return false;
+    };
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    if host == "localhost"
+        || host.ends_with(".localhost")
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+    {
+        return false;
+    }
+    match host.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => ipv4_is_public(ip),
+        Ok(IpAddr::V6(ip)) => ipv6_is_public(ip),
+        Err(_) => true,
+    }
+}
+
+fn ipv4_is_public(ip: Ipv4Addr) -> bool {
+    let octets = ip.octets();
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_private()
+        || ip.is_link_local()
+        || ip.is_broadcast()
+        || ip.is_multicast()
+        || octets[0] == 0
+        || (octets[0] == 100 && (64..=127).contains(&octets[1]))
+        || (octets[0] == 198 && (18..=19).contains(&octets[1]))
+        || octets[0] >= 240)
+}
+
+fn ipv6_is_public(ip: Ipv6Addr) -> bool {
+    let segments = ip.segments();
+    // IPv4-mapped addresses can still encode a private IPv4 destination.
+    if segments[..5] == [0, 0, 0, 0, 0] && segments[5] == 0xffff {
+        let v4 = Ipv4Addr::new(
+            (segments[6] >> 8) as u8,
+            segments[6] as u8,
+            (segments[7] >> 8) as u8,
+            segments[7] as u8,
+        );
+        return ipv4_is_public(v4);
+    }
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_multicast()
+        || (segments[0] & 0xfe00) == 0xfc00 // unique local
+        || (segments[0] & 0xffc0) == 0xfe80) // link local
 }
 
 /// Download a remote image in the background and return its cached path once
@@ -835,6 +905,25 @@ mod tests {
     #[test]
     fn decodes_percent_escapes() {
         assert_eq!(percent_decode("a%20b.png"), "a b.png");
+    }
+
+    #[test]
+    fn rejects_private_remote_image_hosts() {
+        assert!(remote_url_allowed("https://example.com/a.png"));
+        assert!(remote_url_allowed("http://user@example.com:8080/a.png"));
+        for url in [
+            "http://localhost/a.png",
+            "http://127.0.0.1/a.png",
+            "http://10.0.0.1/a.png",
+            "http://192.168.1.1/a.png",
+            "http://169.254.169.254/latest/meta-data",
+            "http://[::1]/a.png",
+            "http://[fe80::1]/a.png",
+            "http://printer.local/a.png",
+            "http://metadata.google.internal/a.png",
+        ] {
+            assert!(!remote_url_allowed(url), "allowed private URL {url}");
+        }
     }
 
     #[test]
