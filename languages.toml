@@ -1319,6 +1319,7 @@ file-types = [
   { glob = "sway/config" },
   { glob = ".tmux.conf" },
   { glob = "tmux.conf" },
+  { glob = "tmux/**/*.conf" },
   { glob = ".sh_history" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
@@ -3343,6 +3344,9 @@ file-types = [
   { glob = "*.tm[Ll]anguage" },
   { glob = "*.tm[Pp]references" },
   { glob = "*.tm[Tt]heme" },
+  # Fontconfig XML files use `.conf` but are not INI/properties.
+  { glob = "fontconfig/**/*.conf" },
+  { glob = "/etc/fonts/**/*.conf" },
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -5095,7 +5099,10 @@ source = { git = "https://github.com/caddyserver/tree-sitter-caddyfile", rev = "
 name = "properties"
 scope = "source.properties"
 injection-regex = "properties"
-file-types = ["properties", "prefs"]
+# `conf` is intentionally the generic fallback. More specific globs (nginx,
+# systemd, hyprlang, bitbake, tmux, fontconfig, ...) still take precedence
+# because Helix checks glob matches before this extension mapping.
+file-types = ["properties", "prefs", "conf"]
 comment-tokens = ["#"]
 
 [[grammar]]

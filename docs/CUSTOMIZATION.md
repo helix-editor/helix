@@ -39,6 +39,15 @@ resizing the terminal switches orientation without restarting.
 > build, run it through `cargo run` or set `HELIX_RUNTIME`; otherwise grammar
 > queries are missing and syntax highlighting will not appear.
 
+## Syntax highlighting
+
+Tree-sitter grammars provide syntax highlighting; language servers are separate
+and optional. Generic `.conf` files use the `properties` grammar, which handles
+both `key=value` and space-separated `key value` directives. More specific globs
+still win because Helix checks glob matches before the extension fallback:
+nginx, systemd, hyprlang, and bitbake `.conf` files keep their grammars, tmux
+config fragments use `bash`, and fontconfig XML uses `xml`.
+
 ## Statusline
 
 The statusline is one row. It is split into `left`, `center`, and `right`
