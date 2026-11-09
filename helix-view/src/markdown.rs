@@ -41,6 +41,7 @@ struct ImageLayoutKey {
     view: ViewId,
     version: i32,
     anchor: usize,
+    cursor_line: usize,
     width: u16,
     height: u16,
 }
@@ -108,12 +109,16 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
         return Vec::new();
     }
 
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let cursor_line = text.char_to_line(cursor);
+
     let view_offset = doc.view_offset(view.id);
     let key = ImageLayoutKey {
         doc: doc.id(),
         view: view.id,
         version: doc.version(),
         anchor: view_offset.anchor,
+        cursor_line,
         width: inner.width,
         height: inner.height,
     };
@@ -132,6 +137,11 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
     let mut line_rows: HashMap<usize, u16> = HashMap::new();
 
     for line_idx in start_line..end_line {
+        // Anti-conceal: the cursor line shows its raw Markdown, so do not
+        // reserve virtual rows or place the image it references.
+        if line_idx == cursor_line {
+            continue;
+        }
         let line_start = text.line_to_char(line_idx);
         let line = text.line(line_idx).to_string();
         for (column, target) in image_links(&line) {
