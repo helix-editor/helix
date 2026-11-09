@@ -1,17 +1,20 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::editor::{
     DashboardAlign, DashboardConfig, DashboardLayout, DashboardMenuStyle, DashboardVerticalAlign,
 };
 use helix_view::graphics::{Modifier, Rect, Style};
-use helix_view::Theme;
+use helix_view::input::KeyEvent;
+use helix_view::{Editor, Theme};
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
 
 type Line = Vec<Span<'static>>;
+
+const HEADER_CHECK_INTERVAL: Duration = Duration::from_millis(500);
 
 #[derive(Default, Clone)]
 struct Block {
@@ -40,6 +43,7 @@ impl Block {
 struct HeaderCache {
     path: Option<PathBuf>,
     modified: Option<SystemTime>,
+    checked_at: Option<Instant>,
     text: String,
     error: Option<String>,
 }
@@ -50,6 +54,15 @@ impl HeaderCache {
             return config.header.clone();
         };
         let path = helix_stdx::path::expand_tilde(Path::new(path)).into_owned();
+        let now = Instant::now();
+        if self.path.as_ref() == Some(&path)
+            && self
+                .checked_at
+                .is_some_and(|checked_at| now.duration_since(checked_at) < HEADER_CHECK_INTERVAL)
+        {
+            return self.text.clone();
+        }
+        self.checked_at = Some(now);
         let modified = fs::metadata(&path).and_then(|meta| meta.modified()).ok();
 
         if self.path.as_ref() == Some(&path) && self.modified == modified {
@@ -77,11 +90,48 @@ impl HeaderCache {
 #[derive(Default)]
 pub struct Renderer {
     header: HeaderCache,
+    key_signature: Vec<(Option<String>, Option<String>)>,
+    keymap: Vec<(KeyEvent, String)>,
 }
 
 impl Renderer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Resolve a dashboard key without reparsing every configured key on each
+    /// keypress.
+    pub fn action(&mut self, editor: &Editor, event: KeyEvent) -> Option<String> {
+        let items = &editor.config().dashboard.items;
+        let same = items.len() == self.key_signature.len()
+            && items
+                .iter()
+                .zip(&self.key_signature)
+                .all(|(item, (key, action))| item.key == *key && item.action == *action);
+        if !same {
+            self.key_signature = items
+                .iter()
+                .map(|item| (item.key.clone(), item.action.clone()))
+                .collect();
+            self.keymap.clear();
+            for item in items {
+                let (Some(key), Some(action)) = (item.key.as_deref(), item.action.as_ref()) else {
+                    continue;
+                };
+                let Ok(mut keys) = helix_view::input::parse_macro(key) else {
+                    continue;
+                };
+                if keys.len() == 1 {
+                    if let Some(key) = keys.pop() {
+                        self.keymap.push((key, action.clone()));
+                    }
+                }
+            }
+        }
+        self.keymap
+            .iter()
+            .find(|(key, _)| *key == event)
+            .map(|(_, action)| action.clone())
     }
 
     /// Returns a header file read error once, if one occurred.

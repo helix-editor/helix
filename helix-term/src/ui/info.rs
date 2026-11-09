@@ -1,5 +1,5 @@
 use crate::compositor::{Component, Context};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
 use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use helix_view::theme::Style;
@@ -44,8 +44,10 @@ impl Component for Info {
             if y >= inner.bottom() {
                 break;
             }
-            // Find the separator `  ` between key and desc.
-            if let Some(sep_pos) = line.find("  ") {
+            // Find the separator after the padded key column. Searching for
+            // the first double space would split inside a description that
+            // starts with spaces.
+            if let Some(sep_pos) = separator_index(line, self.key_width) {
                 let key = &line[..sep_pos];
                 let desc = &line[sep_pos + 2..];
                 // Key is right-padded to item_width; trim trailing spaces for style but keep width.
@@ -65,5 +67,34 @@ impl Component for Info {
                 surface.set_stringn(inner.x, y, line, inner.width as usize, desc_style);
             }
         }
+    }
+}
+
+/// Byte index of the two-space separator after a key padded to
+/// `key_width` display cells.
+fn separator_index(line: &str, key_width: usize) -> Option<usize> {
+    let mut width = 0;
+    for (index, ch) in line.char_indices() {
+        if width >= key_width {
+            return line[index..].starts_with("  ").then_some(index);
+        }
+        width += ch.width().unwrap_or(0);
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn finds_separator_after_padded_key() {
+        assert_eq!(separator_index("key    desc", 3), Some(3));
+        assert_eq!(
+            separator_index("key    desc", 3).map(|i| &"key    desc"[i + 2..]),
+            Some("  desc")
+        );
+        assert_eq!(separator_index("a      desc", 1), Some(1));
+        assert_eq!(separator_index("no separator", 2), None);
     }
 }

@@ -9,6 +9,8 @@ pub struct Info {
     pub title: Cow<'static, str>,
     /// Text body, should contain newlines.
     pub text: String,
+    /// Display width of the key column, before the two-space separator.
+    pub key_width: usize,
     /// Body width.
     pub width: u16,
     /// Body height.
@@ -27,6 +29,7 @@ impl Info {
             return Self {
                 height: 1,
                 width: title.len() as u16,
+                key_width: 0,
                 text: "".to_string(),
                 title,
             };
@@ -51,6 +54,7 @@ impl Info {
 
         Self {
             title,
+            key_width: item_width,
             width: text.lines().map(|l| l.width()).max().unwrap() as u16,
             height: body.len() as u16,
             text,

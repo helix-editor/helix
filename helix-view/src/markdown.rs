@@ -8,6 +8,7 @@ use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::Hash;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime};
@@ -16,7 +17,7 @@ use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::text_annotations::LineAnnotation;
 use helix_core::Position;
 
-use crate::{Document, View};
+use crate::{Document, DocumentId, View, ViewId};
 
 const MAX_HEIGHT_PERCENT: f32 = 0.5;
 
@@ -33,6 +34,29 @@ pub struct ImageLayout {
     pub width_px: u32,
     pub height_px: u32,
 }
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct ImageLayoutKey {
+    doc: DocumentId,
+    view: ViewId,
+    version: i32,
+    anchor: usize,
+    width: u16,
+    height: u16,
+}
+
+/// `visible_images` is called by both the text annotation pass and the image
+/// renderer in the same frame. Cache the short-lived layout so the filesystem
+/// and remote/conversion checks are not repeated. Keep a small map instead of
+/// a single entry so alternating split views don't invalidate each other.
+fn image_layout_cache() -> &'static Mutex<HashMap<ImageLayoutKey, (Instant, Vec<ImageLayout>)>> {
+    static CACHE: OnceLock<Mutex<HashMap<ImageLayoutKey, (Instant, Vec<ImageLayout>)>>> =
+        OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+const IMAGE_LAYOUT_TTL: Duration = Duration::from_millis(100);
+const IMAGE_LAYOUT_CACHE_ENTRIES: usize = 8;
 
 /// Whether the current buffer is an image file shown full-view instead of
 /// as text. Shared by layout, placement, and viewport blanking.
@@ -84,6 +108,19 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
     }
 
     let view_offset = doc.view_offset(view.id);
+    let key = ImageLayoutKey {
+        doc: doc.id(),
+        view: view.id,
+        version: doc.version(),
+        anchor: view_offset.anchor,
+        width: inner.width,
+        height: inner.height,
+    };
+    if let Some((cached_at, images)) = image_layout_cache().lock().unwrap().get(&key) {
+        if cached_at.elapsed() < IMAGE_LAYOUT_TTL {
+            return images.clone();
+        }
+    }
     let start_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
     let end_line = (start_line + inner.height as usize + 2).min(text.len_lines());
     let (cell_width, cell_height) = cell_size();
@@ -131,6 +168,20 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
         }
     }
 
+    {
+        let mut cache = image_layout_cache().lock().unwrap();
+        cache.retain(|_, (cached_at, _)| cached_at.elapsed() < IMAGE_LAYOUT_TTL);
+        if cache.len() >= IMAGE_LAYOUT_CACHE_ENTRIES && !cache.contains_key(&key) {
+            if let Some(oldest) = cache
+                .iter()
+                .min_by_key(|(_, (cached_at, _))| *cached_at)
+                .map(|(key, _)| *key)
+            {
+                cache.remove(&oldest);
+            }
+        }
+        cache.insert(key, (Instant::now(), images.clone()));
+    }
     images
 }
 
@@ -299,7 +350,10 @@ fn resolve_image(
         return None;
     }
     if target.starts_with("http://") || target.starts_with("https://") {
-        return download_remote.then(|| resolve_remote(target)).flatten();
+        if !download_remote || !remote_url_allowed(target) {
+            return None;
+        }
+        return resolve_remote(target);
     }
     let target = percent_decode(target);
     let target = Path::new(&target);
@@ -319,6 +373,119 @@ fn resolve_image(
         }
     }
     candidates.into_iter().find(|path| path.is_file())
+}
+
+fn remote_url_host(url: &str) -> Option<&str> {
+    let rest = url
+        .strip_prefix("http://")
+        .or_else(|| url.strip_prefix("https://"))?;
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let authority = authority.rsplit('@').next().unwrap_or(authority);
+    if let Some(rest) = authority.strip_prefix('[') {
+        return rest.split(']').next();
+    }
+    authority.split(':').next()
+}
+
+/// Reject localhost/private-literal destinations. This cannot stop DNS
+/// rebinding, but prevents the common accidental/localhost SSRF cases while
+/// keeping remote image rendering useful.
+fn remote_url_allowed(url: &str) -> bool {
+    let Some(host) = remote_url_host(url) else {
+        return false;
+    };
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    if host == "localhost"
+        || host.ends_with(".localhost")
+        || host.ends_with(".local")
+        || host.ends_with(".internal")
+    {
+        return false;
+    }
+    match host.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => ipv4_is_public(ip),
+        Ok(IpAddr::V6(ip)) => ipv6_is_public(ip),
+        Err(_) => host_resolves_public(&host),
+    }
+}
+
+/// Resolve a hostname and require every address to be public. DNS can change
+/// between this check and curl's own resolution, so this is not a complete
+/// defense against rebinding; it does stop stable names that point at a
+/// private/loopback address. Results are cached briefly because layout runs
+/// on every rendered frame.
+fn host_resolves_public(host: &str) -> bool {
+    const DNS_CACHE_TTL: Duration = Duration::from_secs(300);
+    {
+        let cache = dns_allowed().lock().unwrap();
+        if let Some((checked_at, allowed)) = cache.get(host) {
+            if checked_at.elapsed() < DNS_CACHE_TTL {
+                return *allowed;
+            }
+        }
+    }
+
+    use std::net::ToSocketAddrs;
+    let allowed = format!("{host}:443")
+        .to_socket_addrs()
+        .map(|addrs| {
+            let mut any = false;
+            for addr in addrs {
+                any = true;
+                if !match addr.ip() {
+                    IpAddr::V4(ip) => ipv4_is_public(ip),
+                    IpAddr::V6(ip) => ipv6_is_public(ip),
+                } {
+                    return false;
+                }
+            }
+            any
+        })
+        .unwrap_or(false);
+
+    dns_allowed()
+        .lock()
+        .unwrap()
+        .insert(host.to_string(), (Instant::now(), allowed));
+    allowed
+}
+
+fn dns_allowed() -> &'static Mutex<HashMap<String, (Instant, bool)>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, (Instant, bool)>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn ipv4_is_public(ip: Ipv4Addr) -> bool {
+    let octets = ip.octets();
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_private()
+        || ip.is_link_local()
+        || ip.is_broadcast()
+        || ip.is_multicast()
+        || octets[0] == 0
+        || (octets[0] == 100 && (64..=127).contains(&octets[1]))
+        || (octets[0] == 198 && (18..=19).contains(&octets[1]))
+        || octets[0] >= 240)
+}
+
+fn ipv6_is_public(ip: Ipv6Addr) -> bool {
+    let segments = ip.segments();
+    // IPv4-mapped addresses can still encode a private IPv4 destination.
+    if segments[..5] == [0, 0, 0, 0, 0] && segments[5] == 0xffff {
+        let v4 = Ipv4Addr::new(
+            (segments[6] >> 8) as u8,
+            segments[6] as u8,
+            (segments[7] >> 8) as u8,
+            segments[7] as u8,
+        );
+        return ipv4_is_public(v4);
+    }
+    !(ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_multicast()
+        || (segments[0] & 0xfe00) == 0xfc00 // unique local
+        || (segments[0] & 0xffc0) == 0xfe80) // link local
 }
 
 /// Download a remote image in the background and return its cached path once
@@ -469,7 +636,7 @@ fn dimensions_or_converted(path: &Path) -> Option<(PathBuf, u32, u32)> {
         let dimensions = image_dimensions(path)?;
         return Some((path.to_path_buf(), dimensions.0, dimensions.1));
     }
-    let converted = ensure_png(path)?;
+    let converted = ensure_png_async(path)?;
     let dimensions = image_dimensions(&converted)?;
     Some((converted, dimensions.0, dimensions.1))
 }
@@ -492,9 +659,7 @@ fn cache_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache"))
 }
 
-/// Kitty only understands PNG (or raw pixels). Convert other formats to a
-/// cached PNG with ffmpeg (SVG uses rsvg-convert when available).
-pub fn ensure_png(path: &Path) -> Option<PathBuf> {
+fn png_output_path(path: &Path) -> Option<PathBuf> {
     if is_png(path) {
         return Some(path.to_path_buf());
     }
@@ -503,24 +668,66 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     path.hash(&mut hasher);
     modified.hash(&mut hasher);
-    let out = cache_dir()?
-        .join("rx-helix")
-        .join("images")
-        .join(format!("{:016x}.png", {
-            use std::hash::Hasher;
-            hasher.finish()
-        }));
+    Some(
+        cache_dir()?
+            .join("rx-helix")
+            .join("images")
+            .join(format!("{:016x}.png", {
+                use std::hash::Hasher;
+                hasher.finish()
+            })),
+    )
+}
+
+/// Convert a non-PNG image in the background. Returns the cached PNG path
+/// once it exists; while a conversion is running, returns `None` so the
+/// renderer can try again on a later frame without blocking the UI.
+pub fn ensure_png_async(path: &Path) -> Option<PathBuf> {
+    let out = png_output_path(path)?;
     if out.is_file() {
         return Some(out);
     }
+    if conversion_failed_recently(&out) {
+        return None;
+    }
     {
-        // A malformed image (or a missing ffmpeg/rsvg-convert) would otherwise
-        // spawn a converter process on every frame. The output path includes
-        // the source mtime, so editing the source naturally retries.
-        let failed = conversion_failures().lock().unwrap();
-        if failed.contains(&out) {
+        let mut in_progress = conversion_in_progress().lock().unwrap();
+        if !in_progress.insert(out.clone()) {
             return None;
         }
+    }
+
+    let input = path.to_path_buf();
+    std::thread::spawn(move || {
+        let ok = ensure_png(&input).is_some();
+        let mut in_progress = conversion_in_progress().lock().unwrap();
+        in_progress.remove(&out);
+        drop(in_progress);
+        if !ok {
+            conversion_failures()
+                .lock()
+                .unwrap()
+                .insert(out, Instant::now());
+        }
+    });
+    None
+}
+
+/// Kitty only understands PNG (or raw pixels). Convert other formats to a
+/// cached PNG with ffmpeg (SVG uses rsvg-convert when available).
+///
+/// This is the blocking implementation used by the background conversion
+/// worker; UI paths should use [`ensure_png_async`].
+pub fn ensure_png(path: &Path) -> Option<PathBuf> {
+    let out = png_output_path(path)?;
+    if out.is_file() {
+        return Some(out);
+    }
+    // A malformed image (or a missing ffmpeg/rsvg-convert) would otherwise
+    // spawn a converter process on every frame. Back off briefly so
+    // installing a converter later is picked up without a restart.
+    if conversion_failed_recently(&out) {
+        return None;
     }
     if let Some(parent) = out.parent() {
         fs::create_dir_all(parent).ok()?;
@@ -550,14 +757,36 @@ pub fn ensure_png(path: &Path) -> Option<PathBuf> {
         conversion_failures().lock().unwrap().remove(&out);
         Some(out)
     } else {
-        conversion_failures().lock().unwrap().insert(out);
+        conversion_failures()
+            .lock()
+            .unwrap()
+            .insert(out, Instant::now());
         None
     }
 }
 
-fn conversion_failures() -> &'static Mutex<HashSet<PathBuf>> {
-    static FAILURES: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
-    FAILURES.get_or_init(|| Mutex::new(HashSet::new()))
+const CONVERSION_RETRY_BACKOFF: Duration = Duration::from_secs(30);
+
+fn conversion_failures() -> &'static Mutex<HashMap<PathBuf, Instant>> {
+    static FAILURES: OnceLock<Mutex<HashMap<PathBuf, Instant>>> = OnceLock::new();
+    FAILURES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn conversion_failed_recently(out: &Path) -> bool {
+    let mut failures = conversion_failures().lock().unwrap();
+    match failures.get(out) {
+        Some(failed_at) if failed_at.elapsed() < CONVERSION_RETRY_BACKOFF => true,
+        Some(_) => {
+            failures.remove(out);
+            false
+        }
+        None => false,
+    }
+}
+
+fn conversion_in_progress() -> &'static Mutex<HashSet<PathBuf>> {
+    static IN_PROGRESS: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
+    IN_PROGRESS.get_or_init(|| Mutex::new(HashSet::new()))
 }
 
 fn percent_decode(input: &str) -> String {
@@ -618,55 +847,68 @@ fn image_dimensions(path: &Path) -> Option<(u32, u32)> {
 }
 
 fn read_image_dimensions(path: &Path) -> Option<(u32, u32)> {
-    let data = fs::read(path).ok()?;
-    if data.len() >= 24 && data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        let width = u32::from_be_bytes(data[16..20].try_into().ok()?);
-        let height = u32::from_be_bytes(data[20..24].try_into().ok()?);
+    use std::io::{Read, Seek, SeekFrom};
+
+    let mut file = fs::File::open(path).ok()?;
+    let mut header = [0u8; 32];
+    let read = file.read(&mut header).ok()?;
+    let header = &header[..read];
+    if header.len() >= 24 && header.starts_with(b"\x89PNG\r\n\x1a\n") {
+        let width = u32::from_be_bytes(header[16..20].try_into().ok()?);
+        let height = u32::from_be_bytes(header[20..24].try_into().ok()?);
         return Some((width, height));
     }
-    if data.len() >= 10 && (data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a")) {
-        let width = u16::from_le_bytes(data[6..8].try_into().ok()?) as u32;
-        let height = u16::from_le_bytes(data[8..10].try_into().ok()?) as u32;
+    if header.len() >= 10 && (header.starts_with(b"GIF87a") || header.starts_with(b"GIF89a")) {
+        let width = u16::from_le_bytes(header[6..8].try_into().ok()?) as u32;
+        let height = u16::from_le_bytes(header[8..10].try_into().ok()?) as u32;
         return Some((width, height));
     }
-    if let Some(dimensions) = jpeg_dimensions(&data) {
-        return Some(dimensions);
+    if header.len() >= 4 && header[0] == 0xFF && header[1] == 0xD8 {
+        file.seek(SeekFrom::Start(0)).ok()?;
+        return jpeg_dimensions_stream(&mut file);
     }
-    webp_dimensions(&data)
+    webp_dimensions(header)
 }
 
-fn jpeg_dimensions(data: &[u8]) -> Option<(u32, u32)> {
-    if data.len() < 4 || data[0] != 0xFF || data[1] != 0xD8 {
+/// Scan JPEG markers from the file without loading pixel data. APP/EXIF
+/// segments can be much larger than any fixed header window.
+fn jpeg_dimensions_stream(file: &mut fs::File) -> Option<(u32, u32)> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    let mut soi = [0u8; 2];
+    file.read_exact(&mut soi).ok()?;
+    if soi != [0xFF, 0xD8] {
         return None;
     }
-    let mut index = 2;
-    while index + 9 < data.len() {
-        if data[index] != 0xFF {
-            index += 1;
-            continue;
+    let mut pair = [0u8; 2];
+    loop {
+        file.read_exact(&mut pair).ok()?;
+        if pair[0] != 0xFF {
+            return None;
         }
-        let marker = data[index + 1];
-        index += 2;
+        let mut marker = pair[1];
+        while marker == 0xFF {
+            file.read_exact(&mut pair).ok()?;
+            marker = pair[1];
+        }
         if marker == 0xD8 || marker == 0xD9 || (0xD0..=0xD7).contains(&marker) {
             continue;
         }
-        let length = u16::from_be_bytes([data[index], data[index + 1]]) as usize;
+        let mut length_bytes = [0u8; 2];
+        file.read_exact(&mut length_bytes).ok()?;
+        let length = u16::from_be_bytes(length_bytes) as u64;
         if length < 2 {
-            // A segment length includes its own two bytes. A smaller value
-            // would make the scan stall on malformed input.
             return None;
         }
-        if (0xC0..=0xCF).contains(&marker)
-            && !matches!(marker, 0xC4 | 0xC8 | 0xCC)
-            && index + 7 < data.len()
-        {
-            let height = u16::from_be_bytes([data[index + 3], data[index + 4]]) as u32;
-            let width = u16::from_be_bytes([data[index + 5], data[index + 6]]) as u32;
+        if (0xC0..=0xCF).contains(&marker) && !matches!(marker, 0xC4 | 0xC8 | 0xCC) {
+            let mut frame = [0u8; 5];
+            file.read_exact(&mut frame).ok()?;
+            let height = u16::from_be_bytes([frame[1], frame[2]]) as u32;
+            let width = u16::from_be_bytes([frame[3], frame[4]]) as u32;
             return Some((width, height));
         }
-        index = index.checked_add(length)?;
+        file.seek(SeekFrom::Current(length as i64 - 2)).ok()?;
     }
-    None
 }
 
 fn webp_dimensions(data: &[u8]) -> Option<(u32, u32)> {
@@ -757,10 +999,68 @@ mod tests {
     }
 
     #[test]
+    fn rejects_private_remote_image_hosts() {
+        // Use a literal public address so the test does not depend on DNS.
+        assert!(remote_url_allowed("https://93.184.216.34/a.png"));
+        assert!(remote_url_allowed("http://user@93.184.216.34:8080/a.png"));
+        for url in [
+            "http://localhost/a.png",
+            "http://127.0.0.1/a.png",
+            "http://10.0.0.1/a.png",
+            "http://192.168.1.1/a.png",
+            "http://169.254.169.254/latest/meta-data",
+            "http://[::1]/a.png",
+            "http://[fe80::1]/a.png",
+            "http://printer.local/a.png",
+            "http://metadata.google.internal/a.png",
+        ] {
+            assert!(!remote_url_allowed(url), "allowed private URL {url}");
+        }
+    }
+
+    #[test]
     fn fits_images_inside_the_viewport() {
         let (cols, rows) = fit_cells(4000, 4000, 8.0, 16.0, 100, 30);
         assert!(cols <= 100);
         assert!(rows <= 30);
         assert!(cols > 0 && rows > 0);
+    }
+
+    #[test]
+    fn reads_dimensions_from_a_png_header() {
+        let path = std::env::temp_dir().join(format!(
+            "rx-helix-png-dims-{}-{:?}.png",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let mut data = b"\x89PNG\r\n\x1a\n".to_vec();
+        data.extend_from_slice(&[0; 8]);
+        data.extend_from_slice(&123u32.to_be_bytes());
+        data.extend_from_slice(&456u32.to_be_bytes());
+        // Pixel data beyond the header must not be required.
+        data.extend_from_slice(&[0; 4096]);
+        std::fs::write(&path, data).unwrap();
+        assert_eq!(read_image_dimensions(&path), Some((123, 456)));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn reads_dimensions_by_seeking_through_jpeg_segments() {
+        let path = std::env::temp_dir().join(format!(
+            "rx-helix-jpeg-dims-{}-{:?}.jpg",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let mut data = vec![0xFF, 0xD8];
+        // A large APP0 segment the old whole-file reader would still load.
+        data.extend_from_slice(&[0xFF, 0xE0, 0x00, 0x12]);
+        data.extend_from_slice(&[0; 16]);
+        // SOF0: length, precision, height=300, width=600.
+        data.extend_from_slice(&[0xFF, 0xC0, 0x00, 0x11, 0x08, 0x01, 0x2C, 0x02, 0x58]);
+        data.extend_from_slice(&[0; 10]);
+        data.extend_from_slice(&[0; 4096]);
+        std::fs::write(&path, data).unwrap();
+        assert_eq!(read_image_dimensions(&path), Some((600, 300)));
+        let _ = std::fs::remove_file(path);
     }
 }

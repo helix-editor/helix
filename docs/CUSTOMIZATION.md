@@ -16,7 +16,8 @@ themes. There are no plugins and no separate config format.
 Modular config is implemented in `helix-term/src/config.rs`: the main `config.toml`
 is loaded first, then every `config.d/*.toml` (sorted) is merged with
 Each module's tables are deep-merged (nested keymap prefixes and statusline
-mode tables keep their siblings); arrays and scalar values are replaced. For
+mode tables keep their siblings); arrays are appended in file order and scalar
+values are replaced. For
 `hx -c /path/to/config.toml` the sibling `config.d` next to that file is used.
 Workspace `.helix/config.toml` is still merged last if trusted.
 
@@ -58,12 +59,14 @@ mode-short-width = 100
 mode.normal = "NORMAL"
 mode.insert = "INSERT"
 mode.select = "SELECT"
+mode.select-prompt = "SELECT"
 mode.command = "COMMAND"
 mode.search = "SEARCH"
 
 mode.normal-short = "NOR"
 mode.insert-short = "INS"
 mode.select-short = "SEL"
+mode.select-prompt-short = "SEL"
 mode.command-short = "COM"
 mode.search-short = "S"
 ```

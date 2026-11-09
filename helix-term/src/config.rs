@@ -37,6 +37,7 @@ impl Default for Config {
 #[derive(Debug)]
 pub enum ConfigLoadError {
     BadConfig(TomlError),
+    BadConfigFile { path: PathBuf, error: TomlError },
     Error(IOError),
 }
 
@@ -50,6 +51,9 @@ impl Display for ConfigLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConfigLoadError::BadConfig(err) => err.fmt(f),
+            ConfigLoadError::BadConfigFile { path, error } => {
+                write!(f, "{}: {}", path.display(), error)
+            }
             ConfigLoadError::Error(err) => err.fmt(f),
         }
     }
@@ -64,69 +68,62 @@ impl Config {
             global.and_then(|file| toml::from_str(file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
-        let res = match (global_config, local_config) {
-            (Ok(global), Ok(local)) => {
-                let mut keys = keymap::default();
-                if let Some(global_keys) = global.keys {
-                    merge_keys(&mut keys, global_keys)
-                }
-                if let Some(local_keys) = local.keys {
-                    merge_keys(&mut keys, local_keys)
-                }
-
-                let editor = match (global.editor, local.editor) {
-                    (None, None) => helix_view::editor::Config::default(),
-                    (None, Some(val)) | (Some(val), None) => {
-                        val.try_into().map_err(ConfigLoadError::BadConfig)?
-                    }
-                    (Some(global), Some(local)) => Self::merge_config_values(global, local)
-                        .try_into()
-                        .map_err(ConfigLoadError::BadConfig)?,
-                };
-
-                Config {
-                    theme: local.theme.or(global.theme),
-                    keys,
-                    editor,
-                }
-            }
-            // if any configs are invalid return that first
-            (_, Err(ConfigLoadError::BadConfig(err)))
-            | (Err(ConfigLoadError::BadConfig(err)), _) => {
-                return Err(ConfigLoadError::BadConfig(err))
-            }
-            (Ok(config), Err(_)) | (Err(_), Ok(config)) => {
-                let mut keys = keymap::default();
-                if let Some(keymap) = config.keys {
-                    merge_keys(&mut keys, keymap);
-                }
-                Config {
-                    theme: config.theme,
-                    keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
-                }
-            }
-
+        match (global_config, local_config) {
+            (Ok(global), Ok(local)) => Self::merge_raw(global, local),
+            (Ok(config), Err(err)) | (Err(err), Ok(config)) => match err {
+                ConfigLoadError::BadConfig(_) | ConfigLoadError::BadConfigFile { .. } => Err(err),
+                ConfigLoadError::Error(_) => Self::from_raw(config),
+            },
             // these are just two io errors return the one for the global config
-            (Err(err), Err(_)) => return Err(err),
-        };
-
-        Ok(res)
+            (Err(err), Err(_)) => Err(err),
+        }
     }
 
-    fn load_merged_global_string() -> Result<String, ConfigLoadError> {
-        Self::load_merged_global_value().and_then(|val| {
-            toml::to_string(&val)
-                .map_err(|err| ConfigLoadError::Error(IOError::other(err.to_string())))
+    fn from_raw(config: ConfigRaw) -> Result<Config, ConfigLoadError> {
+        let mut keys = keymap::default();
+        if let Some(keymap) = config.keys {
+            merge_keys(&mut keys, keymap);
+        }
+        Ok(Config {
+            theme: config.theme,
+            keys,
+            editor: config.editor.map_or_else(
+                || Ok(helix_view::editor::Config::default()),
+                |val| val.try_into().map_err(ConfigLoadError::BadConfig),
+            )?,
+        })
+    }
+
+    fn merge_raw(global: ConfigRaw, local: ConfigRaw) -> Result<Config, ConfigLoadError> {
+        let mut keys = keymap::default();
+        if let Some(global_keys) = global.keys {
+            merge_keys(&mut keys, global_keys)
+        }
+        if let Some(local_keys) = local.keys {
+            merge_keys(&mut keys, local_keys)
+        }
+
+        let editor = match (global.editor, local.editor) {
+            (None, None) => helix_view::editor::Config::default(),
+            (None, Some(val)) | (Some(val), None) => {
+                val.try_into().map_err(ConfigLoadError::BadConfig)?
+            }
+            (Some(global), Some(local)) => Self::merge_config_values(global, local)
+                .try_into()
+                .map_err(ConfigLoadError::BadConfig)?,
+        };
+
+        Ok(Config {
+            theme: local.theme.or(global.theme),
+            keys,
+            editor,
         })
     }
 
     /// Deep-merge tables for `config.d`. Unlike `merge_toml_values`, nested
     /// keymap prefixes (`[keys.normal.space]`) and statusline mode tables are
-    /// merged rather than replaced wholesale; arrays/scalars are replaced.
+    /// merged rather than replaced wholesale; arrays append in file order and
+    /// scalars are replaced.
     fn merge_config_values(left: toml::Value, right: toml::Value) -> toml::Value {
         use toml::Value;
 
@@ -140,6 +137,10 @@ impl Config {
                     left.insert(key, merged);
                 }
                 Value::Table(left)
+            }
+            (Value::Array(mut left), Value::Array(right)) => {
+                left.extend(right);
+                Value::Array(left)
             }
             (_, right_value) => right_value,
         }
@@ -170,7 +171,10 @@ impl Config {
         match fs::read_to_string(&config_file) {
             Ok(content) => {
                 let val: toml::Value =
-                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                    toml::from_str(&content).map_err(|error| ConfigLoadError::BadConfigFile {
+                        path: config_file.clone(),
+                        error,
+                    })?;
                 merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
@@ -195,7 +199,10 @@ impl Config {
             for path in entries {
                 let content = fs::read_to_string(&path).map_err(ConfigLoadError::Error)?;
                 let val: toml::Value =
-                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                    toml::from_str(&content).map_err(|error| ConfigLoadError::BadConfigFile {
+                        path: path.clone(),
+                        error,
+                    })?;
                 merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
@@ -212,12 +219,11 @@ impl Config {
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
-        let global_config = Self::load_merged_global_string()?;
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
-            .map_err(ConfigLoadError::Error);
-
-        let phony_config = ConfigLoadError::Error(IOError::other("hacky placeholder"));
-        let global_parsed = Config::load(Ok(&global_config), Err(phony_config))?;
+        let global_value = Self::load_merged_global_value()?;
+        let global_raw: ConfigRaw = global_value
+            .try_into()
+            .map_err(ConfigLoadError::BadConfig)?;
+        let global_parsed = Self::from_raw(global_raw.clone())?;
 
         // We need to build a transient `WorkspaceTrust` just to ask whether the workspace is
         // trusted enough to load its `.helix/config.toml`. The persisted-trust file on disk is the
@@ -230,7 +236,19 @@ impl Config {
             .query_current(helix_loader::workspace_trust::TrustQuery::LocalConfig)
             .is_trusted()
         {
-            let mut merged = Config::load(Ok(&global_config), local_config)?;
+            let local_raw = match fs::read_to_string(helix_loader::workspace_config_file()) {
+                Ok(content) => {
+                    let local: ConfigRaw =
+                        toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                    Some(local)
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+                Err(_) => None,
+            };
+            let Some(local_raw) = local_raw else {
+                return Ok(global_parsed);
+            };
+            let mut merged = Self::merge_raw(global_raw, local_raw)?;
             // editor.workspace-trust is global/user-scope only. Without this override, a
             // workspace's `.helix/config.toml` could set `level = "insecure"`; once the user trusted
             // *that* workspace, refresh_config would re-load with the override merged in and from
@@ -368,5 +386,31 @@ mod tests {
             .unwrap();
         assert_eq!(mode.get("normal").unwrap().as_str(), Some("N"));
         assert_eq!(mode.get("insert").unwrap().as_str(), Some("INSERT"));
+    }
+
+    #[test]
+    fn modular_merge_appends_arrays() {
+        let base: toml::Value = toml::from_str("items = [{ desc = \"base\" }]\n").unwrap();
+        let module: toml::Value = toml::from_str("items = [{ desc = \"module\" }]\n").unwrap();
+        let merged = Config::merge_config_values(base, module);
+        let items = merged
+            .get("items")
+            .and_then(|value| value.as_array())
+            .unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].get("desc").unwrap().as_str(), Some("base"));
+        assert_eq!(items[1].get("desc").unwrap().as_str(), Some("module"));
+    }
+
+    #[test]
+    fn config_file_errors_include_the_path() {
+        let error = toml::from_str::<toml::Value>("[broken").unwrap_err();
+        let error = ConfigLoadError::BadConfigFile {
+            path: PathBuf::from("/config/config.d/vim.toml"),
+            error,
+        };
+        let message = error.to_string();
+        assert!(message.contains("/config/config.d/vim.toml"));
+        assert!(message.contains("TOML parse error") || message.contains("expected"));
     }
 }

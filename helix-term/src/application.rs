@@ -91,66 +91,81 @@ const TRANSPARENT_POPUP_SCOPES: &[&str] = &["ui.popup", "ui.popup.info", "ui.men
 struct FileStamp {
     modified: Option<SystemTime>,
     len: u64,
+    /// Content hash catches same-size edits that preserve mtime (some editors
+    /// write through a temporary file and restore timestamps).
+    hash: u64,
 }
 
 /// Polls the active theme file and reloads it after the file has been stable
 /// for a short debounce window. Polling avoids adding a filesystem watcher
 /// dependency for a single file and works with atomic renames.
 struct ThemeWatcher {
-    path: Option<PathBuf>,
-    stamp: Option<FileStamp>,
-    pending: Option<(FileStamp, Instant)>,
+    paths: Vec<PathBuf>,
+    stamps: Vec<Option<FileStamp>>,
+    pending: Option<(Vec<Option<FileStamp>>, Instant)>,
 }
 
 impl ThemeWatcher {
-    fn new(path: Option<PathBuf>) -> Self {
-        let stamp = path.as_deref().and_then(Self::file_stamp);
+    fn new(paths: Vec<PathBuf>) -> Self {
+        let stamps = paths.iter().map(|path| Self::file_stamp(path)).collect();
         Self {
-            path,
-            stamp,
+            paths,
+            stamps,
             pending: None,
         }
     }
 
     fn file_stamp(path: &Path) -> Option<FileStamp> {
+        use std::hash::{Hash, Hasher};
+
         let metadata = std::fs::metadata(path).ok()?;
+        let contents = std::fs::read(path).ok()?;
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        contents.hash(&mut hasher);
         Some(FileStamp {
             modified: metadata.modified().ok(),
             len: metadata.len(),
+            hash: hasher.finish(),
         })
     }
 
-    fn watch(&mut self, path: Option<PathBuf>) {
-        if self.path == path {
+    fn watch(&mut self, paths: Vec<PathBuf>) {
+        if self.paths == paths {
             return;
         }
-        self.path = path;
-        self.stamp = self.path.as_deref().and_then(Self::file_stamp);
+        self.stamps = paths.iter().map(|path| Self::file_stamp(path)).collect();
+        self.paths = paths;
         self.pending = None;
     }
 
     fn poll(&mut self, now: Instant) -> bool {
-        let Some(path) = self.path.as_deref() else {
+        if self.paths.is_empty() {
             return false;
-        };
-        let Some(stamp) = Self::file_stamp(path) else {
-            return false;
-        };
-        if Some(stamp) == self.stamp {
+        }
+        let stamps: Vec<Option<FileStamp>> = self
+            .paths
+            .iter()
+            .map(|path| Self::file_stamp(path))
+            .collect();
+        if stamps == self.stamps {
             self.pending = None;
             return false;
         }
-        match self.pending {
-            Some((pending_stamp, since)) if pending_stamp == stamp => {
+        match self.pending.take() {
+            Some((pending_stamps, since)) if pending_stamps == stamps => {
                 if now.duration_since(since) < THEME_RELOAD_DEBOUNCE {
+                    self.pending = Some((pending_stamps, since));
                     return false;
                 }
-                self.stamp = Some(stamp);
-                self.pending = None;
+                self.stamps = stamps;
                 true
             }
-            _ => {
-                self.pending = Some((stamp, now));
+            Some((_pending_stamps, _since)) => {
+                self.pending = Some((stamps, now));
+                false
+            }
+            None => {
+                self.pending = Some((stamps, now));
                 false
             }
         }
@@ -212,12 +227,17 @@ impl Application {
             workspace_trust,
         );
         Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
-        let theme_path = config.load().theme.as_ref().and_then(|theme_config| {
-            editor
-                .theme_loader
-                .theme_path(theme_config.choose(theme_mode))
-        });
-        let theme_watcher = ThemeWatcher::new(theme_path);
+        let theme_paths = config
+            .load()
+            .theme
+            .as_ref()
+            .map(|theme_config| {
+                editor
+                    .theme_loader
+                    .theme_paths(theme_config.choose(theme_mode))
+            })
+            .unwrap_or_default();
+        let theme_watcher = ThemeWatcher::new(theme_paths);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -387,8 +407,10 @@ impl Application {
         if self.compositor.has_overlay() {
             // Keep images from painting over pickers/prompts/menus, mirroring
             // image.nvim's window_overlap_clear behavior. Virtual lines stay
-            // reserved so text doesn't shift when the overlay closes.
-            crate::ui::image::clear();
+            // reserved so text doesn't shift when the overlay closes. Keep
+            // the transmitted image data so closing the overlay only re-places
+            // images instead of re-sending them all.
+            crate::ui::image::clear_placements();
         } else {
             crate::ui::image::render(&self.editor);
         }
@@ -521,11 +543,11 @@ impl Application {
                         .try_get_exact("ui.background")
                         .and_then(|style| style.bg),
                 );
-                let path = self
+                let paths = self
                     .editor
                     .theme_loader
-                    .theme_path(self.editor.theme.name());
-                self.theme_watcher.watch(path);
+                    .theme_paths(self.editor.theme.name());
+                self.theme_watcher.watch(paths);
                 return;
             }
         }
@@ -596,15 +618,19 @@ impl Application {
     }
 
     fn sync_theme_watcher(&mut self) {
-        let path = {
+        let paths = {
             let config = self.config.load();
-            config.theme.as_ref().and_then(|theme_config| {
-                self.editor
-                    .theme_loader
-                    .theme_path(theme_config.choose(self.theme_mode))
-            })
+            config
+                .theme
+                .as_ref()
+                .map(|theme_config| {
+                    self.editor
+                        .theme_loader
+                        .theme_paths(theme_config.choose(self.theme_mode))
+                })
+                .unwrap_or_default()
         };
-        self.theme_watcher.watch(path);
+        self.theme_watcher.watch(paths);
     }
 
     /// Reload the active theme after its file changed on disk. Unlike startup
@@ -619,6 +645,7 @@ impl Application {
         let true_color = self.terminal.backend().supports_true_color()
             || config.editor.true_color
             || crate::true_color();
+        let mut keep_watching_on_error = false;
         match self.editor.theme_loader.load(name) {
             Ok(mut theme) => {
                 if !true_color && !theme.is_16_color() {
@@ -636,7 +663,31 @@ impl Application {
                     log::warn!("failed to apply reloaded theme `{}` - {}", name, err);
                 }
             }
-            Err(err) => log::warn!("failed to reload theme `{}` - {}", name, err),
+            Err(err) => {
+                log::warn!("failed to reload theme `{}` - {}", name, err);
+                // Keep the previous watch list on failure: it still contains
+                // the malformed/deleted file, so fixing or recreating it is
+                // noticed by the next poll.
+                keep_watching_on_error = true;
+                let paths = self.editor.theme_loader.theme_paths(name);
+                if paths.first().is_none_or(|path| !path.exists()) {
+                    // The active theme file was removed rather than being
+                    // temporarily malformed. Fall back instead of keeping a
+                    // theme that no longer exists on disk.
+                    let mut fallback = self.editor.theme_loader.default_theme(true_color);
+                    if config.editor.transparent_popups {
+                        fallback.clear_backgrounds(TRANSPARENT_POPUP_SCOPES);
+                    }
+                    if let Err(err) = self.editor.set_theme(fallback) {
+                        log::warn!("failed to apply fallback theme - {err}");
+                    }
+                }
+            }
+        }
+        // Keep polling the old paths after a failed reload so recreating a
+        // deleted file or fixing a parse error is picked up.
+        if !keep_watching_on_error {
+            self.sync_theme_watcher();
         }
     }
 

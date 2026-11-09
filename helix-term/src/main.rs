@@ -121,8 +121,8 @@ FLAGS:
             Config::default()
         }
         Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
-        Err(ConfigLoadError::BadConfig(err)) => {
-            eprintln!("Bad config: {}", err);
+        Err(err @ (ConfigLoadError::BadConfig(_) | ConfigLoadError::BadConfigFile { .. })) => {
+            eprintln!("Bad config: {err}");
             eprintln!("Press <ENTER> to continue with default config");
             use std::io::Read;
             let _ = std::io::stdin().read(&mut []);

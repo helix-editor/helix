@@ -928,7 +928,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         if let Some(help) = &self.help {
             let y = frame_area.y + frame_area.height.saturating_sub(1);
-            let help_style = cx.editor.theme.get("ui.text.inactive");
+            let help_style = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
             let text = format!(" {help} ");
             surface.set_stringn(
                 frame_area.x.saturating_add(2),

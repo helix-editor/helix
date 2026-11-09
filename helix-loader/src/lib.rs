@@ -32,23 +32,17 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 ///
 /// The priority is:
 ///
-/// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
-/// 2. subdirectory of user config directory (always included)
-/// 3. `HELIX_RUNTIME` (if environment variable is set)
-/// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
-/// 5. subdirectory of path to helix executable (always included)
+/// 1. subdirectory of user config directory (always included)
+/// 2. `HELIX_RUNTIME` (if environment variable is set)
+/// 3. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
+/// 4. subdirectory of path to helix executable (always included)
+/// 5. the source tree this binary was built from, if it still exists
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     const RT_DIR: &str = "runtime";
     // Adding higher priority first
     let mut rt_dirs = Vec::new();
-    if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        let path = PathBuf::from(dir).parent().unwrap().join(RT_DIR);
-        log::debug!("runtime dir: {}", path.to_string_lossy());
-        rt_dirs.push(path);
-    }
 
     let conf_rt_dir = config_dir().join(RT_DIR);
     rt_dirs.push(conf_rt_dir);
