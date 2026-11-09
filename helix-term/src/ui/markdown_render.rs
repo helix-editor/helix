@@ -876,26 +876,30 @@ impl Decoration for MarkdownRender {
         }
     }
 
+    fn reset_pos(&mut self, char_idx: usize) -> usize {
+        // Markdown needs per-grapheme callbacks for inline-code backgrounds.
+        char_idx
+    }
+
     fn decorate_grapheme(
         &mut self,
         renderer: &mut TextRenderer,
         grapheme: &helix_core::doc_formatter::FormattedGrapheme,
     ) -> usize {
         let char_idx = grapheme.char_idx;
-        if self.inline_code.is_empty() {
-            return usize::MAX;
+        if !self.inline_code.is_empty() {
+            let index = self
+                .inline_code
+                .partition_point(|inline| inline.end <= char_idx);
+            if let Some(inline) = self.inline_code.get(index) {
+                if inline.start <= char_idx
+                    && renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width())
+                {
+                    renderer.set_grapheme_bg(inline.style.bg);
+                }
+            }
         }
-        let Some(inline) = self
-            .inline_code
-            .iter()
-            .find(|inline| inline.start <= char_idx && char_idx < inline.end)
-        else {
-            return usize::MAX;
-        };
-        if renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width()) {
-            renderer.set_grapheme_bg(inline.style.bg);
-        }
-        usize::MAX
+        char_idx + 1
     }
 }
 
