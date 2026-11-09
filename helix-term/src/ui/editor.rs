@@ -758,14 +758,10 @@ impl EditorView {
             None => bufferline_inactive,
         };
 
-        // Fixed-width tabs: each tab occupies the same number of cells,
-        // padded/truncated to `TAB_WIDTH`. This keeps the bar stable when
-        // switching files and matches the request for a uniform tab strip.
-        const TAB_WIDTH: usize = 22;
-        let mut x = viewport.x;
-        let current_doc = view!(editor).doc;
-
-        for doc in editor.documents() {
+        // Fixed-width tabs: every tab uses the same width so the strip stays
+        // stable when switching files. Derive it from the longest label
+        // instead of hardcoding a cell count.
+        let tab_label = |doc: &Document| {
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -774,7 +770,19 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
             let fname = if fname.is_empty() { "[No Name]" } else { fname };
+            let modified = if doc.is_modified() { "[+]" } else { "" };
+            format!(" {fname}{modified} ")
+        };
+        let tab_width = editor
+            .documents()
+            .map(|doc| tab_label(doc).width())
+            .max()
+            .unwrap_or(16)
+            .clamp(16, 40);
+        let mut x = viewport.x;
+        let current_doc = view!(editor).doc;
 
+        for doc in editor.documents() {
             let style = if doc.id() == current_doc {
                 bufferline_active
             } else {
@@ -782,15 +790,14 @@ impl EditorView {
             };
 
             // Inside the fixed tab, show ` filename[+]` centered with padding.
-            let modified = if doc.is_modified() { "[+]" } else { "" };
-            let raw = format!(" {}{} ", fname, modified);
+            let raw = tab_label(doc);
             // Pad/truncate by display width, not bytes/chars: file names can
             // contain CJK/emoji and `set_stringn` consumes cells.
             let raw_width = raw.width();
-            let padded = if raw_width >= TAB_WIDTH {
-                Self::truncate_to_width(&raw, TAB_WIDTH)
+            let padded = if raw_width >= tab_width {
+                Self::truncate_to_width(&raw, tab_width)
             } else {
-                let pad = TAB_WIDTH - raw_width;
+                let pad = tab_width - raw_width;
                 let left = pad / 2;
                 let right = pad - left;
                 format!("{}{}{}", " ".repeat(left), raw, " ".repeat(right))
@@ -800,7 +807,7 @@ impl EditorView {
             if rem == 0 {
                 break;
             }
-            let width = rem.min(TAB_WIDTH);
+            let width = rem.min(tab_width);
             let (next_x, _) = surface.set_stringn(x, viewport.y, &padded, width, style);
             x = next_x;
 
@@ -1054,7 +1061,7 @@ impl EditorView {
         let pending_before = !self.keymaps.pending().is_empty();
 
         if dashboard && !pending_before {
-            if let Some(action) = dashboard_action(cxt.editor, event) {
+            if let Some(action) = self.dashboard.action(cxt.editor, event) {
                 self.run_dashboard_action(cxt, &action);
                 return None;
             }
@@ -1290,19 +1297,6 @@ impl EditorView {
 
         EventResult::Ignored(None)
     }
-}
-
-/// Returns the action configured for the dashboard key that matches `event`.
-fn dashboard_action(editor: &Editor, event: KeyEvent) -> Option<String> {
-    editor.config().dashboard.items.iter().find_map(|item| {
-        let action = item.action.as_ref()?;
-        let mut keys = helix_view::input::parse_macro(item.key.as_deref()?).ok()?;
-        if keys.len() == 1 && keys.pop()? == event {
-            Some(action.clone())
-        } else {
-            None
-        }
-    })
 }
 
 fn execute_mappable_command(
