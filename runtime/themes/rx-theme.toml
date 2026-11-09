@@ -108,7 +108,7 @@ inherits = "noctalia"
 "ui.highlight.frameline" = { bg = "secondaryContainer" }
 
 "ui.menu" = { fg = "onSurface", bg = "surfaceContainer" }
-"ui.menu.selected" = { fg = "surfaceContainer", bg = "onSurface" }
+"ui.menu.selected" = { fg = "onSecondaryContainer", bg = "secondaryContainer" }
 "ui.menu.scroll" = { fg = "secondary", bg = "surfaceContainerHigh" }
 
 "ui.popup" = { fg = "onSurface", bg = "surface" }
@@ -119,6 +119,8 @@ inherits = "noctalia"
 
 "ui.statusline" = { fg = "onSurface", bg = "surfaceContainer" }
 "ui.statusline.inactive" = { fg = "onSurfaceVariant", bg = "surfaceContainer" }
+"ui.statusline.file-type" = { fg = "primary" }
+"ui.statusline.total-line-numbers" = { fg = "outline" }
 "ui.statusline.normal" = { fg = "background", bg = "primary", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "background", bg = "primary", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "background", bg = "secondary", modifiers = ["bold"] }
@@ -132,6 +134,15 @@ inherits = "noctalia"
 "ui.bufferline.indicator" = { fg = "primary" }
 "ui.bufferline.modified" = { fg = "secondary" }
 
+# Dashboard roles. These keep the logo/icons/keys colored instead of
+# collapsing to the plain text color used by generic themes.
+"ui.dashboard.header" = { fg = "primary", modifiers = ["bold"] }
+"ui.dashboard.icon" = { fg = "primary" }
+"ui.dashboard.item" = { fg = "secondary" }
+"ui.dashboard.key" = { fg = "tertiary" }
+"ui.dashboard.subtitle" = { fg = "onSurfaceVariant" }
+"ui.dashboard.footer" = { fg = "onSurfaceVariant" }
+
 "ui.virtual" = "outline"
 "ui.virtual.indent-guide" = "outlineVariant"
 "ui.virtual.whitespace" = "outlineVariant"
@@ -144,14 +155,14 @@ inherits = "noctalia"
 
 # Picker/menu scopes used by rx-helix. Other themes fall back to their
 # selection/text styles when these are absent.
-"ui.picker.selected" = { fg = "onSurface", bg = "surfaceContainerHigh" }
+"ui.picker.selected" = { fg = "onSecondaryContainer", bg = "secondaryContainer" }
 "ui.picker.match" = { fg = "tertiary", modifiers = ["bold"] }
 "ui.picker.border" = { fg = "outline" }
 "ui.picker.title" = { fg = "primary" }
-"ui.picker.header" = { fg = "outline" }
-"ui.picker.header.column" = { fg = "outline" }
+"ui.picker.header" = { fg = "secondary" }
+"ui.picker.header.column" = { fg = "secondary" }
 "ui.picker.header.column.active" = { fg = "primary" }
-"ui.picker.help" = { fg = "outline" }
+"ui.picker.help" = { fg = "onSurfaceVariant" }
 
 "diagnostic.hint" = { underline = { color = "tertiary", style = "curl" } }
 "diagnostic.info" = { underline = { color = "primary", style = "curl" } }

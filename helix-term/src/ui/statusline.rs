@@ -771,8 +771,16 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let total_line_numbers = context.doc.text().len_lines();
+    let style = context
+        .editor
+        .theme
+        .try_get_exact("ui.statusline.total-line-numbers")
+        .unwrap_or_default();
 
-    write(context, format!(" {} ", total_line_numbers).into());
+    write(
+        context,
+        Span::styled(format!(" {} ", total_line_numbers), style),
+    );
 }
 
 fn render_position_percentage<'a, F>(context: &mut RenderContext<'a>, write: F)
@@ -828,8 +836,13 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let style = context
+        .editor
+        .theme
+        .try_get_exact("ui.statusline.file-type")
+        .unwrap_or_default();
 
-    write(context, format!(" {} ", file_type).into());
+    write(context, Span::styled(format!(" {} ", file_type), style));
 }
 
 fn render_file_name<'a, F>(context: &mut RenderContext<'a>, write: F)

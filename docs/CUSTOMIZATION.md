@@ -130,12 +130,15 @@ popup-border = "all"        # none | popup | menu | all
 
 `cursorline` highlights the line of every cursor with `ui.cursorline`.
 `bufferline` renders open buffers at the top; `multiple` shows it only when
-more than one buffer is open. The tab row uses `ui.bufferline.background` as
-the dark inactive bar; the current tab is lighter (`ui.bufferline.active`) with
-white text, a thin `ui.bufferline.indicator` line on its left, and a
-`ui.bufferline.modified` dot at its right edge for modified buffers. Inactive
-tabs use `ui.bufferline`. Long filenames end with `…`. A blank row separates
-the tabs from the editor content.
+more than one buffer is open. Tabs have a fixed 24-cell width: a 1-cell left
+indicator, a 20-cell label area, a gap, the modified dot and one trailing
+padding cell. `TCP and UDP.md` is 14 cells and `Processes in OS.md` is 18, so
+both fit; longer titles keep 16 cells and end with ` ...`. The tab row uses
+`ui.bufferline.background` as the dark inactive bar; the current tab is lighter
+(`ui.bufferline.active`) with white text, a thin `ui.bufferline.indicator`
+line on its left, and a `ui.bufferline.modified` dot at its right edge for
+modified buffers. Inactive tabs use `ui.bufferline`. A blank row separates the
+tabs from the editor content.
 
 The command palette completion list always uses a themed border.
 `popup-border` additionally draws themed borders around hover, completion,
@@ -147,6 +150,12 @@ Border backgrounds follow the panel, so transparent panels keep transparent
 borders. No fork-only theme scope is required for the fallback colors; a theme
 may optionally define `ui.statusline.command` / `ui.statusline.search` to
 override the Command/Search prompt chips.
+
+Selection rows use `ui.picker.selected` in finders and `ui.menu.selected` in
+completion menus; the rx-theme maps both to the secondary container so they
+stay visibly colored instead of a white block. The lower-right statusline
+`file-type` and `total-line-numbers` elements can be colored with
+`ui.statusline.file-type` and `ui.statusline.total-line-numbers`.
 
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It
@@ -189,6 +198,10 @@ fall back to standard theme scopes when the rx-specific scopes are absent.
 The dashboard replaces the empty buffer when Helix starts without files. It is
 an overlay: the scratch buffer underneath is not modified. Opening a file or
 running `:new` dismisses it; cancelling a picker returns to it.
+
+Dashboard menu colors use `ui.dashboard.header`, `.icon`, `.item`, `.key`,
+`.subtitle`, and `.footer`. Themes without these scopes fall back to the
+statusline accents and normal UI text, so other themes keep working.
 
 ```toml
 [editor.dashboard]

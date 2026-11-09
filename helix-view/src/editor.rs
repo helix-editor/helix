@@ -2221,6 +2221,12 @@ impl Editor {
             return;
         }
 
+        // Opening or switching buffers should start a fresh idle cycle even
+        // when the switch happened from a compositor layer (picker, prompt)
+        // that does not reset the idle timer on its own. Spell checking and
+        // inlay hints run on the idle timer.
+        self.reset_idle_timer();
+
         if !matches!(action, Action::Load) {
             self.enter_normal_mode();
         }

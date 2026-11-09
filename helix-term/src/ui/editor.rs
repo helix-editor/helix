@@ -816,14 +816,13 @@ impl EditorView {
             }
         };
 
-        // Cell layout: indicator (1) + label area + dot (1) + right padding (1).
-        const TAB_CHROME: usize = 3;
-        let tab_width = editor
-            .documents()
-            .map(|doc| tab_label(doc).width() + TAB_CHROME)
-            .max()
-            .unwrap_or(16)
-            .clamp(16, 40);
+        // Fixed tab geometry: a 24-cell tab with a 1-cell left indicator,
+        // a 20-cell label area, a 1-cell gap, the modified dot and a 1-cell
+        // right padding. Long names are shortened to fit the 20-cell label.
+        const TAB_WIDTH: usize = 24;
+        const TAB_CHROME: usize = 4;
+        const TAB_LABEL_WIDTH: usize = TAB_WIDTH - TAB_CHROME;
+        let tab_width = TAB_WIDTH;
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
@@ -852,8 +851,8 @@ impl EditorView {
             }
 
             // Center the filename in the label area. Names that do not fit
-            // are shortened with a single-cell ellipsis.
-            let label_area = tab_width.saturating_sub(TAB_CHROME);
+            // are shortened and end with ` ...`.
+            let label_area = TAB_LABEL_WIDTH;
             let label = Self::fit_tab_label(&tab_label(doc), label_area);
             let pad = label_area.saturating_sub(label.width());
             let left = pad / 2;
@@ -897,19 +896,22 @@ impl EditorView {
         out
     }
 
-    /// Fit a filename into `max_width` cells, using `…` when it overflows.
+    /// Fit a filename into `max_width` cells. Overflowing titles drop the
+    /// final four cells and end with the hardcoded ` ...` suffix.
     fn fit_tab_label(text: &str, max_width: usize) -> String {
+        const SUFFIX: &str = " ...";
+        const SUFFIX_WIDTH: usize = 4;
         if max_width == 0 {
             return String::new();
         }
         if text.width() <= max_width {
             return text.to_string();
         }
-        if max_width == 1 {
-            return "…".to_string();
+        if max_width <= SUFFIX_WIDTH {
+            return Self::truncate_to_width("...", max_width);
         }
-        let mut out = Self::truncate_to_width(text, max_width - 1);
-        out.push('…');
+        let mut out = Self::truncate_to_width(text, max_width - SUFFIX_WIDTH);
+        out.push_str(SUFFIX);
         out
     }
 
@@ -2051,20 +2053,20 @@ mod bufferline_tests {
     use helix_core::unicode::width::UnicodeWidthStr;
 
     #[test]
-    fn long_tab_labels_end_with_an_ellipsis() {
-        assert_eq!(EditorView::fit_tab_label("short.md", 12), "short.md");
+    fn long_tab_labels_end_with_the_hardcoded_suffix() {
+        assert_eq!(EditorView::fit_tab_label("short.md", 20), "short.md");
         assert_eq!(
             EditorView::fit_tab_label("very-long-file-name.md", 12),
-            "very-long-f…"
+            "very-lon ..."
         );
-        assert_eq!(EditorView::fit_tab_label("anything", 1), "…");
+        assert_eq!(EditorView::fit_tab_label("anything", 1), ".");
         assert_eq!(EditorView::fit_tab_label("anything", 0), "");
     }
 
     #[test]
-    fn tab_ellipsis_keeps_wide_graphemes_intact() {
+    fn tab_overflow_keeps_wide_graphemes_intact() {
         let fitted = EditorView::fit_tab_label("ノートブック.md", 6);
-        assert!(fitted.ends_with('…'));
+        assert!(fitted.ends_with(" ..."));
         assert!(fitted.width() <= 6);
     }
 }
