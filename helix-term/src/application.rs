@@ -97,17 +97,17 @@ struct FileStamp {
 /// for a short debounce window. Polling avoids adding a filesystem watcher
 /// dependency for a single file and works with atomic renames.
 struct ThemeWatcher {
-    path: Option<PathBuf>,
-    stamp: Option<FileStamp>,
-    pending: Option<(FileStamp, Instant)>,
+    paths: Vec<PathBuf>,
+    stamps: Vec<Option<FileStamp>>,
+    pending: Option<(Vec<Option<FileStamp>>, Instant)>,
 }
 
 impl ThemeWatcher {
-    fn new(path: Option<PathBuf>) -> Self {
-        let stamp = path.as_deref().and_then(Self::file_stamp);
+    fn new(paths: Vec<PathBuf>) -> Self {
+        let stamps = paths.iter().map(|path| Self::file_stamp(path)).collect();
         Self {
-            path,
-            stamp,
+            paths,
+            stamps,
             pending: None,
         }
     }
@@ -120,37 +120,43 @@ impl ThemeWatcher {
         })
     }
 
-    fn watch(&mut self, path: Option<PathBuf>) {
-        if self.path == path {
+    fn watch(&mut self, paths: Vec<PathBuf>) {
+        if self.paths == paths {
             return;
         }
-        self.path = path;
-        self.stamp = self.path.as_deref().and_then(Self::file_stamp);
+        self.stamps = paths.iter().map(|path| Self::file_stamp(path)).collect();
+        self.paths = paths;
         self.pending = None;
     }
 
     fn poll(&mut self, now: Instant) -> bool {
-        let Some(path) = self.path.as_deref() else {
+        if self.paths.is_empty() {
             return false;
-        };
-        let Some(stamp) = Self::file_stamp(path) else {
-            return false;
-        };
-        if Some(stamp) == self.stamp {
+        }
+        let stamps: Vec<Option<FileStamp>> = self
+            .paths
+            .iter()
+            .map(|path| Self::file_stamp(path))
+            .collect();
+        if stamps == self.stamps {
             self.pending = None;
             return false;
         }
-        match self.pending {
-            Some((pending_stamp, since)) if pending_stamp == stamp => {
+        match self.pending.take() {
+            Some((pending_stamps, since)) if pending_stamps == stamps => {
                 if now.duration_since(since) < THEME_RELOAD_DEBOUNCE {
+                    self.pending = Some((pending_stamps, since));
                     return false;
                 }
-                self.stamp = Some(stamp);
-                self.pending = None;
+                self.stamps = stamps;
                 true
             }
-            _ => {
-                self.pending = Some((stamp, now));
+            Some((_pending_stamps, _since)) => {
+                self.pending = Some((stamps, now));
+                false
+            }
+            None => {
+                self.pending = Some((stamps, now));
                 false
             }
         }
@@ -212,12 +218,17 @@ impl Application {
             workspace_trust,
         );
         Self::load_configured_theme(&mut editor, &config.load(), &mut terminal, theme_mode);
-        let theme_path = config.load().theme.as_ref().and_then(|theme_config| {
-            editor
-                .theme_loader
-                .theme_path(theme_config.choose(theme_mode))
-        });
-        let theme_watcher = ThemeWatcher::new(theme_path);
+        let theme_paths = config
+            .load()
+            .theme
+            .as_ref()
+            .map(|theme_config| {
+                editor
+                    .theme_loader
+                    .theme_paths(theme_config.choose(theme_mode))
+            })
+            .unwrap_or_default();
+        let theme_watcher = ThemeWatcher::new(theme_paths);
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -387,8 +398,10 @@ impl Application {
         if self.compositor.has_overlay() {
             // Keep images from painting over pickers/prompts/menus, mirroring
             // image.nvim's window_overlap_clear behavior. Virtual lines stay
-            // reserved so text doesn't shift when the overlay closes.
-            crate::ui::image::clear();
+            // reserved so text doesn't shift when the overlay closes. Keep
+            // the transmitted image data so closing the overlay only re-places
+            // images instead of re-sending them all.
+            crate::ui::image::clear_placements();
         } else {
             crate::ui::image::render(&self.editor);
         }
@@ -521,11 +534,11 @@ impl Application {
                         .try_get_exact("ui.background")
                         .and_then(|style| style.bg),
                 );
-                let path = self
+                let paths = self
                     .editor
                     .theme_loader
-                    .theme_path(self.editor.theme.name());
-                self.theme_watcher.watch(path);
+                    .theme_paths(self.editor.theme.name());
+                self.theme_watcher.watch(paths);
                 return;
             }
         }
@@ -596,15 +609,19 @@ impl Application {
     }
 
     fn sync_theme_watcher(&mut self) {
-        let path = {
+        let paths = {
             let config = self.config.load();
-            config.theme.as_ref().and_then(|theme_config| {
-                self.editor
-                    .theme_loader
-                    .theme_path(theme_config.choose(self.theme_mode))
-            })
+            config
+                .theme
+                .as_ref()
+                .map(|theme_config| {
+                    self.editor
+                        .theme_loader
+                        .theme_paths(theme_config.choose(self.theme_mode))
+                })
+                .unwrap_or_default()
         };
-        self.theme_watcher.watch(path);
+        self.theme_watcher.watch(paths);
     }
 
     /// Reload the active theme after its file changed on disk. Unlike startup
@@ -636,8 +653,24 @@ impl Application {
                     log::warn!("failed to apply reloaded theme `{}` - {}", name, err);
                 }
             }
-            Err(err) => log::warn!("failed to reload theme `{}` - {}", name, err),
+            Err(err) => {
+                log::warn!("failed to reload theme `{}` - {}", name, err);
+                let paths = self.editor.theme_loader.theme_paths(name);
+                if paths.first().is_some_and(|path| !path.exists()) {
+                    // The active theme file was removed rather than being
+                    // temporarily malformed. Fall back instead of keeping a
+                    // theme that no longer exists on disk.
+                    let mut fallback = self.editor.theme_loader.default_theme(true_color);
+                    if config.editor.transparent_popups {
+                        fallback.clear_backgrounds(TRANSPARENT_POPUP_SCOPES);
+                    }
+                    if let Err(err) = self.editor.set_theme(fallback) {
+                        log::warn!("failed to apply fallback theme - {err}");
+                    }
+                }
+            }
         }
+        self.sync_theme_watcher();
     }
 
     /// Load the theme set in configuration

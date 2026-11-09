@@ -267,6 +267,37 @@ impl Loader {
         self.path(name, &mut HashSet::new()).ok()
     }
 
+    /// All files that can affect `name`, including inherited parent themes.
+    /// Used by the theme watcher so editing a parent reloads the child.
+    pub fn theme_paths(&self, name: &str) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        let mut visited = HashSet::new();
+        self.collect_theme_paths(name, &mut visited, &mut paths);
+        paths
+    }
+
+    fn collect_theme_paths(
+        &self,
+        name: &str,
+        visited: &mut HashSet<PathBuf>,
+        paths: &mut Vec<PathBuf>,
+    ) {
+        if name == "default" || name == "base16_default" {
+            return;
+        }
+        let Ok(path) = self.path(name, visited) else {
+            return;
+        };
+        let Ok(theme_toml) = self.load_toml(path.clone()) else {
+            paths.push(path);
+            return;
+        };
+        paths.push(path);
+        if let Some(parent) = theme_toml.get("inherits").and_then(|value| value.as_str()) {
+            self.collect_theme_paths(parent, visited, paths);
+        }
+    }
+
     /// Returns the default theme
     pub fn default(&self) -> Theme {
         DEFAULT_THEME.clone()
@@ -830,5 +861,33 @@ mod tests {
     fn out_of_bounds() {
         let highlight = Highlight::new(Theme::rgb_highlight(0, 0, 0).get() - 1);
         Theme::default().highlight(highlight);
+    }
+
+    #[test]
+    fn theme_paths_include_inherited_parents() {
+        let dir = std::env::temp_dir().join(format!(
+            "rx-helix-theme-paths-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let themes = dir.join("themes");
+        std::fs::create_dir_all(&themes).unwrap();
+        std::fs::write(themes.join("parent.toml"), "\"ui.text\" = \"#ffffff\"\n").unwrap();
+        std::fs::write(
+            themes.join("child.toml"),
+            "inherits = \"parent\"\n\"ui.background\" = \"#000000\"\n",
+        )
+        .unwrap();
+
+        let loader = Loader::new(&[dir.clone()]);
+        let paths = loader.theme_paths("child");
+        assert_eq!(
+            paths,
+            vec![themes.join("child.toml"), themes.join("parent.toml")]
+        );
+        assert_eq!(loader.theme_paths("default"), Vec::<PathBuf>::new());
+        assert!(loader.theme_paths("missing").is_empty());
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
