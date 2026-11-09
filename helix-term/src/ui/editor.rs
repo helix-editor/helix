@@ -29,7 +29,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    Document, Editor, Theme, View, ViewId,
 };
 use std::{mem::take, num::NonZeroUsize, ops, path::PathBuf, rc::Rc};
 
@@ -1157,6 +1157,12 @@ impl EditorView {
         on_next_key
     }
 
+    fn clear_completion_on_view_switch(&mut self, editor: &mut Editor, view_id: ViewId) {
+        if editor.tree.focus != view_id {
+            self.clear_completion(editor);
+        }
+    }
+
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
         commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
 
@@ -1240,10 +1246,15 @@ impl EditorView {
             MouseEventKind::Down(MouseButton::Left) => {
                 let editor = &mut cxt.editor;
 
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                if let Some((_, view_id)) = pos_and_view(editor, row, column, true) {
+                    self.clear_completion_on_view_switch(editor, view_id);
+                    // Clearing a preview can change the text in both views. Resolve the
+                    // position again before focusing can scroll the target view.
+                    let Some((pos, _)) = pos_and_view(editor, row, column, true) else {
+                        return EventResult::Ignored(None);
+                    };
                     editor.focus(view_id);
 
-                    let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
                     if modifiers == KeyModifiers::ALT {
@@ -1262,16 +1273,13 @@ impl EditorView {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
-                    if view_id != prev_view_id {
-                        self.clear_completion(editor);
-                    }
-
                     editor.ensure_cursor_in_view(view_id);
 
                     return EventResult::Consumed(None);
                 }
 
                 if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
+                    self.clear_completion_on_view_switch(editor, view_id);
                     editor.focus(view_id);
 
                     let (view, doc) = current!(cxt.editor);
@@ -1365,6 +1373,7 @@ impl EditorView {
 
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((pos, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                    self.clear_completion_on_view_switch(cxt.editor, view_id);
                     cxt.editor.focus(view_id);
 
                     if let Some((pos, _)) = pos_and_view(cxt.editor, row, column, true) {
@@ -1405,10 +1414,14 @@ impl EditorView {
                     return EventResult::Consumed(None);
                 }
 
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                if let Some((_, view_id)) = pos_and_view(editor, row, column, true) {
+                    self.clear_completion_on_view_switch(editor, view_id);
+                    let Some((pos, _)) = pos_and_view(editor, row, column, true) else {
+                        return EventResult::Ignored(None);
+                    };
+                    editor.focus(view_id);
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
-                    cxt.editor.focus(view_id);
 
                     commands::paste(
                         cxt.editor,
