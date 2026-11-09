@@ -725,10 +725,16 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
 
         let text_style = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
-        let selected = Style::default()
-            .fg(crate::ui::secondary_color(&cx.editor.theme))
-            .bg(crate::ui::primary_color(&cx.editor.theme))
-            .add_modifier(Modifier::BOLD);
+        let selected = cx
+            .editor
+            .theme
+            .try_get("ui.menu.selected")
+            .unwrap_or_else(|| {
+                Style::default()
+                    .fg(crate::ui::secondary_color(&cx.editor.theme))
+                    .bg(crate::ui::primary_color(&cx.editor.theme))
+                    .add_modifier(Modifier::BOLD)
+            });
         let highlight_style = Style::default()
             .fg(crate::ui::secondary_color(&cx.editor.theme))
             .add_modifier(Modifier::BOLD);

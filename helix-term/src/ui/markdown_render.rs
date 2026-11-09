@@ -9,7 +9,7 @@ use std::sync::{Mutex, OnceLock};
 
 use helix_core::graphemes::grapheme_width;
 use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
-use helix_view::graphics::{Color, Modifier, Rect, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style, UnderlineStyle};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
@@ -1466,10 +1466,14 @@ fn paint_table_row(
         field.push_str(&" ".repeat(column.padding_left + align_left));
         field.push_str(&display);
         field.push_str(&" ".repeat(align_right + column.padding_right));
+        // Cell paints overwrite raw text; explicitly reset underline so a
+        // concealed link destination cannot leave a horizontal line behind.
+        let mut field_style = text_style;
+        field_style.underline_style = Some(UnderlineStyle::Reset);
         line_render.paints.push(Paint {
             col,
             text: field,
-            style: text_style,
+            style: field_style,
         });
         for (offset, text, style) in rendered.spans {
             if offset >= inner {

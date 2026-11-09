@@ -441,10 +441,12 @@ impl Prompt {
                 .get("ui.menu")
                 .bg
                 .unwrap_or(helix_view::theme::Color::Reset));
-        let selected_color = helix_view::theme::Style::default()
-            .fg(crate::ui::secondary_color(theme))
-            .bg(crate::ui::primary_color(theme))
-            .add_modifier(helix_view::graphics::Modifier::BOLD);
+        let selected_color = theme.try_get("ui.menu.selected").unwrap_or_else(|| {
+            helix_view::theme::Style::default()
+                .fg(crate::ui::secondary_color(theme))
+                .bg(crate::ui::primary_color(theme))
+                .add_modifier(helix_view::graphics::Modifier::BOLD)
+        });
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
         // completion
