@@ -499,7 +499,11 @@ Notes:
   be a file inside the vault.
 - The quick-switch picker uses a telescope-like footer: `<CR>` opens the
   selected note, `<C-x>` creates a note from the typed query, and `<C-l>`
-  inserts `[[Title]]` for the selected note into the current buffer.
+  inserts `[[Title]]` for the selected note into the current buffer. Its title
+  is centered, and note paths follow the file picker: directory prefixes use
+  `ui.text.directory`, while the filename uses `ui.text`.
+- Picker column colors resolve from the current theme on every render, so
+  folder colors update after a live theme reload without reopening the picker.
 - Typing `[[` in a markdown note opens the note picker and completes a wiki
   link after you choose a note.
 

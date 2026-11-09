@@ -341,8 +341,6 @@ fn get_excluded_types() -> ignore::types::Types {
 #[derive(Debug)]
 pub struct FilePickerData {
     root: PathBuf,
-    directory_style: Style,
-    file_style: Style,
 }
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
@@ -351,11 +349,7 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     use std::time::Instant;
 
     let config = editor.config();
-    let data = FilePickerData {
-        root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
-        file_style: editor.theme.get("ui.text"),
-    };
+    let data = FilePickerData { root: root.clone() };
 
     let now = Instant::now();
 
@@ -388,25 +382,33 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         });
     log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
 
-    let columns = [PickerColumn::new(
-        "path",
-        |item: &PathBuf, data: &FilePickerData| {
+    let columns = [
+        PickerColumn::new("path", |item: &PathBuf, data: &FilePickerData| {
+            item.strip_prefix(&data.root)
+                .unwrap_or(item)
+                .to_string_lossy()
+                .into_owned()
+                .into()
+        })
+        .with_theme_format(|item: &PathBuf, data: &FilePickerData, theme: &Theme| {
             let path = item.strip_prefix(&data.root).unwrap_or(item);
+            let directory_style = theme.get("ui.text.directory");
+            let file_style = theme.get("ui.text");
             let mut spans = Vec::with_capacity(3);
             if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
                 spans.extend([
-                    Span::styled(dirs.to_string_lossy(), data.directory_style),
-                    Span::styled(std::path::MAIN_SEPARATOR_STR, data.directory_style),
+                    Span::styled(dirs.to_string_lossy(), directory_style),
+                    Span::styled(std::path::MAIN_SEPARATOR_STR, directory_style),
                 ]);
             }
             let filename = path
                 .file_name()
                 .expect("normalized paths can't end in `..`")
                 .to_string_lossy();
-            spans.push(Span::styled(filename, data.file_style));
+            spans.push(Span::styled(filename, file_style));
             Spans::from(spans).into()
-        },
-    )];
+        }),
+    ];
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
@@ -443,20 +445,29 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
     picker
 }
 
-type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
+type FileExplorer = Picker<(PathBuf, bool), PathBuf>;
 
 pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
-    let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root, editor)?;
 
     let columns = [PickerColumn::new(
         "path",
-        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
+        |(path, is_dir): &(PathBuf, bool), root: &PathBuf| {
             let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
             if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
+                format!("{}/", name).into()
             } else {
                 name.into()
+            }
+        },
+    )
+    .with_theme_format(
+        |(path, is_dir): &(PathBuf, bool), root: &PathBuf, theme: &Theme| {
+            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+            if *is_dir {
+                Span::styled(format!("{}/", name), theme.get("ui.text.directory")).into()
+            } else {
+                Span::styled(name.into_owned(), theme.get("ui.text")).into()
             }
         },
     )];
@@ -464,7 +475,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         columns,
         0,
         directory_content,
-        (root, directory_style),
+        root,
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);

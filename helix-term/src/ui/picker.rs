@@ -50,7 +50,7 @@ use helix_view::{
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
-    Document, DocumentId, Editor,
+    Document, DocumentId, Editor, Theme,
 };
 
 use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHandler};
@@ -186,10 +186,14 @@ impl<T, D> Injector<T, D> {
 }
 
 type ColumnFormatFn<T, D> = for<'a> fn(&'a T, &'a D) -> Cell<'a>;
+type ThemedColumnFormatFn<T, D> = for<'a> fn(&'a T, &'a D, &'a Theme) -> Cell<'a>;
 
 pub struct Column<T, D> {
     name: Arc<str>,
     format: ColumnFormatFn<T, D>,
+    /// Optional formatter that resolves styles from the current theme on every
+    /// render. Used by pickers whose colors must follow live theme reloads.
+    themed_format: Option<ThemedColumnFormatFn<T, D>>,
     /// Whether the column should be passed to nucleo for matching and filtering.
     /// `DynamicPicker` uses this so that the dynamic column (for example regex in
     /// global search) is not used for filtering twice.
@@ -202,9 +206,17 @@ impl<T, D> Column<T, D> {
         Self {
             name: name.into(),
             format,
+            themed_format: None,
             filter: true,
             hidden: false,
         }
+    }
+
+    /// Use a theme-aware formatter for rendering. The plain formatter remains
+    /// the source for matcher/filter text.
+    pub fn with_theme_format(mut self, format: ThemedColumnFormatFn<T, D>) -> Self {
+        self.themed_format = Some(format);
+        self
     }
 
     /// A column which does not display any contents
@@ -214,6 +226,7 @@ impl<T, D> Column<T, D> {
         Self {
             name: name.into(),
             format,
+            themed_format: None,
             filter: false,
             hidden: true,
         }
@@ -226,6 +239,13 @@ impl<T, D> Column<T, D> {
 
     fn format<'a>(&self, item: &'a T, data: &'a D) -> Cell<'a> {
         (self.format)(item, data)
+    }
+
+    fn format_with_theme<'a>(&self, item: &'a T, data: &'a D, theme: &'a Theme) -> Cell<'a> {
+        match self.themed_format {
+            Some(format) => format(item, data, theme),
+            None => self.format(item, data),
+        }
     }
 
     fn format_text<'a>(&self, item: &'a T, data: &'a D) -> Cow<'a, str> {
@@ -257,6 +277,8 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     show_preview: bool,
     /// Optional title shown on the picker border.
     title: Option<String>,
+    /// Center the title on the top border instead of left-aligning it.
+    center_title: bool,
     /// Optional key-hint line shown on the picker's bottom border.
     help: Option<String>,
     /// Extra keybindings that run while the picker is open.
@@ -393,6 +415,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             truncate_start: true,
             show_preview: true,
             title: None,
+            center_title: false,
             help: None,
             extra_actions: Vec::new(),
             callback_fn: Box::new(callback_fn),
@@ -467,6 +490,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// Center the title on the top border instead of the default left side.
+    pub fn with_centered_title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+        self.center_title = true;
         self
     }
 
@@ -751,7 +781,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .unwrap_or_else(|| Style::new().fg(crate::ui::primary_color(theme)))
             .bg(background.bg.unwrap_or(helix_view::theme::Color::Reset));
         let title_style = theme.try_get("ui.picker.title").unwrap_or(border_style);
-        let block = match &self.title {
+        let block_title = self.title.as_ref().filter(|_| !self.center_title);
+        let block = match block_title {
             Some(title) => Block::bordered()
                 .border_style(border_style)
                 .title(Span::styled(title.clone(), title_style)),
@@ -762,6 +793,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let inner = block.inner(area);
 
         block.render(area, surface);
+
+        if self.center_title {
+            if let Some(title) = &self.title {
+                let span = Span::styled(title.clone(), title_style);
+                let width = span.width().min(area.width as usize);
+                let x = area.x + (area.width as usize).saturating_sub(width) as u16 / 2;
+                surface.set_stringn(x, area.y, &span.content, width, span.style);
+            }
+        }
 
         // -- Render the input bar:
 
@@ -827,7 +867,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 let Some(Constraint::Length(max_width)) = widths.next() else {
                     unreachable!();
                 };
-                let mut cell = column.format(item.data, &self.editor_data);
+                let mut cell =
+                    column.format_with_theme(item.data, &self.editor_data, &cx.editor.theme);
                 let width = if column.filter {
                     snapshot.pattern().column_pattern(matcher_index).indices(
                         item.matcher_columns[matcher_index].slice(..),

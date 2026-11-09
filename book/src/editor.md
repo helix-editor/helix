@@ -427,8 +427,11 @@ Commands:
 
 The quick-switch picker footer shows `<CR> open`, `<C-x> new note` (from the
 typed query), and `<C-l> insert link` (inserts `[[Title]]` for the selected
-note into the current buffer). Typing `[[` in a markdown note also opens the
-note picker and completes the wiki link.
+note into the current buffer). Its title is centered, and note paths color the
+directory prefix with `ui.text.directory` while keeping the filename in
+`ui.text`. Picker colors resolve from the live theme on every render, so folder
+colors update after a theme reload without reopening the picker. Typing `[[` in
+a markdown note also opens the note picker and completes the wiki link.
 
 Example keymaps:
 
