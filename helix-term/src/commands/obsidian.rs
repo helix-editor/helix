@@ -277,7 +277,11 @@ pub fn backlinks(
 }
 
 fn vault_config(cx: &CompositorContext) -> anyhow::Result<(PathBuf, ObsidianConfig)> {
-    let config = cx.editor.config().obsidian.clone();
+    vault_config_for(cx.editor)
+}
+
+fn vault_config_for(editor: &helix_view::Editor) -> anyhow::Result<(PathBuf, ObsidianConfig)> {
+    let config = editor.config().obsidian.clone();
     ensure!(
         config.enable,
         "Obsidian integration is disabled; set `[editor.obsidian] enable = true`"
@@ -1094,26 +1098,60 @@ fn rename_note(cx: &mut CompositorContext, new_title: &str) -> anyhow::Result<()
     cx.editor.set_doc_path(doc_id, &new_path);
 
     let templates = templates_dir(&vault, &config);
-    for path in note_paths(&vault, templates.as_deref()) {
-        if path == new_path {
-            continue;
+    let mut backups: Vec<(PathBuf, String)> = Vec::new();
+    let rewrite_result = (|| -> anyhow::Result<()> {
+        for path in note_paths(&vault, templates.as_deref()) {
+            if path == new_path {
+                continue;
+            }
+            let Ok(text) = fs::read_to_string(&path) else {
+                continue;
+            };
+            let updated = rewrite_links(
+                &text,
+                &old_title,
+                &old_relative,
+                new_title,
+                &new_relative,
+                &vault,
+                &path,
+            );
+            if updated != text {
+                backups.push((path.clone(), text));
+                fs::write(&path, updated)
+                    .with_context(|| format!("failed to rewrite links in {}", path.display()))?;
+            }
         }
-        let Ok(text) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let updated = rewrite_links(
-            &text,
-            &old_title,
-            &old_relative,
-            new_title,
-            &new_relative,
-            &vault,
-            &path,
+        Ok(())
+    })();
+
+    if let Err(err) = rewrite_result {
+        // Best-effort transaction: restore every file we already rewrote,
+        // then move the note back so links never point at a renamed file
+        // that only exists for some notes.
+        let mut rollback_errors = Vec::new();
+        for (path, original) in backups.iter().rev() {
+            if let Err(rollback) = fs::write(path, original) {
+                rollback_errors.push(format!("{}: {rollback}", path.display()));
+            }
+        }
+        match fs::rename(&new_path, &old_path) {
+            Ok(()) => cx.editor.set_doc_path(doc_id, &old_path),
+            Err(rollback) => rollback_errors.push(format!(
+                "could not move {} back to {}: {rollback}",
+                new_path.display(),
+                old_path.display()
+            )),
+        }
+        if rollback_errors.is_empty() {
+            return Err(err);
+        }
+        bail!(
+            "{err}; rollback also failed: {}",
+            rollback_errors.join("; ")
         );
-        if updated != text {
-            fs::write(&path, updated)?;
-        }
     }
+
     cx.editor.set_status(format!("renamed note to {new_title}"));
     Ok(())
 }
@@ -1237,7 +1275,7 @@ fn note_items(cx: &CompositorContext) -> anyhow::Result<Vec<NoteItem>> {
 pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
     let view_id = cx.editor.tree.focus;
     let doc_id = cx.editor.tree.get(view_id).doc;
-    let (start, end) = {
+    let (start, mut end, needs_second_bracket) = {
         let Some(doc) = cx.editor.documents.get(&doc_id) else {
             return false;
         };
@@ -1253,21 +1291,67 @@ pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
         }
         let text = doc.text().slice(..);
         let cursor = selection.primary().cursor(text);
-        let Some(range) = wiki_completion_range(&text, cursor) else {
+        let Some((start, end)) = wiki_completion_range(&text, cursor) else {
             return false;
         };
-        range
+        // The second `[` triggered this command before insert mode could
+        // handle it. Insert it now so cancelling the picker leaves `[[`
+        // instead of a single swallowed bracket.
+        (start, end, end == cursor)
     };
 
-    let mut cx = CompositorContext {
-        editor: cx.editor,
-        scroll: None,
-        jobs: cx.jobs,
-    };
-    let Ok(items) = note_items(&cx) else {
+    let Ok((vault, config)) = vault_config_for(cx.editor) else {
         return false;
     };
-    push_wiki_completion_picker(&mut cx, items, start, end);
+    let templates = templates_dir(&vault, &config);
+
+    if needs_second_bracket {
+        if let Some(doc) = cx.editor.documents.get_mut(&doc_id) {
+            let transaction =
+                Transaction::insert(doc.text(), doc.selection(view_id), Tendril::from("["));
+            doc.apply(&transaction, view_id);
+            end += 1;
+        } else {
+            return false;
+        }
+    }
+
+    let version = match cx.editor.documents.get(&doc_id) {
+        Some(doc) => doc.version(),
+        None => return false,
+    };
+
+    cx.jobs.callback(async move {
+        let paths = note_paths(&vault, templates.as_deref());
+        ensure!(
+            !paths.is_empty(),
+            "no markdown notes found in {}",
+            vault.display()
+        );
+        let items: Vec<NoteItem> = paths
+            .into_iter()
+            .map(|path| NoteItem {
+                relative: relative_path(&vault, &path),
+                path,
+            })
+            .collect();
+        let call = job::Callback::EditorCompositor(Box::new(
+            move |editor: &mut helix_view::Editor,
+                  compositor: &mut crate::compositor::Compositor| {
+                // The document changed while the vault scan was running;
+                // leave the typed `[[` alone rather than editing stale text.
+                if editor
+                    .documents
+                    .get(&doc_id)
+                    .is_none_or(|doc| doc.version() != version)
+                {
+                    return;
+                }
+                push_wiki_picker(compositor, items, start, end);
+            },
+        ));
+        Ok(call)
+    });
     true
 }
 
@@ -1283,34 +1367,32 @@ fn wiki_completion_range(text: &helix_core::RopeSlice, cursor: usize) -> Option<
     Some((cursor - 1, end))
 }
 
-fn push_wiki_completion_picker(
-    cx: &mut CompositorContext,
+fn push_wiki_picker(
+    compositor: &mut crate::compositor::Compositor,
     items: Vec<NoteItem>,
     start: usize,
     end: usize,
 ) {
-    push_component(cx, move |_editor, compositor| {
-        let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
-            format!("󰈔 {}", item.relative).into()
-        })];
-        let picker = Picker::new(columns, 0, items, (), move |cx, item, _action| {
-            let title = note_title(&item.path);
-            let view_id = cx.editor.tree.focus;
-            let doc_id = cx.editor.tree.get(view_id).doc;
-            if let Some(doc) = cx.editor.documents.get_mut(&doc_id) {
-                let transaction = Transaction::change(
-                    doc.text(),
-                    std::iter::once((start, end, Some(Tendril::from(format!("[[{title}]]"))))),
-                );
-                doc.apply(&transaction, view_id);
-            }
-        })
-        .with_title("Insert Link")
-        .with_help("<CR> insert link  <C-t> preview")
-        .truncate_start(false)
-        .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
-        compositor.push(Box::new(overlaid(picker)));
-    });
+    let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
+        format!("󰈔 {}", item.relative).into()
+    })];
+    let picker = Picker::new(columns, 0, items, (), move |cx, item, _action| {
+        let title = note_title(&item.path);
+        let view_id = cx.editor.tree.focus;
+        let doc_id = cx.editor.tree.get(view_id).doc;
+        if let Some(doc) = cx.editor.documents.get_mut(&doc_id) {
+            let transaction = Transaction::change(
+                doc.text(),
+                std::iter::once((start, end, Some(Tendril::from(format!("[[{title}]]"))))),
+            );
+            doc.apply(&transaction, view_id);
+        }
+    })
+    .with_title("Insert Link")
+    .with_help("<CR> insert link  <C-t> preview")
+    .truncate_start(false)
+    .with_preview(|_editor, item| Some((item.path.as_path().into(), None)));
+    compositor.push(Box::new(overlaid(picker)));
 }
 
 fn push_link_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {

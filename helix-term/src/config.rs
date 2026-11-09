@@ -37,6 +37,7 @@ impl Default for Config {
 #[derive(Debug)]
 pub enum ConfigLoadError {
     BadConfig(TomlError),
+    BadConfigFile { path: PathBuf, error: TomlError },
     Error(IOError),
 }
 
@@ -50,6 +51,9 @@ impl Display for ConfigLoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConfigLoadError::BadConfig(err) => err.fmt(f),
+            ConfigLoadError::BadConfigFile { path, error } => {
+                write!(f, "{}: {}", path.display(), error)
+            }
             ConfigLoadError::Error(err) => err.fmt(f),
         }
     }
@@ -170,7 +174,10 @@ impl Config {
         match fs::read_to_string(&config_file) {
             Ok(content) => {
                 let val: toml::Value =
-                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                    toml::from_str(&content).map_err(|error| ConfigLoadError::BadConfigFile {
+                        path: config_file.clone(),
+                        error,
+                    })?;
                 merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
@@ -195,7 +202,10 @@ impl Config {
             for path in entries {
                 let content = fs::read_to_string(&path).map_err(ConfigLoadError::Error)?;
                 let val: toml::Value =
-                    toml::from_str(&content).map_err(ConfigLoadError::BadConfig)?;
+                    toml::from_str(&content).map_err(|error| ConfigLoadError::BadConfigFile {
+                        path: path.clone(),
+                        error,
+                    })?;
                 merged = Self::merge_config_values(merged, val);
                 found_any = true;
             }
@@ -368,5 +378,17 @@ mod tests {
             .unwrap();
         assert_eq!(mode.get("normal").unwrap().as_str(), Some("N"));
         assert_eq!(mode.get("insert").unwrap().as_str(), Some("INSERT"));
+    }
+
+    #[test]
+    fn config_file_errors_include_the_path() {
+        let error = toml::from_str::<toml::Value>("[broken").unwrap_err();
+        let error = ConfigLoadError::BadConfigFile {
+            path: PathBuf::from("/config/config.d/vim.toml"),
+            error,
+        };
+        let message = error.to_string();
+        assert!(message.contains("/config/config.d/vim.toml"));
+        assert!(message.contains("TOML parse error") || message.contains("expected"));
     }
 }
