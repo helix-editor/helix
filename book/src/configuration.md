@@ -40,7 +40,7 @@ Helix scans `config.d/*.toml` next to it (e.g. `~/.config/helix/config.d/*.toml`
 or, for `--config path/to/config.toml`, `path/to/config.d/*.toml`) and merges
 each file alphabetically on top of the main file. Tables are deep-merged (so
 nested `[keys.normal.space]`, `[editor.statusline.mode]`, etc. keep their other
-entries); arrays and scalar values are replaced. This lets you keep
+entries); arrays are appended in file order and scalar values are replaced. This lets you keep
 `config.toml` small and enable/disable features by adding or removing a file:
 
 ```
