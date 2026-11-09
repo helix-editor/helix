@@ -1314,9 +1314,13 @@ fn paint_inline_emphasis(
             .iter()
             .any(|(start, _, _, end)| index >= *start && index < *end)
     };
+    // Closing delimiters stay in the scan range so nested emphasis can be
+    // processed before the outer close, but they must not be treated as the
+    // opening delimiter of a later span.
+    let mut consumed = vec![false; chars.len()];
     let mut index = skip_until;
     while index < chars.len() {
-        if in_code(index) {
+        if consumed[index] || in_code(index) {
             index += 1;
             continue;
         }
@@ -1356,7 +1360,7 @@ fn paint_inline_emphasis(
         let mut close = index + marker_len;
         let mut found = None;
         while close < chars.len() {
-            if in_code(close) {
+            if consumed[close] || in_code(close) {
                 close += 1;
                 continue;
             }
@@ -1389,7 +1393,11 @@ fn paint_inline_emphasis(
         line_render
             .removals
             .push((close_col, close_col + marker_len));
-        index = close + marker_len;
+        for consumed_marker in &mut consumed[close..close + marker_len] {
+            *consumed_marker = true;
+        }
+        // Continue inside the span so nested delimiters are concealed too.
+        index += marker_len;
     }
 }
 
@@ -1991,6 +1999,21 @@ mod tests {
         assert!(removals.contains(&(20, 21)));
         assert!(removals.contains(&(26, 28)));
         assert!(removals.contains(&(32, 34)));
+    }
+
+    #[test]
+    fn nested_emphasis_delimiters_are_concealed() {
+        let line: Vec<char> = "**_x_** and **a** **b**".chars().collect();
+        let mut render = MarkdownRender::default();
+        paint_inline_emphasis(&mut render, 0, &line, 0, 4);
+        let removals = &render.lines.get(&0).unwrap().removals;
+        // Outer strong markers and the inner italic markers.
+        assert!(removals.contains(&(0, 2)));
+        assert!(removals.contains(&(5, 7)));
+        assert!(removals.contains(&(2, 3)));
+        assert!(removals.contains(&(4, 5)));
+        // Separate spans must not merge the outer close with the next open.
+        assert_eq!(removals.iter().filter(|(start, _)| *start >= 8).count(), 4);
     }
 
     #[test]
