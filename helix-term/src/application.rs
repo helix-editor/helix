@@ -636,6 +636,7 @@ impl Application {
         let true_color = self.terminal.backend().supports_true_color()
             || config.editor.true_color
             || crate::true_color();
+        let mut keep_watching_on_error = false;
         match self.editor.theme_loader.load(name) {
             Ok(mut theme) => {
                 if !true_color && !theme.is_16_color() {
@@ -655,8 +656,12 @@ impl Application {
             }
             Err(err) => {
                 log::warn!("failed to reload theme `{}` - {}", name, err);
+                // Keep the previous watch list on failure: it still contains
+                // the malformed/deleted file, so fixing or recreating it is
+                // noticed by the next poll.
+                keep_watching_on_error = true;
                 let paths = self.editor.theme_loader.theme_paths(name);
-                if paths.first().is_some_and(|path| !path.exists()) {
+                if paths.first().is_none_or(|path| !path.exists()) {
                     // The active theme file was removed rather than being
                     // temporarily malformed. Fall back instead of keeping a
                     // theme that no longer exists on disk.
@@ -670,7 +675,11 @@ impl Application {
                 }
             }
         }
-        self.sync_theme_watcher();
+        // Keep polling the old paths after a failed reload so recreating a
+        // deleted file or fixing a parse error is picked up.
+        if !keep_watching_on_error {
+            self.sync_theme_watcher();
+        }
     }
 
     /// Load the theme set in configuration
