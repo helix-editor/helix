@@ -151,6 +151,9 @@
 | `goto_last_diag` | Goto last diagnostic | normal: `` ]D ``, select: `` ]D `` |
 | `goto_next_diag` | Goto next diagnostic | normal: `` ]d ``, select: `` ]d `` |
 | `goto_prev_diag` | Goto previous diagnostic | normal: `` [d ``, select: `` [d `` |
+| `goto_next_spell` | Goto next misspelled word | normal: `` ]s ``, select: `` ]s `` |
+| `goto_prev_spell` | Goto previous misspelled word | normal: `` [s ``, select: `` [s `` |
+| `spell_suggest` | Show spelling suggestions | normal: `` Z= ``, `` z= ``, select: `` Z= ``, `` z= `` |
 | `goto_next_change` | Goto next change | normal: `` ]g ``, select: `` ]g `` |
 | `goto_prev_change` | Goto previous change | normal: `` [g ``, select: `` [g `` |
 | `goto_first_change` | Goto first change | normal: `` [G ``, select: `` [G `` |
@@ -159,8 +162,8 @@
 | `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, select: `` gl `` |
 | `goto_column` | Goto column | normal: `` g\| `` |
 | `extend_to_column` | Extend to column | select: `` g\| `` |
-| `goto_next_buffer` | Goto next buffer | normal: `` gn ``, select: `` gn `` |
-| `goto_previous_buffer` | Goto previous buffer | normal: `` gp ``, select: `` gp `` |
+| `goto_next_buffer` | Goto next buffer | normal: `` L ``, `` gn ``, select: `` L ``, `` gn `` |
+| `goto_previous_buffer` | Goto previous buffer | normal: `` H ``, `` gp ``, select: `` H ``, `` gp `` |
 | `goto_line_end_newline` | Goto newline at line end | insert: `` <end> `` |
 | `goto_first_nonwhitespace` | Goto first non-blank in line | normal: `` gs ``, select: `` gs `` |
 | `trim_selections` | Trim whitespace from selections | normal: `` _ ``, select: `` _ `` |

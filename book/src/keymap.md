@@ -196,6 +196,7 @@ useful when you're simply looking over text and not actively editing it.
 
 | Key                  | Description                                               | Command                 |
 | -----                | -----------                                               | -------                 |
+| `=`                  | Show spelling suggestions for the word under the cursor   | `spell_suggest`         |
 | `z`, `c`             | Vertically center the line                                | `align_view_center`     |
 | `t`                  | Align the line to the top of the screen                   | `align_view_top`        |
 | `b`                  | Align the line to the bottom of the screen                | `align_view_bottom`     |
@@ -363,6 +364,8 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 | -----    | -----------                                  | -------                 |
 | `]d`     | Go to next diagnostic (**LSP**)              | `goto_next_diag`        |
 | `[d`     | Go to previous diagnostic (**LSP**)          | `goto_prev_diag`        |
+| `]s`     | Go to next misspelled word                   | `goto_next_spell`       |
+| `[s`     | Go to previous misspelled word               | `goto_prev_spell`       |
 | `]D`     | Go to last diagnostic in document (**LSP**)  | `goto_last_diag`        |
 | `[D`     | Go to first diagnostic in document (**LSP**) | `goto_first_diag`       |
 | `]f`     | Go to next function (**TS**)                 | `goto_next_function`    |

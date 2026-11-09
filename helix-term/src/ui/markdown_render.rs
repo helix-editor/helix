@@ -105,6 +105,44 @@ fn plain(style: Style) -> Style {
     }
 }
 
+/// Truncate `text` to `max_width` terminal cells, preserving grapheme-safe
+/// boundaries where possible.
+fn truncate_width(text: &str, max_width: usize) -> String {
+    let mut out = String::new();
+    let mut width = 0;
+    for ch in text.chars() {
+        let ch_width = ch.width().unwrap_or(0);
+        if width + ch_width > max_width {
+            break;
+        }
+        out.push(ch);
+        width += ch_width;
+    }
+    out
+}
+
+/// Style for callout titles and quote bars. Dedicated `markup.callout.*`
+/// scopes avoid inheriting the curl underline from LSP diagnostic styles; if
+/// a theme does not define them, fall back to the matching diagnostic color
+/// and strip the underline explicitly.
+fn callout_style(theme: &Theme, scope: &str) -> Style {
+    let diagnostic_fallback = match scope {
+        "markup.callout.info" => "diagnostic.info",
+        "markup.callout.success" => "diagnostic.hint",
+        "markup.callout.hint" => "diagnostic.hint",
+        "markup.callout.warning" => "diagnostic.warning",
+        "markup.callout.error" => "diagnostic.error",
+        _ => "markup.quote",
+    };
+    let mut style = theme
+        .try_get(scope)
+        .or_else(|| theme.try_get(diagnostic_fallback))
+        .unwrap_or_else(|| theme.get("markup.quote"));
+    style.underline_style = None;
+    style.underline_color = None;
+    style
+}
+
 struct Paint {
     col: usize,
     text: String,
@@ -572,12 +610,10 @@ impl MarkdownRender {
                     let callout = parse_callout(&chars, cursor);
                     // Continuation lines of a callout block reuse its
                     // highlight for the quote markers.
-                    let body_style = meta
-                        .callout
-                        .map(|name| theme.try_get(name).unwrap_or(quote_style));
+                    let body_style = meta.callout.map(|name| callout_style(theme, name));
                     if visible {
-                        if let Some((name_end, rendered, style_name)) = &callout {
-                            let style = theme.try_get(style_name).unwrap_or(quote_style);
+                        if let Some((_name_end, rendered, style_name)) = &callout {
+                            let style = callout_style(theme, style_name);
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
@@ -586,10 +622,16 @@ impl MarkdownRender {
                                     style,
                                 });
                             }
-                            let width = name_end - cursor;
+                            // Replace the whole title area (`[!NOTE] Title`)
+                            // with the rendered icon/title. Callout titles can
+                            // be custom, so the marker width is not enough.
+                            let width = chars.len().saturating_sub(cursor);
                             let mut text = rendered.clone();
                             while text.width() < width {
                                 text.push(' ');
+                            }
+                            if text.width() > width {
+                                text = truncate_width(&text, width);
                             }
                             line_render.paints.push(Paint {
                                 col: display_col(&chars, cursor, tab_width),
@@ -609,11 +651,9 @@ impl MarkdownRender {
                         }
                     }
                     if callout.is_some() {
-                        // Fall through to link scanning for the title text
-                        // after the callout marker.
-                        if let Some((end, _, _)) = &callout {
-                            inline_skip = *end;
-                        }
+                        // The whole callout title area has been replaced above,
+                        // including custom titles, so skip inline scanning.
+                        inline_skip = chars.len();
                         handled_block = true;
                         if !visible {
                             continue;
@@ -1173,41 +1213,49 @@ fn parse_callout(chars: &[char], start: usize) -> Option<(usize, String, &'stati
         end += 1;
     }
     name = name.to_uppercase();
-    let (rendered, scope) = match name.as_str() {
+    let (icon, default_title, scope) = match name.as_str() {
         "NOTE" | "ABSTRACT" | "SUMMARY" | "TLDR" | "INFO" | "TODO" => {
-            let title = capitalize(&name);
-            (format!("󰋽 {title}"), "diagnostic.info")
+            ("󰋽", capitalize(&name), "markup.callout.info")
         }
-        "TIP" | "HINT" | "SUCCESS" | "CHECK" | "DONE" | "IMPORTANT" | "EXAMPLE" => {
-            let title = capitalize(&name);
+        "TIP" | "HINT" | "SUCCESS" | "CHECK" | "DONE" => {
             let icon = match name.as_str() {
                 "TIP" | "HINT" => "󰌶",
-                "IMPORTANT" => "󰅾",
-                "EXAMPLE" => "󰉹",
                 _ => "󰄬",
             };
-            (format!("{icon} {title}"), "diagnostic.hint")
+            (icon, capitalize(&name), "markup.callout.success")
         }
-        "QUESTION" | "HELP" | "FAQ" | "ATTENTION" | "WARNING" | "CAUTION" => {
-            let title = capitalize(&name);
-            (format!("󰀪 {title}"), "diagnostic.warning")
+        "IMPORTANT" | "EXAMPLE" => {
+            let icon = match name.as_str() {
+                "IMPORTANT" => "󰅾",
+                _ => "󰉹",
+            };
+            (icon, capitalize(&name), "markup.callout.hint")
         }
-        "FAILURE" | "FAIL" | "MISSING" | "DANGER" | "ERROR" | "BUG" => {
-            let title = capitalize(&name);
+        "QUESTION" | "HELP" | "FAQ" | "ATTENTION" | "WARNING" => {
+            ("󰀪", capitalize(&name), "markup.callout.warning")
+        }
+        "CAUTION" | "FAILURE" | "FAIL" | "MISSING" | "DANGER" | "ERROR" | "BUG" => {
             let icon = match name.as_str() {
                 "DANGER" | "ERROR" => "󱐌",
                 "BUG" => "󰨰",
+                "CAUTION" => "󰳦",
                 _ => "󰅖",
             };
-            (format!("{icon} {title}"), "diagnostic.error")
+            (icon, capitalize(&name), "markup.callout.error")
         }
-        "QUOTE" | "CITE" => {
-            let title = capitalize(&name);
-            (format!("󱆨 {title}"), "markup.quote")
-        }
+        "QUOTE" | "CITE" => ("󱆨", capitalize(&name), "markup.callout.quote"),
         _ => return None,
     };
-    Some((end, rendered, scope))
+    // A custom title after the marker (`> [!NOTE] My title`) replaces the
+    // default callout name, matching render-markdown.nvim.
+    let custom: String = chars[end..].iter().collect();
+    let custom = custom.trim();
+    let title = if custom.is_empty() {
+        default_title
+    } else {
+        custom.to_string()
+    };
+    Some((end, format!("{icon} {title}"), scope))
 }
 
 fn capitalize(name: &str) -> String {
@@ -1845,17 +1893,29 @@ mod tests {
 
     #[test]
     fn detects_callouts() {
-        let line: Vec<char> = "[!NOTE] Title".chars().collect();
+        let line: Vec<char> = "[!NOTE]".chars().collect();
         let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
         assert_eq!(end, 7);
         assert_eq!(rendered, "󰋽 Note");
-        assert_eq!(scope, "diagnostic.info");
+        assert_eq!(scope, "markup.callout.info");
+
+        // A custom title replaces the default name.
+        let line: Vec<char> = "[!NOTE] My title".chars().collect();
+        let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(end, 7);
+        assert_eq!(rendered, "󰋽 My title");
+        assert_eq!(scope, "markup.callout.info");
 
         let line: Vec<char> = "[!warning]- Foldable".chars().collect();
         let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
         assert_eq!(end, 11);
-        assert_eq!(rendered, "󰀪 Warning");
-        assert_eq!(scope, "diagnostic.warning");
+        assert_eq!(rendered, "󰀪 Foldable");
+        assert_eq!(scope, "markup.callout.warning");
+
+        let line: Vec<char> = "[!TIP]".chars().collect();
+        let (_, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(rendered, "󰌶 Tip");
+        assert_eq!(scope, "markup.callout.success");
 
         let line: Vec<char> = "[!bogus] x".chars().collect();
         assert!(parse_callout(&line, 0).is_none());
@@ -1961,8 +2021,8 @@ mod tests {
         use helix_core::Rope;
         let text = Rope::from("> [!NOTE] Title\n> body one\n> body two\n\nplain\n");
         let bodies = detect_callout_bodies(text.slice(..), 0, text.len_lines());
-        assert_eq!(bodies.get(&1), Some(&"diagnostic.info"));
-        assert_eq!(bodies.get(&2), Some(&"diagnostic.info"));
+        assert_eq!(bodies.get(&1), Some(&"markup.callout.info"));
+        assert_eq!(bodies.get(&2), Some(&"markup.callout.info"));
         assert_eq!(bodies.get(&0), None);
         assert_eq!(bodies.get(&4), None);
     }
@@ -1979,7 +2039,7 @@ mod tests {
         assert!(meta[2].in_code.is_some());
         assert!(meta[3].in_code.is_none());
         assert_eq!(meta[5].list_level, Some(2));
-        assert_eq!(meta[8].callout, Some("diagnostic.info"));
+        assert_eq!(meta[8].callout, Some("markup.callout.info"));
     }
 
     #[test]

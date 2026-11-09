@@ -28,7 +28,13 @@ pub struct ImageLayout {
     pub line: usize,
     pub rows: u16,
     pub cols: u16,
+    /// Number of virtual rows reserved after the doc line in addition to the
+    /// anchor line itself.
     pub offset_rows: u16,
+    /// 0 for directly opened image buffers (the image overlays the anchor
+    /// line), 1 for inline images (the image starts below the line so the
+    /// Markdown alt text remains visible).
+    pub anchor_offset: u16,
     /// Pixel dimensions of `path` (post-conversion). Used for source-rect
     /// cropping when an image is partially scrolled out of view.
     pub width_px: u32,
@@ -173,6 +179,7 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
                 rows,
                 cols,
                 offset_rows,
+                anchor_offset: 1,
                 width_px,
                 height_px,
             });
@@ -206,6 +213,8 @@ pub fn image_annotation(doc: &Document, view: &View) -> Option<Box<dyn LineAnnot
 }
 
 struct ImageLineAnnotation {
+    /// `(anchor char index, doc line, reserved rows)` where `reserved rows`
+    /// already includes the extra row for inline images.
     anchors: Vec<(usize, usize, u16)>,
     next: Cell<usize>,
     pending: Cell<Option<(usize, u16)>>,
@@ -216,7 +225,13 @@ impl ImageLineAnnotation {
         Self {
             anchors: images
                 .into_iter()
-                .map(|image| (image.char_idx, image.line, image.rows))
+                .map(|image| {
+                    let reserved = image
+                        .rows
+                        .saturating_sub(1)
+                        .saturating_add(image.anchor_offset);
+                    (image.char_idx, image.line, reserved)
+                })
                 .collect(),
             next: Cell::new(0),
             pending: Cell::new(None),
@@ -262,7 +277,7 @@ impl LineAnnotation for ImageLineAnnotation {
         if let Some((line, rows)) = self.pending.get() {
             if line == doc_line {
                 self.pending.set(None);
-                return Position::new(rows.saturating_sub(1) as usize, 0);
+                return Position::new(rows as usize, 0);
             }
         }
         Position::new(0, 0)
@@ -632,6 +647,7 @@ fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
         rows,
         cols,
         offset_rows: 0,
+        anchor_offset: 0,
         width_px,
         height_px,
     }]

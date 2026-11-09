@@ -422,6 +422,7 @@ impl EditorView {
         let mut hint_vec = Vec::new();
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
+        let mut spell_vec = Vec::new();
         let mut unnecessary_vec = Vec::new();
         let mut deprecated_vec = Vec::new();
 
@@ -442,6 +443,16 @@ impl EditorView {
         };
 
         for diagnostic in doc.diagnostics() {
+            // Spell diagnostics get their own red undercurl style and do not
+            // participate in the severity-specific LSP colors.
+            if matches!(
+                diagnostic.provider,
+                helix_core::diagnostic::DiagnosticProvider::Spell
+            ) {
+                push_diagnostic(&mut spell_vec, diagnostic.range);
+                continue;
+            }
+
             // Separate diagnostics into different Vecs by severity.
             let vec = match diagnostic.severity {
                 Some(Severity::Info) => &mut info_vec,
@@ -494,6 +505,16 @@ impl EditorView {
             overlay_highlights.push(OverlayHighlights::Homogeneous {
                 highlight,
                 ranges: deprecated_vec,
+            });
+        }
+        if !spell_vec.is_empty() {
+            let spell = theme
+                .find_highlight_exact("diagnostic.spell")
+                .or_else(|| theme.find_highlight_exact("diagnostic.error"))
+                .unwrap_or_else(|| get_scope_of("diagnostic"));
+            overlay_highlights.push(OverlayHighlights::Homogeneous {
+                highlight: spell,
+                ranges: spell_vec,
             });
         }
         overlay_highlights.extend([
@@ -702,41 +723,48 @@ impl EditorView {
         Some(OverlayHighlights::Homogeneous { highlight, ranges })
     }
 
-    /// Render bufferline at the top
+    /// Render bufferline at the top.
+    ///
+    /// Each tab is rendered as a Neovim/bufferline-style cell:
+    /// `<indicator><centered filename><modified dot>`. The active tab has a
+    /// lighter background, a thin accent line on its left and white text;
+    /// inactive tabs stay on the darker bar background. Long names are cut
+    /// with an ellipsis, never in the middle of a grapheme.
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME);
 
-        // Transparent bar: follows `ui.background` so the bar blends into
-        // the terminal when the theme uses `bg = "none"`.
-        surface.clear_with(viewport, editor.theme.get("ui.background"));
+        // The bar itself is the dark inactive background. It follows the
+        // theme's bufferline background when available.
+        let bar_style = editor
+            .theme
+            .try_get("ui.bufferline.background")
+            .unwrap_or_else(|| editor.theme.get("ui.background"));
+        surface.clear_with(viewport, bar_style);
+        let bar_bg = bar_style.bg.filter(|color| *color != Color::Reset);
 
         let mut bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
-        let bufferline_inactive = editor
+        let mut bufferline_inactive = editor
             .theme
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        // Remove the theme's underline and make the active tab italic+bold.
+        // Active tabs are bold and never inherit the underline some themes
+        // attach to statusline/bufferline scopes.
         bufferline_active.underline_style = None;
         bufferline_active.underline_color = None;
+        bufferline_active.add_modifier.remove(Modifier::ITALIC);
         bufferline_active.add_modifier.insert(Modifier::BOLD);
-        bufferline_active.add_modifier.insert(Modifier::ITALIC);
 
         // Keep the current tab opaque even if a generated theme forgot to give
-        // the active scope a background.
+        // the active scope a background. Fall back to a lightened bar color so
+        // the active tab is still visibly lighter than the inactive bar.
         let active_bg = bufferline_active
             .bg
             .filter(|color| *color != Color::Reset)
-            .or_else(|| {
-                editor
-                    .theme
-                    .try_get("ui.bufferline.background")
-                    .and_then(|style| style.bg)
-                    .filter(|color| *color != Color::Reset)
-            })
+            .or_else(|| bar_bg.and_then(|color| crate::ui::lighten(color, 0.15)))
             .or_else(|| {
                 editor
                     .theme
@@ -748,19 +776,31 @@ impl EditorView {
             bufferline_active = bufferline_active.bg(bg);
         }
 
-        // Inactive tabs are a lighter blend of the active bg. Palette colors
-        // cannot be blended, so fall back to the theme's inactive bg.
-        let inactive_bg = active_bg
-            .and_then(|color| crate::ui::lighten(color, 0.15))
-            .or(bufferline_inactive.bg);
-        let bufferline_inactive = match inactive_bg {
-            Some(bg) => bufferline_inactive.bg(bg),
-            None => bufferline_inactive,
-        };
+        // Inactive tabs use the dark bar background. Do not lighten it: the
+        // active tab is the one that should stand out.
+        let inactive_bg = bufferline_inactive
+            .bg
+            .filter(|color| *color != Color::Reset)
+            .or(bar_bg)
+            .or(active_bg);
+        if let Some(bg) = inactive_bg {
+            bufferline_inactive = bufferline_inactive.bg(bg);
+        }
 
-        // Fixed-width tabs: every tab uses the same width so the strip stays
-        // stable when switching files. Derive it from the longest label
-        // instead of hardcoding a cell count.
+        let mut indicator_style = editor
+            .theme
+            .try_get("ui.bufferline.indicator")
+            .unwrap_or_else(|| editor.theme.get("markup.heading"));
+        indicator_style.underline_style = None;
+        indicator_style.underline_color = None;
+
+        let mut modified_style = editor
+            .theme
+            .try_get("ui.bufferline.modified")
+            .unwrap_or_else(|| editor.theme.get("markup.heading"));
+        modified_style.underline_style = None;
+        modified_style.underline_color = None;
+
         let tab_label = |doc: &Document| {
             let fname = doc
                 .path()
@@ -769,13 +809,18 @@ impl EditorView {
                 .unwrap_or_default()
                 .to_str()
                 .unwrap_or_default();
-            let fname = if fname.is_empty() { "[No Name]" } else { fname };
-            let modified = if doc.is_modified() { "[+]" } else { "" };
-            format!(" {fname}{modified} ")
+            if fname.is_empty() {
+                "[No Name]".to_string()
+            } else {
+                fname.to_string()
+            }
         };
+
+        // Cell layout: indicator (1) + label area + dot (1) + right padding (1).
+        const TAB_CHROME: usize = 3;
         let tab_width = editor
             .documents()
-            .map(|doc| tab_label(doc).width())
+            .map(|doc| tab_label(doc).width() + TAB_CHROME)
             .max()
             .unwrap_or(16)
             .clamp(16, 40);
@@ -783,24 +828,11 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let style = if doc.id() == current_doc {
+            let is_active = doc.id() == current_doc;
+            let style = if is_active {
                 bufferline_active
             } else {
                 bufferline_inactive
-            };
-
-            // Inside the fixed tab, show ` filename[+]` centered with padding.
-            let raw = tab_label(doc);
-            // Pad/truncate by display width, not bytes/chars: file names can
-            // contain CJK/emoji and `set_stringn` consumes cells.
-            let raw_width = raw.width();
-            let padded = if raw_width >= tab_width {
-                Self::truncate_to_width(&raw, tab_width)
-            } else {
-                let pad = tab_width - raw_width;
-                let left = pad / 2;
-                let right = pad - left;
-                format!("{}{}{}", " ".repeat(left), raw, " ".repeat(right))
             };
 
             let rem = viewport.right().saturating_sub(x) as usize;
@@ -808,9 +840,41 @@ impl EditorView {
                 break;
             }
             let width = rem.min(tab_width);
-            let (next_x, _) = surface.set_stringn(x, viewport.y, &padded, width, style);
-            x = next_x;
 
+            // Fill the whole tab so the active background is continuous.
+            surface.set_stringn(x, viewport.y, &" ".repeat(width), width, style);
+
+            // Thin left accent on the active tab.
+            if is_active && width > 0 {
+                let mut indicator = indicator_style;
+                indicator.bg = style.bg;
+                surface.set_stringn(x, viewport.y, "▏", 1, indicator);
+            }
+
+            // Center the filename in the label area. Names that do not fit
+            // are shortened with a single-cell ellipsis.
+            let label_area = tab_width.saturating_sub(TAB_CHROME);
+            let label = Self::fit_tab_label(&tab_label(doc), label_area);
+            let pad = label_area.saturating_sub(label.width());
+            let left = pad / 2;
+            let right = pad - left;
+            let label_text = format!("{}{}{}", " ".repeat(left), label, " ".repeat(right));
+            let visible_label = width.saturating_sub(1).min(label_area);
+            if visible_label > 0 {
+                surface.set_stringn(x + 1, viewport.y, &label_text, visible_label, style);
+            }
+
+            // Colored modified marker with one cell of right padding.
+            if doc.is_modified() && width >= 2 {
+                let dot_x = x.saturating_add(tab_width as u16 - 2);
+                if dot_x < viewport.right() {
+                    let mut dot = modified_style;
+                    dot.bg = style.bg;
+                    surface.set_stringn(dot_x, viewport.y, "●", 1, dot);
+                }
+            }
+
+            x = x.saturating_add(tab_width as u16);
             if x >= viewport.right() {
                 break;
             }
@@ -830,6 +894,22 @@ impl EditorView {
             out.push_str(grapheme);
             width += grapheme_width;
         }
+        out
+    }
+
+    /// Fit a filename into `max_width` cells, using `…` when it overflows.
+    fn fit_tab_label(text: &str, max_width: usize) -> String {
+        if max_width == 0 {
+            return String::new();
+        }
+        if text.width() <= max_width {
+            return text.to_string();
+        }
+        if max_width == 1 {
+            return "…".to_string();
+        }
+        let mut out = Self::truncate_to_width(text, max_width - 1);
+        out.push('…');
         out
     }
 
@@ -918,7 +998,11 @@ impl EditorView {
             .cursor(doc.text().slice(..));
 
         let diagnostics = doc.diagnostics().iter().filter(|diagnostic| {
-            diagnostic.range.start <= cursor && diagnostic.range.end >= cursor
+            !matches!(
+                diagnostic.provider,
+                helix_core::diagnostic::DiagnosticProvider::Spell
+            ) && diagnostic.range.start <= cursor
+                && diagnostic.range.end >= cursor
         });
 
         let warning = theme.get("warning");
@@ -1963,5 +2047,29 @@ fn canonicalize_key(key: &mut KeyEvent) {
     } = key
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
+    }
+}
+
+#[cfg(test)]
+mod bufferline_tests {
+    use super::EditorView;
+    use helix_core::unicode::width::UnicodeWidthStr;
+
+    #[test]
+    fn long_tab_labels_end_with_an_ellipsis() {
+        assert_eq!(EditorView::fit_tab_label("short.md", 12), "short.md");
+        assert_eq!(
+            EditorView::fit_tab_label("very-long-file-name.md", 12),
+            "very-long-f…"
+        );
+        assert_eq!(EditorView::fit_tab_label("anything", 1), "…");
+        assert_eq!(EditorView::fit_tab_label("anything", 0), "");
+    }
+
+    #[test]
+    fn tab_ellipsis_keeps_wide_graphemes_intact() {
+        let fitted = EditorView::fit_tab_label("ノートブック.md", 6);
+        assert!(fitted.ends_with('…'));
+        assert!(fitted.width() <= 6);
     }
 }

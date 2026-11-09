@@ -130,10 +130,12 @@ popup-border = "all"        # none | popup | menu | all
 
 `cursorline` highlights the line of every cursor with `ui.cursorline`.
 `bufferline` renders open buffers at the top; `multiple` shows it only when
-more than one buffer is open. The tab row follows `ui.background`, so it is
-transparent with `ui.background = "none"`. The current tab uses
-`ui.bufferline.active` and stays opaque; inactive tabs use a lightened blend of
-the active background. A blank row separates the tabs from the editor content.
+more than one buffer is open. The tab row uses `ui.bufferline.background` as
+the dark inactive bar; the current tab is lighter (`ui.bufferline.active`) with
+white text, a thin `ui.bufferline.indicator` line on its left, and a
+`ui.bufferline.modified` dot at its right edge for modified buffers. Inactive
+tabs use `ui.bufferline`. Long filenames end with `…`. A blank row separates
+the tabs from the editor content.
 
 The command palette completion list always uses a themed border.
 `popup-border` additionally draws themed borders around hover, completion,
@@ -340,8 +342,10 @@ icon = "󰢩"
 Links inside
 headings, list items, quotes, tables, and callout titles are all decorated.
 Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render their icon and
-title with diagnostic highlights, and the `▋` markers of following quote
-lines reuse the same color until a blank or non-quote line ends the block.
+title with `markup.callout.*` colors (falling back to the matching diagnostic
+color without its curl underline), custom titles replace the default name, and
+the `▋` markers of following quote lines reuse the same color until a blank or
+non-quote line ends the block.
 Pipe tables replace `|` with `│` (delimiter `-`/`:` become `─`/`━`) and give
 the header row a background.
 Code fences keep their tree-sitter highlighting.
@@ -356,17 +360,44 @@ images = true
 ```
 
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
-vault root. Each image reserves virtual lines after its anchor (like
-image.nvim's `with_virtual_padding`), so following text reflows instead of
-being covered. Images that scroll partially out of view are cropped to the
-visible rows via a source rectangle instead of being squished. Remote
-`http(s)` images download once with `curl` into the cache (disable with
-`download_remote_images = false`) and appear on later frames. Opening an
-image file directly shows it full-view with the buffer text blanked. PNG images are sent
-directly; JPEG/GIF are converted with `ffmpeg` and SVG with `rsvg-convert`
-into a cache under `~/.cache/rx-helix/images`. Each image is scaled to at most
-50% of the window height and re-placed as you scroll. Only the focused view is
-drawn and images are hidden while a picker/prompt/menu covers the editor.
+vault root. The Markdown line keeps its alt text/icon visible and the image
+starts below it, matching image.nvim's placement. Each image reserves virtual
+lines after its anchor (like image.nvim's `with_virtual_padding`), so
+following text reflows instead of being covered. Images that scroll partially
+out of view are cropped to the visible rows via a source rectangle instead of
+being squished. Remote `http(s)` images download once with `curl` into the
+cache (disable with `download_remote_images = false`) and appear on later
+frames. Opening an image file directly shows it full-view with the buffer text
+blanked. PNG images are sent directly; JPEG/GIF are converted with `ffmpeg`
+and SVG with `rsvg-convert` into a cache under `~/.cache/rx-helix/images`.
+Each image is scaled to at most 50% of the window height and re-placed as you
+scroll. Only the focused view is drawn and images are hidden while a
+picker/prompt/menu covers the editor.
+
+## Spell checking
+
+Markdown, plain text and similar prose files are spell checked automatically
+with `hunspell` when it is available:
+
+```toml
+[editor.spellcheck]
+enable = true
+language = "en_US"
+```
+
+Misspelled words get the red `diagnostic.spell` curl underline (falling back
+to `diagnostic.error` in other themes). Code blocks, inline code, links, URLs,
+HTML tags, math, and YAML frontmatter are ignored. Navigation and suggestions
+mirror Neovim:
+
+| Key | Action |
+| --- | ------ |
+| `[s` | Previous misspelled word |
+| `]s` | Next misspelled word |
+| `z=` | Open numbered/lettered suggestions for the word under the cursor; press `1`–`9`, `0`, `a`–`z` to apply one |
+
+Spell diagnostics are hints, so they do not add inline diagnostic popups or
+compete with LSP warnings/errors.
 
 ## Buffer navigation
 

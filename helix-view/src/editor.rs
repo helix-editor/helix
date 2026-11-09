@@ -377,6 +377,8 @@ pub struct Config {
     pub obsidian: ObsidianConfig,
     /// Configuration of the markdown renderer.
     pub markdown: MarkdownConfig,
+    /// Built-in spell checking for prose filetypes.
+    pub spellcheck: SpellCheckConfig,
     /// Shape for cursor in each mode
     pub cursor_shape: CursorShapeConfig,
     /// Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative. Defaults to `false`.
@@ -868,6 +870,24 @@ impl Default for MarkdownConfig {
             images: false,
             download_remote_images: true,
             link_icons: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct SpellCheckConfig {
+    /// Enable spell checking for Markdown, plain text and similar prose files.
+    pub enable: bool,
+    /// Hunspell dictionary/locale, for example `en_US`.
+    pub language: String,
+}
+
+impl Default for SpellCheckConfig {
+    fn default() -> Self {
+        Self {
+            enable: true,
+            language: String::from("en_US"),
         }
     }
 }
@@ -1447,6 +1467,7 @@ impl Default for Config {
             dashboard: DashboardConfig::default(),
             obsidian: ObsidianConfig::default(),
             markdown: MarkdownConfig::default(),
+            spellcheck: SpellCheckConfig::default(),
             cursor_shape: CursorShapeConfig::default(),
             true_color: false,
             undercurl: false,

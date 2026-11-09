@@ -216,9 +216,11 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
         let rows_total = image.rows.max(1) as usize;
 
         if let Some(pos) = view.screen_coords_at_pos(doc, text, image.char_idx) {
-            // Anchor on screen. Crop the bottom if the image runs past the
-            // viewport instead of squishing it.
-            let eff_row = pos.row + image.offset_rows as usize;
+            // Anchor on screen. Inline images start one row below the
+            // Markdown line so the alt text stays visible; directly opened
+            // image buffers overlay their blank anchor line. Crop the bottom
+            // if the image runs past the viewport instead of squishing it.
+            let eff_row = pos.row + image.anchor_offset as usize + image.offset_rows as usize;
             if eff_row >= inner.height as usize {
                 continue;
             }

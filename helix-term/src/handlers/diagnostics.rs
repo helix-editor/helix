@@ -223,7 +223,10 @@ fn request_document_diagnostics_for_language_servers(
                     })
                     .await;
                 }
-                Some(Some((Err(err), DiagnosticProvider::Lsp { server_id, .. }, _))) => {
+                Some(Some((Err(err), provider, _))) => {
+                    let DiagnosticProvider::Lsp { server_id, .. } = provider else {
+                        continue;
+                    };
                     let parsed_cancellation_data = if let helix_lsp::Error::Rpc(error) = err {
                         error.data.and_then(|data| {
                             serde_json::from_value::<lsp::DiagnosticServerCancellationData>(data)

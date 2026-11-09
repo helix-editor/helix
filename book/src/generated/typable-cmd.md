@@ -100,3 +100,19 @@
 | `:workspace-trust` | Allow language servers and local config for the current workspace. |
 | `:workspace-untrust` | Revoke the current workspace's trust grant or exclusion. |
 | `:workspace-exclude` | Mark the current workspace as never-prompt. Never prompts for trust again. |
+| `:obsidian-quick-switch` | Open a note picker for the configured Obsidian vault. |
+| `:obsidian-search` | Search the configured Obsidian vault with ripgrep. |
+| `:obsidian-new` | Create a new note in the configured Obsidian vault. |
+| `:obsidian-follow-link` | Open the wiki or markdown link under the cursor in the current note. |
+| `:obsidian-backlinks` | Open a picker of notes that link to the current note. |
+| `:obsidian-rename` | Rename the current note and rewrite links to it. |
+| `:obsidian-template` | Apply a template from the vault to the current note. |
+| `:obsidian-link` | Replace the selection with a wiki link to a vault note. |
+| `:obsidian-link-new` | Create a note from the selection and link it. |
+| `:obsidian-extract-note` | Extract the selection into a new note and link it. |
+| `:obsidian-paste-image` | Paste a PNG image from the clipboard into the vault. |
+| `:obsidian-toggle-checkbox` | Toggle the markdown checkbox on the current line. |
+| `:obsidian-toc` | Insert a table of contents for the current note. |
+| `:obsidian-links` | Pick and follow a link in the current note. |
+| `:obsidian-tags` | Pick a vault tag and insert it at the cursor. |
+| `:obsidian-smart-action` | Follow the link or toggle the checkbox under the cursor. |

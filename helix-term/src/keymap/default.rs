@@ -110,6 +110,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
+            "s" => goto_prev_spell,
             "D" => goto_first_diag,
             "g" => goto_prev_change,
             "G" => goto_first_change,
@@ -125,6 +126,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
         "]" => { "Right bracket"
             "d" => goto_next_diag,
+            "s" => goto_next_spell,
             "D" => goto_last_diag,
             "g" => goto_next_change,
             "G" => goto_last_change,
@@ -298,6 +300,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "?" => command_palette,
         },
         "z" => { "View"
+            "=" => spell_suggest,
             "z" | "c" => align_view_center,
             "t" => align_view_top,
             "b" => align_view_bottom,
@@ -315,6 +318,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "N" => search_prev,
         },
         "Z" => { "View" sticky=true
+            "=" => spell_suggest,
             "z" | "c" => align_view_center,
             "t" => align_view_top,
             "b" => align_view_bottom,

@@ -412,6 +412,37 @@ mod tests {
     }
 
     #[test]
+    fn spell_keys_are_bound() {
+        let mut keymaps = Keymaps::default();
+        assert!(matches!(
+            keymaps.get(Mode::Normal, key!(']')),
+            KeymapResult::Pending(_)
+        ));
+        let KeymapResult::Matched(next) = keymaps.get(Mode::Normal, key!('s')) else {
+            panic!("]s is not bound");
+        };
+        assert_eq!(next.name(), "goto_next_spell");
+
+        assert!(matches!(
+            keymaps.get(Mode::Normal, key!('[')),
+            KeymapResult::Pending(_)
+        ));
+        let KeymapResult::Matched(previous) = keymaps.get(Mode::Normal, key!('s')) else {
+            panic!("[s is not bound");
+        };
+        assert_eq!(previous.name(), "goto_prev_spell");
+
+        assert!(matches!(
+            keymaps.get(Mode::Normal, key!('z')),
+            KeymapResult::Pending(_)
+        ));
+        let KeymapResult::Matched(suggest) = keymaps.get(Mode::Normal, key!('=')) else {
+            panic!("z= is not bound");
+        };
+        assert_eq!(suggest.name(), "spell_suggest");
+    }
+
+    #[test]
     fn merge_partial_keys() {
         let keymap = hashmap! {
             Mode::Normal => keymap!({ "Normal mode"

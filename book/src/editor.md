@@ -362,6 +362,28 @@ PNGs are sent directly; JPEG/GIF are converted with `ffmpeg` and SVG with
 the window height and re-placed on scroll, hidden while overlays cover the
 editor. Only the focused view is drawn.
 
+### `[editor.spellcheck]` Section
+
+Built-in spell checking for Markdown, plain text and similar prose files. Uses
+the system `hunspell` dictionary through its ispell-compatible pipe interface.
+Enabled by default when `hunspell` is installed.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `enable` | Check prose files on the idle timer | `true` |
+| `language` | Hunspell dictionary/locale | `"en_US"` |
+
+```toml
+[editor.spellcheck]
+enable = true
+language = "en_US"
+```
+
+Misspelled words are shown with a red `diagnostic.spell` curl underline.
+Navigate with `[s` / `]s`; press `z=` on a word to open numbered/lettered
+suggestions and select one with `1`–`9`, `0`, or a letter. Code blocks, inline
+code, links, URLs, HTML, math, and YAML frontmatter are skipped.
+
 ### `[editor.obsidian]` Section
 
 Optional integration for an Obsidian vault. Disabled by default. Vault search

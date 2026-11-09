@@ -126,9 +126,11 @@ inherits = "noctalia"
 "ui.statusline.search" = { fg = "background", bg = "secondary", modifiers = ["bold"] }
 "ui.statusline.separator" = { fg = "outline", bg = "surfaceContainer" }
 
-"ui.bufferline" = { fg = "outline", bg = "surfaceContainer" }
-"ui.bufferline.active" = { fg = "primary", bg = "surfaceContainer" }
-"ui.bufferline.background" = { bg = "surfaceContainer" }
+"ui.bufferline" = { fg = "onSurfaceVariant", bg = "surfaceContainerLowest" }
+"ui.bufferline.active" = { fg = "onSurface", bg = "surfaceContainerHigh", modifiers = ["bold"] }
+"ui.bufferline.background" = { bg = "surfaceContainerLowest" }
+"ui.bufferline.indicator" = { fg = "primary" }
+"ui.bufferline.modified" = { fg = "secondary" }
 
 "ui.virtual" = "outline"
 "ui.virtual.indent-guide" = "outlineVariant"
@@ -155,6 +157,17 @@ inherits = "noctalia"
 "diagnostic.info" = { underline = { color = "primary", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "secondary", style = "curl" } }
 "diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.spell" = { underline = { color = "error", style = "curl" } }
+
+# Callout title and quote-bar colors. These mirror render-markdown.nvim's
+# Diagnostic* highlight mapping without inheriting the curl underline used by
+# LSP diagnostics.
+"markup.callout.info" = { fg = "primary" }
+"markup.callout.success" = { fg = "plus" }
+"markup.callout.hint" = { fg = "tertiary" }
+"markup.callout.warning" = { fg = "secondary" }
+"markup.callout.error" = { fg = "error" }
+"markup.callout.quote" = { fg = "tertiary" }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 

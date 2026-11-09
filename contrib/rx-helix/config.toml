@@ -155,3 +155,9 @@ action = ":quit"
 [editor.markdown]
 render = true
 images = true
+
+# Built-in spell checking for Markdown, plain text and similar prose files.
+# Requires hunspell; navigate with [s / ]s, suggest with z=.
+[editor.spellcheck]
+enable = true
+language = "en_US"
