@@ -7,6 +7,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
+use helix_core::graphemes::grapheme_width;
 use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
 use helix_view::graphics::{Modifier, Rect, Style};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
@@ -123,7 +124,7 @@ struct InlineCode {
 
 /// Prefix state needed to render a markdown line without rescanning the
 /// document from the top on every frame.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 struct LineMeta {
     /// Code fence active before this line.
     in_code: Option<CodeFence>,
@@ -133,10 +134,20 @@ struct LineMeta {
     list_level: Option<usize>,
 }
 
-#[derive(Default)]
+/// Parser state after a line. Cached per line so an edit can resume at the
+/// changed line instead of rescanning the document prefix.
+#[derive(Clone, Default, PartialEq, Eq)]
+struct LineState {
+    in_code: Option<CodeFence>,
+    callout: Option<&'static str>,
+    list_indents: Vec<usize>,
+}
+
 struct MarkdownCache {
     version: i32,
+    text: helix_core::Rope,
     lines: Vec<LineMeta>,
+    states: Vec<LineState>,
 }
 
 fn markdown_cache() -> &'static Mutex<HashMap<DocumentId, MarkdownCache>> {
@@ -152,13 +163,19 @@ fn visible_line_meta(
 ) -> Vec<LineMeta> {
     let version = doc.version();
     let mut cache = markdown_cache().lock().unwrap();
-    let entry = cache.entry(doc.id()).or_insert_with(|| MarkdownCache {
-        version,
-        lines: build_line_meta(text),
+    let entry = cache.entry(doc.id()).or_insert_with(|| {
+        let mut state = LineState::default();
+        let (lines, states) = build_line_meta_range(text, 0, text.len_lines(), &mut state);
+        MarkdownCache {
+            version,
+            text: doc.text().clone(),
+            lines,
+            states,
+        }
     });
     if entry.version != version {
         entry.version = version;
-        entry.lines = build_line_meta(text);
+        update_line_meta(entry, text);
     }
     entry
         .lines
@@ -167,65 +184,136 @@ fn visible_line_meta(
         .to_vec()
 }
 
-fn build_line_meta(text: helix_core::RopeSlice) -> Vec<LineMeta> {
-    let mut meta = Vec::with_capacity(text.len_lines());
-    let mut in_code: Option<CodeFence> = None;
-    let mut callout: Option<&'static str> = None;
-    let mut list_indents: Vec<usize> = Vec::new();
-
-    for line_idx in 0..text.len_lines() {
-        let raw = text.line(line_idx).to_string();
-        let line = raw.trim_end_matches(['\r', '\n']);
-        let chars: Vec<char> = line.chars().collect();
-        let indent = chars.iter().take_while(|ch| **ch == ' ').count();
-        let mut line_meta = LineMeta {
-            in_code,
-            ..Default::default()
-        };
-
-        if let Some(fence) = in_code {
-            if is_fence(line.trim_start(), fence.marker, fence.len) {
-                in_code = None;
-            }
-            meta.push(line_meta);
-            continue;
-        }
-
-        if let Some((marker, len)) = fence_start(line) {
-            callout = None;
-            in_code = Some(CodeFence { marker, len });
-            meta.push(line_meta);
-            continue;
-        }
-
-        let mut content_indent = indent;
-        if indent < chars.len() && chars[indent] == '>' {
-            let mut cursor = indent + 1;
-            while chars.get(cursor) == Some(&' ') {
-                cursor += 1;
-            }
-            if let Some((_, _, style)) = parse_callout(&chars, cursor) {
-                callout = Some(style);
-            } else {
-                line_meta.callout = callout;
-                content_indent = cursor;
-            }
-        } else {
-            callout = None;
-        }
-
-        if task_list(&chars, content_indent).is_some() {
-            update_list_indent(&mut list_indents, content_indent);
-        } else if content_indent < chars.len()
-            && matches!(chars[content_indent], '-' | '*' | '+')
-            && chars.get(content_indent + 1) == Some(&' ')
-        {
-            line_meta.list_level = Some(update_list_indent(&mut list_indents, content_indent));
-        }
-
-        meta.push(line_meta);
+/// Update cached line metadata after an edit. Lines before the first change
+/// are reused as-is; the changed region is reparsed from the cached state
+/// after the previous line, and the unaffected suffix is reused when the
+/// parser state still matches.
+fn update_line_meta(cache: &mut MarkdownCache, text: helix_core::RopeSlice) {
+    let old = cache.text.slice(..);
+    let min_lines = old.len_lines().min(text.len_lines());
+    let mut prefix = 0;
+    while prefix < min_lines && old.line(prefix) == text.line(prefix) {
+        prefix += 1;
     }
-    meta
+    let mut old_suffix = old.len_lines();
+    let mut new_suffix = text.len_lines();
+    while old_suffix > prefix
+        && new_suffix > prefix
+        && old.line(old_suffix - 1) == text.line(new_suffix - 1)
+    {
+        old_suffix -= 1;
+        new_suffix -= 1;
+    }
+
+    let prefix = prefix.min(cache.lines.len()).min(cache.states.len());
+    let mut state = prefix
+        .checked_sub(1)
+        .and_then(|index| cache.states.get(index))
+        .cloned()
+        .unwrap_or_default();
+    let mut lines = cache.lines[..prefix].to_vec();
+    let mut states = cache.states[..prefix].to_vec();
+
+    let mut line = prefix;
+    while line < new_suffix {
+        let raw = text.line(line).to_string();
+        let meta = parse_markdown_line(raw.trim_end_matches(['\r', '\n']), &mut state);
+        lines.push(meta);
+        states.push(state.clone());
+        line += 1;
+    }
+
+    let reusable_suffix = old_suffix > 0
+        && old_suffix <= cache.lines.len()
+        && cache.states.get(old_suffix - 1) == Some(&state);
+    if reusable_suffix {
+        lines.extend_from_slice(&cache.lines[old_suffix..]);
+        states.extend_from_slice(&cache.states[old_suffix..]);
+    } else {
+        while line < text.len_lines() {
+            let raw = text.line(line).to_string();
+            let meta = parse_markdown_line(raw.trim_end_matches(['\r', '\n']), &mut state);
+            lines.push(meta);
+            states.push(state.clone());
+            line += 1;
+        }
+    }
+
+    cache.lines = lines;
+    cache.states = states;
+    cache.text = helix_core::Rope::from(text);
+}
+
+#[cfg(test)]
+fn build_line_meta(text: helix_core::RopeSlice) -> Vec<LineMeta> {
+    let mut state = LineState::default();
+    build_line_meta_range(text, 0, text.len_lines(), &mut state).0
+}
+
+fn build_line_meta_range(
+    text: helix_core::RopeSlice,
+    start_line: usize,
+    end_line: usize,
+    state: &mut LineState,
+) -> (Vec<LineMeta>, Vec<LineState>) {
+    let mut lines = Vec::with_capacity(end_line.saturating_sub(start_line));
+    let mut states = Vec::with_capacity(end_line.saturating_sub(start_line));
+    for line_idx in start_line..end_line {
+        let raw = text.line(line_idx).to_string();
+        let meta = parse_markdown_line(raw.trim_end_matches(['\r', '\n']), state);
+        lines.push(meta);
+        states.push(state.clone());
+    }
+    (lines, states)
+}
+
+fn parse_markdown_line(line: &str, state: &mut LineState) -> LineMeta {
+    let chars: Vec<char> = line.chars().collect();
+    let indent = chars.iter().take_while(|ch| **ch == ' ').count();
+    let mut line_meta = LineMeta {
+        in_code: state.in_code,
+        ..Default::default()
+    };
+
+    if let Some(fence) = state.in_code {
+        if is_fence(line.trim_start(), fence.marker, fence.len) {
+            state.in_code = None;
+        }
+        return line_meta;
+    }
+
+    if let Some((marker, len)) = fence_start(line) {
+        state.callout = None;
+        state.in_code = Some(CodeFence { marker, len });
+        return line_meta;
+    }
+
+    let mut content_indent = indent;
+    if indent < chars.len() && chars[indent] == '>' {
+        let mut cursor = indent + 1;
+        while chars.get(cursor) == Some(&' ') {
+            cursor += 1;
+        }
+        if let Some((_, _, style)) = parse_callout(&chars, cursor) {
+            state.callout = Some(style);
+        } else {
+            line_meta.callout = state.callout;
+            content_indent = cursor;
+        }
+    } else {
+        state.callout = None;
+    }
+
+    if task_list(&chars, content_indent).is_some() {
+        update_list_indent(&mut state.list_indents, content_indent);
+    } else if content_indent < chars.len()
+        && matches!(chars[content_indent], '-' | '*' | '+')
+        && chars.get(content_indent + 1) == Some(&' ')
+    {
+        line_meta.list_level = Some(update_list_indent(&mut state.list_indents, content_indent));
+    }
+
+    line_meta
 }
 
 impl MarkdownRender {
@@ -240,6 +328,7 @@ impl MarkdownRender {
         if text.len_lines() == 0 {
             return render;
         }
+        let tab_width = doc.tab_width().max(1);
 
         let cursor = doc.selection(view.id).primary().cursor(text);
         render.cursor_line = text.char_to_line(cursor);
@@ -449,7 +538,7 @@ impl MarkdownRender {
                         };
                         let line_render = render.lines.entry(line_idx).or_default();
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, indent),
+                            col: display_col(&chars, indent, tab_width),
                             text,
                             style,
                         });
@@ -490,7 +579,7 @@ impl MarkdownRender {
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
-                                    col: display_col(&chars, *col),
+                                    col: display_col(&chars, *col, tab_width),
                                     text: "▋".to_string(),
                                     style,
                                 });
@@ -501,7 +590,7 @@ impl MarkdownRender {
                                 text.push(' ');
                             }
                             line_render.paints.push(Paint {
-                                col: display_col(&chars, cursor),
+                                col: display_col(&chars, cursor, tab_width),
                                 text,
                                 style,
                             });
@@ -510,7 +599,7 @@ impl MarkdownRender {
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
-                                    col: display_col(&chars, *col),
+                                    col: display_col(&chars, *col, tab_width),
                                     text: "▋".to_string(),
                                     style,
                                 });
@@ -550,13 +639,13 @@ impl MarkdownRender {
                         let line_render = render.lines.entry(line_idx).or_default();
                         // Conceal the bullet.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, indent),
+                            col: display_col(&chars, indent, tab_width),
                             text: " ".to_string(),
                             style,
                         });
                         // Overlay `[x]` with the icon plus padding.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, bracket_col),
+                            col: display_col(&chars, bracket_col, tab_width),
                             text: format!("{}  ", if checked { "󰱒" } else { "󰄱" }),
                             style,
                         });
@@ -585,7 +674,7 @@ impl MarkdownRender {
                         .or_default()
                         .paints
                         .push(Paint {
-                            col: display_col(&chars, indent),
+                            col: display_col(&chars, indent, tab_width),
                             text: icon.to_string(),
                             style: list_style,
                         });
@@ -622,10 +711,11 @@ impl MarkdownRender {
                     inline_skip,
                     link_icon_style,
                     &link_custom,
+                    tab_width,
                 );
-                paint_inline_emphasis(&mut render, line_idx, &chars, inline_skip);
+                paint_inline_emphasis(&mut render, line_idx, &chars, inline_skip, tab_width);
                 if let Some(style) = inline_code_background {
-                    paint_inline_code(&mut render, line_idx, line_start, &chars, style);
+                    paint_inline_code(&mut render, line_idx, line_start, &chars, style, tab_width);
                 }
             }
         }
@@ -766,7 +856,7 @@ impl Decoration for MarkdownRender {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct CodeFence {
     marker: char,
     len: usize,
@@ -1216,6 +1306,7 @@ fn paint_inline_emphasis(
     line_idx: usize,
     chars: &[char],
     skip_until: usize,
+    tab_width: usize,
 ) {
     let code_ranges = inline_code_ranges(chars);
     let in_code = |index: usize| {
@@ -1292,8 +1383,8 @@ fn paint_inline_emphasis(
             continue;
         };
         let line_render = render.lines.entry(line_idx).or_default();
-        let open_col = display_col(chars, index);
-        let close_col = display_col(chars, close);
+        let open_col = display_col(chars, index, tab_width);
+        let close_col = display_col(chars, close, tab_width);
         line_render.removals.push((open_col, open_col + marker_len));
         line_render
             .removals
@@ -1309,6 +1400,7 @@ fn paint_inline_links(
     skip_until: usize,
     icon_style: Style,
     custom_icons: &[MarkdownLinkIcon],
+    tab_width: usize,
 ) {
     let code_ranges = inline_code_ranges(chars);
     let in_code = |index: usize| {
@@ -1330,17 +1422,17 @@ fn paint_inline_links(
             if let Some(end) = find_closing(chars, index + 3, "]]") {
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index),
+                    col: display_col(&chars, index, tab_width),
                     text: "󰥶 ".to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index + 2),
+                    col: display_col(&chars, index + 2, tab_width),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, end),
+                    col: display_col(&chars, end, tab_width),
                     text: "  ".to_string(),
                     style: Style::default(),
                 });
@@ -1360,13 +1452,13 @@ fn paint_inline_links(
                         // The replacement covers `![alt]` exactly; the
                         // destination is removed afterwards.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, index),
+                            col: display_col(&chars, index, tab_width),
                             text: format!("󰥶 {alt} "),
                             style: plain(icon_style),
                         });
                         line_render.removals.push((
-                            display_col(&chars, label_end + 1),
-                            display_col(&chars, dest_end + 1),
+                            display_col(&chars, label_end + 1, tab_width),
+                            display_col(&chars, dest_end + 1, tab_width),
                         ));
                         index = dest_end + 1;
                         continue;
@@ -1385,7 +1477,8 @@ fn paint_inline_links(
                     None => (inner.as_str(), None),
                 };
                 let display = alias.unwrap_or(target);
-                let region_width = display_col(&chars, end + 2) - display_col(&chars, index);
+                let region_width =
+                    display_col(&chars, end + 2, tab_width) - display_col(&chars, index, tab_width);
                 let mut text = format!("󱗖 {display}");
                 // Cover the whole `[[...]]` region so no stale brackets or
                 // concealed target remain.
@@ -1398,7 +1491,7 @@ fn paint_inline_links(
                     .or_default()
                     .paints
                     .push(Paint {
-                        col: display_col(&chars, index),
+                        col: display_col(&chars, index, tab_width),
                         text,
                         style: plain(icon_style),
                     });
@@ -1419,7 +1512,7 @@ fn paint_inline_links(
                         .or_default()
                         .paints
                         .push(Paint {
-                            col: display_col(&chars, index),
+                            col: display_col(&chars, index, tab_width),
                             text: format!("󰯔 {label} "),
                             style: plain(icon_style),
                         });
@@ -1440,13 +1533,13 @@ fn paint_inline_links(
                         // the icon before the label (matching render-markdown)
                         // and remove `(destination)` as a single range.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, index),
+                            col: display_col(&chars, index, tab_width),
                             text: format!("{icon} {label}"),
                             style: plain(icon_style),
                         });
                         line_render.removals.push((
-                            display_col(&chars, label_end + 1),
-                            display_col(&chars, dest_end + 1),
+                            display_col(&chars, label_end + 1, tab_width),
+                            display_col(&chars, dest_end + 1, tab_width),
                         ));
                         index = dest_end + 1;
                         continue;
@@ -1467,12 +1560,12 @@ fn paint_inline_links(
                 };
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index),
+                    col: display_col(&chars, index, tab_width),
                     text: icon.to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, end),
+                    col: display_col(&chars, end, tab_width),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
@@ -1489,12 +1582,25 @@ fn paint_inline_links(
 /// Convert a char index to a terminal display column. Paint positions are
 /// compared against `TextRenderer.offset.col`, which is in cells, so using
 /// raw char indices shifts icons on lines containing CJK/emoji/combining
-/// characters.
-fn display_col(chars: &[char], index: usize) -> usize {
-    chars[..index.min(chars.len())]
-        .iter()
-        .map(|ch| ch.width().unwrap_or(0))
-        .sum()
+/// characters. Tabs advance to the next tab stop and a ZWJ sequence counts
+/// as a single double-width grapheme.
+fn display_col(chars: &[char], index: usize, tab_width: usize) -> usize {
+    use unicode_segmentation::UnicodeSegmentation;
+
+    let end = index.min(chars.len());
+    let text: String = chars[..end].iter().collect();
+    let tab_width = tab_width.max(1);
+    let mut col = 0;
+    for grapheme in text.graphemes(true) {
+        if grapheme == "\t" {
+            col += tab_width - (col % tab_width);
+        } else if grapheme.contains('\u{200d}') {
+            col += 2;
+        } else {
+            col += grapheme_width(grapheme);
+        }
+    }
+    col
 }
 
 fn find_char(chars: &[char], from: usize, target: char) -> Option<usize> {
@@ -1519,16 +1625,17 @@ fn paint_inline_code(
     line_start: usize,
     chars: &[char],
     style: Style,
+    tab_width: usize,
 ) {
     for (open_start, open_end, close_start, close_end) in inline_code_ranges(chars) {
         let line_render = render.lines.entry(line_idx).or_default();
         line_render.paints.push(Paint {
-            col: display_col(&chars, open_start),
+            col: display_col(&chars, open_start, tab_width),
             text: " ".repeat(open_end - open_start),
             style,
         });
         line_render.paints.push(Paint {
-            col: display_col(&chars, close_start),
+            col: display_col(&chars, close_start, tab_width),
             text: " ".repeat(close_end - close_start),
             style,
         });
@@ -1777,7 +1884,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "see [code](https://github.com/x/y) end".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[], 4);
         let paints = &render.lines.get(&0).unwrap().paints;
         assert!(paints.iter().any(|p| p.text.starts_with("󰊤")));
     }
@@ -1809,10 +1916,50 @@ mod tests {
     }
 
     #[test]
+    fn incremental_line_meta_matches_a_fresh_build() {
+        use helix_core::Rope;
+        fn cache_for(text: &Rope) -> MarkdownCache {
+            let mut state = LineState::default();
+            let (lines, states) =
+                build_line_meta_range(text.slice(..), 0, text.len_lines(), &mut state);
+            MarkdownCache {
+                version: 0,
+                text: text.clone(),
+                lines,
+                states,
+            }
+        }
+
+        let initial = Rope::from(
+            "# Title\n\n- [ ] one\n  - two\n\n```rust\nfn main() {}\n```\n\n> [!NOTE] note\n> body\n\nplain\n",
+        );
+        let mut cache = cache_for(&initial);
+        for updated in [
+            // Edit inside a list item.
+            Rope::from(
+                "# Title\n\n- [x] one changed\n  - two\n\n```rust\nfn main() {}\n```\n\n> [!NOTE] note\n> body\n\nplain\n",
+            ),
+            // Insert a line before the fence.
+            Rope::from(
+                "# Title\n\nnew paragraph\n\n- [x] one changed\n  - two\n\n```rust\nfn main() {}\n```\n\n> [!NOTE] note\n> body\n\nplain\n",
+            ),
+            // Delete the list item and the callout body.
+            Rope::from("# Title\n\n```rust\nfn main() {}\n```\n\n> [!NOTE] note\n\nplain\n"),
+            // Unclosed fence extends to the end.
+            Rope::from("# Title\n\n```rust\nfn main() {}\nstill code\n"),
+        ] {
+            update_line_meta(&mut cache, updated.slice(..));
+            assert_eq!(cache.lines, build_line_meta(updated.slice(..)));
+            assert_eq!(cache.lines.len(), updated.len_lines());
+            assert_eq!(cache.states.len(), updated.len_lines());
+        }
+    }
+
+    #[test]
     fn paint_columns_use_display_cells() {
         let line: Vec<char> = "日 [x](y)".chars().collect();
         let mut render = MarkdownRender::default();
-        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
+        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[], 4);
         let paints = &render.lines.get(&0).unwrap().paints;
         // `[` starts after `日 ` (3 cells) and the icon replaces it.
         assert!(paints
@@ -1821,10 +1968,22 @@ mod tests {
     }
 
     #[test]
+    fn display_columns_expand_tabs_and_join_emoji() {
+        let text: Vec<char> = "a\tb".chars().collect();
+        assert_eq!(display_col(&text, 3, 4), 5);
+        assert_eq!(display_col(&text, 3, 8), 9);
+
+        // Family emoji: a single ZWJ grapheme is two cells, not eight.
+        let emoji: Vec<char> = "👨\u{200d}👩\u{200d}👧 x".chars().collect();
+        assert_eq!(display_col(&emoji[..5], 5, 4), 2);
+        assert_eq!(display_col(&emoji, emoji.len(), 4), 4);
+    }
+
+    #[test]
     fn emphasis_markers_are_concealed() {
         let line: Vec<char> = "**bold** and *italic* and ~~gone~~".chars().collect();
         let mut render = MarkdownRender::default();
-        paint_inline_emphasis(&mut render, 0, &line, 0);
+        paint_inline_emphasis(&mut render, 0, &line, 0, 4);
         let removals = &render.lines.get(&0).unwrap().removals;
         assert!(removals.contains(&(0, 2)));
         assert!(removals.contains(&(6, 8)));
@@ -1849,7 +2008,7 @@ mod tests {
             .chars()
             .collect();
         let mut render = MarkdownRender::default();
-        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[]);
+        paint_inline_links(&mut render, 0, &line, 0, Style::default(), &[], 4);
         let paints = &render.lines.get(&0).unwrap().paints;
         let icons = paints
             .iter()
@@ -1866,7 +2025,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "see [[Target|Alias]] and [[Plain]] end".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[], 4);
         let paints = &render.lines.get(&0).unwrap().paints;
         // [[Target|Alias]]: icon + alias over the whole wiki-link region.
         assert!(paints
@@ -1879,7 +2038,7 @@ mod tests {
 
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "a [label](https://x.y) b".chars().collect();
-        paint_inline_links(&mut render, 1, &line, 0, style, &[]);
+        paint_inline_links(&mut render, 1, &line, 0, style, &[], 4);
         let paints = &render.lines.get(&1).unwrap().paints;
         assert!(paints
             .iter()
@@ -1891,7 +2050,7 @@ mod tests {
         let style = Style::default();
         let mut render = MarkdownRender::default();
         let line: Vec<char> = "a <https://x.y> b [^fn]".chars().collect();
-        paint_inline_links(&mut render, 0, &line, 0, style, &[]);
+        paint_inline_links(&mut render, 0, &line, 0, style, &[], 4);
         let paints = &render.lines.get(&0).unwrap().paints;
         assert!(paints.iter().any(|p| p.col == 2 && p.text == "󰌹"));
         assert!(paints
