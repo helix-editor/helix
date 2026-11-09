@@ -1275,7 +1275,7 @@ fn note_items(cx: &CompositorContext) -> anyhow::Result<Vec<NoteItem>> {
 pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
     let view_id = cx.editor.tree.focus;
     let doc_id = cx.editor.tree.get(view_id).doc;
-    let (start, mut end, needs_second_bracket) = {
+    let (start, mut end, needs_second_bracket, cursor) = {
         let Some(doc) = cx.editor.documents.get(&doc_id) else {
             return false;
         };
@@ -1297,7 +1297,7 @@ pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
         // The second `[` triggered this command before insert mode could
         // handle it. Insert it now so cancelling the picker leaves `[[`
         // instead of a single swallowed bracket.
-        (start, end, end == cursor)
+        (start, end, end == cursor, cursor)
     };
 
     let Ok((vault, config)) = vault_config_for(cx.editor) else {
@@ -1308,7 +1308,7 @@ pub fn complete_link(cx: &mut crate::commands::Context) -> bool {
     if needs_second_bracket {
         if let Some(doc) = cx.editor.documents.get_mut(&doc_id) {
             let transaction =
-                Transaction::insert(doc.text(), doc.selection(view_id), Tendril::from("["));
+                Transaction::insert(doc.text(), &Selection::point(cursor), Tendril::from("["));
             doc.apply(&transaction, view_id);
             end += 1;
         } else {
