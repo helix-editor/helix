@@ -717,11 +717,14 @@ pub struct ModeConfig {
     pub normal: String,
     pub insert: String,
     pub select: String,
+    /// Label for the `select:` regex prompt (separate from Select mode).
+    pub select_prompt: String,
     pub command: String,
     pub search: String,
     pub normal_short: String,
     pub insert_short: String,
     pub select_short: String,
+    pub select_prompt_short: String,
     pub command_short: String,
     pub search_short: String,
 }
@@ -732,11 +735,13 @@ impl Default for ModeConfig {
             normal: String::from("NOR"),
             insert: String::from("INS"),
             select: String::from("SEL"),
+            select_prompt: String::from("SELECT"),
             command: String::from("COMMAND"),
             search: String::from("SEARCH"),
             normal_short: String::from("NOR"),
             insert_short: String::from("INS"),
             select_short: String::from("SEL"),
+            select_prompt_short: String::from("SEL"),
             command_short: String::from("COM"),
             search_short: String::from("S"),
         }

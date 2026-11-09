@@ -551,9 +551,9 @@ where
         }
     } else if select_prompt {
         if short {
-            &modenames.select_short
+            &modenames.select_prompt_short
         } else {
-            &modenames.select
+            &modenames.select_prompt
         }
     } else {
         match context.editor.mode() {
