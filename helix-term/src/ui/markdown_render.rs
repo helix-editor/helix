@@ -456,7 +456,6 @@ impl MarkdownRender {
                 let language = line
                     .trim_start()
                     .trim_start_matches(marker)
-                    .trim()
                     .split_whitespace()
                     .next()
                     .unwrap_or_default()
@@ -1299,6 +1298,7 @@ fn domain_icon<'a>(dest: &str, custom: &'a [MarkdownLinkIcon]) -> Option<&'a str
 /// - `![alt](dest)` / `![[file]]` → image icon variants
 /// - `<url>` / `<mail>` → icon over `<`, space over `>`
 /// - `[^footnote]` → `󰯔 footnote`
+///
 /// Conceal emphasis/strong/strikethrough/highlight markers without changing
 /// the line width. Syntax highlighting still styles the content itself.
 fn paint_inline_emphasis(
@@ -1430,17 +1430,17 @@ fn paint_inline_links(
             if let Some(end) = find_closing(chars, index + 3, "]]") {
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index, tab_width),
+                    col: display_col(chars, index, tab_width),
                     text: "󰥶 ".to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index + 2, tab_width),
+                    col: display_col(chars, index + 2, tab_width),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, end, tab_width),
+                    col: display_col(chars, end, tab_width),
                     text: "  ".to_string(),
                     style: Style::default(),
                 });
@@ -1460,13 +1460,13 @@ fn paint_inline_links(
                         // The replacement covers `![alt]` exactly; the
                         // destination is removed afterwards.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, index, tab_width),
+                            col: display_col(chars, index, tab_width),
                             text: format!("󰥶 {alt} "),
                             style: plain(icon_style),
                         });
                         line_render.removals.push((
-                            display_col(&chars, label_end + 1, tab_width),
-                            display_col(&chars, dest_end + 1, tab_width),
+                            display_col(chars, label_end + 1, tab_width),
+                            display_col(chars, dest_end + 1, tab_width),
                         ));
                         index = dest_end + 1;
                         continue;
@@ -1486,7 +1486,7 @@ fn paint_inline_links(
                 };
                 let display = alias.unwrap_or(target);
                 let region_width =
-                    display_col(&chars, end + 2, tab_width) - display_col(&chars, index, tab_width);
+                    display_col(chars, end + 2, tab_width) - display_col(chars, index, tab_width);
                 let mut text = format!("󱗖 {display}");
                 // Cover the whole `[[...]]` region so no stale brackets or
                 // concealed target remain.
@@ -1499,7 +1499,7 @@ fn paint_inline_links(
                     .or_default()
                     .paints
                     .push(Paint {
-                        col: display_col(&chars, index, tab_width),
+                        col: display_col(chars, index, tab_width),
                         text,
                         style: plain(icon_style),
                     });
@@ -1520,7 +1520,7 @@ fn paint_inline_links(
                         .or_default()
                         .paints
                         .push(Paint {
-                            col: display_col(&chars, index, tab_width),
+                            col: display_col(chars, index, tab_width),
                             text: format!("󰯔 {label} "),
                             style: plain(icon_style),
                         });
@@ -1541,13 +1541,13 @@ fn paint_inline_links(
                         // the icon before the label (matching render-markdown)
                         // and remove `(destination)` as a single range.
                         line_render.paints.push(Paint {
-                            col: display_col(&chars, index, tab_width),
+                            col: display_col(chars, index, tab_width),
                             text: format!("{icon} {label}"),
                             style: plain(icon_style),
                         });
                         line_render.removals.push((
-                            display_col(&chars, label_end + 1, tab_width),
-                            display_col(&chars, dest_end + 1, tab_width),
+                            display_col(chars, label_end + 1, tab_width),
+                            display_col(chars, dest_end + 1, tab_width),
                         ));
                         index = dest_end + 1;
                         continue;
@@ -1568,12 +1568,12 @@ fn paint_inline_links(
                 };
                 let line_render = render.lines.entry(line_idx).or_default();
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, index, tab_width),
+                    col: display_col(chars, index, tab_width),
                     text: icon.to_string(),
                     style: icon_style,
                 });
                 line_render.paints.push(Paint {
-                    col: display_col(&chars, end, tab_width),
+                    col: display_col(chars, end, tab_width),
                     text: " ".to_string(),
                     style: Style::default(),
                 });
@@ -1638,12 +1638,12 @@ fn paint_inline_code(
     for (open_start, open_end, close_start, close_end) in inline_code_ranges(chars) {
         let line_render = render.lines.entry(line_idx).or_default();
         line_render.paints.push(Paint {
-            col: display_col(&chars, open_start, tab_width),
+            col: display_col(chars, open_start, tab_width),
             text: " ".repeat(open_end - open_start),
             style,
         });
         line_render.paints.push(Paint {
-            col: display_col(&chars, close_start, tab_width),
+            col: display_col(chars, close_start, tab_width),
             text: " ".repeat(close_end - close_start),
             style,
         });

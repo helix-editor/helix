@@ -49,9 +49,10 @@ struct ImageLayoutKey {
 /// renderer in the same frame. Cache the short-lived layout so the filesystem
 /// and remote/conversion checks are not repeated. Keep a small map instead of
 /// a single entry so alternating split views don't invalidate each other.
-fn image_layout_cache() -> &'static Mutex<HashMap<ImageLayoutKey, (Instant, Vec<ImageLayout>)>> {
-    static CACHE: OnceLock<Mutex<HashMap<ImageLayoutKey, (Instant, Vec<ImageLayout>)>>> =
-        OnceLock::new();
+type ImageLayoutCache = Mutex<HashMap<ImageLayoutKey, (Instant, Vec<ImageLayout>)>>;
+
+fn image_layout_cache() -> &'static ImageLayoutCache {
+    static CACHE: OnceLock<ImageLayoutCache> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
