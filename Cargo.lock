@@ -1706,6 +1706,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
+ "unicode-segmentation",
 ]
 
 [[package]]
