@@ -355,7 +355,7 @@ fn content_width(spans: &Spans) -> u16 {
     let mut content = 0;
     let mut padded = true;
     for span in &spans.0 {
-        width += span.content.width();
+        width += display_width(&span.content);
         if !span.content.chars().all(char::is_whitespace) {
             content = width;
             padded = span.content.chars().last().is_some_and(char::is_whitespace);
@@ -365,6 +365,18 @@ fn content_width(spans: &Spans) -> u16 {
         content += 1;
     }
     content as u16
+}
+
+fn display_width(text: &str) -> usize {
+    text.graphemes(true)
+        .map(|grapheme| {
+            if grapheme.contains('\u{200d}') {
+                2
+            } else {
+                grapheme.width()
+            }
+        })
+        .sum()
 }
 
 fn render_prompt_line(context: &RenderContext, surface: &mut Surface, area: Rect, style: Style) {
@@ -970,5 +982,39 @@ where
 {
     if context.focused && context.doc.code_action_hints(context.view.id) {
         write(context, " ⋮ ".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spans(parts: &[&str]) -> Spans<'static> {
+        Spans(
+            parts
+                .iter()
+                .map(|part| Span::raw(part.to_string()))
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn content_width_pads_visible_text() {
+        assert_eq!(content_width(&spans(&["abc"])), 4);
+        assert_eq!(content_width(&spans(&[""])), 0);
+        assert_eq!(content_width(&spans(&["abc", "   "])), 4);
+    }
+
+    #[test]
+    fn content_width_respects_existing_trailing_space() {
+        assert_eq!(content_width(&spans(&["abc "])), 4);
+        assert_eq!(content_width(&spans(&["abc  "])), 5);
+    }
+
+    #[test]
+    fn content_width_handles_wide_and_combining_graphemes() {
+        assert_eq!(content_width(&spans(&["日本"])), 5);
+        assert_eq!(content_width(&spans(&["e\u{301}"])), 2);
+        assert_eq!(content_width(&spans(&["👨\u{200d}👩\u{200d}👧"])), 3);
     }
 }
