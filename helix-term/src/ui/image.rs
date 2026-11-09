@@ -28,6 +28,11 @@ struct CachedImage {
     id: u32,
 }
 
+struct PlacedImage {
+    image_id: u32,
+    path: PathBuf,
+}
+
 #[derive(Default)]
 struct ImageState {
     next_id: u32,
@@ -35,8 +40,9 @@ struct ImageState {
     /// Entries are dropped whenever Kitty is told to delete the image so
     /// the next render re-transmits instead of referencing a dead id.
     cache: HashMap<PathBuf, CachedImage>,
-    placed: HashMap<u32, PathBuf>,
-    rendered: bool,
+    /// Placements in render order. Placement ids are derived from the index,
+    /// so a change in order/count invalidates all placements.
+    placed: Vec<PlacedImage>,
 }
 
 fn state() -> &'static Mutex<ImageState> {
@@ -67,15 +73,32 @@ pub fn render(editor: &Editor) {
     // Save the cursor the TUI positioned, then restore it after placing images.
     out.push_str("\x1b7");
 
-    let mut current: HashMap<u32, PathBuf> = HashMap::new();
+    // Placement ids are positional. When the image set or its order changes,
+    // delete all old placements first so duplicate links cannot leave a stale
+    // placement behind. Transmitted data stays cached.
+    let layout_changed = state.placed.len() != placements.len()
+        || state
+            .placed
+            .iter()
+            .zip(&placements)
+            .any(|(old, new)| old.path != new.path);
+    if layout_changed && !state.placed.is_empty() {
+        out.push_str("\x1b_Ga=d,d=a,q=2\x1b\\");
+    }
+
+    let old_ids: Vec<u32> = state.placed.iter().map(|placed| placed.image_id).collect();
+    let mut current = Vec::with_capacity(placements.len());
     for (placement_index, placement) in placements.into_iter().enumerate() {
         let id = transmit(&mut state, &placement.path, &mut out);
-        current.insert(id, placement.path.clone());
         // Re-placing the same placement id moves it without flicker. Use a
         // distinct placement id per occurrence so the same image linked twice
         // in one note gets two placements (Kitty treats `p` as the placement
         // key, separate from the transmitted `i` image key).
         let placement_id = placement_index as u32 + 1;
+        current.push(PlacedImage {
+            image_id: id,
+            path: placement.path.clone(),
+        });
         // A source rect (x,y,w,h) crops partially scrolled images instead
         // of squishing them.
         let crop = placement
@@ -91,25 +114,36 @@ pub fn render(editor: &Editor) {
         ));
     }
 
-    // Delete images that scrolled out of view, and forget their ids so a
-    // later render re-transmits the data (a placement referencing a deleted
-    // image id is silently dropped by Kitty).
-    let gone: Vec<(u32, PathBuf)> = state
-        .placed
-        .iter()
-        .filter(|(id, _)| !current.contains_key(id))
-        .map(|(id, path)| (*id, path.clone()))
-        .collect();
-    for (id, path) in gone {
-        out.push_str(&format!("\x1b_Ga=d,d=i,i={id},q=2\x1b\\"));
-        state.cache.remove(&path);
+    // Free transmitted image data only when no placement still references it.
+    let used: std::collections::HashSet<u32> =
+        current.iter().map(|placed| placed.image_id).collect();
+    let mut freed = std::collections::HashSet::new();
+    for image_id in old_ids {
+        if !used.contains(&image_id) && freed.insert(image_id) {
+            out.push_str(&format!("\x1b_Ga=d,d=I,i={image_id},q=2\x1b\\"));
+            state.cache.retain(|_, cached| cached.id != image_id);
+        }
     }
     state.placed = current;
-    state.rendered = !state.placed.is_empty();
 
     out.push_str("\x1b8");
     drop(state);
     flush_output(&out);
+}
+
+/// Remove placements while keeping transmitted data. Used when an overlay
+/// temporarily covers the text, so closing it does not retransmit every
+/// image.
+pub fn clear_placements() {
+    if !kitty_supported() {
+        return;
+    }
+    let mut state = state().lock().unwrap();
+    if state.placed.is_empty() {
+        return;
+    }
+    flush_output("\x1b_Ga=d,d=a,q=2\x1b\\");
+    state.placed.clear();
 }
 
 /// Remove all image placements. Called on exit.
@@ -118,10 +152,9 @@ pub fn clear() {
         return;
     }
     let mut state = state().lock().unwrap();
-    if state.rendered || !state.placed.is_empty() {
+    if !state.cache.is_empty() || !state.placed.is_empty() {
         flush_output("\x1b_Ga=d,d=A,q=2\x1b\\");
         state.placed.clear();
-        state.rendered = false;
         // d=A drops transmitted data too: forget every id so the next
         // render re-transmits instead of placing dead ids.
         state.cache.clear();
@@ -193,11 +226,24 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
             let rows_vis = (image.rows as usize).min(avail_rows).max(1);
             let avail_cols = inner.width.saturating_sub(pos.col as u16).max(1);
             let cols = image.cols.min(avail_cols).max(1);
-            let crop = if rows_vis != image.rows as usize {
-                // Show the top rows_vis/rows of the source image.
-                let h = ((rows_vis as u64 * image.height_px as u64) / rows_total as u64)
-                    .clamp(1, image.height_px as u64) as u32;
-                Some((0, 0, image.width_px, h))
+            let rows_cropped = rows_vis != image.rows as usize;
+            let cols_cropped = cols != image.cols;
+            let crop = if rows_cropped || cols_cropped {
+                // Crop source pixels instead of squishing when either axis
+                // runs past the viewport.
+                let h = if rows_cropped {
+                    ((rows_vis as u64 * image.height_px as u64) / rows_total as u64)
+                        .clamp(1, image.height_px as u64) as u32
+                } else {
+                    image.height_px
+                };
+                let w = if cols_cropped {
+                    ((cols as u64 * image.width_px as u64) / image.cols.max(1) as u64)
+                        .clamp(1, image.width_px as u64) as u32
+                } else {
+                    image.width_px
+                };
+                Some((0, 0, w, h))
             } else {
                 None
             };
