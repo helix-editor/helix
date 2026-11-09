@@ -724,33 +724,37 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 .min(snapshot.matched_item_count().saturating_sub(1))
         }
 
-        let text_style = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
-        let selected = cx
-            .editor
-            .theme
-            .try_get("ui.menu.selected")
+        let theme = &cx.editor.theme;
+        let text_style = theme.get("ui.text");
+        let selected = theme
+            .try_get("ui.picker.selected")
+            .or_else(|| theme.try_get("ui.selection"))
             .unwrap_or_else(|| {
                 Style::default()
-                    .fg(crate::ui::secondary_color(&cx.editor.theme))
-                    .bg(crate::ui::primary_color(&cx.editor.theme))
+                    .fg(crate::ui::secondary_color(theme))
+                    .bg(crate::ui::primary_color(theme))
                     .add_modifier(Modifier::BOLD)
             });
-        let highlight_style = Style::default()
-            .fg(crate::ui::secondary_color(&cx.editor.theme))
-            .add_modifier(Modifier::BOLD);
+        let highlight_style = theme.try_get("ui.picker.match").unwrap_or_else(|| {
+            Style::default()
+                .fg(crate::ui::primary_color(theme))
+                .add_modifier(Modifier::BOLD)
+        });
 
         // -- Render the frame:
         // clear area
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        let border_style = Style::new()
-            .fg(crate::ui::primary_color(&cx.editor.theme))
+        let border_style = theme
+            .try_get("ui.picker.border")
+            .unwrap_or_else(|| Style::new().fg(crate::ui::primary_color(theme)))
             .bg(background.bg.unwrap_or(helix_view::theme::Color::Reset));
+        let title_style = theme.try_get("ui.picker.title").unwrap_or(border_style);
         let block = match &self.title {
             Some(title) => Block::bordered()
                 .border_style(border_style)
-                .title(Span::styled(title.clone(), border_style)),
+                .title(Span::styled(title.clone(), title_style)),
             None => Block::bordered().border_style(border_style),
         };
 
@@ -934,7 +938,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         if let Some(help) = &self.help {
             let y = frame_area.y + frame_area.height.saturating_sub(1);
-            let help_style = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
+            let help_style = cx
+                .editor
+                .theme
+                .try_get("ui.picker.help")
+                .or_else(|| cx.editor.theme.try_get("ui.text.inactive"))
+                .unwrap_or_else(|| {
+                    Style::default().fg(crate::ui::secondary_color(&cx.editor.theme))
+                });
             let text = format!(" {help} ");
             surface.set_stringn(
                 frame_area.x.saturating_add(2),
@@ -949,13 +960,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     fn render_preview(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // -- Render the frame:
         // clear area
-        let background = cx.editor.theme.get("ui.background");
-        let text = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
-        let directory = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
+        let theme = &cx.editor.theme;
+        let background = theme.get("ui.background");
+        let text = theme.get("ui.text");
+        let directory = theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
-        let border_style = Style::new()
-            .fg(crate::ui::primary_color(&cx.editor.theme))
+        let border_style = theme
+            .try_get("ui.picker.border")
+            .unwrap_or_else(|| Style::new().fg(crate::ui::primary_color(theme)))
             .bg(background.bg.unwrap_or(helix_view::theme::Color::Reset));
         let block = Block::bordered().border_style(border_style);
 

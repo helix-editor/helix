@@ -108,11 +108,17 @@ inherits = "noctalia"
 "ui.highlight.frameline" = { bg = "secondaryContainer" }
 
 "ui.menu" = { fg = "onSurface", bg = "surfaceContainer" }
-"ui.menu.selected" = { fg = "onSecondaryContainer", bg = "secondaryContainer" }
-"ui.menu.scroll" = { fg = "secondary", bg = "surfaceContainerHigh" }
+# Neovim PmenuSel: inverted light selection.
+"ui.menu.selected" = { fg = "surfaceContainer", bg = "onSurface" }
+"ui.menu.scroll" = { fg = "outline", bg = "surfaceContainerHigh" }
 
 "ui.popup" = { fg = "onSurface", bg = "surface" }
-"ui.popup.info" = { fg = "onSurface", bg = "surface" }
+"ui.popup.info" = { fg = "onSurface", bg = "background" }
+# Neovim which-key / Float* roles.
+"ui.popup.info.border" = { fg = "onSurface" }
+"ui.popup.info.key" = { fg = "primary" }
+"ui.popup.info.desc" = { fg = "error" }
+"ui.popup.info.title" = { fg = "primary", modifiers = ["bold"] }
 "ui.help" = { fg = "onSurface", bg = "surface" }
 "ui.window" = { fg = "onSurface" }
 "ui.background.separator" = { fg = "outline" }
@@ -132,6 +138,14 @@ inherits = "noctalia"
 "ui.bufferline.indicator" = { fg = "primary" }
 "ui.bufferline.modified" = { fg = "secondary" }
 
+# Neovim Snacks dashboard roles.
+"ui.dashboard.header" = { fg = "primary", modifiers = ["bold"] }
+"ui.dashboard.icon" = { fg = "tertiary" }
+"ui.dashboard.item" = { fg = "tertiary" }
+"ui.dashboard.key" = { fg = "tertiary" }
+"ui.dashboard.subtitle" = { fg = "onSurfaceVariant" }
+"ui.dashboard.footer" = { fg = "primary" }
+
 "ui.virtual" = "outline"
 "ui.virtual.indent-guide" = "outlineVariant"
 "ui.virtual.whitespace" = "outlineVariant"
@@ -142,10 +156,14 @@ inherits = "noctalia"
 "ui.debug" = { fg = "error" }
 "ui.debug.breakpoint" = { fg = "tertiary" }
 
-# Picker header scopes used by rx-helix. Other themes fall back to their
-# normal text colors when these are absent.
-"ui.picker.header" = { fg = "secondary" }
-"ui.picker.header.column" = { fg = "secondary" }
+# Neovim Telescope / mini.pick roles.
+"ui.picker.selected" = { fg = "onSurface", bg = "surfaceContainerHigh" }
+"ui.picker.match" = { fg = "primary", modifiers = ["bold"] }
+"ui.picker.border" = { fg = "outline" }
+"ui.picker.title" = { fg = "background", bg = "primary", modifiers = ["bold"] }
+"ui.picker.help" = { fg = "onSurfaceVariant" }
+"ui.picker.header" = { fg = "onSurfaceVariant" }
+"ui.picker.header.column" = { fg = "onSurfaceVariant" }
 "ui.picker.header.column.active" = { fg = "primary" }
 
 "diagnostic.hint" = { underline = { color = "tertiary", style = "curl" } }

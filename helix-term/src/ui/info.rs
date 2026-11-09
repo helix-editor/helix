@@ -9,12 +9,22 @@ use tui::widgets::{Block, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        let popup_bg = cx.editor.theme.get("ui.popup.info");
-        let border_style = Style::new()
-            .fg(crate::ui::primary_color(&cx.editor.theme))
+        let theme = &cx.editor.theme;
+        let popup_bg = theme.get("ui.popup.info");
+        let border_style = theme
+            .try_get("ui.popup.info.border")
+            .unwrap_or_else(|| Style::new().fg(crate::ui::primary_color(theme)))
             .bg(popup_bg.bg.unwrap_or(helix_view::theme::Color::Reset));
-        let key_style = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
-        let desc_style = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
+        let key_style = theme
+            .try_get("ui.popup.info.key")
+            .unwrap_or_else(|| Style::default().fg(crate::ui::secondary_color(theme)));
+        let desc_style = theme
+            .try_get("ui.popup.info.desc")
+            .unwrap_or_else(|| Style::default().fg(crate::ui::tertiary_color(theme)));
+        let title_style = theme
+            .try_get("ui.popup.info.title")
+            .unwrap_or(border_style)
+            .bg(popup_bg.bg.unwrap_or(helix_view::theme::Color::Reset));
 
         // Calculate the area of the terminal to modify. Because we want to
         // render at the bottom right, we use the viewport's width and height
@@ -30,7 +40,7 @@ impl Component for Info {
         surface.clear_with(area, popup_bg);
 
         let block = Block::bordered()
-            .title(Span::styled(self.title.as_ref().to_owned(), border_style))
+            .title(Span::styled(self.title.as_ref().to_owned(), title_style))
             .border_style(border_style);
 
         let margin = Margin::horizontal(1);

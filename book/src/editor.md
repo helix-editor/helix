@@ -289,16 +289,19 @@ Content that is wider than the terminal is clipped, and a status message reports
 the required and available width. Keep `header`/`header-file` lines within the
 terminal width.
 
-The dashboard maps onto existing theme scopes instead of custom
-`ui.dashboard.*` entries, so generated themes (matugen/Noctalia) cannot leave
-it uncolored:
+The dashboard follows Neovim Snacks dashboard roles:
 
-| Element | Source |
-| ------- | ------ |
-| Header and primary logo shade | `ui.statusline.normal` accent |
-| Menu items, keys, icons, secondary logo shade | `ui.statusline.select` accent |
-| Tertiary logo shade | `ui.statusline.insert` accent |
-| Subtitle, footer, muted logo shade | `ui.text.inactive` |
+| Element | Scope |
+| ------- | ----- |
+| Header and primary logo shade | `ui.dashboard.header` |
+| Menu icons | `ui.dashboard.icon` |
+| Menu descriptions | `ui.dashboard.item` |
+| Menu keys | `ui.dashboard.key` |
+| Subtitle, muted logo shade | `ui.dashboard.subtitle` |
+| Footer | `ui.dashboard.footer` |
+
+Themes without these scopes fall back to the statusline accents and normal UI
+text. The Space/which-key menu uses `ui.popup.info.border/key/desc/title`.
 
 The accent is the background color of the statusline scope, reused as a
 foreground color. Missing statusline scopes fall back to `ui.text`.

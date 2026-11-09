@@ -151,10 +151,12 @@ borders. No fork-only theme scope is required for the fallback colors; a theme
 may optionally define `ui.statusline.command` / `ui.statusline.search` to
 override the Command/Search prompt chips.
 
-Completion menus use `ui.menu.selected` for the selected row. Picker text and
-selection use the same accent pair as the statusline chips: tertiary text,
-secondary-on-primary selection, and a primary border. This keeps finder text
-colored instead of resolving through the plain `ui.text` scopes.
+Completion menus use `ui.menu.selected` for the selected row, mapped to
+Neovim's inverted `PmenuSel` colors. Pickers use Neovim Telescope/mini.pick
+roles: `ui.picker.selected` (onSurface on surfaceContainerHigh),
+`ui.picker.match` (primary bold), `ui.picker.border` (outline), and
+`ui.picker.title` (background on primary). This keeps the quick-switch and file
+pickers consistent instead of collapsing everything to one accent color.
 
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It
@@ -294,20 +296,21 @@ command mode are swallowed.
 
 ### Theme scopes
 
-The dashboard does not need custom `ui.dashboard.*` scopes. It maps onto scopes
-that generated themes (matugen/Noctalia) always keep:
+The dashboard follows Neovim Snacks dashboard roles:
 
-| Element | Source |
-| --- | --- |
-| Header and primary logo shade | `ui.statusline.normal` accent |
-| Menu items, keys, icons, secondary logo shade | `ui.statusline.select` accent |
-| Tertiary logo shade | `ui.statusline.insert` accent |
-| Subtitle, footer, muted logo shade | `ui.text.inactive` |
+| Element | Scope | Neovim source |
+| --- | --- | --- |
+| Header and primary logo shade | `ui.dashboard.header` | `Title` |
+| Menu icons | `ui.dashboard.icon` | `SnacksDashboardIcon` → `Special` |
+| Menu descriptions | `ui.dashboard.item` | `SnacksDashboardDesc` → `Special` |
+| Menu keys | `ui.dashboard.key` | `SnacksDashboardKey` → `Number` |
+| Subtitle, muted logo shade | `ui.dashboard.subtitle` | `NonText` |
+| Footer | `ui.dashboard.footer` | `Title` |
 
-The accent is the background color of those statusline scopes, reused as a
-foreground color so no background block is drawn. If a statusline scope is
-missing, the dashboard falls back to `ui.text`. This means wallpaper changes
-and theme regeneration cannot leave the dashboard uncolored.
+Themes without these scopes fall back to the statusline accents and normal UI
+text, so other themes keep working. The Space/which-key menu uses
+`ui.popup.info.border/key/desc/title`; these map to `FloatBorder`, `Function`,
+`Identifier`, and `FloatTitle` respectively.
 
 ## Markdown rendering
 

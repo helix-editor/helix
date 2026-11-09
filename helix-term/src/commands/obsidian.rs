@@ -12,7 +12,9 @@ use helix_core::{
 };
 use helix_stdx::path::expand_tilde;
 use helix_view::editor::{Action, ObsidianConfig};
+use helix_view::graphics::Style;
 use ignore::WalkBuilder;
+use tui::text::{Span, Spans};
 
 use crate::compositor::Context as CompositorContext;
 use crate::job;
@@ -21,6 +23,12 @@ use crate::ui::{self, overlay::overlaid, Picker, PickerColumn, PromptEvent};
 struct NoteItem {
     path: PathBuf,
     relative: String,
+}
+
+#[derive(Clone, Copy)]
+struct NotePickerData {
+    icon_style: Style,
+    text_style: Style,
 }
 
 struct SearchItem {
@@ -404,11 +412,22 @@ where
 }
 
 fn push_note_picker(cx: &mut CompositorContext, items: Vec<NoteItem>) {
+    let data = NotePickerData {
+        icon_style: cx.editor.theme.get("ui.text.directory"),
+        text_style: cx.editor.theme.get("ui.text"),
+    };
     push_component(cx, move |_editor, compositor| {
-        let columns = [PickerColumn::new("Results", |item: &NoteItem, _: &()| {
-            format!("󰈔 {}", item.relative).into()
-        })];
-        let picker = Picker::new(columns, 0, items, (), |cx, item, action| {
+        let columns = [PickerColumn::new(
+            "Results",
+            |item: &NoteItem, data: &NotePickerData| {
+                Spans::from(vec![
+                    Span::styled("󰈔 ", data.icon_style),
+                    Span::styled(item.relative.clone(), data.text_style),
+                ])
+                .into()
+            },
+        )];
+        let picker = Picker::new(columns, 0, items, data, |cx, item, action| {
             open_note(cx, &item.path, None, action);
         })
         .truncate_start(false)
