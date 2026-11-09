@@ -771,6 +771,13 @@ impl MarkdownRender {
     }
 
     fn concealed(&self, doc_line: usize) -> bool {
+        if self
+            .lines
+            .get(&doc_line)
+            .is_some_and(|line| line.table.is_some())
+        {
+            return false;
+        }
         doc_line == self.cursor_line || self.selected_lines.contains(&doc_line)
     }
 }
@@ -2231,6 +2238,24 @@ mod tests {
         assert_eq!(kinds.get(&1), Some(&TableKind::Delimiter));
         assert_eq!(kinds.get(&2), Some(&TableKind::Body));
         assert_eq!(kinds.get(&4), None);
+    }
+
+    #[test]
+    fn table_rows_stay_rendered_under_the_cursor() {
+        let mut render = MarkdownRender {
+            cursor_line: 2,
+            ..Default::default()
+        };
+        render.lines.insert(2, LineRender::default());
+        assert!(render.concealed(2));
+        render.lines.insert(
+            2,
+            LineRender {
+                table: Some(TableKind::Body),
+                ..Default::default()
+            },
+        );
+        assert!(!render.concealed(2));
     }
 
     #[test]

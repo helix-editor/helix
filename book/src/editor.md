@@ -341,8 +341,10 @@ full-width background from existing theme scopes; icons use
 `markup.heading.1`–`.6`. Code blocks get a full-width background with a
 `󰅩 language` header and inline code gets a background. Rendering paints over
 the rendered document, so the buffer text is unchanged and
-editing/saving/searching still see ordinary markdown. The cursor line and
-selections show raw markdown. Code fences keep their tree-sitter highlighting.
+editing/saving/searching still see ordinary markdown. Non-table cursor lines
+and selections show raw markdown; table rows stay rendered under the cursor so
+their inline formatting remains visible. Code fences keep their tree-sitter
+highlighting.
 Links and wiki links show icons while destinations are concealed, with
 per-host icons for known sites, and links inside headings, lists, quotes,
 tables, and callout titles are decorated. Inline code, emphasis, strong,

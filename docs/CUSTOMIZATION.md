@@ -357,8 +357,10 @@ Pipe tables replace `|` with `│` (delimiter `-`/`:` become `─`/`━`) and gi
 the header row a background. Inline code, emphasis/strong/strikethrough,
 links, wiki links, and footnotes inside table cells are rendered before the
 cell is padded, so markers do not leak into the table. Inline code gets a
-background across the whole span, not just the backticks. The cursor line and
-selections still show raw Markdown so markers stay editable.
+background across the whole span, not just the backticks. Table rows render
+fully even under the cursor so inline formatting does not disappear while
+navigating; non-table cursor lines and selections still show raw Markdown so
+their markers stay editable.
 Code fences keep their tree-sitter highlighting.
 
 Local images are drawn inline when the terminal speaks the Kitty graphics
