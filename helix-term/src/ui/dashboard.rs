@@ -230,8 +230,8 @@ impl Renderer {
 
                 let height = header_horizontal.height().max(right.height());
                 let y = vertical_y(area, height, config.vertical_align);
-                let header_y = y + ((height - header_horizontal.height() + 1) / 2) as u16;
-                let right_y = y + ((height - right.height() + 1) / 2) as u16;
+                let header_y = y + (height - header_horizontal.height()).div_ceil(2) as u16;
+                let right_y = y + (height - right.height()).div_ceil(2) as u16;
                 draw(&header_horizontal, x, header_y, area, surface);
 
                 let right_x = x + header_horizontal.width() as u16 + gap as u16;
@@ -693,9 +693,11 @@ mod tests {
     #[test]
     fn missing_header_file_keeps_inline_fallback() {
         let dir = tempfile::tempdir().unwrap();
-        let mut config = DashboardConfig::default();
-        config.header = "fallback".to_string();
-        config.header_file = Some(dir.path().join("missing.txt").display().to_string());
+        let config = DashboardConfig {
+            header: "fallback".to_string(),
+            header_file: Some(dir.path().join("missing.txt").display().to_string()),
+            ..Default::default()
+        };
         let mut cache = HeaderCache::default();
 
         assert_eq!(cache.resolve(&config), "fallback");

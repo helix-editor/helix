@@ -209,7 +209,7 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
     }
     let mut placements = Vec::new();
 
-    for image in helix_view::markdown::visible_images(doc, &view) {
+    for image in helix_view::markdown::visible_images(doc, view) {
         let Some(path) = helix_view::markdown::ensure_png_async(&image.path) else {
             continue;
         };
@@ -218,7 +218,7 @@ fn compute_placements(editor: &Editor) -> Vec<Placement> {
         if let Some(pos) = view.screen_coords_at_pos(doc, text, image.char_idx) {
             // Anchor on screen. Crop the bottom if the image runs past the
             // viewport instead of squishing it.
-            let eff_row = pos.row as usize + image.offset_rows as usize;
+            let eff_row = pos.row + image.offset_rows as usize;
             if eff_row >= inner.height as usize {
                 continue;
             }

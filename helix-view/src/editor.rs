@@ -879,24 +879,13 @@ pub struct MarkdownLinkIcon {
     pub icon: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct DashboardItem {
     pub key: Option<String>,
     pub icon: Option<String>,
     pub desc: String,
     pub action: Option<String>,
-}
-
-impl Default for DashboardItem {
-    fn default() -> Self {
-        Self {
-            key: None,
-            icon: None,
-            desc: String::new(),
-            action: None,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
