@@ -281,12 +281,10 @@ fn choose_layout(
 }
 
 fn items_block(config: &DashboardConfig, theme: &Theme, menu_width: u16, menu_gap: u16) -> Block {
-    // Icons and keys carry the accent colors; descriptions stay readable in
-    // the normal text color. Themes can override each role with
-    // `ui.dashboard.*` scopes.
+    // Icons, labels, and keys all use the same accent color.
     let icon_style = dashboard_style(theme, "icon", "ui.text");
-    let item_style = dashboard_style(theme, "item", "ui.text");
-    let key_style = dashboard_style(theme, "key", "ui.text.inactive");
+    let item_style = icon_style;
+    let key_style = icon_style;
 
     let icon_width = config
         .items
@@ -652,9 +650,6 @@ fn accent_style(theme: &Theme, scope: &str, fallback: &str) -> Style {
 }
 
 fn dashboard_style(theme: &Theme, name: &str, fallback: &str) -> Style {
-    if let Some(style) = theme.try_get_exact(&format!("ui.dashboard.{name}")) {
-        return style;
-    }
     match name {
         "header" => {
             accent_style(theme, "ui.statusline.normal", fallback).add_modifier(Modifier::BOLD)

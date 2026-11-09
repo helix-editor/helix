@@ -9,16 +9,12 @@ use tui::widgets::{Block, Widget};
 
 impl Component for Info {
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        let theme = &cx.editor.theme;
-        let popup_bg = theme.get("ui.popup.info");
+        let popup_bg = cx.editor.theme.get("ui.popup.info");
         let border_style = Style::new()
-            .fg(theme
-                .try_get("ui.window")
-                .and_then(|style| style.fg)
-                .unwrap_or_else(|| crate::ui::primary_color(theme)))
+            .fg(crate::ui::primary_color(&cx.editor.theme))
             .bg(popup_bg.bg.unwrap_or(helix_view::theme::Color::Reset));
-        let key_style = theme.get("special");
-        let desc_style = theme.get("ui.text");
+        let key_style = Style::default().fg(crate::ui::secondary_color(&cx.editor.theme));
+        let desc_style = Style::default().fg(crate::ui::tertiary_color(&cx.editor.theme));
 
         // Calculate the area of the terminal to modify. Because we want to
         // render at the bottom right, we use the viewport's width and height

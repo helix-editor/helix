@@ -151,11 +151,10 @@ borders. No fork-only theme scope is required for the fallback colors; a theme
 may optionally define `ui.statusline.command` / `ui.statusline.search` to
 override the Command/Search prompt chips.
 
-Selection rows use `ui.picker.selected` in finders and `ui.menu.selected` in
-completion menus; the rx-theme maps both to the secondary container so they
-stay visibly colored instead of a white block. The lower-right statusline
-`file-type` and `total-line-numbers` elements can be colored with
-`ui.statusline.file-type` and `ui.statusline.total-line-numbers`.
+Completion menus use `ui.menu.selected` for the selected row. Picker text and
+selection use the same accent pair as the statusline chips: tertiary text,
+secondary-on-primary selection, and a primary border. This keeps finder text
+colored instead of resolving through the plain `ui.text` scopes.
 
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It
@@ -198,10 +197,6 @@ fall back to standard theme scopes when the rx-specific scopes are absent.
 The dashboard replaces the empty buffer when Helix starts without files. It is
 an overlay: the scratch buffer underneath is not modified. Opening a file or
 running `:new` dismisses it; cancelling a picker returns to it.
-
-Dashboard menu colors use `ui.dashboard.header`, `.icon`, `.item`, `.key`,
-`.subtitle`, and `.footer`. Themes without these scopes fall back to the
-statusline accents and normal UI text, so other themes keep working.
 
 ```toml
 [editor.dashboard]
@@ -304,10 +299,9 @@ that generated themes (matugen/Noctalia) always keep:
 
 | Element | Source |
 | --- | --- |
-| Header, icons, primary logo shade | `ui.statusline.normal` accent |
-| Secondary logo shade | `ui.statusline.select` accent |
+| Header and primary logo shade | `ui.statusline.normal` accent |
+| Menu items, keys, icons, secondary logo shade | `ui.statusline.select` accent |
 | Tertiary logo shade | `ui.statusline.insert` accent |
-| Menu items, keys, and icons | `ui.statusline.normal` accent |
 | Subtitle, footer, muted logo shade | `ui.text.inactive` |
 
 The accent is the background color of those statusline scopes, reused as a
@@ -360,7 +354,11 @@ color without its curl underline), custom titles replace the default name, and
 the `▋` markers of following quote lines reuse the same color until a blank or
 non-quote line ends the block.
 Pipe tables replace `|` with `│` (delimiter `-`/`:` become `─`/`━`) and give
-the header row a background.
+the header row a background. Inline code, emphasis/strong/strikethrough,
+links, wiki links, and footnotes inside table cells are rendered before the
+cell is padded, so markers do not leak into the table. Inline code gets a
+background across the whole span, not just the backticks. The cursor line and
+selections still show raw Markdown so markers stay editable.
 Code fences keep their tree-sitter highlighting.
 
 Local images are drawn inline when the terminal speaks the Kitty graphics

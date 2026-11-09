@@ -295,10 +295,9 @@ it uncolored:
 
 | Element | Source |
 | ------- | ------ |
-| Header, icons, primary logo shade | `ui.statusline.normal` accent |
-| Secondary logo shade | `ui.statusline.select` accent |
+| Header and primary logo shade | `ui.statusline.normal` accent |
+| Menu items, keys, icons, secondary logo shade | `ui.statusline.select` accent |
 | Tertiary logo shade | `ui.statusline.insert` accent |
-| Menu items, keys, and icons | `ui.statusline.normal` accent |
 | Subtitle, footer, muted logo shade | `ui.text.inactive` |
 
 The accent is the background color of the statusline scope, reused as a
@@ -346,9 +345,12 @@ editing/saving/searching still see ordinary markdown. The cursor line and
 selections show raw markdown. Code fences keep their tree-sitter highlighting.
 Links and wiki links show icons while destinations are concealed, with
 per-host icons for known sites, and links inside headings, lists, quotes,
-tables, and callout titles are decorated. Obsidian callouts render their icon
-and title, recolor the markers of following quote lines, and pipe tables get
-`│` borders with a header background.
+tables, and callout titles are decorated. Inline code, emphasis, strong,
+strikethrough, links, wiki links, and footnotes inside table cells are rendered
+before the cell is padded. Inline code backgrounds cover the whole code span.
+Obsidian callouts render their icon and title, recolor the markers of
+following quote lines, and pipe tables get `│` borders with a header
+background.
 
 With `images`, `![](assets/foo.png)` and `![[foo.png]]` are drawn at their line
 when the terminal supports Kitty graphics. Paths resolve relative to the note

@@ -548,6 +548,10 @@ impl MarkdownRender {
                             &layout.columns,
                             text_style,
                             border_style,
+                            theme,
+                            inline_code_background,
+                            link_icon_style,
+                            &link_custom,
                         );
                     }
                 }
@@ -881,18 +885,8 @@ impl Decoration for MarkdownRender {
         else {
             return usize::MAX;
         };
-        let col = grapheme.visual_pos.col;
-        if renderer.column_in_bounds(col, grapheme.width()) {
-            let x = renderer.viewport.x + (col - renderer.offset.col) as u16;
-            renderer.set_style(
-                Rect::new(
-                    x,
-                    grapheme.visual_pos.row as u16,
-                    grapheme.width() as u16,
-                    1,
-                ),
-                inline.style,
-            );
+        if renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width()) {
+            renderer.set_grapheme_bg(inline.style.bg);
         }
         usize::MAX
     }
@@ -1149,6 +1143,271 @@ fn format_table_border(columns: &[TableColumn], left: char, cross: char, right: 
     out
 }
 
+struct TableCellRender {
+    text: String,
+    width: usize,
+    spans: Vec<(usize, String, Style)>,
+}
+
+impl TableCellRender {
+    fn push(&mut self, text: &str, style: Style) {
+        if text.is_empty() {
+            return;
+        }
+        if let Some((_, existing, existing_style)) = self.spans.last_mut() {
+            if *existing_style == style {
+                existing.push_str(text);
+                self.text.push_str(text);
+                self.width += text.width();
+                return;
+            }
+        }
+        let offset = self.width;
+        self.text.push_str(text);
+        self.width += text.width();
+        self.spans.push((offset, text.to_string(), style));
+    }
+}
+
+/// Render inline Markdown inside a table cell. Table cells are painted as a
+/// single row later, so this converts the raw cell text into the final display
+/// text plus styled spans. Markers are removed rather than shifted so table
+/// columns stay aligned.
+fn render_table_cell(
+    content: &str,
+    base_style: Style,
+    theme: &Theme,
+    inline_code_background: Option<Style>,
+    link_style: Style,
+    link_custom: &[MarkdownLinkIcon],
+) -> TableCellRender {
+    let chars: Vec<char> = content.chars().collect();
+    let code_ranges = inline_code_ranges(&chars);
+    let emphasis_ranges = table_emphasis_ranges(&chars, &code_ranges, theme);
+    let code_style = {
+        let mut style = base_style.patch(theme.get("markup.raw"));
+        if let Some(bg) = inline_code_background.and_then(|style| style.bg) {
+            style = style.bg(bg);
+        }
+        style
+    };
+    let mut render = TableCellRender {
+        text: String::with_capacity(content.len()),
+        width: 0,
+        spans: Vec::new(),
+    };
+    let mut index = 0;
+    while index < chars.len() {
+        if let Some((_, open_end, close_start, close_end)) = code_ranges
+            .iter()
+            .find(|(open_start, _, _, _)| *open_start == index)
+        {
+            let code: String = chars[*open_end..*close_start].iter().collect();
+            render.push(&code, code_style);
+            index = *close_end;
+            continue;
+        }
+        if let Some((_, open_end, close_start, close_end, style)) = emphasis_ranges
+            .iter()
+            .find(|(open_start, _, _, _, _)| *open_start == index)
+        {
+            let text: String = chars[*open_end..*close_start].iter().collect();
+            render.push(&text, base_style.patch(*style));
+            index = *close_end;
+            continue;
+        }
+        if let Some((end, display, style)) = table_link_at(&chars, index, link_style, link_custom) {
+            render.push(&display, base_style.patch(style));
+            index = end;
+            continue;
+        }
+        let ch = chars[index];
+        let mut buf = [0u8; 4];
+        render.push(ch.encode_utf8(&mut buf), base_style);
+        index += 1;
+    }
+    render
+}
+
+fn table_emphasis_ranges(
+    chars: &[char],
+    code_ranges: &[(usize, usize, usize, usize)],
+    theme: &Theme,
+) -> Vec<(usize, usize, usize, usize, Style)> {
+    let in_code = |index: usize| {
+        code_ranges
+            .iter()
+            .any(|(start, _, _, end)| index >= *start && index < *end)
+    };
+    let mut consumed = vec![false; chars.len()];
+    let mut ranges = Vec::new();
+    let mut index = 0;
+    while index < chars.len() {
+        if consumed[index] || in_code(index) {
+            index += 1;
+            continue;
+        }
+        let marker = chars[index];
+        if !matches!(marker, '*' | '_' | '~' | '=') {
+            index += 1;
+            continue;
+        }
+        let run = chars[index..]
+            .iter()
+            .take_while(|ch| **ch == marker)
+            .count();
+        let marker_len = if marker == '~' || marker == '=' {
+            if run < 2 {
+                index += 1;
+                continue;
+            }
+            2
+        } else if run >= 3 {
+            3
+        } else if run >= 2 {
+            2
+        } else {
+            if chars.get(index + 1).is_none_or(|ch| ch.is_whitespace()) {
+                index += 1;
+                continue;
+            }
+            1
+        };
+        if marker == '_' && index > 0 && chars[index - 1].is_alphanumeric() {
+            index += 1;
+            continue;
+        }
+
+        let mut close = index + marker_len;
+        let mut found = None;
+        while close < chars.len() {
+            if consumed[close] || in_code(close) {
+                close += 1;
+                continue;
+            }
+            if chars[close] == marker {
+                let close_run = chars[close..]
+                    .iter()
+                    .take_while(|ch| **ch == marker)
+                    .count();
+                if close_run >= marker_len
+                    && !chars
+                        .get(close + marker_len)
+                        .is_some_and(|ch| ch.is_alphanumeric() && marker == '_')
+                {
+                    found = Some(close);
+                    break;
+                }
+                close += close_run.max(1);
+            } else {
+                close += 1;
+            }
+        }
+        let Some(close) = found else {
+            index += 1;
+            continue;
+        };
+        let style = match (marker, marker_len) {
+            ('~', _) => theme.get("markup.strikethrough"),
+            ('=', _) => theme.get("markup.raw"),
+            ('_' | '*', 1) => theme.get("markup.italic"),
+            ('_' | '*', 2) => theme.get("markup.bold"),
+            ('_' | '*', _) => theme.get("markup.bold").patch(theme.get("markup.italic")),
+            _ => Style::default(),
+        };
+        ranges.push((index, index + marker_len, close, close + marker_len, style));
+        for consumed_marker in &mut consumed[close..close + marker_len] {
+            *consumed_marker = true;
+        }
+        index += marker_len;
+    }
+    ranges
+}
+
+fn table_link_at(
+    chars: &[char],
+    index: usize,
+    link_style: Style,
+    custom_icons: &[MarkdownLinkIcon],
+) -> Option<(usize, String, Style)> {
+    // Obsidian image embed: `![[file]]`.
+    if chars.get(index) == Some(&'!')
+        && chars.get(index + 1) == Some(&'[')
+        && chars.get(index + 2) == Some(&'[')
+    {
+        if let Some(end) = find_closing(chars, index + 3, "]]") {
+            let target: String = chars[index + 3..end]
+                .iter()
+                .collect::<String>()
+                .split('|')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+            return Some((end + 2, format!("󰥶 {target}"), link_style));
+        }
+    }
+    // Markdown image: `![alt](dest)`.
+    if chars.get(index) == Some(&'!') && chars.get(index + 1) == Some(&'[') {
+        if let Some(label_end) = find_char(chars, index + 2, ']') {
+            if chars.get(label_end + 1) == Some(&'(') {
+                if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
+                    let label: String = chars[index + 2..label_end].iter().collect();
+                    return Some((dest_end + 1, format!("󰥶 {label}"), link_style));
+                }
+            }
+        }
+    }
+    // Wiki link: `[[target|alias]]`.
+    if chars.get(index) == Some(&'[') && chars.get(index + 1) == Some(&'[') {
+        if let Some(end) = find_closing(chars, index + 2, "]]") {
+            let inner: String = chars[index + 2..end].iter().collect();
+            let (target, alias) = match inner.split_once('|') {
+                Some((target, alias)) => (target, Some(alias)),
+                None => (inner.as_str(), None),
+            };
+            let display = alias.unwrap_or(target);
+            return Some((end + 2, format!("󱗖 {display}"), link_style));
+        }
+    }
+    // Footnote: `[^label]`.
+    if chars.get(index) == Some(&'[') && chars.get(index + 1) == Some(&'^') {
+        if let Some(end) = find_char(chars, index + 2, ']') {
+            let label: String = chars[index + 2..end].iter().collect();
+            return Some((end + 1, format!("󰯔 {label}"), link_style));
+        }
+    }
+    // Markdown link: `[label](dest)`.
+    if chars.get(index) == Some(&'[') {
+        if let Some(label_end) = find_char(chars, index + 1, ']') {
+            if chars.get(label_end + 1) == Some(&'(') {
+                if let Some(dest_end) = find_char(chars, label_end + 2, ')') {
+                    let dest: String = chars[label_end + 2..dest_end].iter().collect();
+                    let label: String = chars[index + 1..label_end].iter().collect();
+                    let icon = domain_icon(&dest, custom_icons).unwrap_or("󰌹");
+                    return Some((dest_end + 1, format!("{icon} {label}"), link_style));
+                }
+            }
+        }
+    }
+    // Autolink: `<url>`.
+    if chars.get(index) == Some(&'<') {
+        if let Some(end) = find_char(chars, index + 1, '>') {
+            let inner: String = chars[index + 1..end].iter().collect();
+            if inner.contains("://") || inner.contains('@') {
+                let icon = if inner.contains('@') {
+                    "󰀓"
+                } else {
+                    domain_icon(&inner, custom_icons).unwrap_or("󰌹")
+                };
+                return Some((end + 1, format!("{icon} {inner}"), link_style));
+            }
+        }
+    }
+    None
+}
+
+#[allow(clippy::too_many_arguments)]
 fn paint_table_row(
     line_render: &mut LineRender,
     indent: usize,
@@ -1156,6 +1415,10 @@ fn paint_table_row(
     columns: &[TableColumn],
     text_style: Style,
     border_style: Style,
+    theme: &Theme,
+    inline_code_background: Option<Style>,
+    link_style: Style,
+    link_custom: &[MarkdownLinkIcon],
 ) {
     let mut col = indent;
     line_render.paints.push(Paint {
@@ -1169,10 +1432,19 @@ fn paint_table_row(
             .get(index)
             .map(|(content, _)| content.as_str())
             .unwrap_or("");
-        let content_width = content.width();
+        let rendered = render_table_cell(
+            content,
+            text_style,
+            theme,
+            inline_code_background,
+            link_style,
+            link_custom,
+        );
         let inner = column
             .width
             .saturating_sub(column.padding_left + column.padding_right);
+        let display = truncate_width(&rendered.text, inner);
+        let content_width = display.width();
         let pad = inner.saturating_sub(content_width);
         let (align_left, align_right) = match column.alignment {
             TableAlignment::Right => (pad, 0),
@@ -1181,13 +1453,27 @@ fn paint_table_row(
         };
         let mut field = String::with_capacity(column.width);
         field.push_str(&" ".repeat(column.padding_left + align_left));
-        field.push_str(content);
+        field.push_str(&display);
         field.push_str(&" ".repeat(align_right + column.padding_right));
         line_render.paints.push(Paint {
             col,
             text: field,
             style: text_style,
         });
+        for (offset, text, style) in rendered.spans {
+            if offset >= inner {
+                break;
+            }
+            let text = truncate_width(&text, inner - offset);
+            if text.is_empty() {
+                continue;
+            }
+            line_render.paints.push(Paint {
+                col: col + column.padding_left + align_left + offset,
+                text,
+                style,
+            });
+        }
         col += column.width;
         line_render.paints.push(Paint {
             col,
@@ -1945,6 +2231,40 @@ mod tests {
         assert_eq!(kinds.get(&1), Some(&TableKind::Delimiter));
         assert_eq!(kinds.get(&2), Some(&TableKind::Body));
         assert_eq!(kinds.get(&4), None);
+    }
+
+    #[test]
+    fn table_cells_render_inline_markdown() {
+        let theme = Theme::default();
+        let code_bg = Some(Style::default().bg(Color::Rgb(1, 2, 3)));
+        let no_icons: &[MarkdownLinkIcon] = &[];
+        let cell = render_table_cell(
+            "*No* idea with `/learn` and **bold** and ~~gone~~",
+            Style::default(),
+            &theme,
+            code_bg,
+            Style::default(),
+            no_icons,
+        );
+        assert_eq!(cell.text, "No idea with /learn and bold and gone");
+        assert!(!cell.text.contains('*'));
+        assert!(!cell.text.contains('`'));
+        assert!(!cell.text.contains('~'));
+        assert!(cell
+            .spans
+            .iter()
+            .any(|(_, text, style)| text == "/learn" && style.bg == Some(Color::Rgb(1, 2, 3))));
+
+        let link = render_table_cell(
+            "[GitHub](https://github.com/x)",
+            Style::default(),
+            &theme,
+            None,
+            Style::default(),
+            no_icons,
+        );
+        assert!(link.text.ends_with(" GitHub"));
+        assert!(!link.text.contains("https"));
     }
 
     #[test]

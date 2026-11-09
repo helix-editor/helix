@@ -192,6 +192,10 @@ pub struct TextRenderer<'a> {
     pub draw_indent_guides: bool,
     pub viewport: Rect,
     pub offset: Position,
+    /// Background applied to the next grapheme only. Markdown inline code uses
+    /// this so the background is painted with the text and survives removals
+    /// and soft wrapping.
+    pending_grapheme_bg: Option<helix_view::graphics::Color>,
 }
 
 pub struct GraphemeStyle {
@@ -271,7 +275,15 @@ impl<'a> TextRenderer<'a> {
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
             offset,
+            pending_grapheme_bg: None,
         }
+    }
+
+    /// Apply a background to the next grapheme only. Called by decorations
+    /// before the grapheme is drawn; the style is applied when the grapheme is
+    /// painted so it is not overwritten by syntax highlighting.
+    pub fn set_grapheme_bg(&mut self, color: Option<helix_view::graphics::Color>) {
+        self.pending_grapheme_bg = color;
     }
     /// Draws a single `grapheme` at the current render position with a specified `style`.
     pub fn draw_decoration_grapheme(
@@ -322,6 +334,7 @@ impl<'a> TextRenderer<'a> {
         is_in_indent_area: &mut bool,
         mut position: Position,
     ) -> usize {
+        let grapheme_bg = self.pending_grapheme_bg.take();
         if position.row < self.offset.row {
             return 0;
         }
@@ -335,6 +348,9 @@ impl<'a> TextRenderer<'a> {
             style = style.patch(self.whitespace_style);
         }
         style = style.patch(grapheme_style.overlay_style);
+        if let Some(bg) = grapheme_bg {
+            style = style.bg(bg);
+        }
 
         let width = grapheme.width();
         let mut is_tab = false;
