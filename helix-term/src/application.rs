@@ -91,6 +91,9 @@ const TRANSPARENT_POPUP_SCOPES: &[&str] = &["ui.popup", "ui.popup.info", "ui.men
 struct FileStamp {
     modified: Option<SystemTime>,
     len: u64,
+    /// Content hash catches same-size edits that preserve mtime (some editors
+    /// write through a temporary file and restore timestamps).
+    hash: u64,
 }
 
 /// Polls the active theme file and reloads it after the file has been stable
@@ -113,10 +116,16 @@ impl ThemeWatcher {
     }
 
     fn file_stamp(path: &Path) -> Option<FileStamp> {
+        use std::hash::{Hash, Hasher};
+
         let metadata = std::fs::metadata(path).ok()?;
+        let contents = std::fs::read(path).ok()?;
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        contents.hash(&mut hasher);
         Some(FileStamp {
             modified: metadata.modified().ok(),
             len: metadata.len(),
+            hash: hasher.finish(),
         })
     }
 
