@@ -31,6 +31,7 @@ use crate::{
 
 use log::{debug, error, info, warn};
 use std::{
+    collections::HashMap,
     io::{stdin, IsTerminal},
     path::{Path, PathBuf},
     sync::Arc,
@@ -81,6 +82,10 @@ pub struct Application {
 
     theme_mode: Option<theme::Mode>,
     theme_watcher: ThemeWatcher,
+
+    /// Document version last sent to the spell checker. Used to debounce the
+    /// subprocess on the editor idle timer.
+    spell_versions: HashMap<helix_view::DocumentId, i32>,
 }
 
 const THEME_POLL_INTERVAL: Duration = Duration::from_millis(250);
@@ -366,6 +371,7 @@ impl Application {
             lsp_progress: LspProgressMap::new(),
             theme_mode,
             theme_watcher,
+            spell_versions: HashMap::new(),
         };
 
         Ok(app)
@@ -804,7 +810,93 @@ impl Application {
         true
     }
 
+    /// Queue spell checks for prose documents whose contents changed since
+    /// the last check. Checks run on a blocking worker so the editor stays
+    /// responsive while hunspell parses a document.
+    fn schedule_spell_checks(&mut self) {
+        let config = self.config.load();
+        if !config.editor.spellcheck.enable || !crate::spell::available() {
+            // Clear diagnostics left behind if spell checking was turned off
+            // or hunspell disappeared at runtime. Draining the map makes this
+            // a one-shot cleanup rather than a callback on every idle tick.
+            let ids = self
+                .spell_versions
+                .drain()
+                .map(|(id, _)| id)
+                .collect::<Vec<_>>();
+            for id in ids {
+                self.jobs.callback(async move {
+                    Ok(crate::job::Callback::Editor(Box::new(move |editor| {
+                        if let Some(doc) = editor.document_mut(id) {
+                            doc.replace_diagnostics(
+                                std::iter::empty(),
+                                &[],
+                                Some(&helix_core::diagnostic::DiagnosticProvider::Spell),
+                            );
+                        }
+                    })))
+                });
+            }
+            return;
+        }
+        let language = config.editor.spellcheck.language.clone();
+
+        let mut checks = Vec::new();
+        for (id, doc) in &self.editor.documents {
+            if !crate::spell::is_prose(doc) {
+                if self.spell_versions.remove(id).is_some() {
+                    let id = *id;
+                    self.jobs.callback(async move {
+                        Ok(crate::job::Callback::Editor(Box::new(move |editor| {
+                            if let Some(doc) = editor.document_mut(id) {
+                                doc.replace_diagnostics(
+                                    std::iter::empty(),
+                                    &[],
+                                    Some(&helix_core::diagnostic::DiagnosticProvider::Spell),
+                                );
+                            }
+                        })))
+                    });
+                }
+                continue;
+            }
+
+            let version = doc.version();
+            if self.spell_versions.get(id) == Some(&version) {
+                continue;
+            }
+            self.spell_versions.insert(*id, version);
+            checks.push((*id, version, doc.text().clone(), language.clone()));
+        }
+
+        for (id, version, text, language) in checks {
+            self.jobs.callback(async move {
+                let diagnostics = tokio::task::spawn_blocking(move || {
+                    let issues = crate::spell::check_text(&text, &language)?;
+                    Ok::<_, anyhow::Error>(crate::spell::issue_diagnostics(&issues, &text))
+                })
+                .await
+                .context("spell-check task panicked")??;
+
+                Ok(crate::job::Callback::Editor(Box::new(move |editor| {
+                    if let Some(doc) = editor.document_mut(id) {
+                        // Discard results if the document changed while the
+                        // worker was running.
+                        if doc.version() == version {
+                            doc.replace_diagnostics(
+                                diagnostics,
+                                &[],
+                                Some(&helix_core::diagnostic::DiagnosticProvider::Spell),
+                            );
+                        }
+                    }
+                })))
+            });
+        }
+    }
+
     pub async fn handle_idle_timeout(&mut self) {
+        self.schedule_spell_checks();
         let mut cx = crate::compositor::Context {
             editor: &mut self.editor,
             jobs: &mut self.jobs,

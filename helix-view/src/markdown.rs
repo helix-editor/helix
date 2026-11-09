@@ -28,7 +28,13 @@ pub struct ImageLayout {
     pub line: usize,
     pub rows: u16,
     pub cols: u16,
+    /// Number of virtual rows reserved after the doc line in addition to the
+    /// anchor line itself.
     pub offset_rows: u16,
+    /// 0 for directly opened image buffers (the image overlays the anchor
+    /// line), 1 for inline images (the image starts below the line so the
+    /// Markdown alt text remains visible).
+    pub anchor_offset: u16,
     /// Pixel dimensions of `path` (post-conversion). Used for source-rect
     /// cropping when an image is partially scrolled out of view.
     pub width_px: u32,
@@ -41,6 +47,7 @@ struct ImageLayoutKey {
     view: ViewId,
     version: i32,
     anchor: usize,
+    cursor_line: usize,
     width: u16,
     height: u16,
 }
@@ -108,12 +115,16 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
         return Vec::new();
     }
 
+    let cursor = doc.selection(view.id).primary().cursor(text);
+    let cursor_line = text.char_to_line(cursor);
+
     let view_offset = doc.view_offset(view.id);
     let key = ImageLayoutKey {
         doc: doc.id(),
         view: view.id,
         version: doc.version(),
         anchor: view_offset.anchor,
+        cursor_line,
         width: inner.width,
         height: inner.height,
     };
@@ -132,6 +143,11 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
     let mut line_rows: HashMap<usize, u16> = HashMap::new();
 
     for line_idx in start_line..end_line {
+        // Anti-conceal: the cursor line shows its raw Markdown, so do not
+        // reserve virtual rows or place the image it references.
+        if line_idx == cursor_line {
+            continue;
+        }
         let line_start = text.line_to_char(line_idx);
         let line = text.line(line_idx).to_string();
         for (column, target) in image_links(&line) {
@@ -163,6 +179,7 @@ pub fn visible_images(doc: &Document, view: &View) -> Vec<ImageLayout> {
                 rows,
                 cols,
                 offset_rows,
+                anchor_offset: 1,
                 width_px,
                 height_px,
             });
@@ -196,6 +213,8 @@ pub fn image_annotation(doc: &Document, view: &View) -> Option<Box<dyn LineAnnot
 }
 
 struct ImageLineAnnotation {
+    /// `(anchor char index, doc line, reserved rows)` where `reserved rows`
+    /// already includes the extra row for inline images.
     anchors: Vec<(usize, usize, u16)>,
     next: Cell<usize>,
     pending: Cell<Option<(usize, u16)>>,
@@ -206,7 +225,13 @@ impl ImageLineAnnotation {
         Self {
             anchors: images
                 .into_iter()
-                .map(|image| (image.char_idx, image.line, image.rows))
+                .map(|image| {
+                    let reserved = image
+                        .rows
+                        .saturating_sub(1)
+                        .saturating_add(image.anchor_offset);
+                    (image.char_idx, image.line, reserved)
+                })
                 .collect(),
             next: Cell::new(0),
             pending: Cell::new(None),
@@ -252,7 +277,7 @@ impl LineAnnotation for ImageLineAnnotation {
         if let Some((line, rows)) = self.pending.get() {
             if line == doc_line {
                 self.pending.set(None);
-                return Position::new(rows.saturating_sub(1) as usize, 0);
+                return Position::new(rows as usize, 0);
             }
         }
         Position::new(0, 0)
@@ -622,6 +647,7 @@ fn hijacked_image(doc: &Document, view: &View) -> Vec<ImageLayout> {
         rows,
         cols,
         offset_rows: 0,
+        anchor_offset: 0,
         width_px,
         height_px,
     }]

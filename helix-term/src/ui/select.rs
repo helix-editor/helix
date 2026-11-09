@@ -57,9 +57,13 @@ impl<T: Item> Component for Select<T> {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let bg = cx.editor.theme.get("ui.background");
+        let theme = &cx.editor.theme;
+        let bg = theme.get("ui.background");
         let border_style = helix_view::theme::Style::new()
-            .fg(crate::ui::primary_color(&cx.editor.theme))
+            .fg(theme
+                .try_get_exact("ui.statusline.select")
+                .and_then(|style| style.bg.or(style.fg))
+                .unwrap_or_else(|| crate::ui::primary_color(theme)))
             .bg(bg.bg.unwrap_or(helix_view::theme::Color::Reset));
 
         // +---------------------+

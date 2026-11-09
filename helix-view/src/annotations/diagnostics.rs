@@ -1,4 +1,4 @@
-use helix_core::diagnostic::Severity;
+use helix_core::diagnostic::{DiagnosticProvider, Severity};
 use helix_core::doc_formatter::{FormattedGrapheme, TextFormat};
 use helix_core::text_annotations::LineAnnotation;
 use helix_core::{softwrapped_dimensions, Diagnostic, Position};
@@ -121,7 +121,10 @@ impl Default for InlineDiagnosticsConfig {
 
 pub struct InlineDiagnosticAccumulator<'a> {
     idx: usize,
-    doc: &'a Document,
+    /// Diagnostics that participate in the inline popup. Spell diagnostics are
+    /// intentionally excluded: they are rendered as red undercurls only, like
+    /// Neovim's spell checker, and should not add inline popup noise.
+    diagnostics: Vec<&'a Diagnostic>,
     pub stack: Vec<(&'a Diagnostic, u16)>,
     pub config: InlineDiagnosticsConfig,
     cursor: usize,
@@ -130,9 +133,14 @@ pub struct InlineDiagnosticAccumulator<'a> {
 
 impl<'a> InlineDiagnosticAccumulator<'a> {
     pub fn new(cursor: usize, doc: &'a Document, config: InlineDiagnosticsConfig) -> Self {
+        let diagnostics = doc
+            .diagnostics
+            .iter()
+            .filter(|diagnostic| !matches!(diagnostic.provider, DiagnosticProvider::Spell))
+            .collect();
         InlineDiagnosticAccumulator {
             idx: 0,
-            doc,
+            diagnostics,
             stack: Vec::new(),
             config,
             cursor,
@@ -147,7 +155,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
     }
 
     pub fn skip_concealed(&mut self, conceal_end_char_idx: usize) -> usize {
-        let diagnostics = &self.doc.diagnostics[self.idx..];
+        let diagnostics = &self.diagnostics[self.idx..];
         let idx = diagnostics.partition_point(|diag| diag.range.start < conceal_end_char_idx);
         self.idx += idx;
         self.next_anchor(conceal_end_char_idx)
@@ -155,7 +163,6 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
 
     pub fn next_anchor(&self, current_char_idx: usize) -> usize {
         let next_diag_start = self
-            .doc
             .diagnostics
             .get(self.idx)
             .map_or(usize::MAX, |diag| diag.range.start);
@@ -183,7 +190,6 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         if grapheme.char_idx == self.cursor {
             self.cursor_line = true;
             if self
-                .doc
                 .diagnostics
                 .get(self.idx)
                 .is_none_or(|diag| diag.range.start != grapheme.char_idx)
@@ -199,7 +205,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
             return true;
         }
 
-        for diag in &self.doc.diagnostics[self.idx..] {
+        for diag in &self.diagnostics[self.idx..] {
             if diag.range.start != grapheme.char_idx {
                 break;
             }
@@ -216,7 +222,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         horizontal_off: usize,
     ) -> usize {
         if self.process_anchor_impl(grapheme, width, horizontal_off) {
-            self.idx += self.doc.diagnostics[self.idx..]
+            self.idx += self.diagnostics[self.idx..]
                 .iter()
                 .take_while(|diag| diag.range.start == grapheme.char_idx)
                 .count();

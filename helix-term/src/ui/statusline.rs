@@ -605,21 +605,21 @@ fn render_diagnostics<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    use helix_core::diagnostic::Severity;
-    let (hints, info, warnings, errors) =
-        context
-            .doc
-            .diagnostics()
-            .iter()
-            .fold((0, 0, 0, 0), |mut counts, diag| {
-                match diag.severity {
-                    Some(Severity::Hint) | None => counts.0 += 1,
-                    Some(Severity::Info) => counts.1 += 1,
-                    Some(Severity::Warning) => counts.2 += 1,
-                    Some(Severity::Error) => counts.3 += 1,
-                }
-                counts
-            });
+    use helix_core::diagnostic::{DiagnosticProvider, Severity};
+    let (hints, info, warnings, errors) = context
+        .doc
+        .diagnostics()
+        .iter()
+        .filter(|diag| !matches!(diag.provider, DiagnosticProvider::Spell))
+        .fold((0, 0, 0, 0), |mut counts, diag| {
+            match diag.severity {
+                Some(Severity::Hint) | None => counts.0 += 1,
+                Some(Severity::Info) => counts.1 += 1,
+                Some(Severity::Warning) => counts.2 += 1,
+                Some(Severity::Error) => counts.3 += 1,
+            }
+            counts
+        });
 
     for sev in &context.editor.config().statusline.diagnostics {
         match sev {

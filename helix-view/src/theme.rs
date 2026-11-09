@@ -322,6 +322,10 @@ pub struct Theme {
     /// is called many times per frame, so we optimize lookups.
     scope_index: HashMap<String, Highlight>,
     rainbow_length: usize,
+    /// Raw palette entries after inheritance is resolved. Renderers can derive
+    /// adaptive colors (for example heading backgrounds) without hardcoding
+    /// theme-specific hex values.
+    palette: HashMap<String, Color>,
 }
 
 impl From<Value> for Theme {
@@ -356,6 +360,7 @@ fn build_theme_values(
     Vec<String>,
     Vec<Style>,
     usize,
+    HashMap<String, Color>,
     Vec<String>,
 ) {
     let mut styles = HashMap::new();
@@ -413,7 +418,14 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights, rainbow_length, warnings)
+    (
+        styles,
+        scopes,
+        highlights,
+        rainbow_length,
+        palette.palette,
+        warnings,
+    )
 }
 
 fn default_rainbow() -> Vec<Style> {
@@ -502,6 +514,12 @@ impl Theme {
         self.styles.get(scope).copied()
     }
 
+    /// Look up a raw palette color from the active theme or an inherited
+    /// parent theme.
+    pub fn palette_color(&self, name: &str) -> Option<Color> {
+        self.palette.get(name).copied()
+    }
+
     #[inline]
     pub fn scopes(&self) -> &[String] {
         &self.scopes
@@ -545,7 +563,7 @@ impl Theme {
     }
 
     fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, rainbow_length, load_errors) =
+        let (styles, scopes, highlights, rainbow_length, palette, load_errors) =
             build_theme_values(toml_keys);
 
         let scope_index = scopes
@@ -560,6 +578,7 @@ impl Theme {
             highlights,
             scope_index,
             rainbow_length,
+            palette,
             ..Default::default()
         };
         (theme, load_errors)
@@ -860,6 +879,37 @@ mod tests {
     fn out_of_bounds() {
         let highlight = Highlight::new(Theme::rgb_highlight(0, 0, 0).get() - 1);
         Theme::default().highlight(highlight);
+    }
+
+    #[test]
+    fn inherited_theme_resolves_parent_palette() {
+        let dir = std::env::temp_dir().join(format!(
+            "rx-helix-theme-palette-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let themes = dir.join("themes");
+        std::fs::create_dir_all(&themes).unwrap();
+        std::fs::write(
+            themes.join("parent.toml"),
+            "\"ui.selection\" = { bg = \"primary\" }\n[palette]\nprimary = \"#112233\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            themes.join("child.toml"),
+            "inherits = \"parent\"\n\"ui.text\" = \"primary\"\n",
+        )
+        .unwrap();
+
+        let loader = Loader::new(std::slice::from_ref(&dir));
+        let theme = loader.load("child").unwrap();
+        assert_eq!(theme.get("ui.text").fg, Some(Color::Rgb(0x11, 0x22, 0x33)));
+        assert_eq!(
+            theme.palette_color("primary"),
+            Some(Color::Rgb(0x11, 0x22, 0x33))
+        );
+
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

@@ -130,10 +130,12 @@ popup-border = "all"        # none | popup | menu | all
 
 `cursorline` highlights the line of every cursor with `ui.cursorline`.
 `bufferline` renders open buffers at the top; `multiple` shows it only when
-more than one buffer is open. The tab row follows `ui.background`, so it is
-transparent with `ui.background = "none"`. The current tab uses
-`ui.bufferline.active` and stays opaque; inactive tabs use a lightened blend of
-the active background. A blank row separates the tabs from the editor content.
+more than one buffer is open. The tab row uses `ui.bufferline.background` as
+the dark inactive bar; the current tab is lighter (`ui.bufferline.active`) with
+white text, a thin `ui.bufferline.indicator` line on its left, and a
+`ui.bufferline.modified` dot at its right edge for modified buffers. Inactive
+tabs use `ui.bufferline`. Long filenames end with `…`. A blank row separates
+the tabs from the editor content.
 
 The command palette completion list always uses a themed border.
 `popup-border` additionally draws themed borders around hover, completion,
@@ -162,6 +164,25 @@ The active theme file is watched for changes and reloaded automatically with a
 short debounce. Generated themes can therefore rewrite
 `~/.config/helix/themes/<name>.toml` while the editor is open. A parse error
 keeps the current theme instead of falling back to the default.
+
+### Generated (Noctalia/matugen) themes
+
+Do not edit a generated theme such as
+`~/.config/helix/themes/noctalia.toml`; it is rewritten whenever the wallpaper
+palette changes. Instead, install the `rx-theme` child theme:
+
+```sh
+cp contrib/themes/rx-theme.toml ~/.config/helix/themes/rx-theme.toml
+cp contrib/rx-helix/config.d/99-theme.toml ~/.config/helix/config.d/99-theme.toml
+```
+
+`rx-theme.toml` uses `inherits = "noctalia"` and references the generated
+palette roles (`primary`, `secondary`, `tertiary`, `surfaceContainer`, etc.),
+so it follows wallpaper changes automatically. The `config.d` module keeps
+`theme = "rx-theme"` selected even when the main `config.toml` is rewritten
+back to `theme = "noctalia"` by the generator. Other bundled themes are
+unaffected and continue to use their own styles; picker and heading rendering
+fall back to standard theme scopes when the rx-specific scopes are absent.
 
 ## Dashboard
 
@@ -293,10 +314,13 @@ render = true
 Headings lose their `#` markers and gain level icons (`󰲡`–`󰲫`), bullet lists
 use `● ○ ◆ ◇` by nesting depth, task boxes use `󰄱`/`󰱒`, block quotes use `▋`,
 and horizontal rules (`---`/`***`/`___`) become a full-width `─` line. Heading
-rows get a full-width background from existing theme scopes (`ui.selection`,
-`ui.menu`, `ui.popup`, `ui.cursorline`); icons use `markup.heading.1`–`.6`;
-rules use `ui.linenr`; code blocks get a full-width `ui.cursorline` background
-with a `󰅩 language` header on the fence line and inline code gets a background.
+rows use an explicit `markup.heading.1`–`.6` background when present; otherwise
+a theme can opt into render-markdown-style Diff backgrounds with
+`markup.heading.adaptive`, which derives H1–H6 colors from the theme palette.
+The fallback still uses existing UI scopes (`ui.selection`, `ui.menu`,
+`ui.popup`, `ui.cursorline`). Icons use `markup.heading.1`–`.6`; rules use
+`ui.linenr`; code blocks get a full-width `ui.cursorline` background with a
+`󰅩 language` header on the fence line and inline code gets a background.
 The buffer text is unchanged: rendering paints over the rendered document after
 each line, so movement, editing, saving, and searching still see ordinary
 markdown. The cursor line and visual selections show raw markdown so markers
@@ -306,7 +330,7 @@ Links, wiki links, and callouts are decorated without shifting text:
 `[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts an
 icon where the destination was, `<url>` shows its icon plus the address,
 images show `󰥶`, and footnotes show `󰯔`. Inline-link icons adapt to the
-destination host (`󰊤` GitHub, `󰊭` Google, `󰖟` generic web, etc.), with custom
+destination host (`󰊤` GitHub, `󰊭` Google, `󰌹` generic web, etc.), with custom
 icons taking precedence:
 
 ```toml
@@ -318,8 +342,10 @@ icon = "󰢩"
 Links inside
 headings, list items, quotes, tables, and callout titles are all decorated.
 Obsidian callouts (`> [!NOTE]`, `[!WARNING]-`, etc.) render their icon and
-title with diagnostic highlights, and the `▋` markers of following quote
-lines reuse the same color until a blank or non-quote line ends the block.
+title with `markup.callout.*` colors (falling back to the matching diagnostic
+color without its curl underline), custom titles replace the default name, and
+the `▋` markers of following quote lines reuse the same color until a blank or
+non-quote line ends the block.
 Pipe tables replace `|` with `│` (delimiter `-`/`:` become `─`/`━`) and give
 the header row a background.
 Code fences keep their tree-sitter highlighting.
@@ -334,17 +360,58 @@ images = true
 ```
 
 `![](assets/foo.png)` and `![[foo.png]]` resolve relative to the note, then the
-vault root. Each image reserves virtual lines after its anchor (like
-image.nvim's `with_virtual_padding`), so following text reflows instead of
-being covered. Images that scroll partially out of view are cropped to the
-visible rows via a source rectangle instead of being squished. Remote
-`http(s)` images download once with `curl` into the cache (disable with
-`download_remote_images = false`) and appear on later frames. Opening an
-image file directly shows it full-view with the buffer text blanked. PNG images are sent
-directly; JPEG/GIF are converted with `ffmpeg` and SVG with `rsvg-convert`
-into a cache under `~/.cache/rx-helix/images`. Each image is scaled to at most
-50% of the window height and re-placed as you scroll. Only the focused view is
-drawn and images are hidden while a picker/prompt/menu covers the editor.
+vault root. The Markdown line keeps its alt text/icon visible and the image
+starts below it, matching image.nvim's placement. Each image reserves virtual
+lines after its anchor (like image.nvim's `with_virtual_padding`), so
+following text reflows instead of being covered. Images that scroll partially
+out of view are cropped to the visible rows via a source rectangle instead of
+being squished. Remote `http(s)` images download once with `curl` into the
+cache (disable with `download_remote_images = false`) and appear on later
+frames. Opening an image file directly shows it full-view with the buffer text
+blanked. PNG images are sent directly; JPEG/GIF are converted with `ffmpeg`
+and SVG with `rsvg-convert` into a cache under `~/.cache/rx-helix/images`.
+Each image is scaled to at most 50% of the window height and re-placed as you
+scroll. Only the focused view is drawn and images are hidden while a
+picker/prompt/menu covers the editor.
+
+## Spell checking
+
+Markdown, plain text and similar prose files are spell checked automatically
+with `hunspell` when it is available:
+
+```toml
+[editor.spellcheck]
+enable = true
+language = "en_US"
+```
+
+Misspelled words get the red `diagnostic.spell` curl underline (falling back
+to `diagnostic.error` in other themes). Code blocks, inline code, links, URLs,
+HTML tags, math, and YAML frontmatter are ignored. Navigation and suggestions
+mirror Neovim:
+
+| Key | Action |
+| --- | ------ |
+| `[s` | Previous misspelled word |
+| `]s` | Next misspelled word |
+| `z=` | Open numbered/lettered suggestions for the word under the cursor; press `1`–`9`, `0`, `a`–`z` to apply one |
+
+Spell diagnostics are hints, so they do not add inline diagnostic popups or
+compete with LSP warnings/errors.
+
+## Buffer navigation
+
+In normal mode, `H` and `L` switch to the previous/next open buffer when more
+than one buffer is open. They are no-ops with a single buffer and do not
+affect the `C-w H` / `C-w L` window-swap bindings.
+
+The sample Vim keymap module also opens a new line and enters Insert mode:
+
+```toml
+[keys.normal]
+o = ["open_below", "insert_mode"]
+O = ["open_above", "insert_mode"]
+```
 
 ## Obsidian
 

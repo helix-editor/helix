@@ -1,7 +1,9 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 use anyhow::{bail, ensure, Context as _};
 use helix_core::{
@@ -60,6 +62,44 @@ struct Link {
     end: usize,
 }
 
+/// Notes opened through Obsidian actions during this session. The map is
+/// session-only and deliberately does not touch the shared file picker order.
+fn recent_notes() -> &'static Mutex<HashMap<PathBuf, Instant>> {
+    static RECENT: OnceLock<Mutex<HashMap<PathBuf, Instant>>> = OnceLock::new();
+    RECENT.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn recency_key(path: &Path) -> PathBuf {
+    fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn mark_note_recent(path: &Path) {
+    recent_notes()
+        .lock()
+        .unwrap()
+        .insert(recency_key(path), Instant::now());
+}
+
+fn note_recency() -> HashMap<PathBuf, Instant> {
+    recent_notes().lock().unwrap().clone()
+}
+
+fn order_quick_switch_items(
+    items: Vec<NoteItem>,
+    recency: &HashMap<PathBuf, Instant>,
+) -> Vec<NoteItem> {
+    let mut keyed: Vec<(Option<Instant>, NoteItem)> = items
+        .into_iter()
+        .map(|item| (recency.get(&recency_key(&item.path)).copied(), item))
+        .collect();
+    keyed.sort_by(|(a_time, a), (b_time, b)| {
+        b_time
+            .cmp(a_time)
+            .then_with(|| a.relative.to_lowercase().cmp(&b.relative.to_lowercase()))
+    });
+    keyed.into_iter().map(|(_, item)| item).collect()
+}
+
 pub fn quick_switch(
     cx: &mut CompositorContext,
     _args: Args,
@@ -78,13 +118,24 @@ pub fn quick_switch(
         vault.display()
     );
 
-    let items = paths
+    let mut recency = note_recency();
+    for doc in cx.editor.documents() {
+        if let Some(path) = doc.path() {
+            recency
+                .entry(recency_key(path))
+                .and_modify(|time| *time = (*time).max(doc.focused_at))
+                .or_insert(doc.focused_at);
+        }
+    }
+
+    let items: Vec<NoteItem> = paths
         .into_iter()
         .map(|path| NoteItem {
             relative: relative_path(&vault, &path),
             path,
         })
         .collect();
+    let items = order_quick_switch_items(items, &recency);
 
     push_note_picker(cx, items);
     Ok(())
@@ -455,6 +506,7 @@ fn open_note(cx: &mut CompositorContext, path: &Path, line: Option<usize>, actio
         cx.editor.set_error(err.to_string());
         return;
     }
+    mark_note_recent(path);
 
     let Some(line) = line else {
         return;
@@ -1737,6 +1789,28 @@ mod tests {
             ),
             Path::new("../6 - Main Notes/assets/img.png")
         );
+    }
+
+    #[test]
+    fn quick_switch_orders_by_recency_then_name() {
+        use std::time::Duration;
+
+        let item = |name: &str| NoteItem {
+            path: PathBuf::from(format!("/tmp/{name}.md")),
+            relative: name.to_string(),
+        };
+        let now = Instant::now();
+        let mut recency = HashMap::new();
+        recency.insert(PathBuf::from("/tmp/recent.md"), now);
+        recency.insert(
+            PathBuf::from("/tmp/older.md"),
+            now.checked_sub(Duration::from_secs(5)).unwrap(),
+        );
+
+        let items = vec![item("alpha"), item("recent"), item("delta"), item("older")];
+        let ordered = order_quick_switch_items(items, &recency);
+        let names: Vec<&str> = ordered.iter().map(|item| item.relative.as_str()).collect();
+        assert_eq!(names, vec!["recent", "older", "alpha", "delta"]);
     }
 
     #[test]

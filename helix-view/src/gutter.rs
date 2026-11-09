@@ -69,12 +69,15 @@ pub fn diagnostic<'doc>(
             let first_diag_idx_maybe_on_line = diagnostics.partition_point(|d| d.line < line);
             let diagnostics_on_line = diagnostics[first_diag_idx_maybe_on_line..]
                 .iter()
-                .take_while(|d| {
-                    d.line == line
-                        && d.provider.language_server_id().is_none_or(|id| {
-                            doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                                .any(|ls| ls.id() == id)
-                        })
+                .take_while(|d| d.line == line)
+                .filter(|d| {
+                    !matches!(
+                        d.provider,
+                        helix_core::diagnostic::DiagnosticProvider::Spell
+                    ) && d.provider.language_server_id().is_none_or(|id| {
+                        doc.language_servers_with_feature(LanguageServerFeature::Diagnostics)
+                            .any(|ls| ls.id() == id)
+                    })
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
                 write!(out, "●").ok();

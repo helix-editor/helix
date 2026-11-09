@@ -18,6 +18,18 @@ pub trait Item: Sync + Send + 'static {
 
 pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
 
+/// Map Neovim's `z=` suggestion keys (`1`-`9`, `0`, `a`-`z`, `A`-`Z`) to
+/// zero-based menu indices.
+fn shortcut_index(ch: char) -> Option<usize> {
+    match ch {
+        '1'..='9' => Some(ch as usize - '1' as usize),
+        '0' => Some(9),
+        'a'..='z' => Some(10 + (ch as usize - 'a' as usize)),
+        'A'..='Z' => Some(36 + (ch as usize - 'A' as usize)),
+        _ => None,
+    }
+}
+
 pub struct Menu<T: Item> {
     options: Vec<T>,
     editor_data: T::Data,
@@ -36,6 +48,9 @@ pub struct Menu<T: Item> {
     viewport: (u16, u16),
     recalculate: bool,
     auto_close: bool,
+    /// Allow selecting entries by Neovim-style shortcut keys (`1`-`9`, `0`,
+    /// then letters). Used by the spell suggestion menu.
+    shortcut_select: bool,
 }
 
 impl<T: Item> Menu<T> {
@@ -61,6 +76,7 @@ impl<T: Item> Menu<T> {
             viewport: (0, 0),
             recalculate: true,
             auto_close: false,
+            shortcut_select: false,
         }
     }
 
@@ -131,6 +147,11 @@ impl<T: Item> Menu<T> {
 
     pub fn auto_close(mut self, auto_close: bool) -> Self {
         self.auto_close = auto_close;
+        self
+    }
+
+    pub fn shortcut_select(mut self, shortcut_select: bool) -> Self {
+        self.shortcut_select = shortcut_select;
         self
     }
 
@@ -245,6 +266,18 @@ impl<T: Item + 'static> Component for Menu<T> {
             // remove the layer
             compositor.pop();
         }));
+
+        if self.shortcut_select && event.modifiers.is_empty() {
+            if let helix_view::keyboard::KeyCode::Char(c) = event.code {
+                if let Some(index) = shortcut_index(c) {
+                    if let Some((option_index, _)) = self.matches.get(index) {
+                        let selection = &self.options[*option_index as usize];
+                        (self.callback_fn)(cx.editor, Some(selection), MenuEvent::Validate);
+                        return EventResult::Consumed(close_fn);
+                    }
+                }
+            }
+        }
 
         // Ignore tab key when supertab is turned on in order not to interfere
         // with it. (Is there a better way to do this?)
@@ -417,5 +450,22 @@ impl<T: Item + 'static> Component for Menu<T> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::shortcut_index;
+
+    #[test]
+    fn shortcut_keys_follow_neovim_spelling_order() {
+        assert_eq!(shortcut_index('1'), Some(0));
+        assert_eq!(shortcut_index('9'), Some(8));
+        assert_eq!(shortcut_index('0'), Some(9));
+        assert_eq!(shortcut_index('a'), Some(10));
+        assert_eq!(shortcut_index('z'), Some(35));
+        assert_eq!(shortcut_index('A'), Some(36));
+        assert_eq!(shortcut_index('Z'), Some(61));
+        assert_eq!(shortcut_index('-'), None);
     }
 }

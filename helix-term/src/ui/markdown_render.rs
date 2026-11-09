@@ -9,7 +9,7 @@ use std::sync::{Mutex, OnceLock};
 
 use helix_core::graphemes::grapheme_width;
 use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
-use helix_view::graphics::{Modifier, Rect, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
@@ -103,6 +103,44 @@ fn plain(style: Style) -> Style {
         sub_modifier: Modifier::all(),
         ..style
     }
+}
+
+/// Truncate `text` to `max_width` terminal cells, preserving grapheme-safe
+/// boundaries where possible.
+fn truncate_width(text: &str, max_width: usize) -> String {
+    let mut out = String::new();
+    let mut width = 0;
+    for ch in text.chars() {
+        let ch_width = ch.width().unwrap_or(0);
+        if width + ch_width > max_width {
+            break;
+        }
+        out.push(ch);
+        width += ch_width;
+    }
+    out
+}
+
+/// Style for callout titles and quote bars. Dedicated `markup.callout.*`
+/// scopes avoid inheriting the curl underline from LSP diagnostic styles; if
+/// a theme does not define them, fall back to the matching diagnostic color
+/// and strip the underline explicitly.
+fn callout_style(theme: &Theme, scope: &str) -> Style {
+    let diagnostic_fallback = match scope {
+        "markup.callout.info" => "diagnostic.info",
+        "markup.callout.success" => "diagnostic.hint",
+        "markup.callout.hint" => "diagnostic.hint",
+        "markup.callout.warning" => "diagnostic.warning",
+        "markup.callout.error" => "diagnostic.error",
+        _ => "markup.quote",
+    };
+    let mut style = theme
+        .try_get(scope)
+        .or_else(|| theme.try_get(diagnostic_fallback))
+        .unwrap_or_else(|| theme.get("markup.quote"));
+    style.underline_style = None;
+    style.underline_color = None;
+    style
 }
 
 struct Paint {
@@ -367,9 +405,8 @@ impl MarkdownRender {
         let link_icon_style = theme
             .try_get("markup.link.label")
             .unwrap_or_else(|| theme.get("markup.link"));
-        let table_border_style = theme.get("markup.raw");
-        let table_head_background =
-            background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
+        let table_head_style = plain(theme.get("markup.heading"));
+        let table_body_style = plain(theme.get("ui.text"));
 
         let link_custom: Vec<MarkdownLinkIcon> = doc.config.load().markdown.link_icons.clone();
         let available_width = view.inner_width(doc) as usize;
@@ -383,7 +420,7 @@ impl MarkdownRender {
         // document here made table detection O(file size) on every frame.
         let table_kinds = detect_tables(text, table_from, end_line);
         let mut table_layouts: HashMap<usize, TableLayout> = HashMap::new();
-        let mut table_borders: HashMap<usize, String> = HashMap::new();
+        let mut table_borders: HashMap<usize, (String, Style)> = HashMap::new();
         let mut seen_table_headers = HashSet::new();
         for (&header, &kind) in &table_kinds {
             if kind != TableKind::Header || !seen_table_headers.insert(header) {
@@ -400,19 +437,19 @@ impl MarkdownRender {
             let prefix = " ".repeat(layout.indent);
             if header > 0 && text.line(header - 1).to_string().trim().is_empty() {
                 let border = format_table_border(&layout.columns, '┌', '┬', '┐');
-                table_borders.insert(header - 1, format!("{prefix}{border}"));
+                table_borders.insert(header - 1, (format!("{prefix}{border}"), table_head_style));
             }
             if layout.end < text.len_lines() && text.line(layout.end).to_string().trim().is_empty()
             {
                 let border = format_table_border(&layout.columns, '└', '┴', '┘');
-                table_borders.insert(layout.end, format!("{prefix}{border}"));
+                table_borders.insert(layout.end, (format!("{prefix}{border}"), table_body_style));
             }
         }
-        for (line, border) in &table_borders {
+        for (line, (border, style)) in &table_borders {
             render.lines.entry(*line).or_default().paints.push(Paint {
                 col: 0,
                 text: border.clone(),
-                style: plain(table_border_style),
+                style: *style,
             });
         }
         // Prefix state is cached per document version, so scrolling and
@@ -491,24 +528,25 @@ impl MarkdownRender {
                 if visible {
                     let line_render = render.lines.entry(line_idx).or_default();
                     line_render.table = Some(*kind);
-                    if *kind == TableKind::Header {
-                        line_render.background = table_head_background;
-                    }
-                    let border_style = plain(table_border_style);
                     if *kind == TableKind::Delimiter {
                         line_render.paints.push(Paint {
                             col: layout.indent,
                             text: format_table_separator(&layout.columns),
-                            style: border_style,
+                            style: table_head_style,
                         });
                     } else {
                         let cells = table_cells(line);
+                        let (text_style, border_style) = if *kind == TableKind::Header {
+                            (table_head_style, table_head_style)
+                        } else {
+                            (table_body_style, table_body_style)
+                        };
                         paint_table_row(
                             line_render,
                             layout.indent,
                             &cells,
                             &layout.columns,
-                            plain(theme.get("ui.text")),
+                            text_style,
                             border_style,
                         );
                     }
@@ -530,11 +568,14 @@ impl MarkdownRender {
                             .unwrap_or(heading_fallback);
                         let icon = format!("{} ", heading_icon(level));
                         let icon_width = icon.width();
-                        let text = if icon_width < marker_width {
-                            format!("{icon}{}", " ".repeat(marker_width - icon_width))
-                        } else {
+                        // render-markdown overlays a right-aligned icon in
+                        // the marker's width, so deeper headings push the
+                        // icon (not just the title) to the right.
+                        let text = format!(
+                            "{}{}",
+                            " ".repeat(marker_width.saturating_sub(icon_width)),
                             icon
-                        };
+                        );
                         let line_render = render.lines.entry(line_idx).or_default();
                         line_render.paints.push(Paint {
                             col: display_col(&chars, indent, tab_width),
@@ -569,12 +610,10 @@ impl MarkdownRender {
                     let callout = parse_callout(&chars, cursor);
                     // Continuation lines of a callout block reuse its
                     // highlight for the quote markers.
-                    let body_style = meta
-                        .callout
-                        .map(|name| theme.try_get(name).unwrap_or(quote_style));
+                    let body_style = meta.callout.map(|name| callout_style(theme, name));
                     if visible {
-                        if let Some((name_end, rendered, style_name)) = &callout {
-                            let style = theme.try_get(style_name).unwrap_or(quote_style);
+                        if let Some((_name_end, rendered, style_name)) = &callout {
+                            let style = callout_style(theme, style_name);
                             let line_render = render.lines.entry(line_idx).or_default();
                             for col in &markers {
                                 line_render.paints.push(Paint {
@@ -583,10 +622,16 @@ impl MarkdownRender {
                                     style,
                                 });
                             }
-                            let width = name_end - cursor;
+                            // Replace the whole title area (`[!NOTE] Title`)
+                            // with the rendered icon/title. Callout titles can
+                            // be custom, so the marker width is not enough.
+                            let width = chars.len().saturating_sub(cursor);
                             let mut text = rendered.clone();
                             while text.width() < width {
                                 text.push(' ');
+                            }
+                            if text.width() > width {
+                                text = truncate_width(&text, width);
                             }
                             line_render.paints.push(Paint {
                                 col: display_col(&chars, cursor, tab_width),
@@ -606,11 +651,9 @@ impl MarkdownRender {
                         }
                     }
                     if callout.is_some() {
-                        // Fall through to link scanning for the title text
-                        // after the callout marker.
-                        if let Some((end, _, _)) = &callout {
-                            inline_skip = *end;
-                        }
+                        // The whole callout title area has been replaced above,
+                        // including custom titles, so skip inline scanning.
+                        inline_skip = chars.len();
                         handled_block = true;
                         if !visible {
                             continue;
@@ -1170,41 +1213,49 @@ fn parse_callout(chars: &[char], start: usize) -> Option<(usize, String, &'stati
         end += 1;
     }
     name = name.to_uppercase();
-    let (rendered, scope) = match name.as_str() {
+    let (icon, default_title, scope) = match name.as_str() {
         "NOTE" | "ABSTRACT" | "SUMMARY" | "TLDR" | "INFO" | "TODO" => {
-            let title = capitalize(&name);
-            (format!("󰋽 {title}"), "diagnostic.info")
+            ("󰋽", capitalize(&name), "markup.callout.info")
         }
-        "TIP" | "HINT" | "SUCCESS" | "CHECK" | "DONE" | "IMPORTANT" | "EXAMPLE" => {
-            let title = capitalize(&name);
+        "TIP" | "HINT" | "SUCCESS" | "CHECK" | "DONE" => {
             let icon = match name.as_str() {
                 "TIP" | "HINT" => "󰌶",
-                "IMPORTANT" => "󰅾",
-                "EXAMPLE" => "󰉹",
                 _ => "󰄬",
             };
-            (format!("{icon} {title}"), "diagnostic.hint")
+            (icon, capitalize(&name), "markup.callout.success")
         }
-        "QUESTION" | "HELP" | "FAQ" | "ATTENTION" | "WARNING" | "CAUTION" => {
-            let title = capitalize(&name);
-            (format!("󰀪 {title}"), "diagnostic.warning")
+        "IMPORTANT" | "EXAMPLE" => {
+            let icon = match name.as_str() {
+                "IMPORTANT" => "󰅾",
+                _ => "󰉹",
+            };
+            (icon, capitalize(&name), "markup.callout.hint")
         }
-        "FAILURE" | "FAIL" | "MISSING" | "DANGER" | "ERROR" | "BUG" => {
-            let title = capitalize(&name);
+        "QUESTION" | "HELP" | "FAQ" | "ATTENTION" | "WARNING" => {
+            ("󰀪", capitalize(&name), "markup.callout.warning")
+        }
+        "CAUTION" | "FAILURE" | "FAIL" | "MISSING" | "DANGER" | "ERROR" | "BUG" => {
             let icon = match name.as_str() {
                 "DANGER" | "ERROR" => "󱐌",
                 "BUG" => "󰨰",
+                "CAUTION" => "󰳦",
                 _ => "󰅖",
             };
-            (format!("{icon} {title}"), "diagnostic.error")
+            (icon, capitalize(&name), "markup.callout.error")
         }
-        "QUOTE" | "CITE" => {
-            let title = capitalize(&name);
-            (format!("󱆨 {title}"), "markup.quote")
-        }
+        "QUOTE" | "CITE" => ("󱆨", capitalize(&name), "markup.callout.quote"),
         _ => return None,
     };
-    Some((end, rendered, scope))
+    // A custom title after the marker (`> [!NOTE] My title`) replaces the
+    // default callout name, matching render-markdown.nvim.
+    let custom: String = chars[end..].iter().collect();
+    let custom = custom.trim();
+    let title = if custom.is_empty() {
+        default_title
+    } else {
+        custom.to_string()
+    };
+    Some((end, format!("{icon} {title}"), scope))
 }
 
 fn capitalize(name: &str) -> String {
@@ -1715,6 +1766,19 @@ fn background_style(theme: &Theme, scopes: &[&str]) -> Option<Style> {
 }
 
 fn heading_background(theme: &Theme, level: usize) -> Option<Style> {
+    // An explicit per-level background wins.
+    if let Some(style) = theme.try_get_exact(&format!("markup.heading.{level}")) {
+        if let Some(background) = style.bg {
+            return Some(Style::default().bg(background));
+        }
+    }
+    // Noctalia-rx enables adaptive backgrounds copied from render-markdown's
+    // DiffText/DiffAdd/DiffChange/DiffDelete/Visual/CursorColumn defaults.
+    if theme.try_get_exact("markup.heading.adaptive").is_some() {
+        if let Some(style) = adaptive_heading_background(theme, level) {
+            return Some(style);
+        }
+    }
     let scopes: [&str; 6] = [
         "ui.selection",
         "ui.menu",
@@ -1724,6 +1788,37 @@ fn heading_background(theme: &Theme, level: usize) -> Option<Style> {
         "ui.cursorline",
     ];
     background_style(theme, &[scopes[level.saturating_sub(1)], "ui.cursorline"])
+}
+
+fn adaptive_heading_background(theme: &Theme, level: usize) -> Option<Style> {
+    let background = theme.palette_color("background")?;
+    let color = match level {
+        1 => darken(theme.palette_color("tertiary")?, 0.80, background)?,
+        2 => darken(theme.palette_color("primary")?, 0.85, background)?,
+        3 => darken(theme.palette_color("surfaceContainer")?, 0.20, background)?,
+        4 => darken(theme.palette_color("error")?, 0.90, background)?,
+        5 => theme.palette_color("surfaceContainerHigh")?,
+        6 => theme.palette_color("surfaceContainer")?,
+        _ => return None,
+    };
+    Some(Style::default().bg(color))
+}
+
+/// Blend `color` toward `background` by `amount`, matching base16-nvim's
+/// `darken` helper.
+fn darken(color: Color, amount: f32, background: Color) -> Option<Color> {
+    let (Color::Rgb(red, green, blue), Color::Rgb(bg_red, bg_green, bg_blue)) = (color, background)
+    else {
+        return None;
+    };
+    let blend = |channel: u8, background: u8| {
+        (channel as f32 + (background as f32 - channel as f32) * amount).floor() as u8
+    };
+    Some(Color::Rgb(
+        blend(red, bg_red),
+        blend(green, bg_green),
+        blend(blue, bg_blue),
+    ))
 }
 
 fn heading_icon(level: usize) -> &'static str {
@@ -1740,6 +1835,18 @@ fn heading_icon(level: usize) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn darkens_heading_palette_like_base16() {
+        assert_eq!(
+            darken(
+                Color::Rgb(0xe9, 0xb4, 0xf6),
+                0.80,
+                Color::Rgb(0x11, 0x14, 0x17)
+            ),
+            Some(Color::Rgb(0x3c, 0x34, 0x43))
+        );
+    }
 
     #[test]
     fn heading_icons_cover_all_levels() {
@@ -1786,17 +1893,29 @@ mod tests {
 
     #[test]
     fn detects_callouts() {
-        let line: Vec<char> = "[!NOTE] Title".chars().collect();
+        let line: Vec<char> = "[!NOTE]".chars().collect();
         let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
         assert_eq!(end, 7);
         assert_eq!(rendered, "󰋽 Note");
-        assert_eq!(scope, "diagnostic.info");
+        assert_eq!(scope, "markup.callout.info");
+
+        // A custom title replaces the default name.
+        let line: Vec<char> = "[!NOTE] My title".chars().collect();
+        let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(end, 7);
+        assert_eq!(rendered, "󰋽 My title");
+        assert_eq!(scope, "markup.callout.info");
 
         let line: Vec<char> = "[!warning]- Foldable".chars().collect();
         let (end, rendered, scope) = parse_callout(&line, 0).unwrap();
         assert_eq!(end, 11);
-        assert_eq!(rendered, "󰀪 Warning");
-        assert_eq!(scope, "diagnostic.warning");
+        assert_eq!(rendered, "󰀪 Foldable");
+        assert_eq!(scope, "markup.callout.warning");
+
+        let line: Vec<char> = "[!TIP]".chars().collect();
+        let (_, rendered, scope) = parse_callout(&line, 0).unwrap();
+        assert_eq!(rendered, "󰌶 Tip");
+        assert_eq!(scope, "markup.callout.success");
 
         let line: Vec<char> = "[!bogus] x".chars().collect();
         assert!(parse_callout(&line, 0).is_none());
@@ -1902,8 +2021,8 @@ mod tests {
         use helix_core::Rope;
         let text = Rope::from("> [!NOTE] Title\n> body one\n> body two\n\nplain\n");
         let bodies = detect_callout_bodies(text.slice(..), 0, text.len_lines());
-        assert_eq!(bodies.get(&1), Some(&"diagnostic.info"));
-        assert_eq!(bodies.get(&2), Some(&"diagnostic.info"));
+        assert_eq!(bodies.get(&1), Some(&"markup.callout.info"));
+        assert_eq!(bodies.get(&2), Some(&"markup.callout.info"));
         assert_eq!(bodies.get(&0), None);
         assert_eq!(bodies.get(&4), None);
     }
@@ -1920,7 +2039,7 @@ mod tests {
         assert!(meta[2].in_code.is_some());
         assert!(meta[3].in_code.is_none());
         assert_eq!(meta[5].list_level, Some(2));
-        assert_eq!(meta[8].callout, Some("diagnostic.info"));
+        assert_eq!(meta[8].callout, Some("markup.callout.info"));
     }
 
     #[test]
