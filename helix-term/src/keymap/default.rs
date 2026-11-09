@@ -190,6 +190,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
 
+        // Mirror the Neovim bufferline bindings for previous/next buffer.
+        "H" => goto_previous_buffer,
+        "L" => goto_next_buffer,
+
         "C-w" => { "Window"
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,

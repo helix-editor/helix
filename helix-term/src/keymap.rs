@@ -399,6 +399,19 @@ mod tests {
     }
 
     #[test]
+    fn buffer_cycle_keys_are_bound() {
+        let mut keymaps = Keymaps::default();
+        let KeymapResult::Matched(previous) = keymaps.get(Mode::Normal, key!('H')) else {
+            panic!("H is not bound");
+        };
+        assert_eq!(previous.name(), "goto_previous_buffer");
+        let KeymapResult::Matched(next) = keymaps.get(Mode::Normal, key!('L')) else {
+            panic!("L is not bound");
+        };
+        assert_eq!(next.name(), "goto_next_buffer");
+    }
+
+    #[test]
     fn merge_partial_keys() {
         let keymap = hashmap! {
             Mode::Normal => keymap!({ "Normal mode"

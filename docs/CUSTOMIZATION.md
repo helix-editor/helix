@@ -368,6 +368,20 @@ into a cache under `~/.cache/rx-helix/images`. Each image is scaled to at most
 50% of the window height and re-placed as you scroll. Only the focused view is
 drawn and images are hidden while a picker/prompt/menu covers the editor.
 
+## Buffer navigation
+
+In normal mode, `H` and `L` switch to the previous/next open buffer when more
+than one buffer is open. They are no-ops with a single buffer and do not
+affect the `C-w H` / `C-w L` window-swap bindings.
+
+The sample Vim keymap module also opens a new line and enters Insert mode:
+
+```toml
+[keys.normal]
+o = ["open_below", "insert_mode"]
+O = ["open_above", "insert_mode"]
+```
+
 ## Obsidian
 
 Optional vault integration. Requires `rg` for vault search and a vault path.

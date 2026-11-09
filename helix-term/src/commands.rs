@@ -916,6 +916,10 @@ fn goto_previous_buffer(cx: &mut Context) {
 }
 
 fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
+    // Buffer navigation shortcuts are only meaningful with another buffer.
+    if editor.documents.len() < 2 {
+        return;
+    }
     let current = view!(editor).doc;
 
     let id = match direction {
