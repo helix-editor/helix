@@ -9,7 +9,7 @@ use std::sync::{Mutex, OnceLock};
 
 use helix_core::graphemes::grapheme_width;
 use helix_core::unicode::width::{UnicodeWidthChar, UnicodeWidthStr};
-use helix_view::graphics::{Modifier, Rect, Style};
+use helix_view::graphics::{Color, Modifier, Rect, Style};
 use helix_view::{editor::MarkdownLinkIcon, Document, DocumentId, Theme, View};
 
 use crate::ui::document::{LinePos, TextRenderer};
@@ -367,9 +367,8 @@ impl MarkdownRender {
         let link_icon_style = theme
             .try_get("markup.link.label")
             .unwrap_or_else(|| theme.get("markup.link"));
-        let table_border_style = theme.get("markup.raw");
-        let table_head_background =
-            background_style(theme, &["ui.menu", "ui.cursorline", "ui.selection"]);
+        let table_head_style = plain(theme.get("markup.heading"));
+        let table_body_style = plain(theme.get("ui.text"));
 
         let link_custom: Vec<MarkdownLinkIcon> = doc.config.load().markdown.link_icons.clone();
         let available_width = view.inner_width(doc) as usize;
@@ -383,7 +382,7 @@ impl MarkdownRender {
         // document here made table detection O(file size) on every frame.
         let table_kinds = detect_tables(text, table_from, end_line);
         let mut table_layouts: HashMap<usize, TableLayout> = HashMap::new();
-        let mut table_borders: HashMap<usize, String> = HashMap::new();
+        let mut table_borders: HashMap<usize, (String, Style)> = HashMap::new();
         let mut seen_table_headers = HashSet::new();
         for (&header, &kind) in &table_kinds {
             if kind != TableKind::Header || !seen_table_headers.insert(header) {
@@ -400,19 +399,19 @@ impl MarkdownRender {
             let prefix = " ".repeat(layout.indent);
             if header > 0 && text.line(header - 1).to_string().trim().is_empty() {
                 let border = format_table_border(&layout.columns, '┌', '┬', '┐');
-                table_borders.insert(header - 1, format!("{prefix}{border}"));
+                table_borders.insert(header - 1, (format!("{prefix}{border}"), table_head_style));
             }
             if layout.end < text.len_lines() && text.line(layout.end).to_string().trim().is_empty()
             {
                 let border = format_table_border(&layout.columns, '└', '┴', '┘');
-                table_borders.insert(layout.end, format!("{prefix}{border}"));
+                table_borders.insert(layout.end, (format!("{prefix}{border}"), table_body_style));
             }
         }
-        for (line, border) in &table_borders {
+        for (line, (border, style)) in &table_borders {
             render.lines.entry(*line).or_default().paints.push(Paint {
                 col: 0,
                 text: border.clone(),
-                style: plain(table_border_style),
+                style: *style,
             });
         }
         // Prefix state is cached per document version, so scrolling and
@@ -491,24 +490,25 @@ impl MarkdownRender {
                 if visible {
                     let line_render = render.lines.entry(line_idx).or_default();
                     line_render.table = Some(*kind);
-                    if *kind == TableKind::Header {
-                        line_render.background = table_head_background;
-                    }
-                    let border_style = plain(table_border_style);
                     if *kind == TableKind::Delimiter {
                         line_render.paints.push(Paint {
                             col: layout.indent,
                             text: format_table_separator(&layout.columns),
-                            style: border_style,
+                            style: table_head_style,
                         });
                     } else {
                         let cells = table_cells(line);
+                        let (text_style, border_style) = if *kind == TableKind::Header {
+                            (table_head_style, table_head_style)
+                        } else {
+                            (table_body_style, table_body_style)
+                        };
                         paint_table_row(
                             line_render,
                             layout.indent,
                             &cells,
                             &layout.columns,
-                            plain(theme.get("ui.text")),
+                            text_style,
                             border_style,
                         );
                     }
@@ -530,11 +530,14 @@ impl MarkdownRender {
                             .unwrap_or(heading_fallback);
                         let icon = format!("{} ", heading_icon(level));
                         let icon_width = icon.width();
-                        let text = if icon_width < marker_width {
-                            format!("{icon}{}", " ".repeat(marker_width - icon_width))
-                        } else {
+                        // render-markdown overlays a right-aligned icon in
+                        // the marker's width, so deeper headings push the
+                        // icon (not just the title) to the right.
+                        let text = format!(
+                            "{}{}",
+                            " ".repeat(marker_width.saturating_sub(icon_width)),
                             icon
-                        };
+                        );
                         let line_render = render.lines.entry(line_idx).or_default();
                         line_render.paints.push(Paint {
                             col: display_col(&chars, indent, tab_width),
@@ -1715,6 +1718,19 @@ fn background_style(theme: &Theme, scopes: &[&str]) -> Option<Style> {
 }
 
 fn heading_background(theme: &Theme, level: usize) -> Option<Style> {
+    // An explicit per-level background wins.
+    if let Some(style) = theme.try_get_exact(&format!("markup.heading.{level}")) {
+        if let Some(background) = style.bg {
+            return Some(Style::default().bg(background));
+        }
+    }
+    // Noctalia-rx enables adaptive backgrounds copied from render-markdown's
+    // DiffText/DiffAdd/DiffChange/DiffDelete/Visual/CursorColumn defaults.
+    if theme.try_get_exact("markup.heading.adaptive").is_some() {
+        if let Some(style) = adaptive_heading_background(theme, level) {
+            return Some(style);
+        }
+    }
     let scopes: [&str; 6] = [
         "ui.selection",
         "ui.menu",
@@ -1724,6 +1740,37 @@ fn heading_background(theme: &Theme, level: usize) -> Option<Style> {
         "ui.cursorline",
     ];
     background_style(theme, &[scopes[level.saturating_sub(1)], "ui.cursorline"])
+}
+
+fn adaptive_heading_background(theme: &Theme, level: usize) -> Option<Style> {
+    let background = theme.palette_color("background")?;
+    let color = match level {
+        1 => darken(theme.palette_color("tertiary")?, 0.80, background)?,
+        2 => darken(theme.palette_color("primary")?, 0.85, background)?,
+        3 => darken(theme.palette_color("surfaceContainer")?, 0.20, background)?,
+        4 => darken(theme.palette_color("error")?, 0.90, background)?,
+        5 => theme.palette_color("surfaceContainerHigh")?,
+        6 => theme.palette_color("surfaceContainer")?,
+        _ => return None,
+    };
+    Some(Style::default().bg(color))
+}
+
+/// Blend `color` toward `background` by `amount`, matching base16-nvim's
+/// `darken` helper.
+fn darken(color: Color, amount: f32, background: Color) -> Option<Color> {
+    let (Color::Rgb(red, green, blue), Color::Rgb(bg_red, bg_green, bg_blue)) = (color, background)
+    else {
+        return None;
+    };
+    let blend = |channel: u8, background: u8| {
+        (channel as f32 + (background as f32 - channel as f32) * amount).floor() as u8
+    };
+    Some(Color::Rgb(
+        blend(red, bg_red),
+        blend(green, bg_green),
+        blend(blue, bg_blue),
+    ))
 }
 
 fn heading_icon(level: usize) -> &'static str {
@@ -1740,6 +1787,18 @@ fn heading_icon(level: usize) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn darkens_heading_palette_like_base16() {
+        assert_eq!(
+            darken(
+                Color::Rgb(0xe9, 0xb4, 0xf6),
+                0.80,
+                Color::Rgb(0x11, 0x14, 0x17)
+            ),
+            Some(Color::Rgb(0x3c, 0x34, 0x43))
+        );
+    }
 
     #[test]
     fn heading_icons_cover_all_levels() {

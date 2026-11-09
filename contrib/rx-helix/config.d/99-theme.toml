@@ -1,0 +1,4 @@
+# Keep the rx-helix theme add-on selected even when Noctalia rewrites the
+# generated `themes/noctalia.toml` and the main config.toml theme line.
+# Install `contrib/themes/rx-theme.toml` into ~/.config/helix/themes first.
+theme = "rx-theme"

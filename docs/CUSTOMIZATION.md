@@ -163,6 +163,25 @@ short debounce. Generated themes can therefore rewrite
 `~/.config/helix/themes/<name>.toml` while the editor is open. A parse error
 keeps the current theme instead of falling back to the default.
 
+### Generated (Noctalia/matugen) themes
+
+Do not edit a generated theme such as
+`~/.config/helix/themes/noctalia.toml`; it is rewritten whenever the wallpaper
+palette changes. Instead, install the `rx-theme` child theme:
+
+```sh
+cp contrib/themes/rx-theme.toml ~/.config/helix/themes/rx-theme.toml
+cp contrib/rx-helix/config.d/99-theme.toml ~/.config/helix/config.d/99-theme.toml
+```
+
+`rx-theme.toml` uses `inherits = "noctalia"` and references the generated
+palette roles (`primary`, `secondary`, `tertiary`, `surfaceContainer`, etc.),
+so it follows wallpaper changes automatically. The `config.d` module keeps
+`theme = "rx-theme"` selected even when the main `config.toml` is rewritten
+back to `theme = "noctalia"` by the generator. Other bundled themes are
+unaffected and continue to use their own styles; picker and heading rendering
+fall back to standard theme scopes when the rx-specific scopes are absent.
+
 ## Dashboard
 
 The dashboard replaces the empty buffer when Helix starts without files. It is
@@ -293,10 +312,13 @@ render = true
 Headings lose their `#` markers and gain level icons (`󰲡`–`󰲫`), bullet lists
 use `● ○ ◆ ◇` by nesting depth, task boxes use `󰄱`/`󰱒`, block quotes use `▋`,
 and horizontal rules (`---`/`***`/`___`) become a full-width `─` line. Heading
-rows get a full-width background from existing theme scopes (`ui.selection`,
-`ui.menu`, `ui.popup`, `ui.cursorline`); icons use `markup.heading.1`–`.6`;
-rules use `ui.linenr`; code blocks get a full-width `ui.cursorline` background
-with a `󰅩 language` header on the fence line and inline code gets a background.
+rows use an explicit `markup.heading.1`–`.6` background when present; otherwise
+a theme can opt into render-markdown-style Diff backgrounds with
+`markup.heading.adaptive`, which derives H1–H6 colors from the theme palette.
+The fallback still uses existing UI scopes (`ui.selection`, `ui.menu`,
+`ui.popup`, `ui.cursorline`). Icons use `markup.heading.1`–`.6`; rules use
+`ui.linenr`; code blocks get a full-width `ui.cursorline` background with a
+`󰅩 language` header on the fence line and inline code gets a background.
 The buffer text is unchanged: rendering paints over the rendered document after
 each line, so movement, editing, saving, and searching still see ordinary
 markdown. The cursor line and visual selections show raw markdown so markers
@@ -306,7 +328,7 @@ Links, wiki links, and callouts are decorated without shifting text:
 `[[target|alias]]` shows `󱗖 alias`, `[label](url)` keeps the label and puts an
 icon where the destination was, `<url>` shows its icon plus the address,
 images show `󰥶`, and footnotes show `󰯔`. Inline-link icons adapt to the
-destination host (`󰊤` GitHub, `󰊭` Google, `󰖟` generic web, etc.), with custom
+destination host (`󰊤` GitHub, `󰊭` Google, `󰌹` generic web, etc.), with custom
 icons taking precedence:
 
 ```toml

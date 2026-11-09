@@ -13,6 +13,11 @@
 #   cp contrib/rx-helix/config.d/vim.toml ~/.config/helix/config.d/vim.toml
 #   cp contrib/config.d/vim.toml ~/.config/helix/config.d/vim.toml  # vanilla helix-vim
 #
+# Noctalia/matugen users should also install the rx-theme child theme:
+#
+#   cp contrib/themes/rx-theme.toml ~/.config/helix/themes/rx-theme.toml
+#   cp contrib/rx-helix/config.d/99-theme.toml ~/.config/helix/config.d/99-theme.toml
+#
 # The fork features only appear when the relevant sections are present. In
 # particular the dashboard needs `enable = true`.
 #

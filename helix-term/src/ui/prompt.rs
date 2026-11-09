@@ -435,15 +435,17 @@ impl Prompt {
     pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = helix_view::theme::Style::default()
-            .fg(crate::ui::tertiary_color(theme))
-            .bg(theme
-                .get("ui.menu")
-                .bg
-                .unwrap_or(helix_view::theme::Color::Reset));
-        let selected_color = helix_view::theme::Style::default()
-            .fg(crate::ui::secondary_color(theme))
-            .bg(crate::ui::primary_color(theme))
+        let completion_color = theme.try_get("ui.text").unwrap_or_default().bg(theme
+            .get("ui.menu")
+            .bg
+            .unwrap_or(helix_view::theme::Color::Reset));
+        let selected_color = theme
+            .try_get("ui.menu.selected")
+            .unwrap_or_else(|| {
+                helix_view::theme::Style::default()
+                    .fg(crate::ui::secondary_color(theme))
+                    .bg(crate::ui::primary_color(theme))
+            })
             .add_modifier(helix_view::graphics::Modifier::BOLD);
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
