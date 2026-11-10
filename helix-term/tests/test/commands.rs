@@ -551,6 +551,132 @@ async fn test_insert_with_indent() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_open_below_at_block_end_stays_in_block() -> anyhow::Result<()> {
+    test((
+        indoc! { "\
+            def f():
+                #[y|]# = 1
+            z = 2
+            "
+        },
+        ":lang python<ret>ox<esc>",
+        indoc! { "\
+            def f():
+                y = 1
+                x#[
+            |]#z = 2
+            "
+        },
+    ))
+    .await?;
+
+    test((
+        indoc! { "\
+            def f():
+                #[y|]# = 1"
+        },
+        ":lang python<ret>ox<esc>",
+        indoc! { "\
+            def f():
+                y = 1
+                x#[
+            |]#"
+        },
+    ))
+    .await?;
+
+    // `@extend.prevent-once` after `return` still dedents (mid-file)
+    test((
+        indoc! { "\
+            def f():
+                #[r|]#eturn 1"
+        },
+        ":lang python<ret>ox<esc>",
+        indoc! { "\
+            def f():
+                return 1
+            x#[
+            |]#"
+        },
+    ))
+    .await?;
+
+    test((
+        indoc! { "\
+            a:
+              #[b|]#: 1"
+        },
+        ":lang yaml<ret>ox<esc>",
+        indoc! { "\
+            a:
+              b: 1
+              x#[
+            |]#"
+        },
+    ))
+    .await?;
+
+    // A node that ends at the cursor
+    test((
+        indoc! { "\
+            if x
+              #[p|]#uts \"a\"
+            end"
+        },
+        ":lang crystal<ret>ox<esc>",
+        indoc! { "\
+            if x
+              puts \"a\"
+              x#[
+            |]#end"
+        },
+    ))
+    .await?;
+
+    test((
+        "def f():\n    #[y|]# = 1  ",
+        ":lang python<ret>ox<esc>",
+        "def f():\n    y = 1  \n    x#[\n|]#",
+    ))
+    .await?;
+
+    // A trailing comment is part of the block before it, but a dedented one ends the block.
+    let mut config = test_config();
+    config.editor.continue_comments = false;
+    config.editor.indent_heuristic = helix_core::syntax::config::IndentationHeuristic::TreeSitter;
+    test_with_config(
+        AppBuilder::new().with_config(config.clone()),
+        (
+            "a:\n  b: 1\n#[#|]# c\nz: 2\n",
+            ":lang yaml<ret>ox<esc>",
+            "a:\n  b: 1\n# c\nx#[\n|]#z: 2\n",
+        ),
+    )
+    .await?;
+
+    // `@extend` must not stretch a node that closes on the cursor line.
+    test((
+        "#[f|]#oo := \"bar\"\nbaz := 1\n",
+        ":lang just<ret>ox<esc>",
+        "foo := \"bar\"\nx#[\n|]#baz := 1\n",
+    ))
+    .await?;
+
+    // trailing comment
+    test_with_config(
+        AppBuilder::new().with_config(config.clone()),
+        (
+            "#[i|]#f (x) // c\n    foo();\n",
+            ":lang c<ret>ox<esc>",
+            "if (x) // c\n    x#[\n|]#    foo();\n",
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_join_selections() -> anyhow::Result<()> {
     // normal join
     test((
