@@ -64,7 +64,7 @@ criterion = { version = "0.8", default-features = false, features = ["cargo_benc
 quickcheck = { version = "1", default-features = false }
 
 [workspace.package]
-version = "25.7.1"
+version = "25.11.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]

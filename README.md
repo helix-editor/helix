@@ -15,6 +15,15 @@ all driven by plain `config.toml`, with no plugins or package manager.
   labels, reserved-space control, accent elements.
 - **Startup dashboard** — `auto` layout, live resize switching, content-sized
   menus, built-in dot-matrix/HELIX logo, shortcuts that run any Helix command.
+- **Bufferline** — fixed 24-cell tabs, a lighter active tab, a left indicator,
+  a modified dot, and clean overflow for long names.
+- **Themed pickers** — Telescope/mini.pick-style roles, centered Quick Switch
+  titles, colored directory prefixes, and live theme reloads.
+- **Markdown workspace** — rendered headings, callouts, tables, inline code
+  backgrounds, local images, wiki links, and Hunspell spell checking.
+- **Syntax on by default** — 300+ Tree-sitter grammars built into the install,
+  with a generic `.conf` fallback and targeted nginx/systemd/hyprlang/bitbake,
+  tmux, and fontconfig detection.
 - **No plugins** — the whole experience is compiled in and configured through
   `~/.config/helix/config.toml`.
 - **Upstream-safe** — `master` is a pure mirror of Helix; the daily workflow
@@ -43,6 +52,12 @@ The statusline and the command/status area share a single bottom row.
   padded blocks.
 - `accent` to paint selected elements with the current mode colors.
 
+### Bufferline
+
+`bufferline = "multiple"` shows open buffers above the editor. Tabs have a
+fixed 24-cell width with a left indicator, a lighter active tab, a modified
+dot, and a ` ...` suffix when a name is too long.
+
 ### Dashboard
 
 Shown when Helix starts without files:
@@ -56,6 +71,22 @@ Shown when Helix starts without files:
 - Key-hint and hover popups stay above the statusline.
 - Unbound keys are swallowed while the dashboard is visible; cancelling a picker
   returns to it, opening a file dismisses it.
+
+### Pickers and theme
+
+Pickers follow the Neovim Telescope/mini.pick roles instead of collapsing to a
+single accent color:
+
+- `ui.picker.selected` selects a row, `ui.picker.match` highlights fuzzy
+  matches, `ui.picker.border` draws the frame, and `ui.picker.title` labels it.
+- Quick Switch centers its title and colors directory prefixes with
+  `ui.text.directory`, keeping filenames in `ui.text`.
+- Picker columns resolve styles from the live theme on every render, so folder
+  colors update after a theme reload without reopening the picker.
+
+The `rx-theme` child theme maps Helix UI colors to Neovim highlight roles,
+including the dashboard, which-key/Info popup, Telescope-style pickers, and the
+`Pmenu` selection colors.
 
 ### Obsidian vault
 
@@ -71,8 +102,30 @@ Optional built-in vault integration:
 
 `[editor.markdown] render = true` replaces heading markers with icons, bullets
 with `•`, task boxes with `󰄱`/`󰱒`, quotes with `│`, and rules with `─` using
-buffer overlays, so the file text is unchanged. `images = true` additionally
-draws local markdown images inline in Kitty-compatible terminals.
+buffer overlays, so the file text is unchanged.
+
+- Callouts use `markup.callout.*` colors and never inherit diagnostic underlines.
+- Tables render inline code, emphasis, strong text, strikethrough, links, wiki
+  links, footnotes, and autolinks; a row stays rendered while the cursor is on it.
+- Inline code backgrounds cover the whole span, not just the backticks.
+- `images = true` draws local markdown images inline in Kitty-compatible
+  terminals, with alt text kept visible below the anchor.
+
+### Syntax highlighting
+
+Tree-sitter grammars provide syntax highlighting, while language servers remain
+optional for completion and diagnostics. The optimized install ships 300+
+compiled grammars, so no separate grammar step is required.
+
+Generic `.conf` files fall back to the `properties` grammar, and keys render in
+the theme's bold `property` color while values use `string`. More specific
+globs still win: nginx, systemd, hyprlang, and bitbake keep their grammars, tmux
+config fragments use `bash`, and fontconfig XML uses `xml`.
+
+### Spell checking
+
+Hunspell integration underlines misspellings in red, offers `[s` / `]s` to jump
+between diagnostics, and opens numbered or lettered suggestions with `z=`.
 
 ### Upstream sync
 
