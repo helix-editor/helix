@@ -147,7 +147,9 @@ pub fn raw_regex_prompt(
 
                             if event == PromptEvent::Validate {
                                 // Equivalent to push_jump to store selection just before jump
+                                //TODO:xj; is this a replacement of push_jump?
                                 view.push_jump(doc, (doc_id, snapshot.clone()));
+                                view.jumps.push((doc_id, snapshot.clone(), None));
                             }
 
                             fun(cx, regex, input, event);
