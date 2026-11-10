@@ -1075,3 +1075,33 @@ async fn align_selections_with_varying_columns() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_lsp_restart_untrusted_workspace() -> anyhow::Result<()> {
+    use helix_loader::workspace_trust::{Config, ImplicitTrustLevel, WorkspaceTrust};
+
+    // A fresh directory without a trust entry is untrusted when servers aren't implicitly trusted.
+    let dir = tempfile::tempdir()?;
+    let trust = WorkspaceTrust::new(Config {
+        level: ImplicitTrustLevel::None,
+        prompt: false,
+        ..Config::default()
+    });
+
+    test_key_sequence(
+        &mut helpers::AppBuilder::new()
+            .with_file(dir.path().join("main.rs"), None)
+            .with_workspace_trust(trust)
+            .build()?,
+        Some(":lsp-restart<ret>"),
+        Some(&|app| {
+            let (msg, severity) = app.editor.get_status().unwrap();
+            assert_eq!(&helix_view::editor::Severity::Error, severity);
+            assert!(msg.contains("Workspace is not trusted"), "{msg}");
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
