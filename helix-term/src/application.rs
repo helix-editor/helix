@@ -158,7 +158,7 @@ impl Application {
             // If there are any more files specified, open them
             if files_it.peek().is_some() {
                 let mut nr_of_files = 0;
-                for (file, pos) in files_it {
+                for (file, targets) in files_it {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
@@ -197,12 +197,33 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let selection = pos
-                            .into_iter()
-                            .map(|coords| {
-                                Range::point(pos_at_coords(doc.text().slice(..), coords, true))
-                            })
-                            .collect();
+
+                        let section_pos = targets
+                            .first()
+                            .and_then(|t| t.section.as_ref())
+                            .and_then(|section| {
+                                let syntax = doc.syntax()?;
+                                let text = doc.text().slice(..);
+                                let loader = editor.syn_loader.load();
+                                crate::commands::syntax::find_section_position(
+                                    syntax, &loader, text, doc_id, section,
+                                )
+                            });
+
+                        let selection = if let Some(char_pos) = section_pos {
+                            Selection::point(char_pos)
+                        } else {
+                            targets
+                                .into_iter()
+                                .map(|target| {
+                                    Range::point(pos_at_coords(
+                                        doc.text().slice(..),
+                                        target.position,
+                                        true,
+                                    ))
+                                })
+                                .collect()
+                        };
                         doc.set_selection(view_id, selection);
                     }
                 }
