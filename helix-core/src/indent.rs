@@ -895,7 +895,15 @@ fn init_indent_query<'a, 'b>(
             );
         }
     }
-    Some((node, query_result.indent_captures, opaque_ranges, extended))
+    let delimited = {
+        let mut children = node.children().filter(|child| !is_trivia(child));
+        match (children.next(), children.last()) {
+            (Some(first), Some(last)) => !first.is_named() && !last.is_named(),
+            _ => false,
+        }
+    };
+    let open_ended = extended && !delimited;
+    Some((node, query_result.indent_captures, opaque_ranges, open_ended))
 }
 
 /// Use the syntax tree to determine the indentation for a given position.
@@ -1073,7 +1081,7 @@ fn containment_accounting<'a>(
     // Reuse the standard setup: this applies @extend repositioning / body-descent
     // and returns the per-node capture map (all ancestors of the cursor intersect
     // the query range, so their captures are present).
-    let (start_node, captures, opaque_ranges, extended) = init_indent_query(
+    let (start_node, captures, opaque_ranges, open_ended) = init_indent_query(
         query,
         root,
         text,
@@ -1134,7 +1142,7 @@ fn containment_accounting<'a>(
 
             let node_start = get_node_start_line(text, &node, new_line_byte_pos);
             let mut end = get_node_end_line(text, &node, new_line_byte_pos);
-            if extended && new_line {
+            if open_ended && new_line {
                 end = end.max(target_line);
             }
             // `scope "header"` (set by the query on a brace-less body rule such as
