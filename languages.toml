@@ -99,6 +99,7 @@ nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
 nixd = { command = "nixd" }
+nlpplus-language-server = { command = "nlpplus-language-server", args = ["--stdio"] }
 nls = { command = "nls" }
 nu-lint = { command = "nu-lint", args = ["--lsp"] }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
@@ -2522,7 +2523,7 @@ scope = "source.robot"
 injection-regex = "robot"
 file-types = ["robot", "resource"]
 comment-token = "#"
-indent = { tab-width = 4, unit = " " }
+indent = { tab-width = 4, unit = "    " }
 language-servers = [ "robotcode", "robotframework_ls" ]
 
 [[grammar]]
@@ -5655,3 +5656,64 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "nlpplus"
+scope = "source.nlp"
+injection-regex = "nlp([+][+]|plus)"
+file-types = ["nlp", "pat"]
+comment-token = "#"
+block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = [ "nlpplus-language-server" ]
+indent = { tab-width = 4, unit = "	" }
+
+[[grammar]]
+name = "nlpplus"
+source = { git = "https://github.com/VisualText/tree-sitter-nlpplus", rev = "36cede9602f948c4d061285e8a0b1f91120e3aa4" }
+
+[[language]]
+name = "nlpplus-dict"
+scope = "source.nlpplus.dict"
+file-types = [{ glob = "kb/user/*.dict" }]
+comment-token = "#"
+grammar = "nlpplus_dict"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "nlpplus_dict"
+source = { git = "https://github.com/VisualText/tree-sitter-nlpplus", rev = "36cede9602f948c4d061285e8a0b1f91120e3aa4", subpath = "dict" }
+
+[[language]]
+name = "nlpplus-kbb"
+scope = "source.nlpplus.kbb"
+file-types = ["kbb"]
+comment-token = "#"
+grammar = "nlpplus_kbb"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "nlpplus_kbb"
+source = { git = "https://github.com/VisualText/tree-sitter-nlpplus", rev = "36cede9602f948c4d061285e8a0b1f91120e3aa4", subpath = "kbb" }
+
+[[language]]
+name = "nlpplus-seq"
+scope = "source.nlpplus.seq"
+file-types = [{ glob = "analyzer.seq" }]
+comment-token = "#"
+grammar = "nlpplus_seq"
+indent = { tab-width = 4, unit = "	" }
+
+[[grammar]]
+name = "nlpplus_seq"
+source = { git = "https://github.com/VisualText/tree-sitter-nlpplus", rev = "36cede9602f948c4d061285e8a0b1f91120e3aa4", subpath = "seq" }
+
+[[language]]
+name = "nlpplus-tree"
+scope = "source.nlpplus.tree"
+file-types = [{ glob = "*_log/*.tree" }]
+grammar = "nlpplus_tree"
+indent = { tab-width = 3, unit = "   " }
+
+[[grammar]]
+name = "nlpplus_tree"
+source = { git = "https://github.com/VisualText/tree-sitter-nlpplus", rev = "36cede9602f948c4d061285e8a0b1f91120e3aa4", subpath = "tree" }
