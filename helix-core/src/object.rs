@@ -58,7 +58,7 @@ pub fn select_all_siblings(syntax: &Syntax, text: RopeSlice, selection: Selectio
         let (from, to) = range.into_byte_range(text);
         cursor.reset_to_byte_range(from as u32, to as u32);
 
-        if !cursor.goto_parent_with(|parent| parent.child_count() > 1) {
+        if !cursor.goto_parent_with(|parent| parent.named_child_count() > 1) {
             return vec![range].into_iter();
         }
 
