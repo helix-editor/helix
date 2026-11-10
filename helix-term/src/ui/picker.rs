@@ -45,7 +45,7 @@ use helix_core::{
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
 };
 use helix_view::{
-    editor::Action,
+    editor::{Action, PickerPreviewPosition},
     graphics::{CursorKind, Margin, Modifier, Rect},
     theme::Style,
     view::ViewPosition,
@@ -57,6 +57,7 @@ use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHa
 pub const ID: &str = "picker";
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
+pub const MIN_AREA_HEIGHT_FOR_PREVIEW: u16 = 18;
 /// Biggest file size to preview in bytes
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
@@ -1021,31 +1022,81 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             );
         }
     }
+
+    // Splits `area` into the region used to render the list of matches and, when there is
+    // both a preview to show and enough room to show it, the region used for the preview.
+    //
+    // Depending on `position` the preview (P) is placed on one of the four sides of the
+    // matches (M, which also holds the prompt), defaulting to the right:
+    //
+    //   right (default)   left            down             up
+    //   +----+----+       +----+----+     +---------+       +---------+
+    //   | M  | P  |       | P  | M  |     |    M    |       |    P    |
+    //   |    |    |       |    |    |     +---------+       +---------+
+    //   +----+----+       +----+----+     |    P    |       |    M    |
+    //                                     +---------+       +---------+
+    //
+    // `Auto` resolves to `Right` on landscape terminals and `Down` on portrait ones.
+    fn preview_layout(&self, area: Rect, position: PickerPreviewPosition) -> (Rect, Option<Rect>) {
+        let position = match position {
+            // Terminal cells are roughly twice as tall as they are wide, so an area is
+            // landscape when its width is at least twice its height. Place the preview to
+            // the side on landscape terminals and stack it below on portrait ones.
+            PickerPreviewPosition::Auto => {
+                if area.width >= area.height.saturating_mul(2) {
+                    PickerPreviewPosition::Right
+                } else {
+                    PickerPreviewPosition::Down
+                }
+            }
+            position => position,
+        };
+
+        let render_preview = self.show_preview
+            && self.file_fn.is_some()
+            && if position.is_horizontal() {
+                area.width > MIN_AREA_WIDTH_FOR_PREVIEW
+            } else {
+                area.height > MIN_AREA_HEIGHT_FOR_PREVIEW
+            };
+
+        if !render_preview {
+            return (area, None);
+        }
+
+        let (picker_area, preview_area) = match position {
+            PickerPreviewPosition::Right => {
+                let width = area.width / 2;
+                (area.with_width(width), area.clip_left(width))
+            }
+            PickerPreviewPosition::Left => {
+                let width = area.width / 2;
+                (area.clip_left(width), area.with_width(width))
+            }
+            PickerPreviewPosition::Down => {
+                let height = area.height / 2;
+                (area.with_height(height), area.clip_top(height))
+            }
+            PickerPreviewPosition::Up => {
+                let height = area.height / 2;
+                (area.clip_top(height), area.with_height(height))
+            }
+            // Resolved to a concrete position above.
+            PickerPreviewPosition::Auto => unreachable!(),
+        };
+
+        (picker_area, Some(preview_area))
+    }
 }
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
+        let position = cx.editor.config().file_picker.preview_position;
+        let (picker_area, preview_area) = self.preview_layout(area, position);
 
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
-
-        let picker_width = if render_preview {
-            area.width / 2
-        } else {
-            area.width
-        };
-
-        let picker_area = area.with_width(picker_width);
         self.render_picker(picker_area, surface, cx);
 
-        if render_preview {
-            let preview_area = area.clip_left(picker_width);
+        if let Some(preview_area) = preview_area {
             self.render_preview(preview_area, surface, cx);
         }
     }
@@ -1170,20 +1221,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let position = editor.config().file_picker.preview_position;
+        let (picker_area, _) = self.preview_layout(area, position);
+
         let block = Block::bordered();
         // calculate the inner area inside the box
-        let inner = block.inner(area);
+        let inner = block.inner(picker_area);
 
         // prompt area
-        let render_preview =
-            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
-
-        let picker_width = if render_preview {
-            area.width / 2
-        } else {
-            area.width
-        };
-        let area = inner.clip_left(1).with_height(1).with_width(picker_width);
+        let area = inner.clip_left(1).with_height(1);
 
         self.prompt.cursor(area, editor)
     }
