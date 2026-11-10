@@ -1,5 +1,5 @@
 use crate::register::Registers;
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode;
 use std::{borrow::Cow, fmt::Write};
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ impl Info {
 
         let item_width = body
             .iter()
-            .map(|(item, _)| item.as_ref().width())
+            .map(|(item, _)| unicode::width(item.as_ref()))
             .max()
             .unwrap();
         let mut text = String::new();
@@ -51,7 +51,7 @@ impl Info {
 
         Self {
             title,
-            width: text.lines().map(|l| l.width()).max().unwrap() as u16,
+            width: text.lines().map(unicode::width).max().unwrap() as u16,
             height: body.len() as u16,
             text,
         }

@@ -3,7 +3,7 @@ use crate::{
     buffer::{Buffer, Cell},
     terminal::Config,
 };
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::unicode;
 use helix_view::graphics::{CursorKind, Rect};
 use std::{fmt::Write, io};
 
@@ -30,7 +30,7 @@ fn buffer_view(buffer: &Buffer) -> String {
             } else {
                 overwritten.push((x, &c.symbol))
             }
-            skip = std::cmp::max(skip, c.symbol.width()).saturating_sub(1);
+            skip = std::cmp::max(skip, unicode::width(&c.symbol)).saturating_sub(1);
         }
         view.push('"');
         if !overwritten.is_empty() {
