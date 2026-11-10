@@ -5,6 +5,12 @@ to provide the best no-hassle experience: a single bottom line, inline
 command/search prompts, and a startup dashboard that stays out of your way —
 all driven by plain `config.toml`, with no plugins or package manager.
 
+## Screenshots
+
+![RX-Helix dashboard](screenshot.png)
+
+![Editing a Rust codebase in RX-Helix, with the current function definition highlighted](screenshot-editing.png)
+
 ## Highlights
 
 - **One-line UI** — the statusline, `:` command line, and `/` search share the
