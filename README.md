@@ -160,6 +160,9 @@ built, later builds only do fast revision checks.
 ## Configuration
 
 Helix reads `~/.config/helix/config.toml` and `~/.config/helix/themes/*.toml`.
+Additional `~/.config/helix/config.d/*.toml` modules are merged alphabetically
+on top of `config.toml`, including nested tables and appended arrays. A
+ready-to-copy Vim keybind module lives in `contrib/config.d/vim.toml`.
 
 A complete drop-in example is in
 [`contrib/rx-helix/config.toml`](contrib/rx-helix/config.toml). Copy it to
