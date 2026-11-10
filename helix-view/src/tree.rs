@@ -1,5 +1,6 @@
 use crate::{graphics::Rect, View, ViewId};
 use slotmap::SlotMap;
+use std::ops::{Index, IndexMut};
 
 // the dimensions are recomputed on window resize/tree change.
 //
@@ -27,6 +28,16 @@ pub struct Node {
 pub enum Content {
     View(Box<View>),
     Container(Box<Container>),
+}
+
+pub enum Resize {
+    Shrink,
+    Grow,
+}
+
+pub enum Dimension {
+    Width,
+    Height,
 }
 
 impl Node {
@@ -63,15 +74,118 @@ pub enum Direction {
 #[derive(Debug)]
 pub struct Container {
     layout: Layout,
-    children: Vec<ViewId>,
+    children: Children,
     area: Rect,
+}
+
+#[derive(Debug)]
+struct Children {
+    pub views: Vec<ViewId>,
+    pub bounds: Vec<ContainerBounds>,
+}
+
+impl Children {
+    fn new() -> Self {
+        Children {
+            views: Vec::new(),
+            bounds: Vec::new(),
+        }
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, ViewId> {
+        self.views.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        debug_assert_eq!(self.views.len(), self.bounds.len());
+        self.views.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl Children {
+    fn push(&mut self, node: ViewId) {
+        self.views.push(node);
+
+        let portion = 1.0 / self.views.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.bounds {
+            bound.portion *= prev;
+        }
+
+        self.bounds.push(ContainerBounds { portion });
+    }
+
+    fn insert(&mut self, index: usize, node: ViewId) {
+        self.views.insert(index, node);
+
+        let portion = 1.0 / self.views.len() as f64;
+
+        let prev = 1.0 - portion;
+        for bound in &mut self.bounds {
+            bound.portion *= prev;
+        }
+
+        self.bounds.insert(index, ContainerBounds { portion });
+    }
+
+    fn pop(&mut self) -> Option<ViewId> {
+        let bound = self.bounds.pop()?;
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.bounds {
+            bound.portion /= prev;
+        }
+
+        self.views.pop()
+    }
+
+    fn remove(&mut self, index: usize) -> ViewId {
+        let bound = self.bounds.remove(index);
+
+        let prev = 1.0 - bound.portion;
+        for bound in &mut self.bounds {
+            bound.portion /= prev;
+        }
+
+        self.views.remove(index)
+    }
+}
+
+impl<Idx> Index<Idx> for Children
+where
+    Idx: std::slice::SliceIndex<[ViewId]>,
+{
+    type Output = Idx::Output;
+    fn index(&self, index: Idx) -> &Self::Output {
+        self.views.index(index)
+    }
+}
+
+impl<Idx> IndexMut<Idx> for Children
+where
+    Idx: std::slice::SliceIndex<[ViewId]>,
+{
+    #[inline(always)]
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        self.views.index_mut(index)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ContainerBounds {
+    portion: f64,
 }
 
 impl Container {
     pub fn new(layout: Layout) -> Self {
         Self {
             layout,
-            children: Vec::new(),
+            children: Children::new(),
             area: Rect::default(),
         }
     }
@@ -383,11 +497,12 @@ impl Tree {
                         Layout::Horizontal => {
                             let len = container.children.len();
 
-                            let height = area.height / len as u16;
-
                             let mut child_y = area.y;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let bounds = container.children.bounds[i];
+                                let height = (area.height as f64 * bounds.portion).floor() as u16;
+
                                 let mut area = Rect::new(
                                     container.area.x,
                                     child_y,
@@ -396,7 +511,7 @@ impl Tree {
                                 );
                                 child_y += height;
 
-                                // last child takes the remaining width because we can get uneven
+                                // last child takes the remaining height because we can get uneven
                                 // space from rounding
                                 if i == len - 1 {
                                     area.height = container.area.y + container.area.height - area.y;
@@ -413,11 +528,13 @@ impl Tree {
                             let total_gap = inner_gap * len_u16.saturating_sub(2);
 
                             let used_area = area.width.saturating_sub(total_gap);
-                            let width = used_area / len_u16;
 
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
+                                let bounds = container.children.bounds[i];
+                                let width = (used_area as f64 * bounds.portion).floor() as u16;
+
                                 let mut area = Rect::new(
                                     child_x,
                                     container.area.y,
@@ -475,7 +592,7 @@ impl Tree {
                 // It's possible to move in the desired direction within
                 // the parent container so an attempt is made to find the
                 // correct child.
-                match self.find_child(id, &parent_container.children, direction) {
+                match self.find_child(id, &parent_container.children.views, direction) {
                     // Child is found, search is ended
                     Some(id) => Some(id),
                     // A child is not found. This could be because of either two scenarios
@@ -592,6 +709,85 @@ impl Tree {
                 Layout::Vertical => Layout::Horizontal,
                 Layout::Horizontal => Layout::Vertical,
             };
+            self.recalculate();
+        }
+    }
+
+    fn find_container(&mut self, layout: Layout) -> Option<(&mut Container, usize)> {
+        let mut focus = self.focus;
+        let mut parent = self.nodes[focus].parent;
+
+        let mut found = false;
+        while parent != focus {
+            let Content::Container(container) = &self.nodes[parent].content else {
+                unreachable!("parent should be a container");
+            };
+
+            if container.layout == layout {
+                found = true;
+                break;
+            }
+
+            focus = parent;
+            parent = self.nodes[focus].parent;
+        }
+
+        if found {
+            let Content::Container(container) = &mut self.nodes[parent].content else {
+                unreachable!("parent should be a container");
+            };
+
+            let idx = container.children.iter().position(|node| *node == focus)?;
+            Some((container, idx))
+        } else {
+            None
+        }
+    }
+
+    pub fn resize_view(&mut self, resize_type: Resize, dimension: Dimension, count: usize) {
+        let layout = match dimension {
+            Dimension::Width => Layout::Vertical,
+            Dimension::Height => Layout::Horizontal,
+        };
+
+        if let Some((container, idx)) = self.find_container(layout) {
+            if container.children.len() == 1 {
+                return;
+            }
+
+            let diff = match dimension {
+                Dimension::Width => 1.0 / container.area.width as f64 * 2.0,
+                Dimension::Height => 1.0 / container.area.height as f64 * 2.0,
+            };
+            let diff = match resize_type {
+                Resize::Shrink => -diff,
+                Resize::Grow => diff,
+            };
+            let diff = diff * count as f64;
+
+            let min = 0.05;
+            let max = 1.0 - ((container.children.len() - 1) as f64 * min);
+
+            let bounds = &mut container.children.bounds;
+            if bounds[idx].portion <= min && bounds[idx].portion >= max {
+                return;
+            }
+
+            let portion = bounds[idx].portion;
+            bounds[idx].portion = f64::clamp(portion + diff, min, max);
+
+            let diff = bounds[idx].portion - portion;
+            if let Some(prev) = idx.checked_sub(1) {
+                if let Some(next) = bounds.get_mut(idx + 1) {
+                    next.portion -= diff / 2.0;
+                    bounds[prev].portion -= diff / 2.0;
+                } else {
+                    bounds[prev].portion -= diff;
+                }
+            } else if let Some(next) = bounds.get_mut(idx + 1) {
+                next.portion -= diff;
+            }
+
             self.recalculate();
         }
     }

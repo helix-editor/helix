@@ -155,6 +155,10 @@
 | `goto_prev_change` | Goto previous change | normal: `` [g ``, select: `` [g `` |
 | `goto_first_change` | Goto first change | normal: `` [G ``, select: `` [G `` |
 | `goto_last_change` | Goto last change | normal: `` ]G ``, select: `` ]G `` |
+| `grow_view_width` | Grow focused container width | normal: `` <C-w>rl ``, `` <space>wrl ``, `` <C-w>r<right> ``, `` <space>wr<right> ``, select: `` <C-w>rl ``, `` <space>wrl ``, `` <C-w>r<right> ``, `` <space>wr<right> `` |
+| `shrink_view_width` | Shrink focused container width | normal: `` <C-w>rh ``, `` <space>wrh ``, `` <C-w>r<left> ``, `` <space>wr<left> ``, select: `` <C-w>rh ``, `` <space>wrh ``, `` <C-w>r<left> ``, `` <space>wr<left> `` |
+| `grow_view_height` | Grow focused container height | normal: `` <C-w>rk ``, `` <C-w>r<up> ``, `` <space>wrk ``, `` <space>wr<up> ``, select: `` <C-w>rk ``, `` <C-w>r<up> ``, `` <space>wrk ``, `` <space>wr<up> `` |
+| `shrink_view_height` | Shrink focused container height | normal: `` <C-w>rj ``, `` <space>wrj ``, `` <C-w>r<down> ``, `` <space>wr<down> ``, select: `` <C-w>rj ``, `` <space>wrj ``, `` <C-w>r<down> ``, `` <space>wr<down> `` |
 | `goto_line_start` | Goto line start | normal: `` gh ``, `` <home> ``, select: `` gh ``, insert: `` <home> `` |
 | `goto_line_end` | Goto line end | normal: `` gl ``, `` <end> ``, select: `` gl `` |
 | `goto_column` | Goto column | normal: `` g\| `` |
