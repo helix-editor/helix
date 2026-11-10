@@ -306,9 +306,10 @@ text. The Space/which-key menu uses `ui.popup.info.border/key/desc/title`.
 The accent is the background color of the statusline scope, reused as a
 foreground color. Missing statusline scopes fall back to `ui.text`.
 
-The built-in logo has two forms. The horizontal form is the dot-matrix mark with a small `ʜᴇʟɪx` caption and
-uses the primary/secondary/tertiary accents above. The vertical form pairs the
-dot mark with the `HELIX` wordmark and uses the header style.
+The built-in logo has two forms. The horizontal form is the dot-matrix mark
+with a small `ʀx-ʜᴇʟɪx` caption and uses the primary/secondary/tertiary accents
+above. The vertical form pairs the dot mark with the `RX-HELIX` wordmark and
+uses the header style.
 
 ### `[editor.markdown]` Section
 

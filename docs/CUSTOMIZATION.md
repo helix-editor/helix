@@ -270,9 +270,10 @@ header-file = "~/.config/helix/logo.txt"
 ```
 
 When both are empty, the built-in logo is drawn. Horizontal uses the dot-matrix
-mark with a small `ʜᴇʟɪx` caption; vertical pairs the dot mark with the `HELIX`
-wordmark. Set `default-logo = false` to draw nothing instead. Content wider or
-taller than the terminal is clipped and reported once in the statusline.
+mark with a small `ʀx-ʜᴇʟɪx` caption; vertical pairs the dot mark with the
+`RX-HELIX` wordmark. Set `default-logo = false` to draw nothing instead.
+Content wider or taller than the terminal is clipped and reported once in the
+statusline.
 
 ### Items
 

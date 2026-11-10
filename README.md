@@ -14,7 +14,7 @@ all driven by plain `config.toml`, with no plugins or package manager.
 - **Configurable statusline** — per-region transparency, responsive short mode
   labels, reserved-space control, accent elements.
 - **Startup dashboard** — `auto` layout, live resize switching, content-sized
-  menus, built-in dot-matrix/HELIX logo, shortcuts that run any Helix command.
+  menus, built-in dot-matrix/RX-HELIX logo, shortcuts that run any Helix command.
 - **Bufferline** — fixed 24-cell tabs, a lighter active tab, a left indicator,
   a modified dot, and clean overflow for long names.
 - **Themed pickers** — Telescope/mini.pick-style roles, centered Quick Switch
@@ -66,7 +66,7 @@ Shown when Helix starts without files:
   the item block shrink to fit, and falls back to the orientation with the
   smallest overflow.
 - Optional header text, `header-file`, or the built-in dot-matrix mark (paired
-  with the `HELIX` wordmark in vertical layout).
+  with the `RX-HELIX` wordmark in vertical layout).
 - Shortcut rows with icons, descriptions, and any Helix command as the action.
 - Key-hint and hover popups stay above the statusline.
 - Unbound keys are swallowed while the dashboard is visible; cancelling a picker
