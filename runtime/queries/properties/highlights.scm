@@ -1,6 +1,6 @@
 (comment) @comment
 
-(key) @attribute
+(key) @property
 
 (value) @string
 

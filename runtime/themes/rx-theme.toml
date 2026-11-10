@@ -40,6 +40,7 @@ inherits = "noctalia"
 "variable.builtin" = { fg = "error", modifiers = ["italic"] }
 "variable.parameter" = "onSurface"
 "variable.other.member" = "onSurface"
+"property" = { fg = "tertiary", modifiers = ["bold"] }
 
 "label" = "secondary"
 "punctuation" = "onSurface"
