@@ -3,6 +3,7 @@
 | ada | ✓ | ✓ |  |  |  | `ada_language_server` |
 | adl | ✓ | ✓ | ✓ |  |  |  |
 | agda | ✓ |  |  |  |  |  |
+| al | ✓ | ✓ | ✓ | ✓ |  |  |
 | alloy | ✓ |  |  |  |  |  |
 | amber | ✓ | ✓ | ✓ | ✓ | ✓ | `amber-lsp` |
 | astro | ✓ |  |  |  |  | `astro-ls` |
