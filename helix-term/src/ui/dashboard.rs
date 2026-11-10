@@ -402,15 +402,6 @@ const LOGO_L: [&str; 6] = [
 
 const LOGO_I: [&str; 6] = ["██╗", "██║", "██║", "██║", "██║", "╚═╝"];
 
-const LOGO_R: [&str; 6] = [
-    "██████╗ ",
-    "██╔══██╗",
-    "██████╔╝",
-    "██╔══██╗",
-    "██║  ██║",
-    "╚═╝  ╚═╝",
-];
-
 const LOGO_X: [&str; 6] = [
     "██╗  ██╗",
     "╚██╗██╔╝",
@@ -419,8 +410,6 @@ const LOGO_X: [&str; 6] = [
     "██╔╝ ██╗",
     "╚═╝  ╚═╝",
 ];
-
-const LOGO_DASH: [&str; 6] = ["     ", "     ", "═════", "     ", "     ", "     "];
 
 const LOGO_DOTS: &str = "\
 ==            ,
@@ -486,12 +475,7 @@ fn dots_logo(theme: &Theme) -> Block {
 fn vertical_logo(theme: &Theme) -> Block {
     let header = dashboard_style(theme, "header", "ui.text");
     let dots = dots_logo(theme);
-    let helix = letters_block(
-        &[
-            &LOGO_R, &LOGO_X, &LOGO_DASH, &LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X,
-        ],
-        header,
-    );
+    let helix = letters_block(&[&LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X], header);
 
     let dots_width = dots.width();
     let helix_width = helix.width();
@@ -749,15 +733,13 @@ mod tests {
     }
 
     #[test]
-    fn rx_helix_wordmark_has_expected_size() {
+    fn helix_wordmark_has_expected_size() {
         let block = letters_block(
-            &[
-                &LOGO_R, &LOGO_X, &LOGO_DASH, &LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X,
-            ],
+            &[&LOGO_H, &LOGO_E, &LOGO_L, &LOGO_I, &LOGO_X],
             Style::default(),
         );
         assert_eq!(block.height(), 6);
-        assert_eq!(block.width(), 63);
+        assert_eq!(block.width(), 39);
     }
 
     #[test]
