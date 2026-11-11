@@ -171,8 +171,10 @@ impl WorkspaceTrust {
         }
     }
 
-    /// A trust state that grants every capability. Use for non-interactive contexts (CLI grammar
-    /// build, `hx --health`) where prompting isn't meaningful.
+    /// A trust state that grants every capability. Only for tests and other callers that know the
+    /// workspace is trusted: commands that run in an arbitrary working directory, like
+    /// `hx --health`, must not use it because it makes a workspace's `.helix` files load without
+    /// any consent.
     pub fn fully_trusted() -> Self {
         Self::new(Config {
             level: ImplicitTrustLevel::Insecure,

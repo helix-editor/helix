@@ -72,6 +72,17 @@ pub fn get_language(name: &str) -> Result<Option<Grammar>> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Option<Grammar>> {
+    // The name selects a library inside a runtime `grammars` directory. Joining an absolute path
+    // or a `..` traversal would instead load a library from anywhere on the file system.
+    let mut components = Path::new(name).components();
+    if !matches!(
+        (components.next(), components.next()),
+        (Some(std::path::Component::Normal(_)), None)
+    ) {
+        log::warn!("ignoring invalid grammar name {name:?}");
+        return Ok(None);
+    }
+
     let mut rel_library_path = PathBuf::new().join("grammars").join(name);
     rel_library_path.set_extension(DYLIB_EXTENSION);
     let library_path = crate::runtime_file(&rel_library_path);
@@ -90,7 +101,7 @@ fn ensure_git_is_available() -> Result<()> {
 
 /// Print a notice if the current workspace has a `.helix/languages.toml` that we *would* have
 /// merged but the workspace-trust gate is keeping us from.
-fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
+pub fn warn_if_workspace_languages_skipped(trust: &crate::workspace_trust::WorkspaceTrust) {
     let workspace_languages = crate::workspace_lang_config_file();
     if !workspace_languages.exists() {
         return;
@@ -755,4 +766,32 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
     let path = crate::runtime_file(PathBuf::new().join("queries").join(language).join(filename));
     std::fs::read_to_string(path)
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod test {
+    use super::*;
+
+    /// A grammar name comes from languages.toml (and, via `hx --health <lang>`, from an untrusted
+    /// workspace `.helix/languages.toml`). It must only select a library inside a runtime
+    /// `grammars/` directory; an absolute path or `..` traversal must never reach dlopen.
+    #[test]
+    fn get_language_does_not_load_library_outside_runtime_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let stem = dir.path().join("planted");
+        // Not a real shared object: a dlopen attempt fails harmlessly with `DlOpen`.
+        fs::write(
+            stem.with_extension(DYLIB_EXTENSION),
+            b"not a shared library",
+        )
+        .unwrap();
+
+        let name = stem.to_str().unwrap();
+        let res = get_language(name);
+        assert!(
+            matches!(res, Ok(None)),
+            "grammar name {name:?} escaped the runtime grammars dir: {:?}",
+            res.as_ref().map(Option::is_some)
+        );
+    }
 }

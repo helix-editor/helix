@@ -61,6 +61,14 @@ impl TsFeature {
     }
 }
 
+/// Workspace trust as the editor itself would apply it in the current directory, so that
+/// `hx --health` reports the configuration the editor loads and never reads a workspace's
+/// `.helix` files that the editor would ignore.
+fn workspace_trust() -> helix_loader::workspace_trust::WorkspaceTrust {
+    let config = Config::load_default().unwrap_or_default();
+    helix_loader::workspace_trust::WorkspaceTrust::new((&config.editor.workspace_trust).into())
+}
+
 /// Display general diagnostics.
 pub fn general() -> std::io::Result<()> {
     let stdout = std::io::stdout();
@@ -163,7 +171,11 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let trust = helix_loader::workspace_trust::WorkspaceTrust::fully_trusted();
+    let trust = workspace_trust();
+    // `get_grammar_names` has already printed this note when a selection is given.
+    if selection.is_none() {
+        helix_loader::grammar::warn_if_workspace_languages_skipped(&trust);
+    }
     let mut syn_loader_conf = match user_lang_config(&trust) {
         Ok(conf) => conf,
         Err(err) => {
@@ -284,7 +296,8 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let trust = helix_loader::workspace_trust::WorkspaceTrust::fully_trusted();
+    let trust = workspace_trust();
+    helix_loader::grammar::warn_if_workspace_languages_skipped(&trust);
     let syn_loader_conf = match user_lang_config(&trust) {
         Ok(conf) => conf,
         Err(err) => {
