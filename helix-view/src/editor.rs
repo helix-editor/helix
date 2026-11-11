@@ -12,6 +12,7 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
+    view::Jump,
     Document, DocumentId, View, ViewId,
 };
 use helix_event::dispatch;
@@ -1889,7 +1890,6 @@ impl Editor {
 
         for (view, _) in self.tree.views_mut() {
             let doc = doc_mut!(self, &view.doc);
-            view.sync_changes(doc);
             view.gutters = config.gutters.clone();
             view.ensure_cursor_in_view(doc, config.scrolloff)
         }
@@ -1903,7 +1903,6 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
 
         doc.ensure_view_init(view.id);
-        view.sync_changes(doc);
         doc.mark_as_focused();
 
         view.ensure_cursor_in_view(doc, scrolloff)
@@ -1955,8 +1954,7 @@ impl Editor {
                         view.remove_document(&id);
                     }
                 } else {
-                    let jump = (view.doc, doc.selection(view.id).clone());
-                    view.push_jump(doc, jump);
+                    view.push_jump(doc);
                     // Set last accessed doc if it is a different document
                     if doc.id != id {
                         view.add_to_history(view.doc);
@@ -2261,11 +2259,6 @@ impl Editor {
         let (view, doc) = current!(self);
         doc.append_changes_to_history(view);
         self.ensure_cursor_in_view(view_id);
-        // Update jumplist selections with new document changes.
-        for (view, _focused) in self.tree.views_mut() {
-            let doc = doc_mut!(self, &view.doc);
-            view.sync_changes(doc);
-        }
 
         let prev_id = std::mem::replace(&mut self.tree.focus, view_id);
         doc_mut!(self).mark_as_focused();
@@ -2538,24 +2531,15 @@ impl Editor {
         self.debug_adapters.current_stack_frame()
     }
 
-    /// Returns the id of a view that this doc contains a selection for,
-    /// making sure it is synced with the current changes
-    /// if possible or there are no selections returns current_view
-    /// otherwise uses an arbitrary view
+    /// Returns the id of a view that this doc contains a selection for, preferring the current
+    /// view. If there are no selections the current view is initialized for the doc.
     pub fn get_synced_view_id(&mut self, id: DocumentId) -> ViewId {
         let current_view = view_mut!(self);
         let doc = self.documents.get_mut(&id).unwrap();
         if doc.selections().contains_key(&current_view.id) {
-            // only need to sync current view if this is not the current doc
-            if current_view.doc != id {
-                current_view.sync_changes(doc);
-            }
             current_view.id
         } else if let Some(view_id) = doc.selections().keys().next() {
-            let view_id = *view_id;
-            let view = self.tree.get_mut(view_id);
-            view.sync_changes(doc);
-            view_id
+            *view_id
         } else {
             doc.ensure_view_init(current_view.id);
             current_view.id
@@ -2573,34 +2557,26 @@ impl Editor {
     }
 
     pub fn jump_forward(&mut self, view_id: ViewId, count: usize) {
-        if let Some((doc_id, selection)) = view_mut!(self, view_id).jumps.forward(count).cloned() {
-            self.jump_to(view_id, doc_id, selection);
+        if let Some(jump) = view_mut!(self, view_id).jumps.forward(count).cloned() {
+            self.jump_to(view_id, jump);
         }
     }
 
     pub fn jump_backward(&mut self, view_id: ViewId, count: usize) {
         let view = view_mut!(self, view_id);
         let doc = doc_mut!(self, &view.doc);
-        // `backward` may push the current selection (valid at the document's
-        // current revision) onto the jumplist. Sync first so the view's
-        // `doc_revisions` matches, otherwise that entry would be left ahead of
-        // it and a later sync would map it out of bounds.
-        view.sync_changes(doc);
-        if let Some((doc_id, selection)) = view.jumps.backward(view_id, doc, count).cloned() {
-            self.jump_to(view_id, doc_id, selection);
+        // `backward` may add the current selection, which refers to the current revision.
+        doc.append_changes_to_history(view);
+        if let Some(jump) = view.jumps.backward(view_id, doc, count).cloned() {
+            self.jump_to(view_id, jump);
         }
     }
 
-    fn jump_to(&mut self, view_id: ViewId, dest_doc_id: DocumentId, mut selection: Selection) {
-        let view = view_mut!(self, view_id);
-        let old_doc_id = view.doc;
-        if old_doc_id != dest_doc_id {
-            let new_doc = doc_mut!(self, &dest_doc_id);
-            if let Some(transaction) = view.changes_to_sync(new_doc) {
-                let text = new_doc.text().slice(..);
-                selection = selection.map(transaction.changes()).ensure_invariants(text);
-            }
-            self.replace_document_in_view(view_id, dest_doc_id);
+    fn jump_to(&mut self, view_id: ViewId, jump: Jump) {
+        let selection = jump.selection(doc!(self, &jump.doc_id));
+        let old_doc_id = view!(self, view_id).doc;
+        if old_doc_id != jump.doc_id {
+            self.replace_document_in_view(view_id, jump.doc_id);
             dispatch(DocumentFocusLost {
                 editor: self,
                 doc: old_doc_id,

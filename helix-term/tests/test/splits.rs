@@ -169,7 +169,7 @@ async fn test_changes_in_splits_apply_to_all_views() -> anyhow::Result<()> {
 
     // See <https://github.com/helix-editor/helix/issues/4957>.
     // This sequence undoes part of the history and then adds new changes, creating a
-    // new branch in the history tree. `View::sync_changes` applies transactions down
+    // new branch in the history tree. Mapping a jump to the current revision applies transactions down
     // and up to the lowest common ancestor in the path between old and new revision
     // numbers. If we apply these up/down transactions in the wrong order, this case
     // panics.
@@ -217,28 +217,10 @@ async fn test_changes_in_splits_jumplist_sync() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_reload_all_with_split_jumplist() -> anyhow::Result<()> {
-    // See reproduction from <https://github.com/helix-editor/helix/issues/9830>
-    //
-    // The key sequence:
-    // * <C-w>s   Horizontal split: two views on the same document.
-    // * ]<space> Add an empty line below, growing the document.
-    // * %        Select the whole document.
-    // * 2G       Go to line 2. `goto_line` calls `push_jump`, recording a jump
-    //            whose selection is valid at the *current* (grown) revision.
-    // * ms/      Surround-add `/`, growing the document again.
-    // * :rla     reload-all: re-reads the file from disk (shrinking the buffer
-    //            back to its original contents) but only syncs the first view of
-    //            each document, leaving the other split's `doc_revisions` stale.
-    // * %J       Select-all and join, forcing a sync of the stale view.
-    //
-    // On the unfixed code the jumplist entry recorded by `2G` is left ahead of
-    // the stale view's `doc_revisions`; once that view is synced, the entry is
-    // mapped through a changeset whose pre-image predates it and
-    // `ChangeSet::update_positions` panics.
+    // See reproduction from <https://github.com/helix-editor/helix/issues/9830>: jumps in the
+    // second split have to be mapped through the reload.
     use std::io::Write;
     let mut file = tempfile::NamedTempFile::new()?;
-    // `:reload-all` re-reads from disk, so the file must have on-disk contents
-    // for the reload to shrink the (grown) buffer back down.
     file.write_all(b"line1\nline2\nline3\n")?;
     file.flush()?;
 
@@ -248,9 +230,6 @@ async fn test_reload_all_with_split_jumplist() -> anyhow::Result<()> {
 
     test_key_sequence(
         &mut app,
-        // The trailing `<C-w>q` closes the split so a single window remains for
-        // the harness's automatic `:q!` teardown. It also exercises the sync
-        // that runs when a window is closed.
         Some("<C-w>s]<space>%2Gms/:rla<ret>%J<C-w>q"),
         Some(&|app| {
             helpers::assert_status_not_error(&app.editor);
