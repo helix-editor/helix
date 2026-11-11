@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::thread;
+use std::time::{Duration, SystemTime};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -64,6 +65,24 @@ pub enum GrammarSource {
 
 const BUILD_TARGET: &str = env!("BUILD_TARGET");
 const REMOTE_NAME: &str = "origin";
+
+// Remotes such as GitHub sometimes reject or drop connections, especially when
+// many grammars are fetched in parallel, so failed fetches are retried with
+// exponential backoff.
+const FETCH_ATTEMPTS: u32 = 5;
+const FETCH_INITIAL_BACKOFF: Duration = Duration::from_secs(2);
+
+// Fetch errors that retrying cannot fix: the repository does not exist or
+// needs credentials, or the revision does not exist.
+const PERMANENT_FETCH_ERRORS: &[&str] = &[
+    // GitHub and GitLab answer a request for a missing repository by asking
+    // for credentials, which fails because terminal prompts are disabled.
+    "could not read Username",
+    "Authentication failed",
+    "not found",
+    "not our ref",
+    "couldn't find remote ref",
+];
 
 #[cfg(target_arch = "wasm32")]
 pub fn get_language(name: &str) -> Result<Option<Grammar>> {
@@ -389,7 +408,22 @@ impl VendoredGrammar {
     fn fetch(&self, remote: &str, rev: &str, object_format: GitObjectFormat) -> Result<()> {
         self.reinit(remote, object_format)?;
 
-        git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev])?;
+        let mut backoff = FETCH_INITIAL_BACKOFF;
+        for attempt in 1.. {
+            match git(&self.dir, ["fetch", "--depth", "1", REMOTE_NAME, rev]) {
+                Ok(_) => break,
+                Err(error) if attempt < FETCH_ATTEMPTS && !is_permanent_fetch_error(&error) => {
+                    println!(
+                        "Fetching {remote} failed (attempt {attempt}/{FETCH_ATTEMPTS}), \
+                         retrying in {}s: {error}",
+                        backoff.as_secs()
+                    );
+                    thread::sleep(backoff);
+                    backoff *= 2;
+                }
+                Err(error) => return Err(error),
+            }
+        }
         git(&self.dir, ["checkout", rev])?;
 
         Ok(())
@@ -468,6 +502,13 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
     })
 }
 
+fn is_permanent_fetch_error(error: &anyhow::Error) -> bool {
+    let message = error.to_string();
+    PERMANENT_FETCH_ERRORS
+        .iter()
+        .any(|pattern| message.contains(pattern))
+}
+
 // A wrapper around 'git' commands which returns stdout in success and a
 // helpful error message showing the command, stdout, and stderr in error.
 fn git<I, S>(repository_dir: &Path, args: I) -> Result<String>
@@ -482,6 +523,10 @@ where
         //      not prompt on the terminal (e.g., when asking for HTTP authentication).
         // https://git-scm.com/docs/git.html#Documentation/git.txt-GITTERMINALPROMPT
         .env("GIT_TERMINAL_PROMPT", "0")
+        // `LC_ALL`:
+        //      Keeps git's messages in English, so `is_permanent_fetch_error`
+        //      can recognize them regardless of the user's locale.
+        .env("LC_ALL", "C")
         .current_dir(repository_dir)
         .output()?;
 
@@ -755,4 +800,38 @@ fn mtime(path: &Path) -> Result<SystemTime> {
 pub fn load_runtime_file(language: &str, filename: &str) -> Result<String, std::io::Error> {
     let path = crate::runtime_file(PathBuf::new().join("queries").join(language).join(filename));
     std::fs::read_to_string(path)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn fetch_error(stderr: &str) -> anyhow::Error {
+        anyhow!("Git command failed.\nStdout: \nStderr: {stderr}")
+    }
+
+    #[test]
+    fn permanent_fetch_errors_are_not_retried() {
+        for stderr in [
+            "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+            "fatal: Authentication failed for 'https://github.com/owner/repo/'",
+            "remote: Repository not found.\nfatal: repository 'https://github.com/owner/repo/' not found",
+            "fatal: remote error: upload-pack: not our ref 0000000000000000000000000000000000000001",
+            "fatal: couldn't find remote ref no-such-branch",
+        ] {
+            assert!(is_permanent_fetch_error(&fetch_error(stderr)), "{stderr}");
+        }
+    }
+
+    #[test]
+    fn transient_fetch_errors_are_retried() {
+        for stderr in [
+            "fatal: unable to access 'https://github.com/owner/repo/': Could not resolve host: github.com",
+            "fatal: unable to access 'https://github.com/owner/repo/': Failed to connect to github.com port 443 after 0 ms: Could not connect to server",
+            "fatal: unable to access 'https://github.com/owner/repo/': Recv failure: Connection reset by peer",
+            "error: RPC failed; HTTP 429 curl 22 The requested URL returned error: 429",
+        ] {
+            assert!(!is_permanent_fetch_error(&fetch_error(stderr)), "{stderr}");
+        }
+    }
 }
