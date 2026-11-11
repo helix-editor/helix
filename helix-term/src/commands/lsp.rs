@@ -1268,6 +1268,7 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
     let future = language_server
         .text_document_document_highlight(doc.identifier(), pos, None)
         .unwrap();
+    let (doc_id, view_id, version) = (doc.id(), view.id, doc.version());
 
     cx.callback(
         future,
@@ -1276,7 +1277,14 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
                 Some(highlights) if !highlights.is_empty() => highlights,
                 _ => return,
             };
-            let (view, doc) = current!(editor);
+            // Only apply the response to the document and view it was requested for.
+            if !editor.tree.contains(view_id)
+                || view!(editor, view_id).doc != doc_id
+                || doc!(editor, &doc_id).version() != version
+            {
+                return;
+            }
+            let (view, doc) = (view!(editor, view_id), doc_mut!(editor, &doc_id));
             let text = doc.text();
             let pos = doc.selection(view.id).primary().cursor(text.slice(..));
 
@@ -1292,7 +1300,10 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
                     }
                     range
                 })
-                .collect();
+                .collect::<helix_core::SmallVec<_>>();
+            if ranges.is_empty() {
+                return;
+            }
             let selection = Selection::new(ranges, primary_index);
             doc.set_selection(view.id, selection);
         },
