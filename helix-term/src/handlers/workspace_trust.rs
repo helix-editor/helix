@@ -67,7 +67,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
 }
 
 fn prompt(workspace: PathBuf, compositor: &mut Compositor) {
-    let select = select(workspace);
+    let select = select(workspace).with_id(ID);
     compositor.replace_or_push(ID, select);
 }
 
