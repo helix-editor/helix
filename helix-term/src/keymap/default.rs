@@ -60,6 +60,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => move_line_down,
             "." => goto_last_modification,
             "w" => goto_word,
+            "W" => goto_words,
         },
         ":" => command_mode,
 
