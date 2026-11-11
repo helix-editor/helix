@@ -1,7 +1,7 @@
 use ropey::RopeSlice;
 use smallvec::SmallVec;
 
-use crate::{Range, Rope, Selection, Tendril, chars::char_is_word};
+use crate::{chars::char_is_word, Range, Rope, Selection, Tendril};
 use std::{borrow::Cow, iter::once};
 
 /// (from, to, replacement)
@@ -183,8 +183,8 @@ impl ChangeSet {
         let mut changes = Self::with_capacity(len); // TODO: max(a, b), shrink_to_fit() afterwards
 
         loop {
-            use Operation::*;
             use std::cmp::Ordering;
+            use Operation::*;
             match (head_a, head_b) {
                 // we are done
                 (None, None) => {
