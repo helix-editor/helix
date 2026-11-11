@@ -422,33 +422,33 @@ impl<'a> TextRenderer<'a> {
         }
     }
 
+    /// The surface row of row `y` of the text area, or `None` if it is scrolled out of view.
+    fn surface_row(&self, y: u16) -> Option<u16> {
+        let row = (y as usize).checked_sub(self.offset.row)?;
+        Some(row as u16 + self.viewport.y)
+    }
+
     pub fn set_string(&mut self, x: u16, y: u16, string: &str, style: Style) {
-        if (y as usize) < self.offset.row {
-            return;
+        if let Some(y) = self.surface_row(y) {
+            self.surface.set_string(x, y, string, style)
         }
-        let y = y - self.offset.row as u16;
-        self.surface
-            .set_string(x, y + self.viewport.y, string, style)
     }
 
     pub fn set_stringn(&mut self, x: u16, y: u16, string: &str, width: usize, style: Style) {
-        if (y as usize) < self.offset.row {
-            return;
+        if let Some(y) = self.surface_row(y) {
+            self.surface.set_stringn(x, y, string, width, style);
         }
-        let y = y - self.offset.row as u16;
-        self.surface
-            .set_stringn(x, y + self.viewport.y, string, width, style);
     }
 
     /// Sets the style of an area **within the text viewport* this accounts
     /// both for the renderers vertical offset and its viewport
     pub fn set_style(&mut self, mut area: Rect, style: Style) {
-        let offset = self.offset.row as u16;
-        if area.y < offset {
-            area.height = area.height.saturating_sub(offset - area.y);
-            area.y = offset;
-        }
-        area.y = area.y - offset + self.viewport.y;
+        let top = area.y.max(self.offset.row as u16);
+        area.height = area.bottom().saturating_sub(top);
+        let Some(y) = self.surface_row(top) else {
+            return;
+        };
+        area.y = y;
         self.surface.set_style(area, style);
     }
 
@@ -463,13 +463,12 @@ impl<'a> TextRenderer<'a> {
         ellipsis: bool,
         truncate_start: bool,
     ) -> (u16, u16) {
-        if (y as usize) < self.offset.row {
+        let Some(surface_y) = self.surface_row(y) else {
             return (x, y);
-        }
-        let y = y - self.offset.row as u16;
+        };
         self.surface.set_string_truncated(
             x,
-            y + self.viewport.y,
+            surface_y,
             string,
             width,
             style,
