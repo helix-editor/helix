@@ -265,31 +265,38 @@ pub fn textobject_treesitter(
     _count: usize,
 ) -> Range {
     let byte_pos = slice.char_to_byte(range.cursor(slice));
-    let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
-    let root = syntax
-        .tree_for_byte_range(byte_pos as u32, byte_pos as u32)
-        .root_node();
-    let textobject_query = loader.textobject_query(syntax.layer(layer).language);
-    let get_range = move || -> Option<Range> {
-        let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
-        let node = textobject_query?
-            .capture_nodes(&capture_name, &root, slice)?
-            .filter(|node| node.byte_range().contains(&byte_pos))
-            .min_by_key(|node| node.byte_range().len())?;
+    let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
+    let len = slice.len_bytes();
 
-        let len = slice.len_bytes();
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
-        if start_byte >= len || end_byte >= len {
-            return None;
-        }
+    // try the innermost layer first, then fall back to its parents
+    // an injected language might not define the requested textobject
+    let layers: Vec<_> = syntax
+        .layers_for_byte_range(byte_pos as u32, byte_pos as u32)
+        .collect();
+    layers
+        .into_iter()
+        .rev()
+        .find_map(|layer| {
+            let layer = syntax.layer(layer);
+            let root = layer.tree()?.root_node();
+            let node = loader
+                .textobject_query(layer.language)?
+                .capture_nodes(&capture_name, &root, slice)?
+                .filter(|node| node.byte_range().contains(&byte_pos))
+                .min_by_key(|node| node.byte_range().len())?;
 
-        let start_char = slice.byte_to_char(start_byte);
-        let end_char = slice.byte_to_char(end_byte);
+            let start_byte = node.start_byte();
+            let end_byte = node.end_byte();
+            if start_byte >= len || end_byte >= len {
+                return None;
+            }
 
-        Some(Range::new(start_char, end_char))
-    };
-    get_range().unwrap_or(range)
+            let start_char = slice.byte_to_char(start_byte);
+            let end_char = slice.byte_to_char(end_byte);
+
+            Some(Range::new(start_char, end_char))
+        })
+        .unwrap_or(range)
 }
 
 #[cfg(test)]
@@ -589,5 +596,26 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_textobject_treesitter_injection() {
+        let loader = crate::config::default_lang_loader();
+        let lang = loader.language_for_name("rust").unwrap();
+        let doc = Rope::from_str("fn main() {\n    // a comment\n    let x = 1;\n}\n");
+        let slice = doc.slice(..);
+        let syntax = Syntax::new(slice, lang, &loader).unwrap();
+
+        // cursor inside the comment, which is an injected `comment` layer
+        let range = textobject_treesitter(
+            slice,
+            Range::point(20),
+            Inside,
+            "comment",
+            &syntax,
+            &loader,
+            1,
+        );
+        assert_eq!(range, Range::new(16, 28));
     }
 }
