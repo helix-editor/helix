@@ -1,7 +1,9 @@
 use helix_core::{
-    indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
+    indent::{
+        indent_level_for_line, treesitter_format_changes, treesitter_indent_for_pos, IndentStyle,
+    },
     syntax::{config::Configuration, Loader},
-    Syntax,
+    Syntax, Transaction,
 };
 use helix_stdx::rope::RopeSliceExt;
 use ropey::Rope;
@@ -142,6 +144,46 @@ fn test_indent_level_for_line_with_spaces_and_tabs() {
 
     let indent_level = indent_level_for_line(line.slice(0..), tab_width, indent_width);
     assert_eq!(indent_level, 2)
+}
+
+#[test]
+fn test_treesitter_format_reindents_messy_rust() {
+    let loader = Loader::new(indent_tests_config()).unwrap();
+    let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    runtime.push("../runtime");
+    std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+    let language = loader.language_for_scope("source.rust").unwrap();
+    let indent_style = IndentStyle::Spaces(4);
+    let tab_width = 4;
+
+    let messy = "fn foo() {\nlet x = 1;\n      if x > 0 {\n   x + 1\n} else {\n            x - 1\n   }\n}\n";
+
+    let expected = "fn foo() {\n    let x = 1;\n    if x > 0 {\n        x + 1\n    } else {\n        x - 1\n    }\n}\n";
+
+    let mut doc = Rope::from_str(messy);
+    let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+    let query = loader.indent_query(language).unwrap();
+    let changes = treesitter_format_changes(
+        query,
+        &syntax,
+        &loader,
+        &indent_style,
+        tab_width,
+        doc.slice(..),
+    );
+    Transaction::change(&doc, changes.into_iter()).apply(&mut doc);
+    assert_eq!(doc.to_string(), expected);
+
+    let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+    let again = treesitter_format_changes(
+        query,
+        &syntax,
+        &loader,
+        &indent_style,
+        tab_width,
+        doc.slice(..),
+    );
+    assert!(again.is_empty(), "second pass produced changes: {again:?}");
 }
 
 fn indent_tests_dir() -> PathBuf {

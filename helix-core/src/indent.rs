@@ -1017,6 +1017,45 @@ pub fn treesitter_indent_for_pos<'a>(
     Some(result)
 }
 
+/// Re-indents every non-blank line of `text` according to the indent query. Lines the query
+/// has no indentation for are left as they are.
+pub fn treesitter_format_changes(
+    query: &IndentQuery,
+    syntax: &Syntax,
+    loader: &syntax::Loader,
+    indent_style: &IndentStyle,
+    tab_width: usize,
+    text: RopeSlice,
+) -> Vec<crate::transaction::Change> {
+    let indent_width = indent_style.indent_width(tab_width);
+    let mut changes = Vec::new();
+    let mut line_start = 0;
+    for (line_idx, line) in text.lines().enumerate() {
+        if let Some(first_non_ws) = line.first_non_whitespace_char() {
+            let pos = line_start + first_non_ws;
+            let indent = treesitter_indent_for_pos(
+                query,
+                syntax,
+                loader,
+                tab_width,
+                indent_width,
+                text,
+                line_idx,
+                pos,
+                false,
+            );
+            if let Some(indent) = indent {
+                let indent = indent.to_string(indent_style, tab_width);
+                if line.slice(..first_non_ws) != indent.as_str() {
+                    changes.push((line_start, pos, Some(indent.into())));
+                }
+            }
+        }
+        line_start += line.len_chars();
+    }
+    changes
+}
+
 /// Compute indentation by *scope containment*.
 ///
 /// Each node carrying an `@indent`/`@indent.always` capture defines a scope

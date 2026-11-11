@@ -844,7 +844,7 @@ impl Document {
         editor: &Editor,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if self.language_config()?.auto_format {
-            self.format(editor)
+            self.format_with(editor, false)
         } else {
             None
         }
@@ -857,6 +857,16 @@ impl Document {
     pub fn format(
         &self,
         editor: &Editor,
+    ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
+        self.format_with(editor, true)
+    }
+
+    /// Like [`Document::format`], but without a formatter the document is only re-indented if
+    /// `reindent` is set. Formatting on save doesn't re-indent.
+    fn format_with(
+        &self,
+        editor: &Editor,
+        reindent: bool,
     ) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
         if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
@@ -947,36 +957,55 @@ impl Document {
         };
 
         let text = self.text.clone();
-        // finds first language server that supports formatting and then formats
-        let language_server = self
+        if let Some(language_server) = self
             .language_servers_with_feature(LanguageServerFeature::Format)
-            .next()?;
-        let offset_encoding = language_server.offset_encoding();
-        let request = language_server.text_document_formatting(
-            self.identifier(),
-            lsp::FormattingOptions {
-                tab_size: self.tab_width() as u32,
-                insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
-                ..Default::default()
-            },
-            None,
-        )?;
+            .next()
+        {
+            let offset_encoding = language_server.offset_encoding();
+            if let Some(request) = language_server.text_document_formatting(
+                self.identifier(),
+                lsp::FormattingOptions {
+                    tab_size: self.tab_width() as u32,
+                    insert_spaces: matches!(self.indent_style, IndentStyle::Spaces(_)),
+                    ..Default::default()
+                },
+                None,
+            ) {
+                let fut = async move {
+                    let edits = request
+                        .await
+                        .unwrap_or_else(|e| {
+                            log::warn!("LSP formatting failed: {}", e);
+                            Default::default()
+                        })
+                        .unwrap_or_default();
+                    Ok(helix_lsp::util::generate_transaction_from_edits(
+                        &text,
+                        edits,
+                        offset_encoding,
+                    ))
+                };
+                return Some(fut.boxed());
+            }
+        }
 
-        let fut = async move {
-            let edits = request
-                .await
-                .unwrap_or_else(|e| {
-                    log::warn!("LSP formatting failed: {}", e);
-                    Default::default()
-                })
-                .unwrap_or_default();
-            Ok(helix_lsp::util::generate_transaction_from_edits(
-                &text,
-                edits,
-                offset_encoding,
-            ))
-        };
-        Some(fut.boxed())
+        if !reindent {
+            return None;
+        }
+        // Without a formatter, fix the indentation using the indent query.
+        let syntax = self.syntax.as_ref()?;
+        let loader = self.syn_loader.load_full();
+        let query = loader.indent_query(syntax.root_language())?;
+        let changes = helix_core::indent::treesitter_format_changes(
+            query,
+            syntax,
+            &loader,
+            &self.indent_style,
+            self.tab_width(),
+            text.slice(..),
+        );
+        let transaction = helix_core::Transaction::change(&text, changes.into_iter());
+        Some(async move { Ok(transaction) }.boxed())
     }
 
     pub fn save<P: Into<PathBuf>>(
