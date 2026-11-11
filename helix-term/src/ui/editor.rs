@@ -1167,11 +1167,6 @@ impl EditorView {
 /// Whether the focused doc's workspace is in restricted mode and running `trust` would
 /// change something visible at the workspace level.
 fn workspace_trust_indicator_visible(editor: &Editor) -> bool {
-    if editor.workspace_trust.implicit_level()
-        == helix_loader::workspace_trust::ImplicitTrustLevel::Insecure
-    {
-        return false;
-    }
     let (_, doc) = helix_view::current_ref!(editor);
     editor
         .workspace_trust

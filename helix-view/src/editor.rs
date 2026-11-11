@@ -440,8 +440,8 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct WorkspaceTrustConfig {
-    /// What to trust implicitly without an explicit grant. See [`ImplicitTrustLevelConfig`].
-    pub level: ImplicitTrustLevelConfig,
+    /// What to trust implicitly without an explicit grant.
+    pub level: ImplicitTrustLevel,
     /// Whether opening a file in an untrusted workspace surfaces the trust modal. The statusline
     /// `[⚠]` indicator is always shown either way; disabling the prompt is for users who would
     /// rather act explicitly via `:workspace-trust` than be interrupted. Defaults to `true`.
@@ -453,34 +453,9 @@ pub struct WorkspaceTrustConfig {
 impl Default for WorkspaceTrustConfig {
     fn default() -> Self {
         Self {
-            level: ImplicitTrustLevelConfig::default(),
+            level: ImplicitTrustLevel::default(),
             prompt: true,
             trusted: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "kebab-case")]
-pub enum ImplicitTrustLevelConfig {
-    /// Don't trust anything implicitly — prompt for every new workspace.
-    None,
-    /// Trust Helix-launched server processes (LSP and DAP) implicitly. Workspace-local config and
-    /// git full-trust still require explicit `:workspace-trust`. This is the default — language
-    /// servers are configured globally, so auto-starting them in fresh workspaces matches user
-    /// expectations while the workspace-controlled `.helix/` config still requires opt-in.
-    #[default]
-    Servers,
-    /// Trust everything implicitly. Explicit excludes still win.
-    Insecure,
-}
-
-impl From<ImplicitTrustLevelConfig> for ImplicitTrustLevel {
-    fn from(v: ImplicitTrustLevelConfig) -> Self {
-        match v {
-            ImplicitTrustLevelConfig::None => ImplicitTrustLevel::None,
-            ImplicitTrustLevelConfig::Servers => ImplicitTrustLevel::Servers,
-            ImplicitTrustLevelConfig::Insecure => ImplicitTrustLevel::Insecure,
         }
     }
 }
@@ -488,7 +463,7 @@ impl From<ImplicitTrustLevelConfig> for ImplicitTrustLevel {
 impl From<&WorkspaceTrustConfig> for helix_loader::workspace_trust::Config {
     fn from(v: &WorkspaceTrustConfig) -> Self {
         Self {
-            level: v.level.into(),
+            level: v.level,
             prompt: v.prompt,
             trusted_globs: helix_loader::workspace_trust::build_trusted_globs(&v.trusted),
         }

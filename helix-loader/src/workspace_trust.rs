@@ -49,7 +49,7 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use parking_lot::Mutex;
 use sha2::{Digest, Sha256};
 
-use crate::{data_dir, find_workspace, find_workspace_in};
+use crate::{data_dir, find_workspace};
 
 /// Checks whether a specific capability is trusted
 #[derive(Debug, Clone, Copy)]
@@ -82,17 +82,21 @@ impl TrustStatus {
     pub fn is_trusted(&self) -> bool {
         matches!(self, Self::Trusted)
     }
-
-    pub fn is_stale(&self) -> bool {
-        matches!(self, Self::Stale)
-    }
-
-    pub fn is_excluded(&self) -> bool {
-        matches!(self, Self::Excluded)
-    }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Deserialize,
+    serde::Serialize,
+)]
+#[serde(rename_all = "kebab-case")]
 pub enum ImplicitTrustLevel {
     /// Prompt for every workspace.
     None,
@@ -180,10 +184,6 @@ impl WorkspaceTrust {
         })
     }
 
-    pub fn implicit_level(&self) -> ImplicitTrustLevel {
-        self.config.level
-    }
-
     /// Whether the trust modal should be surfaced on `DocumentDidOpen`. When false the user is
     /// only informed via the statusline indicator and acts explicitly via `:workspace-trust`.
     pub fn prompts_enabled(&self) -> bool {
@@ -249,15 +249,6 @@ impl WorkspaceTrust {
         }
 
         demote_for_query(raw, query)
-    }
-
-    /// Query trust for the workspace containing `file`.
-    pub fn query_for_file(&self, file: &Path, query: TrustQuery) -> TrustStatus {
-        let workspace = file
-            .parent()
-            .map(|dir| find_workspace_in(dir).0)
-            .unwrap_or_else(|| find_workspace().0);
-        self.query(&workspace, query)
     }
 
     /// Query trust for the current working directory's workspace.
@@ -345,18 +336,6 @@ impl WorkspaceTrust {
             workspace.to_path_buf(),
             CacheEntry {
                 status: TrustStatus::Excluded,
-                has_local_config,
-            },
-        );
-    }
-
-    /// Cache an untrusted decision for the current session.
-    pub fn deny_once(&self, workspace: &Path) {
-        let has_local_config = has_local_config(workspace);
-        self.inner.lock().insert(
-            workspace.to_path_buf(),
-            CacheEntry {
-                status: TrustStatus::Untrusted,
                 has_local_config,
             },
         );
@@ -512,7 +491,7 @@ fn remove_entry(workspace: &Path) {
 /// SHA-256 of all files under `.helix/`, used to detect changes to local config after trust was
 /// granted. Returns `None` if `.helix/` is absent or has no files, so a workspace with no local
 /// config can still be trusted.
-pub fn compute_workspace_hash(workspace: &Path) -> Option<String> {
+fn compute_workspace_hash(workspace: &Path) -> Option<String> {
     let helix_dir = workspace.join(".helix");
     if !helix_dir.is_dir() {
         return None;

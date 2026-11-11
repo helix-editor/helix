@@ -13,11 +13,7 @@ use crate::{compositor::Compositor, job, ui};
 const ID: &str = "workspace-trust-select";
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
-    // Tracks which workspaces have already been prompted (or auto-dismissed) during this session.
-    // Without this, every document opened in an untrusted workspace would re-dispatch the modal —
-    // `deny_once` writes `Untrusted` to the trust cache but `restricted_for_doc` returns `true`
-    // based purely on workspace state, so the cache alone is not enough to suppress re-prompts.
-    // Inserts return false when the path was already present, which we use to short-circuit.
+    // Workspaces that were already prompted for in this session.
     let prompted: Arc<Mutex<HashSet<PathBuf>>> = Arc::default();
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
         let doc_id = event.doc;
@@ -57,9 +53,6 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             return Ok(());
         }
 
-        // Cache "denied for this session" so future trust queries treat the workspace as untrusted.
-        event.editor.workspace_trust.deny_once(&workspace);
-        let workspace = workspace.clone();
         job::dispatch_blocking(move |_editor, compositor| prompt(workspace, compositor));
 
         Ok(())

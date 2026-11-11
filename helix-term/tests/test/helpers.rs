@@ -11,7 +11,7 @@ use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{
     current_ref, doc,
-    editor::{ImplicitTrustLevelConfig, LspConfig, WordCompletion, WorkspaceTrustConfig},
+    editor::{LspConfig, WordCompletion, WorkspaceTrustConfig},
     input::parse_macro,
     Editor,
 };
@@ -319,7 +319,7 @@ pub fn test_editor_config() -> helix_view::editor::Config {
         },
         // Trust everything implicitly so tests don't hit popups.
         workspace_trust: WorkspaceTrustConfig {
-            level: ImplicitTrustLevelConfig::Insecure,
+            level: helix_loader::workspace_trust::ImplicitTrustLevel::Insecure,
             ..Default::default()
         },
         ..Default::default()
