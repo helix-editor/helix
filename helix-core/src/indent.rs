@@ -805,6 +805,8 @@ fn candidate_body_for_new_line<'a>(
 /// Prepare an indent query by computing:
 /// - The node from which to start the query (this is non-trivial due to `@extend` captures)
 /// - The indent captures for all relevant nodes.
+/// - The ranges of `@opaque` nodes.
+/// - Whether the node was extended past its end and isn't closed by a delimiter.
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::type_complexity)]
 fn init_indent_query<'a, 'b>(
@@ -911,44 +913,6 @@ fn init_indent_query<'a, 'b>(
     ))
 }
 
-/// Use the syntax tree to determine the indentation for a given position.
-/// This can be used in 2 ways:
-///
-/// - To get the correct indentation for an existing line (new_line=false), not necessarily equal to the current indentation.
-///   - In this case, pos should be inside the first tree-sitter node on that line.
-///     In most cases, this can just be the first non-whitespace on that line.
-///   - To get the indentation for a new line (new_line=true). This behaves like the first usecase if the part of the current line
-///     after pos were moved to a new line.
-///
-/// The indentation is determined by traversing all the tree-sitter nodes containing the position.
-/// Each of these nodes produces some [Indentation] for:
-///
-/// - The line of the (beginning of the) node. This is defined by the scope `all` if this is the first node on its line.
-/// - The line after the node. This is defined by:
-///   - The scope `tail`.
-///   - The scope `all` if this node is not the first node on its line.
-///
-/// Intuitively, `all` applies to everything contained in this node while `tail` applies to everything except for the first line of the node.
-/// The indents from different nodes for the same line are then combined.
-/// The result [Indentation] is simply the sum of the [Indentation] for all lines.
-///
-/// Specifying which line exactly an [Indentation] applies to is important because indents on the same line combine differently than indents on different lines:
-/// ```ignore
-/// some_function(|| {
-///     // Both the function parameters as well as the contained block should be indented.
-///     // Because they are on the same line, this only yields one indent level
-/// });
-/// ```
-///
-/// ```ignore
-/// some_function(
-///     param1,
-///     || {
-///         // Here we get 2 indent levels because the 'parameters' and the 'block' node begin on different lines
-///     },
-/// );
-/// ```
-#[allow(clippy::too_many_arguments)]
 /// Whether `byte_pos` falls in the interior of an `@opaque` node spanning
 /// `[start, end)` that began on an *earlier* line — i.e. a string / heredoc /
 /// block-comment body whose leading whitespace is literal content. Shared by the
@@ -974,32 +938,21 @@ pub fn is_opaque_interior(
     text: RopeSlice,
     byte_pos: u32,
 ) -> bool {
-    let Some(opaque) = query.opaque_capture else {
-        return false;
-    };
-    let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
-        .execute_query(
-            &query.query,
-            &syntax.tree_for_byte_range(byte_pos, byte_pos).root_node(),
-            RopeInput::new(text),
-        );
-    while let Some(m) = cursor.next_match() {
-        for matched in m.matched_nodes() {
-            if matched.capture == opaque
-                && opaque_hit(
-                    matched.node.start_byte(),
-                    matched.node.end_byte(),
-                    byte_pos,
-                    text,
-                )
-            {
-                return true;
-            }
-        }
-    }
-    false
+    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
+    query_indents(query, &root, text, byte_pos..byte_pos + 1, None)
+        .opaque_ranges
+        .iter()
+        .any(|range| opaque_hit(range.start, range.end, byte_pos, text))
 }
 
+/// Use the syntax tree to determine the indentation for a given position.
+/// This can be used in 2 ways:
+///
+/// - To get the correct indentation for an existing line (new_line=false), not necessarily equal to the current indentation.
+///   - In this case, pos should be inside the first tree-sitter node on that line.
+///     In most cases, this can just be the first non-whitespace on that line.
+/// - To get the indentation for a new line (new_line=true). This behaves like the first usecase if the part of the current line
+///   after pos were moved to a new line.
 #[allow(clippy::too_many_arguments)]
 pub fn treesitter_indent_for_pos<'a>(
     query: &IndentQuery,
