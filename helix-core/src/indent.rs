@@ -903,7 +903,12 @@ fn init_indent_query<'a, 'b>(
         }
     };
     let open_ended = extended && !delimited;
-    Some((node, query_result.indent_captures, opaque_ranges, open_ended))
+    Some((
+        node,
+        query_result.indent_captures,
+        opaque_ranges,
+        open_ended,
+    ))
 }
 
 /// Use the syntax tree to determine the indentation for a given position.
