@@ -749,11 +749,12 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         }
     };
 
-    let frames = debugger.stack_frames[&thread_id]
-        .iter()
-        .cloned()
-        .enumerate()
-        .collect::<Vec<_>>();
+    let Some(frames) = debugger.stack_frames.get(&thread_id) else {
+        cx.editor
+            .set_error(format!("No stack frames for thread: {thread_id}"));
+        return;
+    };
+    let frames = frames.iter().cloned().enumerate().collect::<Vec<_>>();
     let thread_state = debugger
         .thread_states
         .get(&thread_id)

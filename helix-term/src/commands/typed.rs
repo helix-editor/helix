@@ -2137,7 +2137,14 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 
         // TODO: support no frame_id
 
-        let frame_id = debugger.stack_frames[&thread_id][frame].id;
+        let Some(frame_id) = debugger
+            .stack_frames
+            .get(&thread_id)
+            .and_then(|frames| frames.get(frame))
+            .map(|frame| frame.id)
+        else {
+            bail!("Cannot find current stack frame to access variables")
+        };
         let response = helix_lsp::block_on(debugger.eval(args.join(" "), Some(frame_id)))?;
         cx.editor.set_status(response.result);
     }
