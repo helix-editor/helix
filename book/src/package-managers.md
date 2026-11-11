@@ -82,6 +82,34 @@ If you are using a version of Nix without flakes enabled,
 [install Cachix CLI](https://docs.cachix.org/installation) and use
 `cachix use helix` to configure Nix to use cached outputs when possible.
 
+#### Using Helix as a flake input
+
+This applies to Nix generally, not only NixOS. Add Helix as an input in your flake:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    helix.url = "github:helix-editor/helix/master";
+    helix.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { nixpkgs, ... } @ inputs:
+  let
+    system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
+  in {
+    devShells.${system}.default = pkgs.mkShell {
+      packages = [
+        inputs.helix.packages.${system}.default
+      ];
+    };
+  };
+}
+```
+
+You can use 'inputs.helix.packages.${system}.default' anywhere you declare packages, such as 'home.packages' in Home Manager or 'environment.systemPackages' in a NixOS configuration.
+
 ### Flatpak
 
 Helix is available on [Flathub](https://flathub.org/en-GB/apps/com.helix_editor.Helix):
