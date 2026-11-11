@@ -34,7 +34,7 @@ use crate::{
 };
 
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     fmt::Display,
     future::Future,
     path::Path,
@@ -743,11 +743,7 @@ fn code_action_on_save_step(
     };
 
     let build_request = move |editor: &mut Editor| -> Option<Job> {
-        // The document could have been closed mid-chain
-        if !editor.documents.contains_key(&doc_id) {
-            return None;
-        }
-        let doc = doc!(editor, &doc_id);
+        let doc = editor.documents.get(&doc_id)?;
         let version = doc.version();
         let full_range = helix_core::Range::new(0, doc.text().len_chars());
         let Some((request, ls_id)) = code_actions_for_range(
@@ -761,15 +757,42 @@ fn code_action_on_save_step(
             // No server offers this kind for the document: skip to the next.
             return code_action_on_save_step(doc_id, kinds, tail);
         };
+        let language_server = editor.language_servers.get_by_id(ls_id)?.clone();
 
         let future = async move {
-            let actions = request.await?;
-            let resolve = move |editor: &mut Editor| -> Option<Job> {
-                resolve_and_apply_code_actions_of_kind(
-                    editor, doc_id, version, ls_id, kind, kinds, tail, actions,
-                )
+            let actions = request.await?.unwrap_or_default();
+            let mut edits = Vec::new();
+            for action in actions {
+                let CodeActionOrCommand::CodeAction(action) = action else {
+                    continue;
+                };
+                if action.disabled.is_some() || !code_action_kind_matches(&action, &kind) {
+                    continue;
+                }
+                // Commands are not run on save, so only actions without an edit need resolving.
+                if let Some(edit) = action.edit.clone() {
+                    edits.push(edit);
+                } else if let Some(resolve) = language_server.resolve_code_action(&action) {
+                    match resolve.await {
+                        Ok(resolved) => edits.extend(resolved.edit),
+                        Err(err) => log::error!("code-actions-on-save: resolve failed: {err}"),
+                    }
+                }
+            }
+
+            let apply = move |editor: &mut Editor| -> Option<Job> {
+                if editor.documents.get(&doc_id)?.version() != version {
+                    log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
+                } else if !edits.is_empty() {
+                    let edit = merge_workspace_edits(edits);
+                    let offset_encoding = language_server.offset_encoding();
+                    if let Err(err) = editor.apply_workspace_edit(offset_encoding, &edit) {
+                        log::error!("code-actions-on-save: failed to apply edit: {err:?}");
+                    }
+                }
+                code_action_on_save_step(doc_id, kinds, tail)
             };
-            Ok(Callback::Followup(Box::new(resolve)))
+            Ok(Callback::Followup(Box::new(apply)))
         };
         Some(Job::with_callback(future).wait_before_exiting())
     };
@@ -792,96 +815,43 @@ fn code_action_kind_matches(action: &CodeAction, requested: &CodeActionKind) -> 
     })
 }
 
-/// One matching action, in server order: an edit ready to apply, or a  future
-/// resolving the action's edit off the event loop.
-///
-/// Keeping one ordered list preserves apply order, which matters when a kind yields
-/// several edits.
-type ResolveFuture =
-    std::pin::Pin<Box<dyn Future<Output = Result<lsp::CodeAction, helix_lsp::Error>> + Send>>;
-enum ResolveStep {
-    Ready(lsp::WorkspaceEdit),
-    Resolve(ResolveFuture),
-}
-
-/// Resolve (off the event loop) and apply the actions matching `kind`, then
-/// continue the on-save chain. The resolve is awaited in the returned job.
-#[allow(clippy::too_many_arguments)]
-fn resolve_and_apply_code_actions_of_kind(
-    editor: &mut Editor,
-    doc_id: DocumentId,
-    version: i32,
-    ls_id: LanguageServerId,
-    kind: CodeActionKind,
-    kinds: VecDeque<CodeActionKind>,
-    tail: Option<Job>,
-    actions: Option<Vec<CodeActionOrCommand>>,
-) -> Option<Job> {
-    // Build the matching actions, in order, while holding the language-server
-    // borrow, resolving only those the server left incomplete.
-    let prepared = (|| -> Option<(OffsetEncoding, Vec<ResolveStep>)> {
-        let actions = actions?;
-        if editor.documents.get(&doc_id)?.version() != version {
-            log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
-            return None;
+/// Merges the text edits of several workspace edits per document. The edits were all computed
+/// for the same version of the document, so applying them one after another would apply the
+/// later ones at stale positions. Resource operations are not supported.
+fn merge_workspace_edits(edits: Vec<lsp::WorkspaceEdit>) -> lsp::WorkspaceEdit {
+    let mut changes: HashMap<lsp::Url, Vec<lsp::TextEdit>> = HashMap::new();
+    for edit in edits {
+        for (uri, text_edits) in edit.changes.into_iter().flatten() {
+            changes.entry(uri).or_default().extend(text_edits);
         }
-        let ls = editor.language_server_by_id(ls_id)?;
-        let steps = actions
-            .iter()
-            .filter_map(|action| match action {
-                CodeActionOrCommand::CodeAction(ca) if ca.disabled.is_none() => Some(ca),
-                _ => None,
-            })
-            .filter(|ca| code_action_kind_matches(ca, &kind))
-            .filter_map(|ca| {
-                // Resolve only when the server left out the edit or command.
-                if ca.edit.is_none() || ca.command.is_none() {
-                    if let Some(future) = ls.resolve_code_action(ca) {
-                        return Some(ResolveStep::Resolve(Box::pin(future)));
+        let document_edits = match edit.document_changes {
+            Some(lsp::DocumentChanges::Edits(edits)) => edits,
+            Some(lsp::DocumentChanges::Operations(operations)) => operations
+                .into_iter()
+                .filter_map(|operation| match operation {
+                    lsp::DocumentChangeOperation::Edit(edit) => Some(edit),
+                    lsp::DocumentChangeOperation::Op(op) => {
+                        log::warn!("code-actions-on-save: ignoring resource operation {op:?}");
+                        None
                     }
-                }
-                ca.edit.clone().map(ResolveStep::Ready)
-            })
-            .collect();
-        Some((ls.offset_encoding(), steps))
-    })();
-    let Some((offset_encoding, steps)) = prepared else {
-        return code_action_on_save_step(doc_id, kinds, tail);
-    };
-
-    let future = async move {
-        let mut edits = Vec::new();
-        for step in steps {
-            match step {
-                ResolveStep::Ready(edit) => edits.push(edit),
-                ResolveStep::Resolve(future) => match future.await {
-                    Ok(resolved) => edits.extend(resolved.edit),
-                    Err(err) => log::error!("code-actions-on-save: resolve failed: {err:?}"),
-                },
-            }
-        }
-        let apply = move |editor: &mut Editor| -> Option<Job> {
-            // A plain :w runs this in the live event loop so the document can
-            // change while resolving: re-check the version and skip rather than
-            // applying a stale edit.
-            if editor
-                .documents
-                .get(&doc_id)
-                .is_some_and(|doc| doc.version() == version)
-            {
-                for edit in &edits {
-                    if let Err(err) = editor.apply_workspace_edit(offset_encoding, edit) {
-                        log::error!("code-actions-on-save: failed to apply edit: {err:?}");
-                    }
-                }
-            } else {
-                log::debug!("code-actions-on-save: document changed, skipping {kind:?}");
-            }
-            code_action_on_save_step(doc_id, kinds, tail)
+                })
+                .collect(),
+            None => Vec::new(),
         };
-        Ok(Callback::Followup(Box::new(apply)))
-    };
-    Some(Job::with_callback(future).wait_before_exiting())
+        for document_edit in document_edits {
+            changes
+                .entry(document_edit.text_document.uri)
+                .or_default()
+                .extend(document_edit.edits.into_iter().map(|edit| match edit {
+                    lsp::OneOf::Left(edit) => edit,
+                    lsp::OneOf::Right(edit) => edit.text_edit,
+                }));
+        }
+    }
+    lsp::WorkspaceEdit {
+        changes: Some(changes),
+        ..Default::default()
+    }
 }
 
 #[derive(Debug)]
@@ -1514,4 +1484,42 @@ fn compute_inlay_hints_for_view(
     );
 
     Some(callback)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use helix_lsp::{util::generate_transaction_from_edits, OffsetEncoding};
+
+    #[test]
+    fn merged_workspace_edits_apply_together() {
+        let uri: lsp::Url = "file:///test.rs".parse().unwrap();
+        let edit = |start, end, text: &str| lsp::TextEdit {
+            range: lsp::Range::new(lsp::Position::new(0, start), lsp::Position::new(0, end)),
+            new_text: text.to_string(),
+        };
+        let edits = vec![
+            lsp::WorkspaceEdit {
+                changes: Some(HashMap::from([(uri.clone(), vec![edit(0, 3, "alpha")])])),
+                ..Default::default()
+            },
+            lsp::WorkspaceEdit {
+                document_changes: Some(lsp::DocumentChanges::Edits(vec![lsp::TextDocumentEdit {
+                    text_document: lsp::OptionalVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: None,
+                    },
+                    edits: vec![lsp::OneOf::Left(edit(8, 13, "gamma"))],
+                }])),
+                ..Default::default()
+            },
+        ];
+
+        let merged = merge_workspace_edits(edits);
+        let text_edits = merged.changes.unwrap().remove(&uri).unwrap();
+        let mut text = helix_core::Rope::from("one two three");
+        let transaction = generate_transaction_from_edits(&text, text_edits, OffsetEncoding::Utf8);
+        assert!(transaction.apply(&mut text));
+        assert_eq!(text, "alpha two gamma");
+    }
 }
