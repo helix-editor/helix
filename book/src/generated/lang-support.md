@@ -336,6 +336,7 @@
 | wren | ✓ | ✓ | ✓ |  |  |  |
 | xit | ✓ |  |  |  |  |  |
 | xml | ✓ | ✓ | ✓ |  | ✓ |  |
+| xo | ✓ |  | ✓ |  |  | `xo` |
 | xtc | ✓ |  |  |  |  |  |
 | xwiki | ✓ |  |  |  |  |  |
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
