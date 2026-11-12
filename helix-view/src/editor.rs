@@ -1337,6 +1337,7 @@ pub enum EditorEvent {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+    UpdateField(String, serde_json::Value),
     ThemeChanged,
 }
 
