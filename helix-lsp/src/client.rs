@@ -52,6 +52,30 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     }
 }
 
+/// The custom `textDocument/forwardSearch` request, as implemented by texlab
+/// (see `crates/texlab/src/server/extensions.rs` there). It asks the server to
+/// run a forward search (e.g. a SyncTeX jump in an external document viewer)
+/// for the given cursor position, expanding `%l`/`%f`/`%p` placeholders in the
+/// configured viewer arguments.
+pub enum ForwardSearchRequest {}
+
+impl lsp::request::Request for ForwardSearchRequest {
+    type Params = lsp::TextDocumentPositionParams;
+    type Result = Option<serde_json::Value>;
+    const METHOD: &'static str = "textDocument/forwardSearch";
+}
+
+/// Checks the `experimental.textDocumentForwardSearch` server capability
+/// that texlab advertises for the request above.
+fn supports_forward_search(capabilities: &lsp::ServerCapabilities) -> bool {
+    capabilities
+        .experimental
+        .as_ref()
+        .and_then(|experimental| experimental.get("textDocumentForwardSearch"))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
+}
+
 #[derive(Debug)]
 pub struct Client {
     id: LanguageServerId,
@@ -407,6 +431,7 @@ impl Client {
                         | CallHierarchyServerCapability::Options(_)
                 )
             ),
+            LanguageServerFeature::ForwardSearch => supports_forward_search(capabilities),
         }
     }
 
@@ -1808,9 +1833,81 @@ impl Client {
         Some(self.call::<lsp::request::ExecuteCommand>(params))
     }
 
+    /// Requests a forward search (e.g. a SyncTeX jump in an external document
+    /// viewer) at `position` via the custom `textDocument/forwardSearch`
+    /// request. Returns `None` when the server does not support it.
+    pub fn forward_search(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        position: lsp::Position,
+    ) -> Option<impl Future<Output = Result<Option<serde_json::Value>>>> {
+        // Return early if the language server does not support forward search.
+        if !self.supports_feature(LanguageServerFeature::ForwardSearch) {
+            return None;
+        }
+
+        let params = lsp::TextDocumentPositionParams {
+            text_document,
+            position,
+        };
+
+        Some(self.call::<ForwardSearchRequest>(params))
+    }
+
     pub fn did_change_watched_files(&self, changes: Vec<lsp::FileEvent>) {
         self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
             changes,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lsp::request::Request;
+
+    fn capabilities_with_experimental(experimental: Option<Value>) -> lsp::ServerCapabilities {
+        lsp::ServerCapabilities {
+            experimental,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn forward_search_request_method() {
+        // texlab's custom forward search request, implemented in
+        // `crates/texlab/src/server/extensions.rs` as `ForwardSearchRequest`.
+        assert_eq!(ForwardSearchRequest::METHOD, "textDocument/forwardSearch");
+    }
+
+    #[test]
+    fn forward_search_params_carry_line_number() {
+        // Regression test for https://github.com/helix-editor/helix/issues/16310:
+        // the cursor line must reach the server so `%l` expands to it.
+        let params = lsp::TextDocumentPositionParams {
+            text_document: lsp::TextDocumentIdentifier::new(
+                lsp::Url::parse("file:///tmp/main.tex").unwrap(),
+            ),
+            position: lsp::Position::new(299, 0),
+        };
+        let value = serde_json::to_value(&params).expect("forward search params must serialize");
+        assert_eq!(value["position"]["line"], 299);
+        assert_eq!(value["textDocument"]["uri"], "file:///tmp/main.tex");
+    }
+
+    #[test]
+    fn forward_search_feature_detected_from_experimental_capability() {
+        let advertised = capabilities_with_experimental(Some(
+            serde_json::json!({ "textDocumentForwardSearch": true }),
+        ));
+        assert!(supports_forward_search(&advertised));
+
+        let missing = capabilities_with_experimental(None);
+        assert!(!supports_forward_search(&missing));
+
+        let disabled = capabilities_with_experimental(Some(
+            serde_json::json!({ "textDocumentForwardSearch": false }),
+        ));
+        assert!(!supports_forward_search(&disabled));
     }
 }
