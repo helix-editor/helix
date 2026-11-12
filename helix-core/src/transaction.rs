@@ -312,6 +312,15 @@ impl ChangeSet {
     pub fn invert(&self, original_doc: &Rope) -> Self {
         assert!(original_doc.len_chars() == self.len);
 
+        // An empty change set (e.g. `ChangeSet::new(doc)`) is the identity: so is its inverse.
+        if self.changes.is_empty() {
+            return Self {
+                changes: Vec::new(),
+                len: self.len_after,
+                len_after: self.len,
+            };
+        }
+
         let mut changes = Self::with_capacity(self.changes.len());
 
         let mut pos = 0;
@@ -1182,5 +1191,18 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    #[test]
+    fn invert_of_empty_changeset() {
+        let doc = Rope::from("hello");
+        let cs = ChangeSet::new(doc.slice(..));
+        let inv = cs.invert(&doc);
+        assert_eq!(inv.len, 5);
+        assert_eq!(inv.len_after, 5);
+        assert!(inv.changes.is_empty());
+        let mut doc2 = doc.clone();
+        assert!(inv.apply(&mut doc2));
+        assert_eq!(doc, doc2);
     }
 }
