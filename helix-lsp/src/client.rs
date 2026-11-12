@@ -19,15 +19,13 @@ use helix_core::{
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use parking_lot::Mutex;
+use portable_atomic::AtomicU64;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, path::PathBuf};
 use std::{
     ffi::OsStr,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
+    sync::{atomic::Ordering, Arc},
 };
 use std::{future::Future, sync::OnceLock};
 use std::{path::Path, process::Stdio};

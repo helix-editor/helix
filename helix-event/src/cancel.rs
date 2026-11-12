@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
 use std::future::Future;
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 
+use portable_atomic::AtomicU64;
 use tokio::sync::Notify;
 
 pub async fn cancelable_future<T>(

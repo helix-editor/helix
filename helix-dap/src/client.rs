@@ -10,13 +10,14 @@ use helix_dap_types::*;
 use serde_json::Value;
 
 use anyhow::anyhow;
+use portable_atomic::AtomicU64;
 use std::{
     collections::HashMap,
     future::Future,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
     process::Stdio,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::Ordering,
 };
 use tokio::{
     io::{AsyncBufRead, AsyncWrite, BufReader, BufWriter},
