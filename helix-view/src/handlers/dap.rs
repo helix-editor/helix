@@ -124,23 +124,30 @@ pub fn breakpoints_changed(
 
     let request = debugger.set_breakpoints(path, source_breakpoints);
     match block_on(request) {
-        Ok(Some(dap_breakpoints)) => {
-            for (breakpoint, dap_breakpoint) in breakpoints.iter_mut().zip(dap_breakpoints) {
-                breakpoint.id = dap_breakpoint.id;
-                breakpoint.verified = dap_breakpoint.verified;
-                breakpoint.message = dap_breakpoint.message;
-                // TODO: handle breakpoint.message
-                // TODO: verify source matches
-                breakpoint.line = dap_breakpoint.line.unwrap_or(0).saturating_sub(1); // convert to 0-indexing
-                                                                                      // TODO: no unwrap
-                breakpoint.column = dap_breakpoint.column;
-                // TODO: verify end_linef/col instruction reference, offset
-            }
-        }
+        Ok(Some(dap_breakpoints)) => update_breakpoints(breakpoints, dap_breakpoints),
         Err(e) => anyhow::bail!("Failed to set breakpoints: {}", e),
         _ => {}
     };
     Ok(())
+}
+
+/// Applies a `setBreakpoints` response to the stored breakpoints.
+///
+/// A debug adapter may omit `line` and `column`, for example for a provisional
+/// breakpoint that is not bound yet, so the existing position is kept then.
+fn update_breakpoints(breakpoints: &mut [Breakpoint], dap_breakpoints: Vec<dap::Breakpoint>) {
+    for (breakpoint, dap_breakpoint) in breakpoints.iter_mut().zip(dap_breakpoints) {
+        breakpoint.id = dap_breakpoint.id;
+        breakpoint.verified = dap_breakpoint.verified;
+        breakpoint.message = dap_breakpoint.message;
+        // TODO: handle breakpoint.message
+        // TODO: verify source matches
+        if let Some(line) = dap_breakpoint.line {
+            breakpoint.line = line.saturating_sub(1); // convert to 0-indexing
+        }
+        breakpoint.column = dap_breakpoint.column.or(breakpoint.column);
+        // TODO: verify end_linef/col instruction reference, offset
+    }
 }
 
 impl Editor {
@@ -575,5 +582,51 @@ impl Editor {
             }
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dap_breakpoints(json: Value) -> Vec<dap::Breakpoint> {
+        serde_json::from_value(json).unwrap()
+    }
+
+    #[test]
+    fn update_breakpoints_keeps_line_when_response_omits_it() {
+        let mut breakpoints = vec![Breakpoint {
+            line: 2,
+            column: Some(5),
+            ..Default::default()
+        }];
+        // A provisional breakpoint, as sent by vscode-js-debug's server mode.
+        update_breakpoints(
+            &mut breakpoints,
+            dap_breakpoints(json!([{
+                "id": 1,
+                "verified": false,
+                "message": "breakpoint.provisionalBreakpoint"
+            }])),
+        );
+        assert_eq!(breakpoints[0].id, Some(1));
+        assert!(!breakpoints[0].verified);
+        assert_eq!(breakpoints[0].line, 2);
+        assert_eq!(breakpoints[0].column, Some(5));
+    }
+
+    #[test]
+    fn update_breakpoints_uses_line_from_response() {
+        let mut breakpoints = vec![Breakpoint {
+            line: 2,
+            ..Default::default()
+        }];
+        update_breakpoints(
+            &mut breakpoints,
+            dap_breakpoints(json!([{ "id": 1, "verified": true, "line": 5, "column": 3 }])),
+        );
+        assert!(breakpoints[0].verified);
+        assert_eq!(breakpoints[0].line, 4);
+        assert_eq!(breakpoints[0].column, Some(3));
     }
 }
