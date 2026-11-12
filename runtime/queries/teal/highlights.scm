@@ -58,9 +58,10 @@
 
 (typeargs
   "<" @punctuation.bracket
-  . (_) @type.parameter
-  . ("," . (_) @type.parameter)*
+  . (typearg name: (identifier) @type.parameter)
+  . ("," . (typearg name: (identifier) @type.parameter))*
   . ">" @punctuation.bracket)
+(typearg "is" @keyword.operator)
 
 (function_call
   (identifier) @function . (arguments))
