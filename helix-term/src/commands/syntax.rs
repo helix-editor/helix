@@ -20,6 +20,7 @@ use helix_stdx::{
 use helix_view::{
     align_view,
     document::{from_reader, SCRATCH_BUFFER_NAME},
+    editor::{QuicklistEntry, QuicklistPosition, QuicklistTarget},
     Align, Document, DocumentId, Editor,
 };
 use ignore::{DirEntry, WalkBuilder, WalkState};
@@ -110,6 +111,19 @@ struct Tag {
     start_line: usize,
     end_line: usize,
     doc: UriOrDocumentId,
+}
+
+impl Tag {
+    fn quicklist_entry(&self) -> Option<QuicklistEntry> {
+        let target = match &self.doc {
+            UriOrDocumentId::Uri(uri) => QuicklistTarget::Path(uri.as_path()?.to_path_buf()),
+            UriOrDocumentId::Id(id) => QuicklistTarget::Document(*id),
+        };
+        Some(QuicklistEntry {
+            target,
+            position: QuicklistPosition::Selection(Selection::single(self.start, self.end)),
+        })
+    }
 }
 
 fn tags_iter<'a>(
@@ -214,6 +228,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     .with_preview(|_editor, tag| {
         Some((tag.doc.path_or_id()?, Some((tag.start_line, tag.end_line))))
     })
+    .with_quicklist(|_editor, tag| tag.quicklist_entry())
     .truncate_start(false);
 
     cx.push_layer(Box::new(overlaid(picker)));
@@ -460,6 +475,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             Some((tag.start_line, tag.end_line)),
         ))
     })
+    .with_quicklist(|_editor, tag| tag.quicklist_entry())
     .with_history_register(Some(reg))
     .truncate_start(false);
     cx.push_layer(Box::new(overlaid(picker)));

@@ -106,6 +106,7 @@
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |
+| `quicklist_picker` | Open quicklist picker | normal: `` <space>q ``, select: `` <space>q `` |
 | `symbol_picker` | Open symbol picker |  |
 | `syntax_symbol_picker` | Open symbol picker from syntax information |  |
 | `lsp_or_syntax_symbol_picker` | Open symbol picker from LSP or syntax information | normal: `` <space>s ``, select: `` <space>s `` |
@@ -151,6 +152,10 @@
 | `goto_last_diag` | Goto last diagnostic | normal: `` ]D ``, select: `` ]D `` |
 | `goto_next_diag` | Goto next diagnostic | normal: `` ]d ``, select: `` ]d `` |
 | `goto_prev_diag` | Goto previous diagnostic | normal: `` [d ``, select: `` [d `` |
+| `goto_next_quicklist` | Goto next quicklist entry | normal: `` ]q ``, select: `` ]q `` |
+| `goto_prev_quicklist` | Goto previous quicklist entry | normal: `` [q ``, select: `` [q `` |
+| `goto_next_file_quicklist` | Goto next quicklist entry in current file | normal: `` ]l ``, select: `` ]l `` |
+| `goto_prev_file_quicklist` | Goto previous quicklist entry in current file | normal: `` [l ``, select: `` [l `` |
 | `goto_next_change` | Goto next change | normal: `` ]g ``, select: `` ]g `` |
 | `goto_prev_change` | Goto previous change | normal: `` [g ``, select: `` [g `` |
 | `goto_first_change` | Goto first change | normal: `` [G ``, select: `` [G `` |
