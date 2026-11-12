@@ -178,6 +178,7 @@ wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yamma-server = { command = "yamma-server" }
 yls = { command = "yls", args = ["-vv"] }
+zigscient = { command = "zigscient" }
 zls = { command = "zls" }
 zuban = { command = "zuban", args = ["server"] }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
@@ -1798,7 +1799,7 @@ file-types = ["zig", "zon"]
 roots = ["build.zig"]
 auto-format = true
 comment-tokens = ["//", "///", "//!"]
-language-servers = [ "zls" ]
+language-servers = [ "zls", "zigscient" ]
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
 
