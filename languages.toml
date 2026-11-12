@@ -5655,3 +5655,17 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "udev"
+scope = "source.udev"
+injection-regex = "udev"
+file-types = [
+  { glob = "udev/rules.d/*.rules" },
+  { glob = "udev/*.rules" },
+]
+comment-tokens = ["#"]
+
+[[grammar]]
+name = "udev"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-udev", rev = "2fcb563a4d56a6b8e8c129252325fc6335e4acbf" }
