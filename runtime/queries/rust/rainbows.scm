@@ -27,7 +27,7 @@
   (type_parameters)
   (type_arguments)
   (bracketed_type)
-  (for_lifetimes)
+  (higher_ranked_trait_bound)
 
   ; [/]
   (array_type)

@@ -119,15 +119,13 @@
 (block_comment) @comment.block
 
 ; Doc Comments
-(line_comment
-  (outer_doc_comment_marker "/" @comment.line.documentation)
+(line_outer_doc_comment
   (doc_comment)) @comment.line.documentation
 (line_comment
-  (inner_doc_comment_marker "!" @comment.line.documentation)
+  (inner_doc_comment_marker)
   (doc_comment)) @comment.line.documentation
 
-(block_comment
-  (outer_doc_comment_marker) @comment.block.documentation
+(block_outer_doc_comment
   (doc_comment) "*/" @comment.block.documentation) @comment.block.documentation
 (block_comment
   (inner_doc_comment_marker) @comment.block.documentation
@@ -183,7 +181,7 @@
     "<"
     ">"
   ] @punctuation.bracket)
-(for_lifetimes ["<" ">"] @punctuation.bracket)
+(type_parameters ["<" ">"] @punctuation.bracket)
 (closure_parameters
   "|" @punctuation.bracket)
 (bracketed_type ["<" ">"] @punctuation.bracket)
@@ -290,7 +288,7 @@
 "let" @keyword.storage
 "fn" @keyword.function
 "unsafe" @keyword.storage.modifier
-"macro_rules!" @function.macro
+"macro_rules" @function.macro
 
 (mutable_specifier) @keyword.storage.modifier.mut
 
