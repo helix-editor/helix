@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     graphemes::next_grapheme_boundary,
@@ -54,20 +54,50 @@ fn find_nth_closest_pairs_ts(
     syntax: &Syntax,
     text: RopeSlice,
     range: Range,
+    skip: usize,
+) -> Result<(usize, usize)> {
+    find_nth_closest_pairs_with(
+        text,
+        range,
+        skip,
+        |pos| find_matching_bracket_fuzzy(syntax, text, pos),
+        |pos| find_matching_bracket(syntax, text, pos),
+    )
+}
+
+/// Walks outwards through surrounding pairs, discarding `skip - 1` of them.
+///
+/// The tree-sitter lookups are injected as closures so that the traversal
+/// itself can be tested without compiling a grammar.
+fn find_nth_closest_pairs_with(
+    text: RopeSlice,
+    range: Range,
     mut skip: usize,
+    mut find_fuzzy: impl FnMut(usize) -> Option<usize>,
+    mut find_matching: impl FnMut(usize) -> Option<usize>,
 ) -> Result<(usize, usize)> {
     let mut opening = range.from();
     // We want to expand the selection if we are already on the found pair,
     // otherwise we would need to subtract "-1" from "range.to()".
     let mut closing = range.to();
 
+    // The fuzzy lookup can return a pair that starts after the position it was
+    // given. In that case advancing `closing` one grapheme lands on the same
+    // pair again and the loop never makes progress. Remember which pairs have
+    // already been tried for the current `skip` value so that we can give up
+    // instead of spinning forever (#14730).
+    let mut tried = HashSet::new();
+
     while skip > 0 {
-        closing = find_matching_bracket_fuzzy(syntax, text, closing).ok_or(Error::PairNotFound)?;
-        opening = find_matching_bracket(syntax, text, closing).ok_or(Error::PairNotFound)?;
+        closing = find_fuzzy(closing).ok_or(Error::PairNotFound)?;
+        opening = find_matching(closing).ok_or(Error::PairNotFound)?;
         // If we're already on a closing bracket "find_matching_bracket_fuzzy" will return
         // the position of the opening bracket.
         if closing < opening {
             (opening, closing) = (closing, opening);
+        }
+        if !tried.insert((skip, closing)) {
+            return Err(Error::PairNotFound);
         }
 
         // In case found brackets are partially inside current selection.
@@ -459,6 +489,32 @@ mod test {
             find_nth_closest_pairs_pos(None, doc.slice(..), selection.primary(), 1),
             Err(Error::PairNotFound)
         )
+    }
+
+    #[test]
+    fn test_find_nth_closest_pairs_pos_stale_pair_terminates() {
+        // A tree-sitter grammar can report a pair that starts after the search
+        // position (`mim` on the newline after a markdown fence does this). The
+        // loop then advances one grapheme past the pair, lands on the same pair
+        // again, and never terminates. This mirrors that sequence with a bounded
+        // `find_fuzzy` stub so that a regression fails instead of hanging the
+        // test suite: the stub panics once it has been called 100 times.
+        let rope = Rope::from("x".repeat(32));
+        let mut calls = 0;
+        let result = find_nth_closest_pairs_with(
+            rope.slice(..),
+            Range::new(3, 4),
+            1,
+            |_pos| {
+                calls += 1;
+                assert!(calls < 100, "pair search did not terminate");
+                // The pair closes at 5, before the position we advanced to.
+                Some(5)
+            },
+            |_pos| Some(4),
+        );
+
+        assert_eq!(result, Err(Error::PairNotFound));
     }
 
     // Create a Rope and a matching Selection using a specification language.

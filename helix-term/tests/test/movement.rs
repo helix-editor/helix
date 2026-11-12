@@ -247,6 +247,21 @@ async fn surround_inside_pair() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn surround_inside_pair_after_markdown_fence() -> anyhow::Result<()> {
+    // The closest pair can start after the cursor. Stepping past it must not
+    // land on the same pair forever; `mim` should leave the selection alone
+    // instead of hanging (#14730).
+    test((
+        "```#[\n|]#``` `c`\n",
+        ":lang markdown<ret>mim",
+        "```#[\n|]#``` `c`\n",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_around_pair() -> anyhow::Result<()> {
     // Works at first character of buffer
     // TODO: Adjust test when opening pair failure is fixed
