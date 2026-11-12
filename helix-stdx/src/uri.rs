@@ -195,14 +195,19 @@ fn serialize_path(out: &mut String, path: &Path) -> Result<(), ()> {
     let mut components = path.components();
     match components.next() {
         Some(Component::Prefix(prefix)) => match prefix.kind() {
-            Prefix::Disk(_) | Prefix::VerbatimDisk(_) => {
-                // `C:` -> `/C:`
+            Prefix::Disk(letter) | Prefix::VerbatimDisk(letter) => {
+                // `C:` and `\\?\C:` -> `/C:`
                 out.push('/');
-                out.push_str(&prefix.as_os_str().to_string_lossy());
+                out.push(char::from(letter));
+                out.push(':');
+                // `C:\` -> `/C:/`: `/C:` alone would convert back to the drive-relative `C:`.
+                if components.as_path() == Path::new(r"\") {
+                    out.push('/');
+                }
             }
             Prefix::UNC(server, share) | Prefix::VerbatimUNC(server, share) => {
-                // `\\server\share` -> `//server/share` (authority + first seg)
-                out.pop(); // drop one `/` from the `file://` we were appended to
+                // `\\server\share` -> `server/share` (authority + first seg), which goes right
+                // after the `file://` we were appended to
                 out.push_str(&server.to_string_lossy());
                 out.push('/');
                 out.extend(percent_encode(share.to_string_lossy().as_bytes(), PATH));
@@ -320,6 +325,60 @@ mod tests {
     fn directory_path_has_trailing_slash() {
         let url = Url::from_directory_path("/home/user").unwrap();
         assert_eq!(url.as_str(), "file:///home/user/");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn file_path_round_trip() {
+        for path in [
+            r"C:\Users\user\main.rs",
+            r"C:\tmp\a b.txt",
+            r"C:\tmp\[test]\x.ts",
+            r"C:\tmp\c#\Program.cs",
+            r"C:\Users\üser\café.txt",
+            r"C:\",
+            r"\\server\share\dir\main.rs",
+            r"\\server\share\a b\[test]\café.txt",
+            r"\\wsl.localhost\Ubuntu\home\user\main.rs",
+        ] {
+            let url = Url::from_file_path(path).unwrap();
+            assert_eq!(url.to_file_path().unwrap(), PathBuf::from(path), "{}", url);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_serialize_to_file_uris() {
+        for (path, uri) in [
+            (r"C:\tmp\a b.txt", "file:///C:/tmp/a%20b.txt"),
+            (r"C:\", "file:///C:/"),
+            (r"\\?\C:\tmp\main.rs", "file:///C:/tmp/main.rs"),
+            (r"\\server\share\main.rs", "file://server/share/main.rs"),
+            (r"\\server\share\", "file://server/share"),
+            (
+                r"\\?\UNC\server\share\main.rs",
+                "file://server/share/main.rs",
+            ),
+        ] {
+            assert_eq!(Url::from_file_path(path).unwrap().as_str(), uri, "{path}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_directory_path_has_trailing_slash() {
+        for (path, uri) in [
+            (r"C:\Users\user", "file:///C:/Users/user/"),
+            (r"C:\", "file:///C:/"),
+            (r"\\server\share\dir", "file://server/share/dir/"),
+            (r"\\server\share", "file://server/share/"),
+        ] {
+            assert_eq!(
+                Url::from_directory_path(path).unwrap().as_str(),
+                uri,
+                "{path}"
+            );
+        }
     }
 
     #[test]
