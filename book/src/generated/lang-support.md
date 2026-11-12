@@ -88,7 +88,7 @@
 | gas | ✓ | ✓ |  |  |  | `asm-lsp` |
 | gdscript | ✓ | ✓ | ✓ | ✓ | ✓ | `ncat` |
 | gemini | ✓ |  |  |  |  |  |
-| gherkin | ✓ |  |  |  |  |  |
+| gherkin | ✓ |  |  |  |  | `cucumber-language-server` |
 | ghostty | ✓ |  |  |  |  | `ghostty-ls` |
 | git-attributes | ✓ |  |  |  |  |  |
 | git-cliff-config | ✓ | ✓ |  |  | ✓ | `taplo`, `tombi` |
