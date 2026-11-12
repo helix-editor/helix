@@ -129,6 +129,251 @@ impl Preview<'_, '_> {
     }
 }
 
+#[derive(Default)]
+pub(crate) struct FilePreview {
+    preview_cache: HashMap<Arc<Path>, CachedPreview>,
+    read_buffer: Vec<u8>,
+}
+
+impl FilePreview {
+    /// Render a file preview for a location using the same layout as picker previews.
+    pub(crate) fn render(
+        &mut self,
+        area: Rect,
+        surface: &mut Surface,
+        cx: &Context,
+        location: Option<FileLocation<'_>>,
+    ) {
+        let background = cx.editor.theme.get("ui.background");
+        let text = cx.editor.theme.get("ui.text");
+        let directory = cx.editor.theme.get("ui.text.directory");
+        surface.clear_with(area, background);
+
+        const BLOCK: Block<'_> = Block::bordered();
+
+        let inner = BLOCK.inner(area);
+        let inner = inner.inner(Margin::horizontal(1));
+        BLOCK.render(area, surface);
+
+        let Some(location) = location else {
+            return;
+        };
+        let Some((preview, range)) = self.get(cx.editor, location) else {
+            return;
+        };
+
+        let doc = match preview.document() {
+            Some(doc)
+                if range
+                    .is_none_or(|(start, end)| start <= end && end <= doc.text().len_lines()) =>
+            {
+                doc
+            }
+            _ => {
+                if let Some(dir_content) = preview.dir_content() {
+                    for (i, (path, is_dir)) in
+                        dir_content.iter().take(inner.height as usize).enumerate()
+                    {
+                        let style = if *is_dir { directory } else { text };
+                        surface.set_stringn(
+                            inner.x,
+                            inner.y + i as u16,
+                            path,
+                            inner.width as usize,
+                            style,
+                        );
+                    }
+                    return;
+                }
+
+                let alt_text = preview.placeholder();
+                let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
+                let y = inner.y + inner.height / 2;
+                surface.set_stringn(x, y, alt_text, inner.width as usize, text);
+                return;
+            }
+        };
+
+        render_preview_document(surface, inner, area, cx, doc, range);
+    }
+
+    fn get<'preview, 'editor>(
+        &'preview mut self,
+        editor: &'editor Editor,
+        (path_or_id, range): FileLocation<'_>,
+    ) -> Option<(Preview<'preview, 'editor>, Option<(usize, usize)>)> {
+        match path_or_id {
+            PathOrId::Path(path) => {
+                if let Some(doc) = editor.document_by_path(path) {
+                    return Some((Preview::EditorDocument(doc), range));
+                }
+
+                if self.preview_cache.contains_key(path) {
+                    return Some((Preview::Cached(&self.preview_cache[path]), range));
+                }
+
+                let path: Arc<Path> = path.into();
+                let preview = std::fs::metadata(&path)
+                    .and_then(|metadata| {
+                        if metadata.is_dir() {
+                            let files = super::directory_content(&path, editor)?;
+                            let file_names: Vec<_> = files
+                                .iter()
+                                .filter_map(|(file_path, is_dir)| {
+                                    let name = file_path
+                                        .strip_prefix(&path)
+                                        .map(|p| Some(p.as_os_str()))
+                                        .unwrap_or_else(|_| file_path.file_name())?
+                                        .to_string_lossy();
+                                    if *is_dir {
+                                        Some((format!("{name}/"), true))
+                                    } else {
+                                        Some((name.into_owned(), false))
+                                    }
+                                })
+                                .collect();
+                            Ok(CachedPreview::Directory(file_names))
+                        } else if metadata.is_file() {
+                            if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
+                                return Ok(CachedPreview::LargeFile);
+                            }
+                            let is_binary = std::fs::File::open(&path).and_then(|file| {
+                                let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                                let is_binary = crate::is_binary(&self.read_buffer[..n]);
+                                self.read_buffer.clear();
+                                Ok(is_binary)
+                            })?;
+                            if is_binary {
+                                return Ok(CachedPreview::Binary);
+                            }
+                            let mut doc = Document::open(
+                                &path,
+                                None,
+                                false,
+                                editor.config.clone(),
+                                editor.syn_loader.clone(),
+                            )
+                            .or(Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Cannot open document",
+                            )))?;
+                            let loader = editor.syn_loader.load();
+                            if let Some(language_config) = doc.detect_language_config(&loader) {
+                                doc.set_language(Some(language_config), &loader);
+                            }
+                            Ok(CachedPreview::Document(Box::new(doc)))
+                        } else {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Neither a dir, nor a file",
+                            ))
+                        }
+                    })
+                    .unwrap_or(CachedPreview::NotFound);
+                self.preview_cache.insert(path.clone(), preview);
+                Some((Preview::Cached(&self.preview_cache[&path]), range))
+            }
+            PathOrId::Id(id) => {
+                let doc = editor.documents.get(&id).unwrap();
+                Some((Preview::EditorDocument(doc), range))
+            }
+        }
+    }
+}
+
+fn render_preview_document(
+    surface: &mut Surface,
+    inner: Rect,
+    area: Rect,
+    cx: &Context,
+    doc: &Document,
+    range: Option<(usize, usize)>,
+) {
+    let mut offset = ViewPosition::default();
+    if let Some((start_line, end_line)) = range {
+        let height = end_line - start_line;
+        let text = doc.text().slice(..);
+        let start = text.line_to_char(start_line);
+        let middle = text.line_to_char(start_line + height / 2);
+        if height < inner.height as usize {
+            let text_fmt = doc.text_format(inner.width, None);
+            let annotations = TextAnnotations::default();
+            (offset.anchor, offset.vertical_offset) = char_idx_at_visual_offset(
+                text,
+                middle,
+                -(inner.height as isize / 2),
+                0,
+                &text_fmt,
+                &annotations,
+            );
+            if start < offset.anchor {
+                offset.anchor = start;
+                offset.vertical_offset = 0;
+            }
+        } else {
+            offset.anchor = start;
+        }
+    }
+
+    let loader = cx.editor.syn_loader.load();
+    let config = cx.editor.config();
+
+    let syntax_highlighter =
+        EditorView::doc_syntax_highlighter(doc, offset.anchor, area.height, &loader);
+    let mut overlay_highlights = Vec::new();
+    if doc
+        .language_config()
+        .and_then(|config| config.rainbow_brackets)
+        .unwrap_or(config.rainbow_brackets)
+    {
+        if let Some(overlay) = EditorView::doc_rainbow_highlights(
+            doc,
+            offset.anchor,
+            area.height,
+            &cx.editor.theme,
+            &loader,
+        ) {
+            overlay_highlights.push(overlay);
+        }
+    }
+
+    EditorView::doc_diagnostics_highlights_into(doc, &cx.editor.theme, &mut overlay_highlights);
+
+    let mut decorations = DecorationManager::default();
+
+    if let Some((start, end)) = range {
+        let style = cx
+            .editor
+            .theme
+            .try_get("ui.highlight")
+            .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
+        let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
+            if (start..=end).contains(&pos.doc_line) {
+                let area = Rect::new(
+                    renderer.viewport.x,
+                    pos.visual_line,
+                    renderer.viewport.width,
+                    1,
+                );
+                renderer.set_style(area, style)
+            }
+        };
+        decorations.add_decoration(draw_highlight);
+    }
+
+    render_document(
+        surface,
+        inner,
+        doc,
+        offset,
+        &TextAnnotations::default(),
+        syntax_highlighter,
+        overlay_highlights,
+        &cx.editor.theme,
+        decorations,
+    );
+}
+
 fn inject_nucleo_item<T, D>(
     injector: &nucleo::Injector<T>,
     columns: &[Column<T, D>],
@@ -233,6 +478,67 @@ impl<T, D> Column<T, D> {
     }
 }
 
+pub struct TreeItem<T> {
+    item: T,
+    depth: usize,
+    expanded: bool,
+    has_children: bool,
+}
+
+impl<T> TreeItem<T> {
+    pub fn new(item: T, depth: usize, expanded: bool, has_children: bool) -> Self {
+        Self {
+            item,
+            depth,
+            expanded,
+            has_children,
+        }
+    }
+
+    pub fn item(&self) -> &T {
+        &self.item
+    }
+
+    pub fn marker(&self) -> String {
+        tree_marker(self.depth, self.expanded, self.has_children)
+    }
+}
+
+pub type TreePicker<T, D> = Picker<TreeItem<T>, D>;
+
+pub fn tree_picker<T, D, C, O, F>(
+    columns: C,
+    primary_column: usize,
+    options: O,
+    editor_data: D,
+    callback_fn: F,
+) -> TreePicker<T, D>
+where
+    T: 'static + Send + Sync,
+    D: 'static + Send + Sync,
+    C: IntoIterator<Item = Column<TreeItem<T>, D>>,
+    O: IntoIterator<Item = TreeItem<T>>,
+    F: Fn(&mut Context, &T, Action) + 'static,
+{
+    Picker::new(
+        columns,
+        primary_column,
+        options,
+        editor_data,
+        move |cx, row, action| callback_fn(cx, &row.item, action),
+    )
+}
+
+fn tree_marker(depth: usize, expanded: bool, has_children: bool) -> String {
+    let mut prefix = "  ".repeat(depth);
+    if has_children {
+        prefix.push(if expanded { '▼' } else { '▶' });
+    } else {
+        prefix.push(' ');
+    }
+    prefix
+}
+
 /// Returns a new list of options to replace the contents of the picker
 /// when called with the current picker query,
 type DynQueryCallback<T, D> =
@@ -259,6 +565,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     callback_fn: PickerCallback<T>,
     default_action: Action,
+    close_on_accept: bool,
 
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -387,6 +694,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             default_action: Action::Replace,
+            close_on_accept: true,
             completion_height: 0,
             widths,
             preview_cache: HashMap::new(),
@@ -452,6 +760,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_default_action(mut self, action: Action) -> Self {
         self.default_action = action;
+        self
+    }
+
+    pub fn close_on_accept(mut self, close_on_accept: bool) -> Self {
+        self.close_on_accept = close_on_accept;
         self
     }
 
@@ -1143,7 +1456,9 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                             ctx.editor.set_error(err.to_string());
                         }
                     }
-                    return close_fn(self);
+                    if self.close_on_accept {
+                        return close_fn(self);
+                    }
                 }
             }
             ctrl!('s') => {
