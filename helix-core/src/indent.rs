@@ -965,7 +965,10 @@ pub fn treesitter_indent_for_pos<'a>(
     pos: usize,
     new_line: bool,
 ) -> Option<Indentation<'a>> {
-    let byte_pos = text.char_to_byte(pos) as u32;
+    let mut byte_pos = text.char_to_byte(pos) as u32;
+    if new_line && text.get_byte(byte_pos as usize) == Some(b'\r') {
+        byte_pos += 1;
+    }
     // Inside an injection layer indent with that language's query and tree,
     // then shift the whole result by the injection's base indent.
     let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);

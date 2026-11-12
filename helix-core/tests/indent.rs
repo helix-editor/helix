@@ -186,6 +186,23 @@ fn test_treesitter_format_reindents_messy_rust() {
     assert!(again.is_empty(), "second pass produced changes: {again:?}");
 }
 
+#[test]
+fn test_new_line_after_trailing_comment_with_crlf() {
+    let loader = Loader::new(indent_tests_config()).unwrap();
+    let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    runtime.push("../runtime");
+    std::env::set_var("HELIX_RUNTIME", runtime.to_str().unwrap());
+    let language = loader.language_for_scope("source.cpp").unwrap();
+    let query = loader.indent_query(language).unwrap();
+    let doc = Rope::from_str("if (x) // c\r\n    foo();\r\n");
+    let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+    let indent =
+        treesitter_indent_for_pos(query, &syntax, &loader, 4, 4, doc.slice(..), 0, 11, true)
+            .unwrap()
+            .to_string(&IndentStyle::Spaces(4), 4);
+    assert_eq!(indent, "    ");
+}
+
 fn indent_tests_dir() -> PathBuf {
     let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     test_dir.push("tests/data/indent");
