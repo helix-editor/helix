@@ -151,8 +151,6 @@ pub struct View {
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
-    /// used to store previous selections of tree-sitter objects
-    pub object_selections: Vec<Selection>,
     /// all gutter-related configuration settings, used primarily for gutter rendering
     pub gutters: GutterConfig,
     // HACKS: there should really only be a global diagnostics handler (the
@@ -188,7 +186,6 @@ impl View {
             }), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
-            object_selections: Vec::new(),
             gutters,
             diagnostics_handler: DiagnosticsHandler::new(),
         }
