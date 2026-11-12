@@ -17,6 +17,8 @@ use helix_view::{
     Align, Editor,
 };
 use serde_json::json;
+#[cfg(unix)]
+use tokio::sync::mpsc;
 use tui::backend::Backend;
 
 use crate::{
@@ -30,9 +32,12 @@ use crate::{
 };
 
 use log::{debug, error, info, warn};
+#[cfg(not(feature = "integration"))]
+#[cfg_attr(not(feature = "integration"), allow(unused_imports))]
+use std::io::stdout;
 use std::{
     io::{stdin, IsTerminal},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -77,8 +82,13 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
-
     theme_mode: Option<theme::Mode>,
+    #[cfg(unix)]
+    socket_rx: mpsc::UnboundedReceiver<String>,
+    #[cfg(unix)]
+    socket_listener: Option<tokio::task::JoinHandle<()>>,
+    #[cfg(unix)]
+    socket_path: Option<PathBuf>,
 }
 
 #[cfg(feature = "integration")]
@@ -244,7 +254,30 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        #[cfg(unix)]
+        let (socket_tx, socket_rx) = mpsc::unbounded_channel::<String>();
+        #[cfg(unix)]
+        let (socket_listener, socket_path) = if crate::remote::should_listen(args.socket) {
+            let path = crate::remote::resolve(
+                args.socket_path.as_deref(),
+                config.load().editor.socket_path.as_deref(),
+            );
+            match crate::remote::spawn(path, socket_tx) {
+                Some((handle, path)) => (Some(handle), Some(path)),
+                None => (None, None),
+            }
+        } else {
+            drop(socket_tx);
+            (None, None)
+        };
+
         let app = Self {
+            #[cfg(unix)]
+            socket_rx,
+            #[cfg(unix)]
+            socket_listener,
+            #[cfg(unix)]
+            socket_path,
             compositor,
             terminal,
             editor,
@@ -315,6 +348,11 @@ impl Application {
 
             use futures_util::StreamExt;
 
+            #[cfg(unix)]
+            let socket_recv = self.socket_rx.recv();
+            #[cfg(not(unix))]
+            let socket_recv = std::future::pending::<Option<String>>();
+
             tokio::select! {
                 biased;
 
@@ -342,6 +380,9 @@ impl Application {
                     // TODO: show multiple status messages at once to avoid clobbering
                     self.editor.status_msg = Some((msg.message, severity));
                     helix_event::request_redraw();
+                }
+                Some(msg) = socket_recv => {
+                    self.handle_socket_command(msg).await
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     if let Some(job) = self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback) {
@@ -773,6 +814,44 @@ impl Application {
             self.render().await;
         }
     }
+
+    #[cfg(unix)]
+    pub async fn handle_socket_command(&mut self, line: String) {
+        let line = line.trim_end_matches('\r').trim();
+        if line.is_empty() {
+            return;
+        }
+        let line = line.strip_prefix(':').unwrap_or(line);
+
+        if let Some(deny) = crate::remote::deny_inbound_command(line) {
+            self.editor.set_error(deny.message());
+            helix_event::request_redraw();
+            return;
+        }
+
+        {
+            let mut cx = crate::compositor::Context {
+                editor: &mut self.editor,
+                jobs: &mut self.jobs,
+                scroll: None,
+            };
+            if let Err(err) = crate::commands::typed::execute_command_line(
+                &mut cx,
+                line,
+                crate::ui::PromptEvent::Validate,
+                false,
+            ) {
+                cx.editor.set_error(err.to_string());
+            }
+        }
+
+        if !self.editor.should_close() {
+            self.render().await;
+        }
+    }
+
+    #[cfg(not(unix))]
+    async fn handle_socket_command(&mut self, _line: String) {}
 
     pub async fn handle_language_server_message(
         &mut self,
@@ -1360,6 +1439,18 @@ impl Application {
         }
 
         self.editor.close_language_servers(None).await;
+
+        #[cfg(unix)]
+        {
+            if let Some(handle) = self.socket_listener.take() {
+                handle.abort();
+            }
+            if let Some(path) = self.socket_path.take() {
+                if let Err(err) = std::fs::remove_file(&path) {
+                    log::debug!("Failed to unlink socket {}: {err}", path.display());
+                }
+            }
+        }
 
         errs
     }

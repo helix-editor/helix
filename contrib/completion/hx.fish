@@ -17,6 +17,8 @@ complete -c hx -l hsplit -d "Splits all given files horizontally"
 complete -c hx -s c -l config -r -d "Specifies a file to use for config"
 complete -c hx -l log -r -d "Specifies a file to use for logging"
 complete -c hx -s w -l working-dir -d "Specify initial working directory" -xa "(__fish_complete_directories)"
+complete -c hx -l socket -F -d "Bind or connect to a Unix remote socket"
+complete -c hx -l remote -x -d "Send a command to a running Helix and exit"
 
 function __hx_langs_ops
     hx --health all-languages | tail -n '+2' | string replace -fr '^(\S+) .*' '$1'

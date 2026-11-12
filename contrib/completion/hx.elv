@@ -8,13 +8,16 @@ var candidate = { | _stem  _desc |
 }
 
 ### These commands will invalidate further input (i.e. not react to them)
-var skips = [ "--tutor" "--help" "--version" "-V" "--health" ]
+var skips = [ "--tutor" "--help" "--version" "-V" "--health" "--remote" ]
 
 ### Grammar commands
 var grammar = [ "--grammar" "-g" ]
 
 ### Config commands
 var config = [ "--config" "-c" ]
+
+### Socket path
+var socket = [ "--socket" ]
 
 ### Set an arg-completer for the `hx` binary
 set edit:completion:arg-completer[hx] = {|@args|
@@ -41,6 +44,10 @@ set edit:completion:arg-completer[hx] = {|@args|
       edit:complete-filename $args[-1] | each { |v| put $v[stem] }
       return
     }
+    if (has-value $socket $args[-2]) {
+      edit:complete-filename $args[-1] | each { |v| put $v[stem] }
+      return
+    }
   }
   edit:complete-filename $args[-1] | each { |v| put $v[stem]}
   $candidate "--help" "(Prints help information)"
@@ -53,4 +60,6 @@ set edit:completion:arg-completer[hx] = {|@args|
   $candidate "--hsplit" "(Splits all given files horizontally)"
   $candidate "--config" "(Specifies a file to use for configuration)"
   $candidate "--log" "(Specifies a file to write log data into)"
+  $candidate "--socket" "(Bind or connect to a Unix remote socket)"
+  $candidate "--remote" "(Send a command to a running Helix and exit)"
 }
