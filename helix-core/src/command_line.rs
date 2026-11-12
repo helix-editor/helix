@@ -382,6 +382,15 @@ impl<'a> Token<'a> {
             is_terminated: true,
         }
     }
+
+    pub fn into_owned(self) -> Token<'static> {
+        Token {
+            kind: self.kind,
+            content_start: self.content_start,
+            content: Cow::Owned(self.content.into_owned()),
+            is_terminated: self.is_terminated,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1040,6 +1049,16 @@ mod test {
         let actual: Vec<_> = actual.iter().map(|c| c.as_ref()).collect();
 
         assert_eq!(actual.as_slice(), expected);
+    }
+
+    #[test]
+    fn token_into_owned() {
+        let mut tokenizer = Tokenizer::new("hello", true);
+        let token = tokenizer.next().unwrap().unwrap();
+        assert!(matches!(token.content, Cow::Borrowed(_)));
+        let owned = token.clone().into_owned();
+        assert!(matches!(owned.content, Cow::Owned(_)));
+        assert_eq!(owned, token);
     }
 
     #[test]
