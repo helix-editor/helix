@@ -131,8 +131,12 @@ pub fn breakpoints_changed(
                 breakpoint.message = dap_breakpoint.message;
                 // TODO: handle breakpoint.message
                 // TODO: verify source matches
-                breakpoint.line = dap_breakpoint.line.unwrap_or(0).saturating_sub(1); // convert to 0-indexing
-                                                                                      // TODO: no unwrap
+                // Some adapters answer provisional breakpoints without a line,
+                // so keep the existing line in that case (same as the
+                // "changed" event below) instead of corrupting it to 0.
+                breakpoint.line = dap_breakpoint
+                    .line
+                    .map_or(breakpoint.line, |line| line.saturating_sub(1)); // convert to 0-indexing
                 breakpoint.column = dap_breakpoint.column;
                 // TODO: verify end_linef/col instruction reference, offset
             }
