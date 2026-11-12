@@ -455,6 +455,7 @@ impl View {
         theme: Option<&Theme>,
     ) -> TextAnnotations<'a> {
         let mut text_annotations = TextAnnotations::default();
+        text_annotations.add_folds(doc.folds(self.id));
 
         if let Some(labels) = doc.jump_labels.get(&self.id) {
             let style = theme.and_then(|t| t.find_highlight("ui.virtual.jump-label"));
@@ -875,6 +876,7 @@ mod tests {
             GutterConfig {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
+                ..Default::default()
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
@@ -906,6 +908,7 @@ mod tests {
             GutterConfig {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
+                ..Default::default()
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
