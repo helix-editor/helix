@@ -68,6 +68,35 @@ pub fn which<T: AsRef<OsStr>>(
     })
 }
 
+/// Builds the command that runs `command` with `shell`, the program and leading arguments
+/// configured as `editor.shell` (for example `["sh", "-c"]`).
+///
+/// `cmd.exe` does not split its command line with the usual Windows quoting rules, so a
+/// command for `cmd /C` is appended to the command line as is. Quoting it as a single
+/// argument would turn `python args.py "foo bar"` into `"python args.py \"foo bar\""`, which
+/// `cmd` runs with the backslashes kept and the quoted argument split at the spaces.
+///
+/// # Panics
+///
+/// Panics if `shell` is empty.
+pub fn shell_command(shell: &[String], command: &str) -> std::process::Command {
+    let mut process = std::process::Command::new(&shell[0]);
+    process.args(&shell[1..]);
+
+    #[cfg(windows)]
+    if Path::new(&shell[0])
+        .file_stem()
+        .is_some_and(|stem| stem.eq_ignore_ascii_case("cmd"))
+    {
+        use std::os::windows::process::CommandExt;
+        process.raw_arg(command);
+        return process;
+    }
+
+    process.arg(command);
+    process
+}
+
 fn find_brace_end(src: &[u8]) -> Option<usize> {
     use regex_automata::meta::Regex;
 
@@ -222,5 +251,20 @@ mod tests {
         assert_env_expand!(env, "baz/${EMPTY:=bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${EMPTY-bar}/foo", "baz//foo");
         assert_env_expand!(env, "baz/${EMPTY=bar}/foo", "baz//foo");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn cmd_runs_the_command_as_typed() {
+        use super::shell_command;
+
+        let shell = ["cmd".to_owned(), "/C".to_owned()];
+        let run = |command: &str| {
+            let output = shell_command(&shell, command).output().unwrap();
+            String::from_utf8_lossy(&output.stdout).into_owned()
+        };
+
+        assert_eq!(run(r#"echo "foo bar""#), "\"foo bar\"\r\n");
+        assert_eq!(run(r#"if "foo bar"=="foo bar" echo same"#), "same\r\n");
     }
 }

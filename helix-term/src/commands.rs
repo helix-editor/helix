@@ -6585,12 +6585,8 @@ async fn shell_impl_async(
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
 
-    let mut process = Command::new(&shell[0]);
-    process
-        .args(&shell[1..])
-        .arg(cmd)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    let mut process = Command::from(helix_stdx::env::shell_command(shell, cmd));
+    process.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     if input.is_some() || cfg!(windows) {
         process.stdin(Stdio::piped());

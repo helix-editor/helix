@@ -138,17 +138,15 @@ pub fn expand<'a>(editor: &Editor, token: Token<'a>) -> Result<Cow<'a, str>> {
 
 /// Expand a shell command.
 pub fn expand_shell<'a>(editor: &Editor, content: Cow<'a, str>) -> Result<Cow<'a, str>> {
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
 
     // Recursively expand the expansion's content before executing the shell command.
     let content = expand_inner(editor, content)?;
 
     let config = editor.config();
     let shell = &config.shell;
-    let mut process = Command::new(&shell[0]);
+    let mut process = helix_stdx::env::shell_command(shell, &content);
     process
-        .args(&shell[1..])
-        .arg(content.as_ref())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
