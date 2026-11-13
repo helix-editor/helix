@@ -106,6 +106,43 @@ async fn shell_expansion() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn blocking_shell_expansion() -> anyhow::Result<()> {
+    test_statusline(
+        r#":echo %shb{echo "hello world"}"#,
+        "hello world",
+        Severity::Info,
+    )
+    .await?;
+
+    // Blocking shell expansion is recursive too.
+    test_statusline(":echo %shb{echo '%{cursor_line}'}", "1", Severity::Info).await?;
+
+    // Unlike `%sh{..}`, a failing command cancels the command line.
+    test_statusline(
+        ":echo %shb{exit 3}",
+        "'echo': `exit 3` failed: exit status: 3",
+        Severity::Error,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[cfg(unix)]
+#[tokio::test(flavor = "multi_thread")]
+async fn run_shell_command_blocking() -> anyhow::Result<()> {
+    test_statusline(
+        ":shb exit 3",
+        "'run-shell-command-blocking': exit status: 3",
+        Severity::Error,
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn register_expansion() -> anyhow::Result<()> {
     test_statusline(

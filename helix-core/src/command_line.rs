@@ -253,6 +253,14 @@ pub enum ExpansionKind {
     ///
     /// For example `%sh{echo hello}`.
     Shell,
+    /// Run the token's contents via the configured shell program, handing the terminal over to
+    /// the program while it runs.
+    ///
+    /// Unlike `Shell` the program inherits the terminal's input and error streams, so it can run
+    /// an interactive TUI. Only its standard output is captured and expanded in its place.
+    ///
+    /// For example `%shb{yazi --chooser-file=/dev/stdout}`.
+    ShellBlocking,
     /// Expand registers from the editor's state.
     ///
     /// For example `%reg{a}`.
@@ -260,14 +268,20 @@ pub enum ExpansionKind {
 }
 
 impl ExpansionKind {
-    pub const VARIANTS: &'static [Self] =
-        &[Self::Variable, Self::Unicode, Self::Shell, Self::Register];
+    pub const VARIANTS: &'static [Self] = &[
+        Self::Variable,
+        Self::Unicode,
+        Self::Shell,
+        Self::ShellBlocking,
+        Self::Register,
+    ];
 
     pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Variable => "",
             Self::Unicode => "u",
             Self::Shell => "sh",
+            Self::ShellBlocking => "shb",
             Self::Register => "reg",
         }
     }
@@ -277,6 +291,7 @@ impl ExpansionKind {
             "" => Some(Self::Variable),
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
+            "shb" => Some(Self::ShellBlocking),
             "reg" => Some(Self::Register),
             _ => None,
         }
@@ -1106,6 +1121,10 @@ mod test {
         assert_tokens(
             r#"echo "%sh{echo 'hello world'}""#,
             &["echo", r#"%sh{echo 'hello world'}"#],
+        );
+        assert_tokens(
+            r#"echo %shb{yazi --chooser-file=/dev/stdout}"#,
+            &["echo", "yazi --chooser-file=/dev/stdout"],
         );
         // Nesting of the expansion delimiter:
         assert_tokens(r#"echo %{hello {x} world}"#, &["echo", "hello {x} world"]);

@@ -33,6 +33,7 @@ use log::{debug, error, info, warn};
 use std::{
     io::{stdin, IsTerminal},
     path::Path,
+    rc::Rc,
     sync::Arc,
 };
 
@@ -66,10 +67,12 @@ type TerminalEvent = termina::Event;
 type TerminalEvent = crossterm::event::Event;
 
 type Terminal = tui::terminal::Terminal<TerminalBackend>;
+type SharedTerminal = crate::terminal_handoff::SharedTerminal<TerminalBackend>;
 
 pub struct Application {
     compositor: Compositor,
-    terminal: Terminal,
+    // Shared with `editor.terminal_handoff` so that child processes can be given the terminal.
+    terminal: SharedTerminal,
     pub editor: Editor,
 
     config: Arc<ArcSwap<Config>>,
@@ -244,6 +247,9 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        let terminal = SharedTerminal::new(terminal);
+        editor.terminal_handoff = Some(Rc::new(terminal.handoff()));
+
         let app = Self {
             compositor,
             terminal,
@@ -260,7 +266,10 @@ impl Application {
 
     async fn render(&mut self) {
         if self.compositor.full_redraw {
-            self.terminal.clear().expect("Cannot clear the terminal");
+            self.terminal
+                .get()
+                .clear()
+                .expect("Cannot clear the terminal");
             self.compositor.full_redraw = false;
         }
 
@@ -273,14 +282,14 @@ impl Application {
         helix_event::start_frame();
         cx.editor.needs_redraw = false;
 
-        let area = self
-            .terminal
+        let mut terminal = self.terminal.get();
+        let area = terminal
             .autoresize()
             .expect("Unable to determine terminal size");
 
         // TODO: need to recalculate view tree if necessary
 
-        let surface = self.terminal.current_buffer_mut();
+        let surface = terminal.current_buffer_mut();
 
         self.compositor.render(area, surface, &mut cx);
         let (pos, kind) = self.compositor.cursor(area, &self.editor);
@@ -288,7 +297,7 @@ impl Application {
         self.editor.cursor_cache.reset();
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
-        self.terminal.draw(pos, kind).unwrap();
+        terminal.draw(pos, kind).unwrap();
     }
 
     pub async fn event_loop<S>(&mut self, input_stream: &mut S)
@@ -386,13 +395,13 @@ impl Application {
             ConfigEvent::Update(editor_config) => {
                 let mut app_config = (*self.config.load().clone()).clone();
                 app_config.editor = *editor_config;
-                if let Err(err) = self.terminal.reconfigure((&app_config.editor).into()) {
+                if let Err(err) = self.terminal.get().reconfigure((&app_config.editor).into()) {
                     self.editor.set_error(err.to_string());
                 };
                 self.config.store(Arc::new(app_config));
             }
             ConfigEvent::ThemeChanged => {
-                let _ = self.terminal.backend_mut().set_background_color(
+                let _ = self.terminal.get().backend_mut().set_background_color(
                     self.editor
                         .theme
                         .try_get_exact("ui.background")
@@ -432,7 +441,7 @@ impl Application {
             Self::load_configured_theme(
                 &mut self.editor,
                 &default_config,
-                &mut self.terminal,
+                &mut self.terminal.get(),
                 self.theme_mode,
             );
 
@@ -450,7 +459,9 @@ impl Application {
                 document.replace_diagnostics(diagnostics, &[], None);
             }
 
-            self.terminal.reconfigure((&default_config.editor).into())?;
+            self.terminal
+                .get()
+                .reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
             Ok(())
@@ -548,7 +559,7 @@ impl Application {
                 // https://github.com/neovim/neovim/issues/12322
                 // https://github.com/neovim/neovim/pull/13084
                 for retries in 1..=10 {
-                    match self.terminal.claim() {
+                    match self.terminal.get().claim() {
                         Ok(()) => break,
                         Err(err) if retries == 10 => panic!("Failed to claim terminal: {}", err),
                         Err(_) => continue,
@@ -556,9 +567,12 @@ impl Application {
                 }
 
                 // redraw the terminal
-                let area = self.terminal.size();
+                let area = self.terminal.get().size();
                 self.compositor.resize(area);
-                self.terminal.clear().expect("couldn't clear terminal");
+                self.terminal
+                    .get()
+                    .clear()
+                    .expect("couldn't clear terminal");
 
                 self.render().await;
             }
@@ -710,11 +724,13 @@ impl Application {
         let should_redraw = match event.unwrap() {
             #[cfg(not(windows))]
             termina::Event::WindowResized(termina::WindowSize { rows, cols, .. }) => {
-                self.terminal
-                    .resize(Rect::new(0, 0, cols, rows))
-                    .expect("Unable to resize terminal");
-
-                let area = self.terminal.size();
+                let area = {
+                    let mut terminal = self.terminal.get();
+                    terminal
+                        .resize(Rect::new(0, 0, cols, rows))
+                        .expect("Unable to resize terminal");
+                    terminal.size()
+                };
 
                 self.compositor.resize(area);
 
@@ -737,7 +753,7 @@ impl Application {
                     Self::load_configured_theme(
                         &mut self.editor,
                         &config,
-                        &mut self.terminal,
+                        &mut self.terminal.get(),
                         self.theme_mode,
                     );
                     true
@@ -751,7 +767,7 @@ impl Application {
                     .resize(Rect::new(0, 0, width, height))
                     .expect("Unable to resize terminal");
 
-                let area = self.terminal.size();
+                let area = self.terminal.get().size();
 
                 self.compositor.resize(area);
 
@@ -1272,17 +1288,15 @@ impl Application {
 
     fn restore_term(&mut self) -> std::io::Result<()> {
         use helix_view::graphics::CursorKind;
-        self.terminal
-            .backend_mut()
-            .show_cursor(CursorKind::Block)
-            .ok();
-        self.terminal.restore()
+        let mut terminal = self.terminal.get();
+        terminal.backend_mut().show_cursor(CursorKind::Block).ok();
+        terminal.restore()
     }
 
     #[cfg(all(not(feature = "integration"), not(windows)))]
     pub fn event_stream(&self) -> impl Stream<Item = std::io::Result<TerminalEvent>> + Unpin {
         use termina::{escape::csi, Terminal as _};
-        let reader = self.terminal.backend().terminal().event_reader();
+        let reader = self.terminal.get().backend().terminal().event_reader();
         termina::EventStream::new(reader, |event| {
             // Accept either non-escape sequences or theme mode updates.
             !event.is_escape()
@@ -1323,7 +1337,7 @@ impl Application {
     where
         S: Stream<Item = std::io::Result<TerminalEvent>> + Unpin,
     {
-        self.terminal.claim()?;
+        self.terminal.get().claim()?;
 
         self.event_loop(input_stream).await;
 
