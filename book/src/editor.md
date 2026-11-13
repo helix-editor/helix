@@ -485,9 +485,10 @@ Valid values for these options are `block`, `block-hardware`, `bar`,
 `underline`, or `hidden`.
 
 `block` is drawn entirely by Helix and can be fully themed. `block-hardware`
-draws the same themed block but leaves the terminal cursor visible on top of
-it. Use `block-hardware` (or `bar`/`underline`) when a terminal feature needs
-to follow the native cursor, such as Kitty's `cursor_trail` animation.
+uses the terminal's native block cursor instead, so terminal effects such as
+Kitty's `cursor_trail` animation follow it. Because the terminal draws it, it
+uses the terminal's cursor colors rather than the theme's `ui.cursor` colors.
+Use `bar` or `underline` for the same native behavior with a different shape.
 
 > 💡 Due to limitations of the terminal environment, only the primary cursor can
 > change shape.

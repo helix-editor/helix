@@ -626,6 +626,11 @@ impl EditorView {
 
         let cursorkind = cursor_shape_config.from_mode(mode);
         let cursor_is_block = matches!(cursorkind, CursorKind::Block | CursorKind::BlockHardware);
+        // `Block` is drawn entirely in software so it can be themed. `BlockHardware`
+        // leaves the native cursor visible (terminal effects such as Kitty's
+        // `cursor_trail` follow it), so it must not paint a software block over it:
+        // that would hide the trail and, on a tab, widen the cursor to the whole tab.
+        let draw_software_cursor = matches!(cursorkind, CursorKind::Block);
 
         let selection_scope = theme
             .find_highlight_exact("ui.selection")
@@ -666,12 +671,13 @@ impl EditorView {
 
             // Special-case: cursor at end of the rope.
             if range.head == range.anchor && range.head == text.len_chars() {
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
-                    // Bar and underline cursors are drawn by the terminal
+                if !selection_is_primary || (draw_software_cursor && is_terminal_focused) {
+                    // Bar and underline cursors are drawn by the terminal.
+                    // `BlockHardware` also leaves the terminal cursor visible.
                     // BUG: If the editor area loses focus while having a bar or
                     // underline cursor (eg. when a regex prompt has focus) then
-                    // the primary cursor will be invisible. This doesn't happen
-                    // with block cursors since we manually draw *all* cursors.
+                    // the primary cursor will be invisible. `Block` avoids this
+                    // by drawing every cursor in software.
                     spans.push((cursor_scope, range.head..range.head + 1));
                 }
                 continue;
@@ -689,17 +695,17 @@ impl EditorView {
                         cursor_start
                     };
                 spans.push((selection_scope, range.anchor..selection_end));
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add software block cursors (secondary cursors always use them)
+                // the primary cursor is drawn by the terminal when it is unfocused or hardware-backed
+                if !selection_is_primary || (draw_software_cursor && is_terminal_focused) {
                     spans.push((cursor_scope, cursor_start..range.head));
                 }
             } else {
                 // Reverse case.
                 let cursor_end = next_grapheme_boundary(text, range.head);
-                // add block cursors
-                // skip primary cursor if terminal is unfocused - terminal cursor is used in that case
-                if !selection_is_primary || (cursor_is_block && is_terminal_focused) {
+                // add software block cursors (secondary cursors always use them)
+                // the primary cursor is drawn by the terminal when it is unfocused or hardware-backed
+                if !selection_is_primary || (draw_software_cursor && is_terminal_focused) {
                     spans.push((cursor_scope, range.head..cursor_end));
                 }
                 // non block cursors look like they exclude the cursor
@@ -2043,7 +2049,7 @@ impl Component for EditorView {
             // The software block cursor is drawn manually. Hide the terminal
             // cursor so it does not double up. `BlockHardware` deliberately
             // falls through so the terminal cursor (and its trail animation)
-            // stays visible.
+            // is used directly instead of a software block.
             (pos, CursorKind::Block) => {
                 if self.terminal_focused {
                     (pos, CursorKind::Hidden)

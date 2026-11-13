@@ -36,9 +36,11 @@ transparent-popups = true
 popup-border = "all"
 
 [editor.cursor-shape]
-# "block" is drawn entirely by Helix. "block-hardware" keeps the terminal
-# cursor visible on top of it, which enables terminal effects such as Kitty's
-# cursor_trail. Bar/underline always use the terminal cursor.
+# "block" is drawn entirely by Helix and uses the theme's ui.cursor colors.
+# "block-hardware" uses the terminal's native block cursor instead, which
+# enables terminal effects such as Kitty's cursor_trail. Bar/underline also
+# use the terminal cursor. The native cursor uses the terminal's cursor colors,
+# so keep them in sync with ui.cursor (the Noctalia Kitty theme does).
 normal = "block-hardware"
 insert = "bar"
 select = "underline"

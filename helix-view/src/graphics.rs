@@ -59,9 +59,9 @@ pub enum CursorKind {
     Block,
     /// █
     ///
-    /// Helix still draws the themed block, but the terminal cursor is left
-    /// visible on top of it. This lets terminal cursor effects such as Kitty's
-    /// `cursor_trail` follow the cursor.
+    /// The terminal cursor is used directly, so terminal cursor effects such as
+    /// Kitty's `cursor_trail` follow it. The cursor uses the terminal's cursor
+    /// colors rather than the theme's `ui.cursor` colors.
     BlockHardware,
     /// |
     Bar,

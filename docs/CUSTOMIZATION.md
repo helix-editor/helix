@@ -192,8 +192,10 @@ untouched. Alternatively, set `bg = "none"` on individual scopes.
 Terminal cursor effects (for example Kitty's `cursor_trail`) follow the native
 terminal cursor. Helix's default `block` cursor is drawn in software and hides
 that native cursor. Use `normal = "block-hardware"` in
-`[editor.cursor-shape]` to keep the native cursor visible on top of the themed
-block, or use `bar`/`underline`.
+`[editor.cursor-shape]` to use the terminal's native block cursor instead, or
+use `bar`/`underline`. The native cursor uses the terminal's cursor colors
+rather than the theme's `ui.cursor` colors; keep the two in sync (the generated
+Noctalia Kitty theme does this) or use `block` if you need Helix to draw it.
 
 The active theme file is watched for changes and reloaded automatically with a
 short debounce. Generated themes can therefore rewrite

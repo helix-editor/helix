@@ -69,6 +69,9 @@ where
     current: usize,
     /// Kind of cursor (hidden or others)
     cursor_kind: CursorKind,
+    /// Last cursor position sent to the backend. Used to avoid redundant CUPs on
+    /// frames that do not repaint any cells.
+    last_cursor_position: Option<(u16, u16)>,
     /// Viewport
     viewport: Viewport,
     /// Set to request a full clear. The erase is deferred to the next `flush` so it is emitted
@@ -113,6 +116,7 @@ where
             ],
             current: 0,
             cursor_kind: CursorKind::Block,
+            last_cursor_position: None,
             viewport: options.viewport,
             force_clear: false,
         })
@@ -151,8 +155,8 @@ where
     }
 
     /// Obtains a difference between the previous and the current buffer and passes it to the
-    /// current backend for drawing.
-    pub fn flush(&mut self) -> io::Result<()> {
+    /// current backend for drawing. Returns whether any cells were updated.
+    pub fn flush(&mut self) -> io::Result<bool> {
         if self.force_clear {
             self.backend.clear()?;
             self.force_clear = false;
@@ -160,7 +164,10 @@ where
         let previous_buffer = &self.buffers[1 - self.current];
         let current_buffer = &self.buffers[self.current];
         let updates = previous_buffer.diff(current_buffer);
-        self.backend.draw(updates.into_iter())
+        let mut had_updates = false;
+        self.backend
+            .draw(updates.into_iter().inspect(|_| had_updates = true))?;
+        Ok(had_updates)
     }
 
     /// Updates the Terminal so that internal buffers match the requested size. Requested size will
@@ -203,15 +210,32 @@ where
         self.backend.start_sync()?;
 
         // Draw to stdout
-        self.flush()?;
+        let had_updates = self.flush()?;
 
         if let Some((x, y)) = cursor_position {
-            self.set_cursor(x, y)?;
+            // Painting cells moves the terminal's cursor, so the final CUP is only
+            // redundant when the frame was empty and the cursor did not move. Skipping
+            // it keeps shape-only frames from resetting terminal features such as
+            // Kitty's `cursor_trail` gate.
+            if self.last_cursor_position != Some((x, y)) || had_updates {
+                self.set_cursor(x, y)?;
+            }
+            self.last_cursor_position = Some((x, y));
+        } else {
+            self.last_cursor_position = None;
         }
 
         match cursor_kind {
-            CursorKind::Hidden => self.hide_cursor()?,
-            kind => self.show_cursor(kind)?,
+            CursorKind::Hidden => {
+                if self.cursor_kind != CursorKind::Hidden {
+                    self.hide_cursor()?;
+                }
+            }
+            kind => {
+                if self.cursor_kind != kind {
+                    self.show_cursor(kind)?;
+                }
+            }
         }
 
         self.backend.end_sync()?;
