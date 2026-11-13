@@ -404,6 +404,7 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        create_file, "Create a new file from a path prompt",
         file_explorer, "Open file explorer in workspace root",
         file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
         file_explorer_in_current_directory, "Open file explorer at current working directory",
@@ -3220,6 +3221,35 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     }
     let picker = ui::file_picker(cx.editor, cwd);
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn create_file(cx: &mut Context) {
+    let prompt = Prompt::new(
+        Cow::Borrowed(""),
+        None,
+        ui::completers::none,
+        |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            let input = input.trim();
+            if input.is_empty() {
+                cx.editor.set_error("Create file: path is required");
+                return;
+            }
+            let path = helix_stdx::path::expand_tilde(std::path::Path::new(input));
+            match cx.editor.open(&path, Action::Replace) {
+                Ok(doc_id) => {
+                    if let Err(err) = cx.editor.save(doc_id, None::<std::path::PathBuf>, true) {
+                        cx.editor.set_error(format!("Create file: {err}"));
+                    }
+                }
+                Err(err) => cx.editor.set_error(format!("Create file: {err}")),
+            }
+        },
+    )
+    .floating("Create File");
+    cx.push_layer(Box::new(prompt));
 }
 
 fn file_explorer(cx: &mut Context) {

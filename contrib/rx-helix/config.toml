@@ -129,7 +129,7 @@ action = "file_picker"
 [[editor.dashboard.items]]
 key = "n"
 desc = "New File"
-action = ":new"
+action = "create_file"
 
 [[editor.dashboard.items]]
 key = "g"
@@ -161,3 +161,7 @@ images = true
 [editor.spellcheck]
 enable = true
 language = "en_US"
+
+# Space shortcut for the centered Create File path prompt.
+[keys.normal.space]
+n = "create_file"

@@ -48,6 +48,19 @@ still win because Helix checks glob matches before the extension fallback:
 nginx, systemd, hyprlang, and bitbake `.conf` files keep their grammars, tmux
 config fragments use `bash`, and fontconfig XML uses `xml`.
 
+## Create File prompt
+
+Bind `create_file` to a key to open a centered path prompt:
+
+```toml
+[keys.normal.space]
+n = "create_file"
+```
+
+Type a path and press Enter. The prompt uses force-write semantics, creates
+missing parent directories recursively, and opens the file in a new buffer tab.
+Long paths scroll horizontally while keeping the cursor visible; Esc cancels.
+
 ## Statusline
 
 The statusline is one row. It is split into `left`, `center`, and `right`

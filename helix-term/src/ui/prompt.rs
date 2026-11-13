@@ -54,6 +54,9 @@ pub struct Prompt {
     is_search: bool,
     /// The `select:` regex prompt is rendered by the statusline.
     is_select: bool,
+    /// When set, render as a centered floating box with this title instead of
+    /// a prompt row at the bottom of the editor.
+    floating_title: Option<Cow<'static, str>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -113,6 +116,7 @@ impl Prompt {
             is_command: false,
             is_search: false,
             is_select: false,
+            floating_title: None,
         }
     }
 
@@ -134,6 +138,13 @@ impl Prompt {
     /// statusline with the select-mode colors.
     pub fn select_line(mut self) -> Self {
         self.is_select = true;
+        self
+    }
+
+    /// Render the prompt as a centered floating box with the given title
+    /// embedded in the top border.
+    pub fn floating(mut self, title: impl Into<Cow<'static, str>>) -> Self {
+        self.floating_title = Some(title.into());
         self
     }
 
@@ -434,7 +445,6 @@ const BASE_WIDTH: u16 = 30;
 impl Prompt {
     pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
-        let prompt_color = theme.get("ui.text");
         let completion_color = theme.try_get("ui.text").unwrap_or_default().bg(theme
             .get("ui.menu")
             .bg
@@ -445,7 +455,6 @@ impl Prompt {
                 .bg(crate::ui::primary_color(theme))
                 .add_modifier(helix_view::graphics::Modifier::BOLD)
         });
-        let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
         // completion
 
@@ -588,13 +597,28 @@ impl Prompt {
             return;
         }
 
-        let line = area.height - 1;
+        let prompt = self.prompt.clone();
+        self.render_line(area, surface, cx, &prompt, background);
+    }
+
+    fn render_line(
+        &mut self,
+        area: Rect,
+        surface: &mut Surface,
+        cx: &mut Context,
+        prompt: &str,
+        background: helix_view::theme::Style,
+    ) {
+        let theme = &cx.editor.theme;
+        let prompt_color = theme.get("ui.text");
+        let suggestion_color = theme.get("ui.text.inactive");
+        let line = area.height.saturating_sub(1);
         surface.clear_with(area.clip_top(line), background);
         // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+        surface.set_string(area.x, area.y + line, prompt, prompt_color);
 
         self.line_area = area
-            .clip_left(self.prompt.len() as u16)
+            .clip_left(prompt.len() as u16)
             .clip_top(line)
             .clip_right(2);
 
@@ -677,6 +701,52 @@ impl Prompt {
                 |_| prompt_color,
             );
         }
+    }
+
+    fn floating_areas(&self, area: Rect) -> (Rect, Rect) {
+        let width = (area.width * 3 / 10)
+            .clamp(32, 100)
+            .min(area.width.saturating_sub(4));
+        let height = 3.min(area.height);
+        let x = area.x + area.width.saturating_sub(width) / 2;
+        let y = area.y + (area.height / 10).min(area.height.saturating_sub(height));
+        let box_area = Rect::new(x, y, width, height);
+        let input_area = Rect::new(
+            box_area.x + 2,
+            box_area.y + 1,
+            box_area.width.saturating_sub(4),
+            1,
+        );
+        (box_area, input_area)
+    }
+
+    fn render_floating(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+        let theme = &cx.editor.theme;
+        let background = theme.get("ui.popup.info");
+        let border_style = crate::ui::panel_border_style(theme, "ui.popup.info");
+        let title_style = theme.try_get("ui.popup.info.title").unwrap_or_else(|| {
+            helix_view::theme::Style::default()
+                .fg(crate::ui::primary_color(theme))
+                .add_modifier(helix_view::graphics::Modifier::BOLD)
+        });
+        let (box_area, input_area) = self.floating_areas(area);
+        if box_area.height < 3 || input_area.width == 0 {
+            return;
+        }
+
+        surface.clear_with(box_area, background);
+        Block::bordered()
+            .border_style(border_style)
+            .render(box_area, surface);
+
+        if let Some(title) = self.floating_title.as_deref() {
+            let label = format!(" {title} ");
+            let width = label.width().min(box_area.width.saturating_sub(2) as usize);
+            let x = box_area.x + (box_area.width as usize).saturating_sub(width) as u16 / 2;
+            surface.set_stringn(x, box_area.y, &label, width, title_style);
+        }
+
+        self.render_line(input_area, surface, cx, "", background);
     }
 }
 
@@ -854,13 +924,38 @@ impl Component for Prompt {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.render_prompt(area, surface, cx)
+        if self.floating_title.is_some() {
+            self.render_floating(area, surface, cx);
+        } else {
+            self.render_prompt(area, surface, cx);
+        }
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         if self.is_command || self.is_search || self.is_select {
             return (
                 editor.prompt_cursor.get(),
+                editor.config().cursor_shape.from_mode(Mode::Insert),
+            );
+        }
+
+        if self.floating_title.is_some() {
+            let (_, input_area) = self.floating_areas(area);
+            let input_area = input_area.clip_right(2);
+            let mut col = input_area.x as usize + self.line[self.anchor..self.cursor].width();
+            if self.truncate_end
+                && self.line[self.anchor..self.cursor].width() >= input_area.width as usize
+            {
+                col = col.saturating_sub(1);
+            }
+            if self.truncate_start && self.cursor == self.anchor {
+                col += self.line[self.cursor..]
+                    .graphemes(true)
+                    .next()
+                    .map_or(0, |g| g.width());
+            }
+            return (
+                Some(Position::new(input_area.y as usize, col)),
                 editor.config().cursor_shape.from_mode(Mode::Insert),
             );
         }
@@ -891,5 +986,38 @@ impl Component for Prompt {
             Some(Position::new(area.y as usize + line, col)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn floating_prompt() -> Prompt {
+        Prompt::new(Cow::Borrowed(""), None, |_, _| Vec::new(), |_, _, _| {})
+            .floating("Create File")
+    }
+
+    #[test]
+    fn floating_prompt_is_centered() {
+        let prompt = floating_prompt();
+        let (box_area, input_area) = prompt.floating_areas(Rect::new(0, 0, 120, 40));
+
+        assert_eq!(box_area.width, 36);
+        assert_eq!(box_area.height, 3);
+        assert_eq!(box_area.x, 42);
+        assert_eq!(input_area.x, box_area.x + 2);
+        assert_eq!(input_area.y, box_area.y + 1);
+        assert_eq!(input_area.width, box_area.width - 4);
+    }
+
+    #[test]
+    fn floating_prompt_clamps_width_on_narrow_viewports() {
+        let prompt = floating_prompt();
+        let (box_area, input_area) = prompt.floating_areas(Rect::new(0, 0, 30, 10));
+
+        assert_eq!(box_area.width, 26);
+        assert_eq!(input_area.width, 22);
+        assert_eq!(box_area.x, 2);
     }
 }
