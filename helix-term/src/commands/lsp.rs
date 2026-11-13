@@ -452,23 +452,29 @@ pub fn symbol_picker(cx: &mut Context) {
 pub fn workspace_symbol_picker(cx: &mut Context) {
     use crate::ui::picker::Injector;
 
-    let doc = doc!(cx.editor);
-    if doc
-        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
-        .count()
-        == 0
-    {
+    let has_workspace_symbol_support = cx
+        .editor
+        .language_servers
+        .iter_clients()
+        .any(|client| {
+            client.is_initialized()
+                && client.supports_feature(LanguageServerFeature::WorkspaceSymbols)
+        });
+
+    if !has_workspace_symbol_support {
         cx.editor
             .set_error("No configured language server supports workspace symbols");
         return;
     }
 
     let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
-        let doc = doc!(editor);
-        let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesUnordered<_> = doc
-            .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
-            .filter(|ls| seen_language_servers.insert(ls.id()))
+        let mut futures: FuturesUnordered<_> = editor
+            .language_servers
+            .iter_clients()
+            .filter(|client| {
+                client.is_initialized()
+                    && client.supports_feature(LanguageServerFeature::WorkspaceSymbols)
+            })
             .map(|language_server| {
                 let request = language_server
                     .workspace_symbols(pattern.to_string())
