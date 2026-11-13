@@ -131,26 +131,49 @@ let
       license = lib.licenses.mpl20;
     };
   });
-in
-# Helix falls back to the `runtime` directory next to its executable, so put the
-# runtime there instead of setting `HELIX_RUNTIME`, which would override the
-# user's own and leak into child processes.
-runCommand "helix-${helix-unwrapped.version}"
-  {
-    inherit (helix-unwrapped) version meta;
 
+  # Helix falls back to the `runtime` directory next to its executable, so put the
+  # runtime there instead of setting `HELIX_RUNTIME`, which would override the
+  # user's own and leak into child processes.
+  helix-wrap =
+    { helix ? helix-unwrapped
+    , runtime ? runtimeDir
+    }: runCommand "helix-${helix.version}"
+      {
+        inherit (helix) version meta;
+      }
+      ''
+        cp -r ${helix} $out
+        chmod -R u+w $out
+        mkdir -p $out/libexec/helix
+        ln -s ${runtime} $out/libexec/helix/runtime
+        for f in $out/bin/*; do
+          mv "$f" $out/libexec/helix/
+          ln -s "../libexec/helix/$(basename "$f")" "$f"
+        done
+      '';
+in
+(helix-wrap { }).overrideAttrs
+  (final: prev: {
     passthru = {
+      # By including this separately we can more easily do override of
+      # `helix-unwrapped`. Below is an example of how to modify helix (apply
+      # patches, etc.) using this:
+      #
+      # ```nix
+      # pkgs.helix.wrap {
+      #   helix = helix.unwrapped.overrideAttrs (final: prev: {
+      #     # put your attribute overrides here like any normal package
+      #     patches = (prev.patches or []) ++ [ my-patches-here ];
+      #   });
+      # }
+      # ```
+      #
+      # This can also be used to override the runtime directory, using the
+      # `runtime` argument to `helix-wrap`, for custom handling of grammars or
+      # other runtime settings.
       unwrapped = helix-unwrapped;
+      wrap = helix-wrap;
       inherit runtimeDir grammars;
     };
-  }
-  ''
-    cp -r ${helix-unwrapped} $out
-    chmod -R u+w $out
-    mkdir -p $out/libexec/helix
-    ln -s ${runtimeDir} $out/libexec/helix/runtime
-    for f in $out/bin/*; do
-      mv "$f" $out/libexec/helix/
-      ln -s "../libexec/helix/$(basename "$f")" "$f"
-    done
-  ''
+  })
