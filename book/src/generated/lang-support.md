@@ -178,7 +178,7 @@
 | lua-format-string | ✓ |  |  |  |  |  |
 | luap | ✓ |  |  |  |  |  |
 | luau | ✓ | ✓ | ✓ |  |  | `luau-lsp` |
-| mail | ✓ | ✓ |  |  | ✓ |  |
+| mail | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | make | ✓ |  | ✓ |  |  |  |
 | markdoc | ✓ |  |  |  |  | `markdoc-ls` |
 | markdown | ✓ |  |  | ✓ |  | `marksman`, `markdown-oxide`, `rumdl` |
