@@ -46,7 +46,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Motion},
+    editor::{Action, Motion, DefaultDirOpener},
     expansion,
     info::Info,
     input::KeyEvent,
@@ -1504,8 +1504,17 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let path = path::expand(&sel);
         let path = &rel_path.join(path);
         if path.is_dir() {
-            let picker = ui::file_picker(cx.editor, path.into());
-            cx.push_layer(Box::new(overlaid(picker)));
+            match cx.editor.config().default_directory_opener {
+                DefaultDirOpener::FilePicker => {
+                    let picker = ui::file_picker(cx.editor, path.into());
+                    cx.push_layer(Box::new(overlaid(picker)));
+                }
+                DefaultDirOpener::FileExplorer => {
+                    if let Ok(explorer) = ui::file_explorer(path.into(), cx.editor) {
+                        cx.push_layer(Box::new(overlaid(explorer)));
+                    }
+                }
+            }
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
