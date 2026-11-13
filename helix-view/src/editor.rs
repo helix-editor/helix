@@ -329,6 +329,7 @@ pub struct Config {
     /// Configures completion of words from open buffers.
     /// Defaults to enabled with a trigger length of 7.
     pub word_completion: WordCompletion,
+    pub snippets: HashMap<String, HashMap<String, String>>,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Default register used for yank/paste. Defaults to '"'
@@ -1169,6 +1170,7 @@ impl Default for Config {
             auto_completion: true,
             path_completion: true,
             word_completion: WordCompletion::default(),
+            snippets: HashMap::default(),
             auto_format: true,
             default_yank_register: '"',
             auto_save: AutoSave::default(),
