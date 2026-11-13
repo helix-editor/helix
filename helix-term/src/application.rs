@@ -6,10 +6,9 @@ use helix_lsp::{
     util::lsp_range_to_range,
     LanguageServerId, LspProgressMap,
 };
-use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
-    document::{DocumentOpenError, DocumentSavedEventResult},
+    document::DocumentOpenError,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
@@ -29,7 +28,7 @@ use crate::{
     ui::{self, overlay::overlaid},
 };
 
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use std::{
     io::{stdin, IsTerminal},
     path::Path,
@@ -355,7 +354,7 @@ impl Application {
                     #[cfg(feature = "integration")]
                     {
                         // Don't report idle while a save is still in flight, or an assertion on the post-save document state (e.g. its path,
-                        // set in `handle_document_write`) can run before the `DocumentSavedEvent` is processed. Slow file I/O on Windows
+                        // set in `Editor::handle_document_write`) can run before the `DocumentSavedEvent` is processed. Slow file I/O on Windows
                         // (atomic_save's rename/fsync dance over the still-open temp file) makes this race observable.
                         // Errors produce an event too, so it cannot hang.
                         if _idle_handled && self.editor.write_count == 0 {
@@ -588,81 +587,13 @@ impl Application {
         }
     }
 
-    pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
-        let doc_save_event = match doc_save_event {
-            Ok(event) => event,
-            Err(err) => {
-                self.editor.set_error(err.to_string());
-                return;
-            }
-        };
-
-        let doc = match self.editor.document_mut(doc_save_event.doc_id) {
-            None => {
-                warn!(
-                    "received document saved event for non-existent doc id: {}",
-                    doc_save_event.doc_id
-                );
-
-                return;
-            }
-            Some(doc) => doc,
-        };
-
-        debug!(
-            "document {:?} saved with revision {}",
-            doc.path(),
-            doc_save_event.revision
-        );
-
-        doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
-
-        let lines = doc_save_event.text.len_lines();
-        let size = doc_save_event.text.len_bytes();
-
-        enum Size {
-            Bytes(u16),
-            HumanReadable(f32, &'static str),
-        }
-
-        impl std::fmt::Display for Size {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    Self::Bytes(bytes) => write!(f, "{bytes}B"),
-                    Self::HumanReadable(size, suffix) => write!(f, "{size:.1}{suffix}"),
-                }
-            }
-        }
-
-        let size = if size < 1024 {
-            Size::Bytes(size as u16)
-        } else {
-            const SUFFIX: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
-            let mut size = size as f32;
-            let mut i = 0;
-            while i < SUFFIX.len() - 1 && size >= 1024.0 {
-                size /= 1024.0;
-                i += 1;
-            }
-            Size::HumanReadable(size, SUFFIX[i])
-        };
-
-        self.editor
-            .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
-        // TODO: fix being overwritten by lsp
-        self.editor.set_status(format!(
-            "'{}' written, {lines}L {size}",
-            get_relative_path(&doc_save_event.path).to_string_lossy(),
-        ));
-    }
-
     #[inline(always)]
     pub async fn handle_editor_event(&mut self, event: EditorEvent) -> bool {
         log::debug!("received editor event: {:?}", event);
 
         match event {
             EditorEvent::DocumentSaved(event) => {
-                self.handle_document_write(event);
+                self.editor.handle_document_write(event);
                 self.render().await;
             }
             EditorEvent::ConfigEvent(event) => {
