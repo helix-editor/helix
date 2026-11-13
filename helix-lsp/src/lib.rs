@@ -687,17 +687,32 @@ impl Registry {
         Some(Ok(client))
     }
 
-    pub fn stop(&mut self, name: &str) {
-        if let Some(clients) = self.inner_by_name.get_mut(name) {
-            // Drain the clients vec so that the entry in `inner_by_name` remains
-            // empty. We use the empty vec as a "tombstone" to mean that a server
-            // has been manually stopped with :lsp-stop and shouldn't be automatically
-            // restarted by `get`. :lsp-restart can be used to restart the server
-            // manually.
-            for client in clients.drain(..) {
-                self.file_event_handler.remove_client(client.id());
-                self.inner.remove(client.id());
-                client.force_shutdown();
+    pub fn stop(&mut self, server_id: LanguageServerId, automatic_stop: bool) {
+        let Self {
+            inner,
+            inner_by_name,
+            syn_loader: _,
+            incoming: _,
+            file_event_handler,
+        } = self;
+
+        if let Some(client) = inner.remove(server_id) {
+            // Drain the clients vec so that the entry in `inner_by_name` remains empty. We use
+            // the empty vec as a "tombstone" to mean that a server has been manually stopped with
+            // :lsp-stop and shouldn't be automatically restarted by `get`. :lsp-restart can be used
+            // to restart the server manually.
+            if let Some(clients_by_name) = inner_by_name.get_mut(client.name()) {
+                for subclient in clients_by_name.drain(..) {
+                    inner.remove(subclient.id());
+                    file_event_handler.remove_client(subclient.id());
+                    subclient.force_shutdown();
+                }
+            }
+            // In case of automatic stop we remove the vec entirely because if the user closed the
+            // last Markdown file and then open a Markdown file again 5 minutes later, they likely
+            // expect the LS to start up again: they did not ask for manual stop after all
+            if automatic_stop {
+                inner_by_name.remove(client.name());
             }
         }
     }
