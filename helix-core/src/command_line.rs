@@ -25,7 +25,14 @@
 //! This module also defines structs for configuring the parsing of the command line for a
 //! command. See `Flag` and `Signature`.
 
-use std::{borrow::Cow, collections::HashMap, error::Error, fmt, ops, slice, vec};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    error::Error,
+    fmt, ops,
+    slice::{self},
+    vec,
+};
 
 /// Splits a command line into the command and arguments parts.
 ///
@@ -257,11 +264,20 @@ pub enum ExpansionKind {
     ///
     /// For example `%reg{a}`.
     Register,
+    /// Represents a placeholder positional argument.
+    ///
+    /// For example `%arg{0}`
+    Arg,
 }
 
 impl ExpansionKind {
-    pub const VARIANTS: &'static [Self] =
-        &[Self::Variable, Self::Unicode, Self::Shell, Self::Register];
+    pub const VARIANTS: &'static [Self] = &[
+        Self::Variable,
+        Self::Unicode,
+        Self::Shell,
+        Self::Register,
+        Self::Arg,
+    ];
 
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -269,6 +285,7 @@ impl ExpansionKind {
             Self::Unicode => "u",
             Self::Shell => "sh",
             Self::Register => "reg",
+            Self::Arg => "arg",
         }
     }
 
@@ -278,6 +295,7 @@ impl ExpansionKind {
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
             "reg" => Some(Self::Register),
+            "arg" => Some(Self::Arg),
             _ => None,
         }
     }
@@ -749,6 +767,7 @@ pub struct Args<'a> {
 }
 
 impl Default for Args<'_> {
+    #[inline]
     fn default() -> Self {
         Self {
             signature: Signature::DEFAULT,
@@ -762,6 +781,7 @@ impl Default for Args<'_> {
 }
 
 impl<'a> Args<'a> {
+    #[inline]
     pub fn new(signature: Signature, validate: bool) -> Self {
         Self {
             signature,
@@ -771,6 +791,11 @@ impl<'a> Args<'a> {
             flags: HashMap::new(),
             state: CompletionState::default(),
         }
+    }
+
+    #[inline]
+    pub fn empty() -> Self {
+        Self::default()
     }
 
     /// Reads the next token out of the given parser.
@@ -904,6 +929,7 @@ impl<'a> Args<'a> {
     ///
     /// For example if the last argument in the command line is `--foo` then the argument may be
     /// considered to be a flag.
+    #[inline]
     pub fn completion_state(&self) -> CompletionState {
         self.state
     }
@@ -911,6 +937,7 @@ impl<'a> Args<'a> {
     /// Returns the number of positionals supplied in the input.
     ///
     /// This number does not account for any flags passed in the input.
+    #[inline]
     pub fn len(&self) -> usize {
         self.positionals.len()
     }
@@ -919,27 +946,38 @@ impl<'a> Args<'a> {
     ///
     /// Note that this function returns `true` if there are no positional arguments even if the
     /// input contained flags.
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.positionals.is_empty()
     }
 
     /// Gets the first positional argument, if one exists.
+    #[inline]
     pub fn first(&'a self) -> Option<&'a str> {
         self.positionals.first().map(AsRef::as_ref)
     }
 
     /// Gets the positional argument at the given index, if one exists.
+    #[inline]
     pub fn get(&'a self, index: usize) -> Option<&'a str> {
         self.positionals.get(index).map(AsRef::as_ref)
     }
 
+    /// Gets the positional arguments as a slice.
+    #[inline]
+    pub fn as_slice(&self) -> &[Cow<'a, str>] {
+        &self.positionals
+    }
+
     /// Flattens all positional arguments together with the given separator between each
     /// positional.
+    #[inline]
     pub fn join(&self, sep: &str) -> String {
         self.positionals.join(sep)
     }
 
     /// Returns an iterator over all positional arguments.
+    #[inline]
     pub fn iter(&self) -> slice::Iter<'_, Cow<'_, str>> {
         self.positionals.iter()
     }
@@ -988,6 +1026,7 @@ impl<'a> Args<'a> {
 impl ops::Index<usize> for Args<'_> {
     type Output = str;
 
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         self.positionals[index].as_ref()
     }
@@ -998,6 +1037,7 @@ impl<'a> IntoIterator for Args<'a> {
     type Item = Cow<'a, str>;
     type IntoIter = vec::IntoIter<Cow<'a, str>>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.positionals.into_iter()
     }
@@ -1008,6 +1048,7 @@ impl<'i, 'a> IntoIterator for &'i Args<'a> {
     type Item = &'i Cow<'a, str>;
     type IntoIter = slice::Iter<'i, Cow<'a, str>>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.positionals.iter()
     }
