@@ -294,6 +294,12 @@
 
 (mutable_specifier) @keyword.storage.modifier.mut
 
+; In expressions the `&` of `&mut` is an `@operator`; color the `mut` to
+; match. Keep this after the generic `mutable_specifier` capture above so that
+; the last match wins.
+(reference_expression
+  (mutable_specifier) @operator)
+
 (reference_type "&" @keyword.storage.modifier.ref)
 (self_parameter "&" @keyword.storage.modifier.ref)
 
