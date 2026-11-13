@@ -631,7 +631,16 @@ impl Component for Prompt {
             alt!('b') | ctrl!(Left) => self.move_cursor(Movement::BackwardWord(1)),
             alt!('f') | ctrl!(Right) => self.move_cursor(Movement::ForwardWord(1)),
             ctrl!('b') | key!(Left) => self.move_cursor(Movement::BackwardChar(1)),
-            ctrl!('f') | key!(Right) => self.move_cursor(Movement::ForwardChar(1)),
+            ctrl!('f') | key!(Right) => {
+                if self.line.is_empty() {
+                    if let Some(suggestion) = self.first_history_completion(cx.editor) {
+                        self.set_line(suggestion.into_owned(), cx.editor);
+                        (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+                        return EventResult::Consumed(None);
+                    }
+                }
+                self.move_cursor(Movement::ForwardChar(1));
+            }
             ctrl!('e') | key!(End) => self.move_end(),
             ctrl!('a') | key!(Home) => self.move_start(),
             ctrl!('w') | alt!(Backspace) | ctrl!(Backspace) => {

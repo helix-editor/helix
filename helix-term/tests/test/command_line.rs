@@ -158,3 +158,19 @@ async fn percent_escaping() -> anyhow::Result<()> {
     .await?;
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn right_arrow_fills_history() -> anyhow::Result<()> {
+    test_key_sequence(
+        &mut AppBuilder::new().build()?,
+        Some(":echo 1<ret>:<right> 2<ret>"),
+        Some(&|app| {
+            let (status, &severity) = app.editor.get_status().unwrap();
+            assert_eq!(severity, Severity::Info);
+            assert_eq!(status.as_ref(), "1 2");
+        }),
+        false,
+    )
+    .await?;
+    Ok(())
+}
