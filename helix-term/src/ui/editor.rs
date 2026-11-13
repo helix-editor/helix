@@ -941,8 +941,14 @@ impl EditorView {
         let key_result = self.keymaps.get(mode, event);
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
-        let mut execute_command = |command: &commands::MappableCommand| {
+        let mut execute_command = |command: &commands::MappableCommand| -> bool {
             command.execute(cxt);
+            // Closing the last window leaves the tree empty (`should_close`).
+            // Follow-up commands in a keymap sequence (e.g. `["wclose", "normal_mode"]`)
+            // and mode-switch hooks then panic via `current!` / `tree.get_mut(focus)`.
+            if cxt.editor.should_close() {
+                return false;
+            }
             helix_event::dispatch(PostCommand { command, cx: cxt });
 
             let current_mode = cxt.editor.mode();
@@ -964,6 +970,7 @@ impl EditorView {
             }
 
             last_mode = current_mode;
+            true
         };
 
         match &key_result {
@@ -973,7 +980,9 @@ impl EditorView {
             KeymapResult::Pending(node) => cxt.editor.autoinfo = Some(node.infobox()),
             KeymapResult::MatchedSequence(commands) => {
                 for command in commands {
-                    execute_command(command);
+                    if !execute_command(command) {
+                        break;
+                    }
                 }
             }
             KeymapResult::NotFound | KeymapResult::Cancelled(_) => return Some(key_result),
