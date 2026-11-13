@@ -174,10 +174,19 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         M: serde::de::MapAccess<'de>,
     {
         let mut mapping = IndexMap::new();
-        while let Some((key, value)) = map.next_entry::<KeyEvent, KeyTrie>()? {
-            mapping.insert(key, value);
+        let mut name = String::new();
+        while let Some(key) = map.next_key::<String>()? {
+            // `desc` labels a sub-keymap in the Space/which-key popup. It is
+            // not a key event, so read it before trying to parse the key.
+            if key == "desc" || key == "name" {
+                name = map.next_value::<String>()?;
+                continue;
+            }
+            let event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
+            let value = map.next_value::<KeyTrie>()?;
+            mapping.insert(event, value);
         }
-        Ok(KeyTrie::Node(KeyTrieNode::new("", mapping)))
+        Ok(KeyTrie::Node(KeyTrieNode::new(&name, mapping)))
     }
 }
 
@@ -627,6 +636,24 @@ is_sticky = false
         "#;
         let result = toml::from_str::<KeyTrieNode>(invalid);
         assert!(result.is_err_and(|error| error.message().contains("Invalid key code 'is_sticky'")));
+    }
+
+    #[test]
+    fn deserialize_node_description() {
+        let keys = r#"
+desc = "Obsidian"
+o = "select_all"
+        "#;
+        let expectation = KeyTrie::Node(KeyTrieNode::new(
+            "Obsidian",
+            indexmap! {
+                key!('o') => KeyTrie::MappableCommand(
+                    MappableCommand::select_all
+                ),
+            },
+        ));
+
+        assert_eq!(toml::from_str(keys), Ok(expectation));
     }
 
     #[test]

@@ -66,3 +66,17 @@ cp contrib/config.d/vim.toml ~/.config/helix/config.d/vim.toml
 Files are merged in sorted order, so prefix with `10-`, `20-` to control
 precedence. Invalid TOML in any module is reported as `Bad config` on startup.
 
+## Keymap descriptions
+
+Nested keymap tables can set `desc` to label the prefix in the Space/which-key
+popup:
+
+```toml
+[keys.normal.space.o]
+desc = "Obsidian"
+o = ":obsidian-quick-switch"
+g = ":obsidian-search"
+```
+
+Without `desc`, the prefix still works but its menu row has no description.
+

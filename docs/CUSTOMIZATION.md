@@ -477,6 +477,7 @@ Suggested keymaps:
 
 ```toml
 [keys.normal.space.o]
+desc = "Obsidian"
 o = ":obsidian-quick-switch"
 g = ":obsidian-search"
 n = ":obsidian-new"
@@ -492,6 +493,7 @@ l = ":obsidian-links"
 s = ":obsidian-tags"
 
 [keys.select.space.o]
+desc = "Obsidian"
 l = ":obsidian-link"
 n = ":obsidian-link-new"
 e = ":obsidian-extract-note"

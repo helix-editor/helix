@@ -13,6 +13,7 @@ date-format = "%d-%m-%Y %H:%M %p"
 time-format = "%H:%M"
 
 [keys.normal.space.o]
+desc = "Obsidian"
 o = ":obsidian-quick-switch"
 g = ":obsidian-search"
 n = ":obsidian-new"
@@ -29,6 +30,7 @@ s = ":obsidian-tags"
 
 # Visual mode (Helix calls it select mode).
 [keys.select.space.o]
+desc = "Obsidian"
 l = ":obsidian-link"
 n = ":obsidian-link-new"
 e = ":obsidian-extract-note"
