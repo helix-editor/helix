@@ -106,7 +106,7 @@ search "foo" and replace with "bar" in the current selection:
 * vim: `:s/foo/bar/g<ret>`
 * helix: `sfoo<ret>cbar<esc>,`
 
-Explanation: `s` will open a prompt in the command line for a regex, and select all matches inside the selection (effectively adding a new cursor on each match). Pressing enter will then finalise this step, and allow the `c` to change the selections to "bar". When done, go back to normal mode with `<esc>`, and keep only the primary selection with `,` (remove all the additional cursors).
+Explanation: `s` will open a prompt in the command line for a regex, and select all matches inside the selection (effectively adding a new cursor on each match). Pressing enter will then finalise this step, and allow the `c` to change the selections to "bar". When done, go back to normal mode with `<esc>`, and keep only the main selection with `,` (remove all the additional cursors).
 
 ## File actions
 
