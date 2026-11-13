@@ -147,7 +147,7 @@ impl Completion {
                     {
                         Some(ls) => ls,
                         None => {
-                            editor.set_error("completions are outdated");
+                            editor.set_error(|| "completions are outdated");
                             // TODO close the completion menu somehow,
                             // currently there is no trivial way to access the EditorView to close the completion menu
                             return;

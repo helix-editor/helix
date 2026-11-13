@@ -245,7 +245,7 @@ fn map_value(value: &Value, params: &[String]) -> Value {
 pub fn dap_launch(cx: &mut Context) {
     // TODO: Now that we support multiple Clients, we could run multiple debuggers at once but for now keep this as is
     if cx.editor.debug_adapters.get_active_client().is_some() {
-        cx.editor.set_error("Debugger is already running");
+        cx.editor.set_error(|| "Debugger is already running");
         return;
     }
 
@@ -258,7 +258,7 @@ pub fn dap_launch(cx: &mut Context) {
         Some(c) => c,
         None => {
             cx.editor
-                .set_error("No debug adapter available for language");
+                .set_error(|| "No debug adapter available for language");
             return;
         }
     };
@@ -278,7 +278,7 @@ pub fn dap_launch(cx: &mut Context) {
         |cx, template, _action| {
             if template.completion.is_empty() {
                 if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
-                    cx.editor.set_error(err.to_string());
+                    cx.editor.set_error(|| err.to_string());
                 }
             } else {
                 let completions = template.completion.clone();
@@ -301,7 +301,7 @@ pub fn dap_restart(cx: &mut Context) {
     let debugger = match cx.editor.debug_adapters.get_active_client() {
         Some(debugger) => debugger,
         None => {
-            cx.editor.set_error("Debugger is not running");
+            cx.editor.set_error(|| "Debugger is not running");
             return;
         }
     };
@@ -311,12 +311,12 @@ pub fn dap_restart(cx: &mut Context) {
         .unwrap_or(false)
     {
         cx.editor
-            .set_error("Debugger does not support session restarts");
+            .set_error(|| "Debugger does not support session restarts");
         return;
     }
     if debugger.starting_request_args().is_none() {
         cx.editor
-            .set_error("No arguments found with which to restart the sessions");
+            .set_error(|| "No arguments found with which to restart the sessions");
         return;
     }
 
@@ -392,7 +392,7 @@ fn debug_parameter_prompt(
                 None,
                 Some(params.iter().map(|x| x.into()).collect()),
             ) {
-                cx.editor.set_error(err.to_string());
+                cx.editor.set_error(|| err.to_string());
             }
         },
     )
@@ -403,7 +403,7 @@ pub fn dap_toggle_breakpoint(cx: &mut Context) {
 
     let Some(path) = doc.path().map(ToOwned::to_owned) else {
         cx.editor
-            .set_error("Can't set breakpoint: document has no path");
+            .set_error(|| "Can't set breakpoint: document has no path");
         return;
     };
 
@@ -434,7 +434,7 @@ pub fn dap_toggle_breakpoint_impl(cx: &mut Context, path: PathBuf, line: usize) 
 
     if let Err(e) = breakpoints_changed(debugger, path, breakpoints) {
         cx.editor
-            .set_error(format!("Failed to set breakpoints: {}", e));
+            .set_error(|| format!("Failed to set breakpoints: {}", e));
     }
 }
 
@@ -453,7 +453,7 @@ pub fn dap_continue(cx: &mut Context) {
         );
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.");
+            .set_error(|| "Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -463,7 +463,7 @@ pub fn dap_pause(cx: &mut Context) {
         let request = debugger.pause(thread.id);
         // NOTE: we don't need to set active thread id here because DAP will emit a "stopped" event
         if let Err(e) = block_on(request) {
-            editor.set_error(format!("Failed to pause: {}", e));
+            editor.set_error(|| format!("Failed to pause: {}", e));
         }
     })
 }
@@ -479,7 +479,7 @@ pub fn dap_step_in(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.");
+            .set_error(|| "Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -493,7 +493,7 @@ pub fn dap_step_out(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.");
+            .set_error(|| "Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -507,7 +507,7 @@ pub fn dap_next(cx: &mut Context) {
         });
     } else {
         cx.editor
-            .set_error("Currently active thread is not stopped. Switch the thread.");
+            .set_error(|| "Currently active thread is not stopped. Switch the thread.");
     }
 }
 
@@ -532,16 +532,16 @@ pub fn dap_variables(cx: &mut Context) {
         Some(thread_frame) => thread_frame,
         None => {
             cx.editor
-                .set_error(format!("Failed to get stack frame for thread: {thread_id}"));
+                .set_error(|| format!("Failed to get stack frame for thread: {thread_id}"));
             return;
         }
     };
     let stack_frame = match thread_frame.get(frame) {
         Some(stack_frame) => stack_frame,
         None => {
-            cx.editor.set_error(format!(
-                "Failed to get stack frame for thread {thread_id} and frame {frame}."
-            ));
+            cx.editor.set_error(|| {
+                format!("Failed to get stack frame for thread {thread_id} and frame {frame}.")
+            });
             return;
         }
     };
@@ -550,7 +550,8 @@ pub fn dap_variables(cx: &mut Context) {
     let scopes = match block_on(debugger.scopes(frame_id)) {
         Ok(s) => s,
         Err(e) => {
-            cx.editor.set_error(format!("Failed to get scopes: {}", e));
+            cx.editor
+                .set_error(|| format!("Failed to get scopes: {}", e));
             return;
         }
     };
@@ -678,7 +679,7 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
                         if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints) {
                             cx.editor
-                                .set_error(format!("Failed to set breakpoints: {}", e));
+                                .set_error(|| format!("Failed to set breakpoints: {}", e));
                         }
                     },
                 );
@@ -718,7 +719,7 @@ pub fn dap_edit_log(cx: &mut Context) {
                         let debugger = debugger!(cx.editor);
                         if let Err(e) = breakpoints_changed(debugger, path.clone(), breakpoints) {
                             cx.editor
-                                .set_error(format!("Failed to set breakpoints: {}", e));
+                                .set_error(|| format!("Failed to set breakpoints: {}", e));
                         }
                     },
                 );
@@ -744,7 +745,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let thread_id = match debugger.thread_id {
         Some(thread_id) => thread_id,
         None => {
-            cx.editor.set_error("No thread is currently active");
+            cx.editor.set_error(|| "No thread is currently active");
             return;
         }
     };

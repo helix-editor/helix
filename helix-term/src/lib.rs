@@ -128,7 +128,7 @@ fn open_external_url_callback(
             );
         }
         Ok(job::Callback::Editor(Box::new(move |editor| {
-            editor.set_error("Opening URL in external program failed")
+            editor.set_error(|| "Opening URL in external program failed");
         })))
     }
 }
