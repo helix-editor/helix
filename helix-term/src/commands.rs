@@ -1,9 +1,12 @@
 pub(crate) mod dap;
+mod follow_columns;
 pub(crate) mod lsp;
 pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
+pub(crate) use follow_columns::sync_follow_columns;
+use follow_columns::{follow_columns, prepare_follow_columns};
 use futures_util::FutureExt;
 use helix_event::status;
 use helix_stdx::{
@@ -264,7 +267,10 @@ impl MappableCommand {
                     cx.editor.set_error(format!("no such command: '{name}'"));
                 }
             }
-            Self::Static { fun, .. } => (fun)(cx),
+            Self::Static { fun, .. } => {
+                prepare_follow_columns(cx.editor);
+                (fun)(cx);
+            }
             Self::Macro { keys, .. } => {
                 // Protect against recursive macros.
                 if cx.editor.macro_replaying.contains(&'@') {
@@ -548,8 +554,7 @@ impl MappableCommand {
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
-        vsplit_new, "Vertical right split scratch buffer",
-        wclose, "Close window",
+        vsplit_new, "Vertical right split scratch buffer",         follow_columns, "Toggle automatic follow-column reading layout",         wclose, "Close window",
         wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
@@ -1930,6 +1935,7 @@ fn switch_to_lowercase(cx: &mut Context) {
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
     use Direction::*;
+    prepare_follow_columns(cx.editor);
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let mut view_offset = doc.view_offset(view.id);
