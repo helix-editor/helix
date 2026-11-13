@@ -599,6 +599,44 @@ impl Prompt {
                 |_| prompt_color,
             );
         }
+
+        // Draw the block cursor
+        let cursor_kind = cx.editor.config().cursor_shape.from_mode(Mode::Insert);
+        let cursor_is_block =
+            cursor_kind == CursorKind::Block || cursor_kind == CursorKind::TerminalBlock;
+        if cursor_is_block {
+            let pos = self.cursor_position(area);
+            if let Some(cell) = surface.get_mut(pos.col as u16, pos.row as u16) {
+                let cursor_style = cx.editor.theme.get("ui.cursor.primary");
+                cell.set_style(cursor_style);
+            }
+        }
+    }
+
+    fn cursor_position(&self, area: Rect) -> Position {
+        let area = area
+            .clip_left(self.prompt.len() as u16)
+            .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
+
+        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
+
+        // ensure the cursor does not go beyond elipses
+        if self.truncate_end
+            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
+        {
+            col -= 1;
+        }
+
+        if self.truncate_start && self.cursor == self.anchor {
+            col += self.line[self.cursor..]
+                .graphemes(true)
+                .next()
+                .map_or(0, |g| g.width());
+        }
+
+        let row = area.y as usize + area.height as usize - 1;
+
+        Position::new(row, col)
     }
 }
 
@@ -770,30 +808,8 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        let area = area
-            .clip_left(self.prompt.len() as u16)
-            .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
-
-        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
-
-        // ensure the cursor does not go beyond elipses
-        if self.truncate_end
-            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
-        {
-            col -= 1;
-        }
-
-        if self.truncate_start && self.cursor == self.anchor {
-            col += self.line[self.cursor..]
-                .graphemes(true)
-                .next()
-                .map_or(0, |g| g.width());
-        }
-
-        let line = area.height as usize - 1;
-
         (
-            Some(Position::new(area.y as usize + line, col)),
+            Some(self.cursor_position(area)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }
