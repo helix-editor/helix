@@ -180,6 +180,9 @@ roles: `ui.picker.selected` (onSurface on surfaceContainerHigh),
 `ui.picker.title` (background on primary). This keeps the quick-switch and file
 pickers consistent instead of collapsing everything to one accent color.
 
+Yanked ranges flash briefly using `ui.yank` and fall back to `ui.selection` when
+a theme does not define it.
+
 `transparent-popups` replaces the background of completion docs, hover and
 signature help, menus, and prompt completion with the terminal default. It
 patches only those scopes at theme-load time (`ui.popup`, `ui.popup.info`,
@@ -458,6 +461,21 @@ The Vim module also provides Vim-style operators:
 - `cc` — change the current line.
 - `ciw`, `ci(`, `ci"`, `ca{` — change inside/around a word, pair, or quote.
 - In Select mode, `c` still changes the current selection immediately.
+
+When the cursor is outside a pair, `ci(`, `ci{`, `ci[`, `ci"`, and their
+`ca` variants use the next pair on the current line, like Vim. If there is no
+pair on the line the command is a no-op instead of changing the character
+under the cursor. The close bracket may be on a later line.
+
+Yank bindings flash the yanked range for 200 ms:
+
+- `yy`, `yj`, `yk`, `yG`, `ygg` — linewise yanks.
+- `yw` / `yW` — yank to the next word / WORD start.
+- `yl` / `yh` — yank the character right / left of the cursor.
+- `yb` — yank back to the previous word start.
+
+Counts work with all of them: `y2j`, `y3w`, `y3l`, `y3h`, `y3b`. The flash uses
+`ui.yank` and falls back to `ui.selection` in themes that do not define it.
 
 ## Obsidian
 

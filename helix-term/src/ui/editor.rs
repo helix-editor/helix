@@ -176,6 +176,26 @@ impl EditorView {
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
         if is_focused {
+            if let Some(yank) = editor.active_yank_highlight(doc.id()) {
+                let len = doc.text().len_chars();
+                let ranges: Vec<_> = yank
+                    .ranges
+                    .iter()
+                    .filter_map(|range| {
+                        let from = range.from().min(len);
+                        let to = range.to().min(len);
+                        (from < to).then_some(from..to)
+                    })
+                    .collect();
+                if !ranges.is_empty() {
+                    if let Some(highlight) = theme
+                        .find_highlight_exact("ui.yank")
+                        .or_else(|| theme.find_highlight("ui.selection"))
+                    {
+                        overlays.push(OverlayHighlights::Homogeneous { highlight, ranges });
+                    }
+                }
+            }
             if config.lsp.auto_document_highlight {
                 if let Some(overlay) = Self::doc_document_highlights(doc, view, theme) {
                     overlays.push(overlay);

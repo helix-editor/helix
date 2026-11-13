@@ -72,6 +72,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    cell::Cell as StdCell,
     char::{ToLowercase, ToUppercase},
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -80,6 +81,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    rc::Rc,
 };
 
 use std::{
@@ -494,6 +496,9 @@ impl MappableCommand {
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         yank, "Yank selection",
+        yank_char_right, "Yank the character right of the cursor",
+        yank_char_left, "Yank the character left of the cursor",
+        yank_prev_word, "Yank back to the previous word start",
         yank_to_clipboard, "Yank selections to clipboard",
         yank_to_primary_clipboard, "Yank selections to primary clipboard",
         yank_joined, "Join and yank selections",
@@ -5055,9 +5060,82 @@ fn yank_to_primary_clipboard(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
+/// Yank exactly `count` graphemes to the right of each cursor without moving
+/// the cursor, matching Vim's `yl` / `ynl`.
+fn yank_char_right(cx: &mut Context) {
+    yank_char_impl(cx, Direction::Forward);
+}
+
+/// Yank exactly `count` graphemes to the left of each cursor without moving
+/// the cursor, matching Vim's `yh` / `ynh`.
+fn yank_char_left(cx: &mut Context) {
+    yank_char_impl(cx, Direction::Backward);
+}
+
+/// Yank from each cursor back to the previous word start, excluding the
+/// character under the cursor, matching Vim's `yb` / `ynb`.
+fn yank_prev_word(cx: &mut Context) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone();
+    let primary_index = selection.primary_index();
+
+    let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut points = SmallVec::with_capacity(selection.len());
+    for range in selection.iter() {
+        let cursor = range.cursor(text);
+        points.push(Range::point(cursor));
+        let target = movement::move_prev_word_start(text, Range::point(cursor), count).cursor(text);
+        ranges.push(Range::new(target, cursor));
+    }
+    doc.set_selection(view.id, Selection::new(ranges, primary_index));
+
+    yank_impl(cx.editor, '+');
+
+    let (view, doc) = current!(cx.editor);
+    doc.set_selection(view.id, Selection::new(points, primary_index));
+    exit_select_mode(cx);
+}
+
+fn yank_char_impl(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let selection = doc.selection(view.id).clone();
+    let primary_index = selection.primary_index();
+
+    let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut points = SmallVec::with_capacity(selection.len());
+    for range in selection.iter() {
+        let cursor = range.cursor(text);
+        points.push(Range::point(cursor));
+        let (start, end) = match direction {
+            Direction::Forward => (
+                cursor,
+                graphemes::nth_next_grapheme_boundary(text, cursor, count),
+            ),
+            Direction::Backward => (
+                graphemes::nth_prev_grapheme_boundary(text, cursor, count),
+                cursor,
+            ),
+        };
+        ranges.push(Range::new(start, end));
+    }
+    doc.set_selection(view.id, Selection::new(ranges, primary_index));
+
+    yank_impl(cx.editor, '+');
+
+    let (view, doc) = current!(cx.editor);
+    doc.set_selection(view.id, Selection::new(points, primary_index));
+    exit_select_mode(cx);
+}
+
 fn yank_impl(editor: &mut Editor, register: char) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
+    let doc_id = doc.id();
+    let ranges = doc.selection(view.id).ranges().to_vec();
 
     let values: Vec<String> = doc
         .selection(view.id)
@@ -5073,6 +5151,7 @@ fn yank_impl(editor: &mut Editor, register: char) {
         )),
         Err(err) => editor.set_error(err.to_string()),
     }
+    editor.set_yank_highlight(doc_id, ranges);
 }
 
 fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
@@ -5081,6 +5160,8 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
     let selection = doc.selection(view.id);
     let selections = selection.len();
+    let doc_id = doc.id();
+    let ranges = selection.ranges().to_vec();
     let joined = selection
         .fragments(text)
         .fold(String::new(), |mut acc, fragment| {
@@ -5098,6 +5179,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
         )),
         Err(err) => editor.set_error(err.to_string()),
     }
+    editor.set_yank_highlight(doc_id, ranges);
 }
 
 fn yank_joined(cx: &mut Context) {
@@ -5127,12 +5209,15 @@ pub(crate) fn yank_main_selection_to_register(editor: &mut Editor, register: cha
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).primary().fragment(text).to_string();
+    let range = doc.selection(view.id).primary();
+    let doc_id = doc.id();
+    let selection = range.fragment(text).to_string();
 
     match editor.registers.write(register, vec![selection]) {
         Ok(_) => editor.set_status(format!("yanked primary selection to register {register}",)),
         Err(err) => editor.set_error(err.to_string()),
     }
+    editor.set_yank_highlight(doc_id, vec![range]);
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
@@ -6489,6 +6574,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, change: 
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
+            let found_pair = Rc::new(StdCell::new(false));
+            let found_pair_inner = found_pair.clone();
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
                 let loader = editor.syn_loader.load();
@@ -6524,6 +6611,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, change: 
                     Range::new(start, end).with_direction(range.direction())
                 };
 
+                let mut found = true;
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     match ch {
                         'w' => textobject::textobject_word(text, range, objtype, count, false),
@@ -6545,25 +6633,46 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, change: 
                         ),
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            ch,
-                            count,
-                        ),
+                        ch if !ch.is_ascii_alphanumeric() => {
+                            if change {
+                                match textobject::textobject_pair_surround_vim(
+                                    doc.syntax(),
+                                    text,
+                                    range,
+                                    objtype,
+                                    ch,
+                                    count,
+                                ) {
+                                    Some(range) => range,
+                                    None => {
+                                        found = false;
+                                        range
+                                    }
+                                }
+                            } else {
+                                textobject::textobject_pair_surround(
+                                    doc.syntax(),
+                                    text,
+                                    range,
+                                    objtype,
+                                    ch,
+                                    count,
+                                )
+                            }
+                        }
                         _ => range,
                     }
                 });
+                found_pair_inner.set(found);
                 doc.set_selection(view.id, selection);
             };
             cx.editor.apply_motion(textobject);
+            let pair_object = !ch.is_ascii_alphanumeric();
             if change
                 && (matches!(
                     ch,
                     'w' | 'W' | 'p' | 't' | 'f' | 'a' | 'c' | 'T' | 'e' | 'm' | 'g'
-                ) || !ch.is_ascii_alphanumeric())
+                ) || (pair_object && found_pair.get()))
             {
                 change_selection(cx);
             }

@@ -66,6 +66,8 @@ use arc_swap::{
 
 pub const DIR_STACK_CAP: usize = 10;
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+/// How long a yanked range stays highlighted.
+pub const YANK_HIGHLIGHT_DURATION: Duration = Duration::from_millis(200);
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -1526,6 +1528,21 @@ pub struct PromptState {
     pub is_select: bool,
 }
 
+/// A recently yanked range that is briefly highlighted while the editor is in
+/// normal mode.
+#[derive(Debug, Clone)]
+pub struct YankHighlight {
+    pub doc: DocumentId,
+    pub ranges: Vec<Range>,
+    expires: Instant,
+}
+
+impl YankHighlight {
+    pub fn is_active(&self, now: Instant) -> bool {
+        now < self.expires
+    }
+}
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -1580,6 +1597,8 @@ pub struct Editor {
 
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
+    yank_timer: Pin<Box<Sleep>>,
+    pub yank_highlight: Option<YankHighlight>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
     pub last_cwd: Option<PathBuf>,
@@ -1718,6 +1737,8 @@ impl Editor {
             dashboard_doc: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
+            yank_timer: Box::pin(sleep(Duration::MAX)),
+            yank_highlight: None,
             last_motion: None,
             last_completion: None,
             last_cwd: None,
@@ -1810,6 +1831,29 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+    }
+
+    /// Briefly highlight the ranges that were just yanked.
+    pub fn set_yank_highlight(&mut self, doc: DocumentId, ranges: Vec<Range>) {
+        if ranges.is_empty() {
+            return;
+        }
+        let now = Instant::now();
+        self.yank_highlight = Some(YankHighlight {
+            doc,
+            ranges,
+            expires: now + YANK_HIGHLIGHT_DURATION,
+        });
+        self.yank_timer
+            .as_mut()
+            .reset(now + YANK_HIGHLIGHT_DURATION);
+    }
+
+    /// The active yank highlight for `doc`, if it has not expired yet.
+    pub fn active_yank_highlight(&self, doc: DocumentId) -> Option<&YankHighlight> {
+        self.yank_highlight
+            .as_ref()
+            .filter(|highlight| highlight.doc == doc && highlight.is_active(Instant::now()))
     }
 
     pub fn clear_status(&mut self) {
@@ -2778,6 +2822,11 @@ impl Editor {
 
                 _ = &mut self.redraw_timer  => {
                     self.redraw_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+                    return EditorEvent::Redraw
+                }
+                _ = &mut self.yank_timer => {
+                    self.yank_highlight = None;
+                    self.yank_timer.as_mut().reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
                     return EditorEvent::Redraw
                 }
                 _ = &mut self.idle_timer  => {

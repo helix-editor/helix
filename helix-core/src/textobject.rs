@@ -5,6 +5,7 @@ use ropey::RopeSlice;
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
+use crate::match_brackets;
 use crate::movement::Direction;
 use crate::syntax;
 use crate::Range;
@@ -207,6 +208,114 @@ pub fn textobject_pair_surround(
     count: usize,
 ) -> Range {
     textobject_pair_surround_impl(syntax, slice, range, textobject, Some(ch), count)
+        .unwrap_or(range)
+}
+
+/// Like [`textobject_pair_surround`], but follows Vim's rule for a cursor
+/// outside a pair: use the next pair on the cursor's line. Returns `None`
+/// when no pair is found, so callers can avoid changing a stray character.
+pub fn textobject_pair_surround_vim(
+    syntax: Option<&Syntax>,
+    slice: RopeSlice,
+    range: Range,
+    textobject: TextObject,
+    ch: char,
+    count: usize,
+) -> Option<Range> {
+    let cursor = range.cursor(slice);
+    if cursor >= slice.len_chars() {
+        return None;
+    }
+
+    let (open, close) = match_brackets::get_pair(ch);
+    let line = slice.char_to_line(cursor);
+    let line_start = slice.line_to_char(line);
+    let line_end = slice.line_to_char((line + 1).min(slice.len_lines()));
+
+    let (open_pos, close_pos) = if open == close {
+        // Quotes/backticks have no nesting. An odd number of quotes before
+        // the cursor means it is inside a pair; otherwise use the next pair
+        // on the line.
+        let quotes_before = slice
+            .slice(line_start..cursor)
+            .chars()
+            .filter(|c| *c == open)
+            .count();
+        if quotes_before % 2 == 1 {
+            let open_pos = line_start
+                + slice
+                    .slice(line_start..cursor)
+                    .chars()
+                    .enumerate()
+                    .filter(|(_, c)| *c == open)
+                    .map(|(idx, _)| idx)
+                    .last()?;
+            let close_pos = cursor
+                + slice
+                    .slice(cursor..line_end)
+                    .chars()
+                    .position(|c| c == close)?;
+            (open_pos, close_pos)
+        } else {
+            let open_pos = cursor
+                + slice
+                    .slice(cursor..line_end)
+                    .chars()
+                    .position(|c| c == open)?;
+            let close_pos = next_grapheme_boundary(slice, open_pos)
+                + slice
+                    .slice(next_grapheme_boundary(slice, open_pos)..line_end)
+                    .chars()
+                    .position(|c| c == close)?;
+            (open_pos, close_pos)
+        }
+    } else {
+        // Brackets can nest across lines. Find the innermost opening bracket
+        // that is not closed before the cursor, then its matching close.
+        let open_pos = match enclosing_open(slice, cursor, open, close) {
+            Some(pos) => pos,
+            None => {
+                cursor
+                    + slice
+                        .slice(cursor..line_end)
+                        .chars()
+                        .position(|c| c == open)?
+            }
+        };
+        let pair =
+            surround::find_nth_pairs_pos(syntax, slice, ch, Range::point(open_pos), count).ok()?;
+        (pair.0, pair.1)
+    };
+
+    let (anchor, head) = match range.direction() {
+        Direction::Forward => (open_pos, close_pos),
+        Direction::Backward => (close_pos, open_pos),
+    };
+    Some(pair_range(slice, anchor, head, textobject))
+}
+
+/// Position of the innermost opening bracket that encloses `cursor`, or
+/// `None` if the cursor is not inside a bracket pair.
+fn enclosing_open(slice: RopeSlice, cursor: usize, open: char, close: char) -> Option<usize> {
+    if slice.get_char(cursor) == Some(open) {
+        return Some(cursor);
+    }
+
+    let mut depth = 0;
+    let mut pos = cursor;
+    while pos > 0 {
+        pos -= 1;
+        let ch = slice.char(pos);
+        if ch == close {
+            depth += 1;
+        } else if ch == open {
+            if depth == 0 {
+                return Some(pos);
+            }
+            depth -= 1;
+        }
+    }
+    None
 }
 
 pub fn textobject_pair_surround_closest(
@@ -216,7 +325,27 @@ pub fn textobject_pair_surround_closest(
     textobject: TextObject,
     count: usize,
 ) -> Range {
-    textobject_pair_surround_impl(syntax, slice, range, textobject, None, count)
+    textobject_pair_surround_impl(syntax, slice, range, textobject, None, count).unwrap_or(range)
+}
+
+fn pair_range(slice: RopeSlice, anchor: usize, head: usize, textobject: TextObject) -> Range {
+    match textobject {
+        TextObject::Inside => {
+            if anchor < head {
+                Range::new(next_grapheme_boundary(slice, anchor), head)
+            } else {
+                Range::new(anchor, next_grapheme_boundary(slice, head))
+            }
+        }
+        TextObject::Around => {
+            if anchor < head {
+                Range::new(anchor, next_grapheme_boundary(slice, head))
+            } else {
+                Range::new(next_grapheme_boundary(slice, anchor), head)
+            }
+        }
+        TextObject::Movement => unreachable!(),
+    }
 }
 
 fn textobject_pair_surround_impl(
@@ -226,30 +355,14 @@ fn textobject_pair_surround_impl(
     textobject: TextObject,
     ch: Option<char>,
     count: usize,
-) -> Range {
+) -> Option<Range> {
     let pair_pos = match ch {
         Some(ch) => surround::find_nth_pairs_pos(syntax, slice, ch, range, count),
         None => surround::find_nth_closest_pairs_pos(syntax, slice, range, count),
     };
     pair_pos
-        .map(|(anchor, head)| match textobject {
-            TextObject::Inside => {
-                if anchor < head {
-                    Range::new(next_grapheme_boundary(slice, anchor), head)
-                } else {
-                    Range::new(anchor, next_grapheme_boundary(slice, head))
-                }
-            }
-            TextObject::Around => {
-                if anchor < head {
-                    Range::new(anchor, next_grapheme_boundary(slice, head))
-                } else {
-                    Range::new(next_grapheme_boundary(slice, anchor), head)
-                }
-            }
-            TextObject::Movement => unreachable!(),
-        })
-        .unwrap_or(range)
+        .map(|(anchor, head)| pair_range(slice, anchor, head, textobject))
+        .ok()
 }
 
 /// Transform the given range to select text objects based on tree-sitter.
@@ -588,6 +701,52 @@ mod test {
                     case
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_textobject_pair_surround_vim_fallback() {
+        type Case = (
+            &'static str,
+            usize,
+            TextObject,
+            char,
+            Option<(usize, usize)>,
+        );
+        let tests: &[Case] = &[
+            // Cursor before the block.
+            ("call(foo, bar) baz", 0, Inside, '(', Some((5, 13))),
+            ("call(foo, bar) baz", 0, Around, '(', Some((4, 14))),
+            // No block after the cursor on this line.
+            ("call(foo, bar) baz", 15, Inside, '(', None),
+            ("nothing here", 0, Inside, '(', None),
+            // Sibling blocks: use the next one, not an open/close mismatch.
+            ("foo (bar) baz (qux)", 10, Inside, '(', Some((15, 18))),
+            ("foo (bar) baz (qux)", 0, Inside, '(', Some((5, 8))),
+            // Nested blocks use the outer pair when the cursor is outside.
+            ("foo(bar(baz)qux)", 0, Inside, '(', Some((4, 15))),
+            // ...and the innermost pair when the cursor is inside.
+            ("foo(bar(baz)qux)", 9, Inside, '(', Some((8, 11))),
+            ("foo(bar(baz)qux)", 9, Around, '(', Some((7, 12))),
+            // Quotes: before, inside, on the closing quote, and after.
+            ("say \"hello world\" now", 0, Inside, '"', Some((5, 16))),
+            ("say \"hello world\" now", 8, Inside, '"', Some((5, 16))),
+            ("say \"hello world\" now", 16, Inside, '"', Some((5, 16))),
+            ("say \"hello world\" now", 17, Inside, '"', None),
+            // The close may be on a later line.
+            ("call(\n  foo,\n  bar\n)", 0, Inside, '(', Some((5, 19))),
+        ];
+
+        for &(sample, pos, objtype, ch, expected) in tests {
+            let doc = Rope::from(sample);
+            let slice = doc.slice(..);
+            let result =
+                textobject_pair_surround_vim(None, slice, Range::point(pos), objtype, ch, 1);
+            assert_eq!(
+                result,
+                expected.map(|(start, end)| Range::new(start, end)),
+                "case {sample:?} at {pos} with {ch:?}"
+            );
         }
     }
 }

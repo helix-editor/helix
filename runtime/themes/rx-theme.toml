@@ -107,6 +107,8 @@ inherits = "noctalia"
 
 "ui.highlight" = { fg = "surfaceContainer", bg = "secondary" }
 "ui.highlight.frameline" = { bg = "secondaryContainer" }
+# Brief flash over the range that was just yanked.
+"ui.yank" = { fg = "onTertiary", bg = "tertiary" }
 
 "ui.menu" = { fg = "onSurface", bg = "surfaceContainer" }
 # Neovim PmenuSel: inverted light selection.
