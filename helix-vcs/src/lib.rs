@@ -70,14 +70,18 @@ impl DiffProviderRegistry {
         f: impl Fn(Result<FileChange>) -> bool + Send + 'static,
     ) {
         tokio::task::spawn_blocking(move || {
-            if self
-                .providers
-                .iter()
-                .find_map(|provider| provider.for_each_changed_file(&cwd, trust_full, &f).ok())
-                .is_none()
-            {
-                f(Err(anyhow!("no diff provider returns success")));
+            let mut first_error = None;
+            for provider in &self.providers {
+                match provider.for_each_changed_file(&cwd, trust_full, &f) {
+                    Ok(()) => return,
+                    Err(error) if first_error.is_none() => first_error = Some(error),
+                    Err(_) => {}
+                }
             }
+
+            f(Err(first_error.unwrap_or_else(|| {
+                anyhow!("no diff provider returns success")
+            })));
         });
     }
 }
