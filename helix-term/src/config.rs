@@ -209,4 +209,25 @@ mod tests {
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
     }
+
+    #[test]
+    fn local_editor_arrays_replace_global_values() {
+        use helix_view::editor::StatusLineElement;
+
+        let global = r#"
+            [editor.statusline]
+            right = ["diagnostics", "selections"]
+        "#;
+        let local = r#"
+            [editor.statusline]
+            right = ["file-line-ending"]
+        "#;
+
+        let config = Config::load(Ok(&global.to_owned()), Ok(local.to_owned())).unwrap();
+
+        assert_eq!(
+            config.editor.statusline.right,
+            vec![StatusLineElement::FileLineEnding]
+        );
+    }
 }
