@@ -5,6 +5,7 @@ use std::fmt::Display;
 use crate::editor::Action;
 use crate::events::{
     DiagnosticsDidChange, DocumentDidChange, DocumentDidClose, LanguageServerInitialized,
+    WorkspaceDidChange,
 };
 use crate::{DocumentId, Editor, ViewId};
 use helix_core::diagnostic::DiagnosticProvider;
@@ -138,6 +139,18 @@ impl Editor {
 
     // TODO make this transactional (and set failureMode to transactional)
     pub fn apply_workspace_edit(
+        &mut self,
+        offset_encoding: OffsetEncoding,
+        workspace_edit: &lsp::WorkspaceEdit,
+    ) -> Result<(), ApplyEditError> {
+        let res = self.apply_workspace_edit_impl(offset_encoding, workspace_edit);
+        if res.is_ok() {
+            helix_event::dispatch(WorkspaceDidChange { editor: self });
+        }
+        res
+    }
+
+    fn apply_workspace_edit_impl(
         &mut self,
         offset_encoding: OffsetEncoding,
         workspace_edit: &lsp::WorkspaceEdit,

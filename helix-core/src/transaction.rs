@@ -504,9 +504,12 @@ impl ChangeSet {
             }
             old_pos = old_end;
         }
-        let out_of_bounds: Vec<_> = positions.collect();
-
-        panic!("Positions {out_of_bounds:?} are out of range for changeset len {old_pos}!",)
+        // Any remaining positions are out of range (beyond the end of the old text).
+        // Clamp them to the end of the new text instead of panicking. This can happen
+        // when a position was computed against a slightly stale document version.
+        for (pos, _assoc) in positions {
+            *pos = new_pos;
+        }
     }
 
     /// Map a position through the changes.
