@@ -571,6 +571,8 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        change_textobject_around, "Change around object",
+        change_textobject_inner, "Change inside object",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -6466,14 +6468,22 @@ fn goto_prev_entry(cx: &mut Context) {
 }
 
 fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+    select_textobject(cx, textobject::TextObject::Around, false);
 }
 
 fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
+    select_textobject(cx, textobject::TextObject::Inside, false);
 }
 
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn change_textobject_around(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Around, true);
+}
+
+fn change_textobject_inner(cx: &mut Context) {
+    select_textobject(cx, textobject::TextObject::Inside, true);
+}
+
+fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, change: bool) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
@@ -6549,6 +6559,14 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 doc.set_selection(view.id, selection);
             };
             cx.editor.apply_motion(textobject);
+            if change
+                && (matches!(
+                    ch,
+                    'w' | 'W' | 'p' | 't' | 'f' | 'a' | 'c' | 'T' | 'e' | 'm' | 'g'
+                ) || !ch.is_ascii_alphanumeric())
+            {
+                change_selection(cx);
+            }
         }
     });
 

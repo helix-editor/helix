@@ -73,6 +73,8 @@ t = ["extend_till_char"]
 s = ["surround_delete"]
 i = ["select_textobject_inner"]
 a = ["select_textobject_around"]
+h = ["move_char_left", "yank_main_selection_to_clipboard", "delete_selection"]
+l = ["yank_main_selection_to_clipboard", "delete_selection"]
 j = ["select_mode", "extend_to_line_bounds", "extend_line_below", "yank_main_selection_to_clipboard", "delete_selection", "normal_mode"]
 down = ["select_mode", "extend_to_line_bounds", "extend_line_below", "yank_main_selection_to_clipboard", "delete_selection", "normal_mode"]
 k = ["select_mode", "extend_to_line_bounds", "extend_line_above", "yank_main_selection_to_clipboard", "delete_selection", "normal_mode"]
@@ -81,6 +83,12 @@ G = ["select_mode", "extend_to_line_bounds", "goto_last_line", "extend_to_line_b
 w = ["move_next_word_start", "yank_main_selection_to_clipboard", "delete_selection"]
 W = ["move_next_long_word_start", "yank_main_selection_to_clipboard", "delete_selection"]
 g = { g = ["select_mode", "extend_to_line_bounds", "goto_file_start", "extend_to_line_bounds", "yank_main_selection_to_clipboard", "delete_selection", "normal_mode"] }
+
+[keys.normal.c]
+# Vim-style operator-pending change: cc, ciw, ci(, ca", ...
+c = ["extend_to_line_bounds", "change_selection"]
+i = "change_textobject_inner"
+a = "change_textobject_around"
 
 [keys.normal.y]
 y = ["extend_to_line_bounds", "yank_main_selection_to_clipboard", "normal_mode", "collapse_selection"]
@@ -115,6 +123,7 @@ U = ["switch_to_uppercase", "collapse_selection", "normal_mode"]
 # Visual-mode specific muscle memory
 i = "select_textobject_inner"
 a = "select_textobject_around"
+c = "change_selection"
 
 # Some extra binds to allow us to insert/append in select mode because it's nice with multiple cursors
 tab = ["insert_mode", "collapse_selection"] # tab is read by most terminal editors as "C-i"

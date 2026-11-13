@@ -452,6 +452,13 @@ o = ["open_below", "insert_mode"]
 O = ["open_above", "insert_mode"]
 ```
 
+The Vim module also provides Vim-style operators:
+
+- `dl` / `dh` — delete the character right / left of the cursor.
+- `cc` — change the current line.
+- `ciw`, `ci(`, `ci"`, `ca{` — change inside/around a word, pair, or quote.
+- In Select mode, `c` still changes the current selection immediately.
+
 ## Obsidian
 
 Optional vault integration. Requires `rg` for vault search and a vault path.
