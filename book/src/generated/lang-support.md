@@ -128,7 +128,7 @@
 | hocon | ✓ | ✓ | ✓ |  |  |  |
 | hoon | ✓ |  |  |  |  |  |
 | hosts | ✓ |  |  |  |  |  |
-| html | ✓ | ✓ | ✓ |  | ✓ | `vscode-html-language-server`, `superhtml` |
+| html | ✓ | ✓ | ✓ |  | ✓ | `vscode-html-language-server`, `superhtml`, `html-class-lsp` |
 | htmldjango | ✓ |  |  |  |  | `djlsp`, `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |  |  |
 | hy | ✓ |  |  |  |  | `hyuga` |

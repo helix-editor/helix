@@ -67,6 +67,7 @@ hare-lsp = { command = "hare-lsp", args = ["-S"] }
 harper-ls = { command = "harper-ls", args = ["--stdio"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 hdls = { command = "hdls" }
+html-class-lsp = { command = "html-class-lsp" }
 hyprls = { command = "hyprls" }
 hyuga = { command = "hyuga" }
 idris2-lsp = { command = "idris2-lsp" }
@@ -1132,7 +1133,7 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml", "cshtml"]
 block-comment-tokens = { start = "<!--", end = "-->" }
-language-servers = [ "vscode-html-language-server", "superhtml" ]
+language-servers = [ "vscode-html-language-server", "superhtml", "html-class-lsp" ]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
