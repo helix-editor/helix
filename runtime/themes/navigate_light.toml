@@ -1,0 +1,134 @@
+# Author: skatromb
+# License: MIT
+# Based on Navigate Dark: https://github.com/skatromb/navigate-theme
+
+"attribute" = "insignificant"
+"type" = "regular"
+"constructor" = "regular"
+"constant" = "regular"
+"string" = "string"
+"string.regexp" = "string"
+"string.special" = "string"
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "doc-comment", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "doc-comment", modifiers = ["italic"] }
+"comment.unused" = { fg = "doc-comment", modifiers = ["italic"] }
+"variable" = "regular"
+"label" = "insignificant"
+"punctuation" = "insignificant"
+"keyword" = "insignificant"
+"keyword.control" = "insignificant"
+"keyword.control.conditional" = "important"
+"keyword.control.exception" = "important"
+"keyword.control.import" = "insignificant"
+"keyword.control.repeat" = "important"
+"keyword.control.return" = "important"
+"keyword.operator" = "insignificant"
+"keyword.special" = "important"
+"operator" = "insignificant"
+"function" = "regular"
+"function.macro" = "important"
+"tag" = "regular"
+"namespace" = "insignificant"
+"special" = "important"
+"embedded" = "regular"
+
+"markup.heading" = { fg = "regular", modifiers = ["bold"] }
+"markup.heading.marker" = "insignificant"
+"markup.list" = "important"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "accent", underline = { style = "line" } }
+"markup.link.label" = "accent"
+"markup.link.text" = "regular"
+"markup.quote" = "comment"
+"markup.raw" = "string"
+
+"diff.plus" = "diff-added"
+"diff.minus" = "diff-deleted"
+"diff.delta" = "diff-modified"
+
+"ui.background" = { fg = "regular", bg = "background" }
+"ui.background.separator" = { fg = "line", bg = "background" }
+"ui.window" = { fg = "line", bg = "background" }
+"ui.gutter" = { bg = "background" }
+"ui.gutter.selected" = { bg = "background" }
+"ui.linenr" = "muted"
+"ui.linenr.selected" = "regular"
+"ui.statusline" = { fg = "muted", bg = "background" }
+"ui.statusline.inactive" = { fg = "doc-comment", bg = "background" }
+"ui.statusline.normal" = { fg = "accent", bg = "background" }
+"ui.statusline.insert" = { fg = "string", bg = "background" }
+"ui.statusline.select" = { fg = "important", bg = "background" }
+"ui.statusline.separator" = "line"
+"ui.bufferline" = { fg = "muted", bg = "background" }
+"ui.bufferline.active" = { fg = "regular", bg = "background", modifiers = [
+  "bold",
+] }
+"ui.bufferline.background" = { bg = "background" }
+"ui.popup" = { fg = "regular", bg = "background" }
+"ui.popup.info" = { fg = "regular", bg = "background" }
+"ui.help" = { fg = "regular", bg = "background" }
+"ui.menu" = { fg = "regular", bg = "background" }
+"ui.menu.selected" = { fg = "regular", bg = "selection" }
+"ui.menu.scroll" = { fg = "muted", bg = "subtle" }
+"ui.text" = "regular"
+"ui.text.focus" = { fg = "regular", bg = "selection" }
+"ui.text.inactive" = "muted"
+"ui.text.info" = "muted"
+"ui.text.directory" = "accent"
+"ui.text.symlink" = "string"
+"ui.selection" = { bg = "selection" }
+"ui.selection.primary" = { bg = "selection-primary" }
+"ui.cursor" = { fg = "background", bg = "muted" }
+"ui.cursor.primary" = { fg = "background", bg = "accent" }
+"ui.cursor.match" = { bg = "match", underline = { color = "muted", style = "line" } }
+"ui.cursorline.primary" = { bg = "cursorline" }
+"ui.virtual" = "muted"
+"ui.virtual.ruler" = { bg = "subtle" }
+"ui.virtual.whitespace" = "muted"
+"ui.virtual.indent-guide" = "line"
+"ui.virtual.inlay-hint" = "muted"
+"ui.virtual.jump-label" = { fg = "accent", modifiers = ["bold"] }
+"ui.highlight" = { bg = "subtle" }
+"ui.highlight.frameline" = { bg = "subtle" }
+"ui.debug.breakpoint" = "accent"
+"ui.debug.active" = "important"
+"ui.picker.header.column" = { fg = "muted", underline = { style = "line" } }
+"ui.picker.header.column.active" = { fg = "regular", underline = { color = "accent", style = "line" } }
+
+"warning" = "accent"
+"error" = "error"
+"info" = "info"
+"hint" = "muted"
+"debug" = "doc-comment"
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "accent", style = "curl" } }
+"diagnostic.info" = { underline = { color = "info", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "muted", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+background = "#fafafa"
+regular = "#292720"
+important = "#c35a22"
+comment = "#a37822"
+string = "#3d8f35"
+insignificant = "#747b86"
+doc-comment = "#88919c"
+
+accent = "#ab8600"
+muted = "#6e7682"
+line = "#dddfe1"
+subtle = "#e7e8e9"
+cursorline = "#eef0f0"
+selection = "#e7e8e9"
+selection-primary = "#c8e0f4"
+match = "#d0d5d8"
+error = "#d43811"
+info = "#007ada"
+diff-added = "#478f00"
+diff-deleted = "#f27983"
+diff-modified = "#709ecc"
