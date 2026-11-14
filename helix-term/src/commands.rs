@@ -2644,7 +2644,7 @@ fn global_search(cx: &mut Context) {
             .unwrap_or_else(|_| search_root.clone());
 
         let injector = injector.clone();
-        async move {
+        let search = move || {
             let searcher = SearcherBuilder::new()
                 .binary_detection(BinaryDetection::quit(b'\x00'))
                 .multi_line(true)
@@ -2725,9 +2725,8 @@ fn global_search(cx: &mut Context) {
                         }
                     })
                 });
-            Ok(())
-        }
-        .boxed()
+        };
+        async move { Ok(tokio::task::spawn_blocking(search).await?) }.boxed()
     };
 
     let reg = cx.register.unwrap_or('/');
