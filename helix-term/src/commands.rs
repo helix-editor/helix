@@ -356,6 +356,7 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
+        overtype_mode, "Enter overtype mode",
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
         switch_to_lowercase, "Switch to lowercase",
@@ -3114,6 +3115,12 @@ fn ensure_selections_forward(cx: &mut Context) {
 
 fn enter_insert_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Insert;
+    cx.editor.overtype = false;
+}
+
+fn overtype_mode(cx: &mut Context) {
+    cx.editor.mode = Mode::Insert;
+    cx.editor.overtype = true;
 }
 
 // inserts at the start of each selection
@@ -4348,21 +4355,59 @@ pub mod insert {
             ((cursor, cursor, Some(t)), None)
         };
 
-        let transaction = Transaction::change_by_and_with_selection(text, selection, |range| {
-            auto_pairs
-                .as_ref()
-                .and_then(|ap| {
-                    auto_pairs::hook_insert(text, range, c, ap)
-                        .map(|(change, range)| (change, Some(range)))
-                        .or_else(|| Some(insert_char(*range, c)))
-                })
-                .unwrap_or_else(|| insert_char(*range, c))
-        });
+        let replace_char = |range: Range, ch: char| {
+            let cursor = range.cursor(text.slice(..));
+            let t = Tendril::from_iter([ch]);
+            // Don't eat the newline. If cursor is at end of line, fall back to pure insert.
+            if cursor < text.len_chars() && text.char(cursor) != '\n' {
+                let next_char = Some(Range::new(cursor + 1, cursor + 1));
+                ((cursor, cursor + 1, Some(t)), next_char)
+            } else {
+                ((cursor, cursor, Some(t)), None)
+            }
+        };
+
+        let transaction = if cx.editor.overtype {
+            Transaction::change_by_and_with_selection(text, selection, |range| {
+                replace_char(*range, c)
+            })
+        } else {
+            Transaction::change_by_and_with_selection(text, selection, |range| {
+                auto_pairs
+                    .as_ref()
+                    .and_then(|ap| {
+                        auto_pairs::hook_insert(text, range, c, ap)
+                            .map(|(change, range)| (change, Some(range)))
+                            .or_else(|| Some(insert_char(*range, c)))
+                    })
+                    .unwrap_or_else(|| insert_char(*range, c))
+            })
+        };
 
         let doc = doc_mut!(cx.editor, &doc.id());
         doc.apply(&transaction, view.id);
 
         helix_event::dispatch(PostInsertChar { c, cx });
+    }
+
+    pub fn replace_char_backward_with_space(cx: &mut Context) {
+        let (view, doc) = current_ref!(cx.editor);
+        let text = doc.text();
+        let selection = doc.selection(view.id);
+
+        let transaction = Transaction::change_by_and_with_selection(text, selection, |range| {
+            let pos = range.cursor(text.slice(..));
+            let t = Tendril::from_iter([' ']);
+            if pos > 0 {
+                let next_char = Some(Range::new(pos - 1, pos - 1));
+                ((pos - 1, pos, Some(t)), next_char)
+            } else {
+                ((0, 1, Some(t)), None)
+            }
+        });
+
+        let doc = doc_mut!(cx.editor, &doc.id());
+        doc.apply(&transaction, view.id);
     }
 
     pub fn smart_tab(cx: &mut Context) {
@@ -4675,6 +4720,11 @@ pub mod insert {
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
+        if cx.editor.mode == Mode::Insert && cx.editor.overtype {
+            replace_char_backward_with_space(cx);
+            return;
+        }
+
         let count = cx.count();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
