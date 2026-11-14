@@ -308,6 +308,14 @@
 | `replay_macro` | Replay macro | normal: `` q ``, select: `` q `` |
 | `command_palette` | Open command palette | normal: `` <space>? ``, select: `` <space>? `` |
 | `goto_word` | Jump to a two-character label | normal: `` gw `` |
+| `flash_forward` | Jump forward with a flash |  |
+| `extend_flash_forward` | Extend forward with a flash |  |
+| `flash_backward` | Jump backward with a flash |  |
+| `extend_flash_backward` | Extend backward with a flash |  |
+| `flash_forward_till` | Jump forward with a flash |  |
+| `extend_flash_forward_till` | Extend forward with a flash |  |
+| `flash_backward_till` | Jump backward with a flash |  |
+| `extend_flash_backward_till` | Extend backward with a flash |  |
 | `extend_to_word` | Extend to a two-character label | select: `` gw `` |
 | `goto_next_tabstop` | Goto next snippet placeholder |  |
 | `goto_prev_tabstop` | Goto next snippet placeholder |  |
