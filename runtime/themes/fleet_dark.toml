@@ -42,8 +42,7 @@
 "namespace" = "Blue"
 
 # used in theming
-# "markup" = {} # .normal / .quote / .raw
-# "markup.normal" = {} # .completion / .hover
+# "markup" = {} # .quote / .raw
 "markup.bold" = {  modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }

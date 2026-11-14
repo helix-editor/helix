@@ -3,7 +3,6 @@
 inherits = "vesper"
 
 "markup.raw" = { bg = "white" }
-"markup.normal" = { bg = "white" }
 "markup.heading" = { bg = "white" }
 
 # UI

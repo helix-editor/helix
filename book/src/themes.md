@@ -293,19 +293,6 @@ See also [#2380]
 
 These scopes are used for theming the editor interface:
 
-- `markup`
-  - `normal`
-    - `completion` - for completion doc popup UI
-    - `hover` - for hover popup UI
-  - `heading`
-    - `completion` - for completion doc popup UI
-    - `hover` - for hover popup UI
-  - `raw`
-    - `inline`
-      - `completion` - for completion doc popup UI
-      - `hover` - for hover popup UI
-
-
 | Key                               | Notes                                                                                          |
 | ---                               | ---                                                                                            |
 | `ui.background`                   |                                                                                                |
@@ -323,6 +310,8 @@ These scopes are used for theming the editor interface:
 | `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.gutter.virtual`               | Gutter for soft-wrapped and virtual lines                                                      |
+| `ui.gutter.selected.virtual`      | Gutter for soft-wrapped and virtual lines of the line the cursor is on                         |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
@@ -331,9 +320,9 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.insert`            | Statusline mode during insert mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`         | Separator character in statusline                                                              |
-| `ui.bufferline`                   | Style for the buffer line                                                                      |
-| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                     |
-| `ui.bufferline.background`        | Style for bufferline background                                                                |
+| `ui.bufferline`                   | Style for the buffer line, falls back to `ui.statusline.inactive`                              |
+| `ui.bufferline.active`            | Style for the active buffer in buffer line, falls back to `ui.statusline`                      |
+| `ui.bufferline.background`        | Style for bufferline background, falls back to `ui.statusline.inactive`                        |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
 | `ui.picker.header`                | Header row area in pickers with multiple columns                                               |
@@ -364,6 +353,7 @@ These scopes are used for theming the editor interface:
 | `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.cursorline.primary`           | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorline.secondary`         | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
+| `ui.cursorcolumn`                 | Fallback for `ui.cursorcolumn.primary` and `ui.cursorcolumn.secondary`                         |
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |
 | `ui.cursorcolumn.secondary`       | The columns of any other cursors ([if cursorcolumn is enabled][editor-section])                |
 | `warning`                         | Diagnostics warning (gutter)                                                                   |
