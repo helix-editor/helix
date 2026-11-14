@@ -275,6 +275,14 @@
 | `goto_prev_test` | Goto previous test | normal: `` [T ``, select: `` [T `` |
 | `goto_next_xml_element` | Goto next (X)HTML element | normal: `` ]x ``, select: `` ]x `` |
 | `goto_prev_xml_element` | Goto previous (X)HTML element | normal: `` [x ``, select: `` [x `` |
+| `goto_next_conflict` | Goto next conflict | normal: `` ]= ``, select: `` ]= `` |
+| `goto_prev_conflict` | Goto previous conflict | normal: `` [= ``, select: `` [= `` |
+| `conflict_accept_current` | Accept current change (<<<<<<< side) | normal: `` <space>xc ``, select: `` <space>xc `` |
+| `conflict_accept_incoming` | Accept incoming change (>>>>>>> side) | normal: `` <space>xi ``, select: `` <space>xi `` |
+| `conflict_accept_base` | Accept base change (||||||| side, diff3 only) | normal: `` <space>xb ``, select: `` <space>xb `` |
+| `conflict_accept_all` | Accept all changes | normal: `` <space>xa ``, select: `` <space>xa `` |
+| `conflict_accept_at_cursor` | Accept change at cursor | normal: `` <space>xx ``, select: `` <space>xx `` |
+| `conflict_cycle_diffs` | Cycle word-level conflict diffs | normal: `` <space>xr ``, select: `` <space>xr `` |
 | `goto_next_entry` | Goto next pairing | normal: `` ]e ``, select: `` ]e `` |
 | `goto_prev_entry` | Goto previous pairing | normal: `` [e ``, select: `` [e `` |
 | `goto_next_paragraph` | Goto next paragraph | normal: `` ]p ``, select: `` ]p `` |

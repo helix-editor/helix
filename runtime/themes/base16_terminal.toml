@@ -45,6 +45,8 @@
 "diff.plus" = "light-green"
 "diff.delta" = "yellow"
 "diff.minus" = "light-red"
+"diff.conflict.removed" = { fg = "light-red", modifiers = ["reversed"] }
+"diff.conflict.added"   = { fg = "light-green", modifiers = ["reversed"] }
 
 "diagnostic" = { modifiers = ["underlined"] }
 "ui.gutter" = { bg = "black" }
