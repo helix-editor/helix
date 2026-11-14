@@ -7,6 +7,7 @@
   - [Note to packagers](#note-to-packagers)
 - [Validating the installation](#validating-the-installation)
 - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+- [Shell completions](#shell-completions)
 - [Building the Debian package](#building-the-debian-package)
 
 Requirements:
@@ -172,6 +173,44 @@ file. For example, to use `kitty`:
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+### Shell completions
+
+The source tree ships completion scripts for Bash, Fish, Zsh, Elvish, and
+Nushell in `contrib/completion/`. The commands below assume you are in the
+Helix source tree and install the script for the current user.
+
+Bash:
+
+```sh
+mkdir -p ~/.local/share/bash-completion/completions
+cp contrib/completion/hx.bash ~/.local/share/bash-completion/completions/hx
+```
+
+Fish:
+
+```sh
+mkdir -p ~/.config/fish/completions
+cp contrib/completion/hx.fish ~/.config/fish/completions/hx.fish
+```
+
+Zsh:
+
+```sh
+mkdir -p ~/.zfunc
+cp contrib/completion/hx.zsh ~/.zfunc/_hx
+```
+
+For Zsh, make sure `~/.zfunc` is in `fpath` before `compinit` runs, for example
+in `~/.zshrc`:
+
+```sh
+fpath=(~/.zfunc $fpath)
+autoload -Uz compinit && compinit
+```
+
+The Elvish and Nushell scripts (`hx.elv` and `hx.nu`) can be copied into the
+corresponding config directory and sourced from the shell's startup file.
 
 ### Building the Debian package
 
