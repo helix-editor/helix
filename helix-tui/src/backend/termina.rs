@@ -84,6 +84,10 @@ pub struct TerminaBackend {
     /// The terminal emulator's background color. This is queried when claiming the terminal so
     /// that custom colors set outside of Helix with OSC11 are restored when Helix exits.
     original_background_color: Option<RgbColor>,
+    /// Whether the terminal is currently claimed (in the alternate screen etc.). Used so that
+    /// `Drop` does not re-send the reset sequence after `restore` already did: a redundant
+    /// `DECRST 1049` makes terminals (xterm, tmux, ...) restore a stale saved cursor position.
+    claimed: bool,
 }
 
 impl TerminaBackend {
@@ -255,6 +259,7 @@ impl TerminaBackend {
             is_synchronized_output_set: false,
             background_color: None,
             original_background_color,
+            claimed: false,
         })
     }
 
@@ -410,6 +415,7 @@ impl TerminaBackend {
 impl Backend for TerminaBackend {
     fn claim(&mut self) -> io::Result<()> {
         self.terminal.enter_raw_mode()?;
+        self.claimed = true;
 
         write!(
             self.terminal,
@@ -452,6 +458,7 @@ impl Backend for TerminaBackend {
     }
 
     fn restore(&mut self) -> io::Result<()> {
+        self.claimed = false;
         self.disable_extensions()?;
         self.disable_mouse_capture()?;
         write!(
@@ -642,8 +649,10 @@ impl Backend for TerminaBackend {
 impl Drop for TerminaBackend {
     fn drop(&mut self) {
         // Avoid resetting the terminal while panicking because we set a panic hook above in
-        // `Self::new`.
-        if !std::thread::panicking() {
+        // `Self::new`. Also skip it if `restore` already ran: sending `DECRST 1049` a second
+        // time makes the terminal restore the cursor position saved on `DECSET 1049`, which is
+        // stale if the terminal was resized meanwhile.
+        if !std::thread::panicking() && self.claimed {
             let _ = self.disable_extensions();
             let _ = self.disable_mouse_capture();
             let _ = write!(
