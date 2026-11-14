@@ -44,15 +44,6 @@ async fn rotate_selection_contents_forward_repeated() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn rotate_selection_contents_forward_with_count() -> anyhow::Result<()> {
-    test((A, "2<A-)>", C)).await?;
-    test((A, "3<A-)>", D)).await?;
-    test((B, "2<A-)>", D)).await?;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn rotate_selection_contents_backward_repeated() -> anyhow::Result<()> {
     test((D, "<A-(>", C)).await?;
     test((C, "<A-(>", B)).await?;
@@ -62,10 +53,45 @@ async fn rotate_selection_contents_backward_repeated() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn rotate_selection_contents_backward_with_count() -> anyhow::Result<()> {
-    test((D, "2<A-(>", B)).await?;
-    test((D, "3<A-(>", A)).await?;
-    test((C, "2<A-(>", A)).await?;
+async fn rotate_selection_contents_in_groups() -> anyhow::Result<()> {
+    // Count specifies the group size
+    test((
+        indoc! {"
+            #(a|)#: #(1|)#
+            #[b|]#: #(2|)#
+            #(c|)#: #(3|)#
+        "},
+        "2<A-)>",
+        indoc! {"
+            #(1|)#: #(a|)#
+            #(2|)#: #[b|]#
+            #(3|)#: #(c|)#
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn rotate_selection_contents_with_trailing_group() -> anyhow::Result<()> {
+    // When the amount of selections isn't divisible by the group size, the
+    // last group is treated as it's own group, the primary selection should
+    // stay put in the case below
+    test((
+        indoc! {"
+            #(a|)#: #(1|)#
+            #(b|)#: #(2|)#
+            #[c|]#
+        "},
+        "2<A-)>",
+        indoc! {"
+            #(1|)#: #(a|)#
+            #(2|)#: #(b|)#
+            #[c|]#
+        "},
+    ))
+    .await?;
 
     Ok(())
 }

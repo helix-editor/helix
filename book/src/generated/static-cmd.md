@@ -219,9 +219,9 @@
 | `toggle_block_comments` | Block comment/uncomment selections | normal: `` <space>C ``, select: `` <space>C `` |
 | `rotate_selections_forward` | Rotate selections forward | normal: `` ) ``, select: `` ) `` |
 | `rotate_selections_backward` | Rotate selections backward | normal: `` ( ``, select: `` ( `` |
-| `rotate_selection_contents_forward` | Rotate selection contents forward | normal: `` <A-)> ``, select: `` <A-)> `` |
-| `rotate_selection_contents_backward` | Rotate selections contents backward | normal: `` <A-(> ``, select: `` <A-(> `` |
-| `reverse_selection_contents` | Reverse selections contents |  |
+| `rotate_selection_contents_forward` | Rotate selection contents forward (count sets the group size) | normal: `` <A-)> ``, select: `` <A-)> `` |
+| `rotate_selection_contents_backward` | Rotate selections contents backward (count sets the group size) | normal: `` <A-(> ``, select: `` <A-(> `` |
+| `reverse_selection_contents` | Reverse selections contents (count sets the group size) |  |
 | `expand_selection` | Expand selection to parent syntax node | normal: `` <A-o> ``, `` <A-up> ``, select: `` <A-o> ``, `` <A-up> `` |
 | `shrink_selection` | Shrink selection to previously expanded syntax node | normal: `` <A-i> ``, `` <A-down> ``, select: `` <A-i> ``, `` <A-down> `` |
 | `select_next_sibling` | Select next sibling in the syntax tree | normal: `` <A-n> ``, `` <A-right> ``, select: `` <A-n> ``, `` <A-right> `` |
