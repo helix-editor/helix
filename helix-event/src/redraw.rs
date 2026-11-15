@@ -29,6 +29,21 @@ pub fn request_redraw() {
     REDRAW_NOTIFY.notify_one();
 }
 
+/// In integration tests each runtime has its own redraw notifier,
+/// so the returned function enters the caller's runtime first.
+pub fn redraw_requester() -> impl Fn() + Send + Sync + 'static {
+    #[cfg(feature = "integration_test")]
+    {
+        let runtime = tokio::runtime::Handle::current();
+        move || {
+            let _guard = runtime.enter();
+            request_redraw();
+        }
+    }
+    #[cfg(not(feature = "integration_test"))]
+    request_redraw
+}
+
 /// Returns a future that will yield once a redraw has been asynchronously
 /// requested using [`request_redraw`].
 pub fn redraw_requested() -> impl Future<Output = ()> {
