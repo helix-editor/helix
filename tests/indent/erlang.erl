@@ -39,9 +39,11 @@ safe(F) ->
         Result ->
             Result
     catch
+%        ^ 8 eof
         error:Reason ->
             {error, Reason}
     after
+%        ^ 8 eof
         cleanup()
     end.
 

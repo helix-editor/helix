@@ -5,6 +5,7 @@ defmodule Greeter do
     if name do
       IO.puts("Hello")
     else
+#       ^ 6 eof
       IO.puts("Hi")
     end
   end
@@ -21,6 +22,7 @@ defmodule Greeter do
     try do
       risky(x)
     rescue
+#         ^ 6 eof
       e -> handle(e)
     after
       cleanup()

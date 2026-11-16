@@ -1,4 +1,6 @@
 function classify(value: number): string {
+  if (a) {}
+//        ^ 2
   switch (value) {
 //                ^ 4 eof
     case 1:

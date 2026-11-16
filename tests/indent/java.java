@@ -6,6 +6,8 @@ public class Example {
   private int value;
 
   public Example(int value) {
+    if (a) {}
+//          ^ 4
     this.value = value;
   }
 

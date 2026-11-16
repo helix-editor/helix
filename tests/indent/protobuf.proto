@@ -1,9 +1,13 @@
 syntax = "proto3";
 
 message Person {
+//              ^ 2 eof
+  message Empty {}
+//               ^ 2
   string name = 1;
 
   enum PhoneType {
+//                ^ 4 eof
     MOBILE = 0;
     HOME = 1;
   }

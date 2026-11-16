@@ -4,6 +4,8 @@ interface Props {
 }
 
 function Widget({ title, count }: Props): JSX.Element {
+  if (a) {}
+//        ^ 2
   return (
     <div className="widget">
       <span>{title}</span>

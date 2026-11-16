@@ -4,6 +4,7 @@ function(process arg)
 #        ^ 4 eof
     message("yes")
   else()
+#       ^ 4 eof
     message("no")
   endif()
   foreach(item ${ARGN})

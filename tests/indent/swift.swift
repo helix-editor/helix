@@ -37,6 +37,8 @@ class Rectangle: Shape {
   }
 
   func describe() -> String {
+    if a {}
+//        ^ 4
     return "rectangle"
   }
 

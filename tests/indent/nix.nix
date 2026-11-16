@@ -1,4 +1,5 @@
 {
+# ^ 2 eof
   # Simple bindings.
   a = 1;
   b = "two";
@@ -6,6 +7,9 @@
 
   # Nested attrsets.
   nested = {
+#           ^ 4 eof
+    empty = {};
+#            ^ 4
     c = 3;
     deep = {
       d = 4;

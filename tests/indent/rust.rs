@@ -6,6 +6,8 @@ use std::{
 };
 mod test {
     fn hello_world() {
+        if a {}
+//            ^ 8
         1 + 1;
 
         let does_indentation_work = 1;

@@ -1,11 +1,15 @@
 use strict;
 
 sub greet {
+#          ^ 2 eof
+  if ($a) {}
+#          ^ 2
   my ($name) = @_;
   print "hello, $name\n";
 }
 
 if ($x > 0) {
+#            ^ 2 eof
   print "positive\n";
 } elsif ($x < 0) {
   print "negative\n";

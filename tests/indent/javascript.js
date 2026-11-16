@@ -1,4 +1,6 @@
 function greet(name) {
+  if (a) {}
+//        ^ 2
   if (name) {
 //           ^ 4 eof
     return `hello ${name}`;

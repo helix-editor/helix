@@ -3,6 +3,8 @@
   "version": 1,
   "nested": {
 //           ^ 4 eof
+    "empty": {},
+//            ^ 4
     "enabled": true,
     "deep": {
 //           ^ 6 eof

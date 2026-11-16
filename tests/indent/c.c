@@ -7,6 +7,9 @@ struct Point {
 
 enum Color { RED, GREEN, BLUE };
 
+void empty() {}
+//            ^ 0
+
 int compute(int a, int b) {
   int values[3] = {1, 2, 3};
   for (int i = 0; i < 3; i++) {

@@ -12,6 +12,8 @@ namespace App
 
 		public int Bump()
 		{
+			if (a) {}
+//                  ^ 12
 			if (count > 0)
 			{
 				count += 1;

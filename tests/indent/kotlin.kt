@@ -2,6 +2,8 @@ package example
 
 class Example(private val value: Int) {
     fun compute(a: Int, b: Int): Int {
+        if (a) {}
+//              ^ 8
         val numbers = listOf(
             1,
             2,

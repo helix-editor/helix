@@ -6,6 +6,8 @@ std::vector<std::string>
 fn_with_many_parameters(int parm1, long parm2, float parm3, double parm4,
                         char* parm5, bool parm6) {
   auto lambda = []() {
+    if (a) {}
+//          ^ 4
     return 0;
   };
   auto lambda_with_a_really_long_name_that_uses_a_whole_line

@@ -1,4 +1,5 @@
 let process items =
+(*                 ^ 2 eof *)
   let total = ref 0 in
   List.iter (fun v ->
     total := !total + v) items;
@@ -18,6 +19,7 @@ let nums = [
 
 let classify x =
   if x > 0 then
+(*             ^ 4 eof *)
     "pos"
   else
     "neg"

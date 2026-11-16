@@ -6,8 +6,10 @@ function process(items)
         if v > 0
             total += v
         elseif v < 0
+#                   ^ 12 eof
             total -= v
         else
+#           ^ 12 eof
             total += 1
         end
     end

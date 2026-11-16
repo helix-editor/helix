@@ -13,6 +13,7 @@ top:
   bax: foox
 #          ^ 2
 fook:
+#    ^ 2 eof
 
 # Block scalars inside a nested mapping: literal (|) keeps newlines, folded (>)
 # joins lines; both indent their body one level under the key.
@@ -72,6 +73,7 @@ development:
 # Multiple documents in one stream.
 ---
 doc: one
+#    ^ 2
 nested:
   value: 1
 #         ^ 2

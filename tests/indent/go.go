@@ -10,6 +10,14 @@ type Point struct {
 	Y int
 }
 
+type Empty struct {}
+//                 ^ 0
+
+func empty() {
+	switch nil {}
+//              ^ 4
+}
+
 func compute(a int, b int) int {
 	values := []int{
 		1,

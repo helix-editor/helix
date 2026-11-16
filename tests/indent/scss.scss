@@ -1,4 +1,6 @@
 .container {
+  &:hover {}
+//         ^ 2
   color: red;
   .nested {
     width: 100%;

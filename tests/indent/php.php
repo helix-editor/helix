@@ -2,6 +2,8 @@
 
 function classify($value)
 {
+    if ($a) {}
+//           ^ 4
     switch ($value) {
         case 1:
             return "one";

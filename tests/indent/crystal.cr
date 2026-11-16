@@ -1,9 +1,11 @@
 module Greeter
+#             ^ 2 eof
   class Hello
     def greet(name)
       if name
         puts "Hello"
       elsif other
+#                ^ 8 eof
         puts "Hi"
       else
         puts "Hey"
