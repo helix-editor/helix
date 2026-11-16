@@ -70,6 +70,22 @@ c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
 ```
 
+## Labels
+
+By default the infobox shows a command's description, or `[Multiple commands]` for a
+command list. Use a table with `label` and `command` (a command or list of commands)
+to show your own text instead. `label` in a minor mode sets its infobox title.
+
+```toml
+[keys.normal.space]
+Y = { label = "Copy line range reference", command = ":sh echo hi" }
+Z = { label = "Select all and yank", command = ["select_all", "yank"] }
+
+[keys.normal."+"]
+label = "Build"
+m = ":run-shell-command make"
+```
+
 ## Special keys and modifiers
 
 Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes `C-`, `S-` and `A-`.
