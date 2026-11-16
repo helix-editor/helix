@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "colibri";
             const default_dark_theme = "colibri";
-            window.path_to_searchindex_js = "searchindex-2fe1c435.js";
+            window.path_to_searchindex_js = "searchindex-fa2c04cc.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c2fa7ea4.js"></script>
@@ -4784,9 +4784,30 @@ was included; under the containment model those are no longer needed and have
 been removed. <code>header</code> is the one scope the engine reads.)</p>
 <h2 id="testing-1"><a class="header" href="#testing-1">Testing</a></h2>
 <p><code>cargo xtask indent-check [language]</code> checks the queries against the fixtures in
-<code>tests/indent/&lt;language-id&gt;.&lt;ext&gt;</code> in both modes: re-indenting each line
-and simulating a newline typed after it, so a rule that is correct one way but
-wrong the other is caught.</p>
+<code>tests/indent/&lt;language-id&gt;.&lt;ext&gt;</code> in both modes: re-indenting each line and
+simulating a newline typed after it.</p>
+<p>A caret below a line marks the expected indent for a new line, like the
+assertions in the highlight tests. It’s needed where the next line isn’t the
+right indent, for example when it leaves a block that the new line could still
+continue:</p>
+<pre><code class="language-yaml">top:
+  bazi:
+    why: because
+#               ^ 4
+  quux:
+</code></pre>
+<p>The caret marks where a new line is inserted (past the end of the line, it
+tests <code>o</code>). The number is the new line’s indent in columns (each tab counts as
+4).</p>
+<p>With <code>eof</code>, the file is checked as if it ended after that line, for example
+when code is typed without auto-pairs and doesn’t have a closing bracket:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn f() {
+//      ^ 4 eof
+<span class="boring">}</span></code></pre>
+<p>Caret lines are removed before the file is parsed. A new line typed just before
+a <code>}</code> may be indented deeper than the <code>}</code>, since it’s still inside the block.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="adding-injection-queries-1"><a href="#adding-injection-queries-1" class="header">Adding injection queries</a></h1>
 <h2 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h2>
