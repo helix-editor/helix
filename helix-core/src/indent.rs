@@ -1124,6 +1124,8 @@ fn containment_accounting<'a>(
     // Same-line collapse: a scope contributes at most one level per physical line
     // it opens on.
     let mut counted_start_lines: Vec<usize> = Vec::new();
+    // The aligned node's start line and levels.
+    let mut inside_align: Option<(usize, usize, usize)> = None;
 
     let mut node = start_node;
     loop {
@@ -1175,6 +1177,14 @@ fn containment_accounting<'a>(
             // dedents.
             let opens_target = node_start == target_line;
 
+            // Innermost containing alignment wins (first seen on the upward walk).
+            if let Some(a) = node_align {
+                if contains && align.is_none() {
+                    align = Some(a);
+                    inside_align = Some((start, counted_start_lines.len(), indent_always));
+                }
+            }
+
             if (has_indent || has_indent_always) && (has_outdent || has_outdent_always) {
                 // A node carrying both indent and outdent (e.g. swift's nested
                 // else-if `(if_statement (if_statement) @outdent)`) cancels its own
@@ -1194,12 +1204,6 @@ fn containment_accounting<'a>(
                     outdent_always += 1;
                 }
             }
-            // Innermost containing alignment wins (first seen on the upward walk).
-            if let Some(a) = node_align {
-                if contains && align.is_none() {
-                    align = Some(a);
-                }
-            }
         }
         match node.parent() {
             Some(parent) => node = parent,
@@ -1207,12 +1211,14 @@ fn containment_accounting<'a>(
         }
     }
 
-    // `@align` is an absolute alignment (to the anchor column); the containment
-    // levels it spans are already encoded in that column, so don't stack them on
-    // top.
-    if align.is_some() {
-        indent_levels = 0;
-        indent_always = 0;
+    // Only scopes inside the aligned node add to the anchor column, except one
+    // opening on the node's first line.
+    if let Some((align_start, inner, inner_always)) = inside_align {
+        indent_levels = counted_start_lines[..inner]
+            .iter()
+            .filter(|&&start| start != align_start)
+            .count();
+        indent_always = inner_always;
     }
     Some((
         Indentation {
@@ -1249,10 +1255,15 @@ fn injection_base_level(
     };
     let bl = text.byte_to_line(byte_pos as usize);
     let first = if in_layer(bl) {
-        // Inside the injection: walk back to its first content line.
+        // Inside the injection: walk back to its first content line, skipping
+        // blank lines.
         let mut f = bl;
-        while f > 0 && in_layer(f - 1) {
-            f -= 1;
+        for prev in (0..bl).rev() {
+            if in_layer(prev) {
+                f = prev;
+            } else if text.line(prev).first_non_whitespace_char().is_some() {
+                break;
+            }
         }
         f
     } else {

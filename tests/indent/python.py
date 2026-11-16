@@ -90,3 +90,11 @@ first line
     indented in string
 back"""
     return text
+
+
+call(first,
+     {
+         "x": 1,
+     })
+call(first, {
+     "x": 1})
