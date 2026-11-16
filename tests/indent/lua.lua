@@ -7,7 +7,9 @@ end
 function M.process(items)
   local total = 0
   for i, v in ipairs(items) do
+--                            ^ 4 eof
     if v > 0 then
+--               ^ 6 eof
       total = total + v
     else
       total = total - v

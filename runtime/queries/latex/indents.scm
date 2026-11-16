@@ -15,3 +15,6 @@
   "}"
   "]"
 ] @outdent
+
+; Handle partially typed code.
+(ERROR (begin) @indent @extend)

@@ -11,6 +11,7 @@ const Color = enum {
 };
 
 const Value = union(enum) {
+//                         ^ 4 eof
     int: i32,
     float: f64,
 };

@@ -2,8 +2,10 @@
   "name": "helix",
   "version": 1,
   "nested": {
+//           ^ 4 eof
     "enabled": true,
     "deep": {
+//           ^ 6 eof
       "value": null
     }
   },

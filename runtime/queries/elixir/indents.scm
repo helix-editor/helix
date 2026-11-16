@@ -20,3 +20,7 @@
   "}"
   ")"
 ] @outdent
+
+; Handle partially typed code.
+(ERROR "do" @indent @extend)
+(ERROR "->" @indent @extend)

@@ -34,11 +34,11 @@
     (#not-kind-eq? @outer "expression_switch_statement")
 )
 
-; Handle ERROR nodes for when auto-pairs is disabled.
-; Typing an opening delimiter without a closing one produces an ERROR node.
-(ERROR "{") @indent @extend
-(ERROR "(") @indent
-(ERROR "[") @indent
+; Handle partially typed code.
+(communication_case ":" @indent @extend)
+(expression_case ":" @indent @extend)
+(default_case ":" @indent @extend)
+(type_case ":" @indent @extend)
 
 ; Labels (`Loop:`, `done:`) are de-indented one level by gofmt.
 ; Capturing the label_name (a child, not an ancestor of the labeled body)

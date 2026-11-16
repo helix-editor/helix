@@ -20,3 +20,6 @@
   (endmacro)
   (endblock)
 ] @outdent
+
+; Handle partially typed code.
+(ERROR [(function_command) (macro_command) (if_command) (foreach_command) (while_command)] @indent @extend)

@@ -11,6 +11,7 @@ module Greeter
     end
 
     def classify(x)
+#                  ^ 6 eof
       case x
       when 1
         "one"

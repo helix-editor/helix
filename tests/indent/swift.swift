@@ -61,12 +61,14 @@ func process(_ direction: Direction, count: Int) {
   }
 
   let numbers = [
+//               ^ 4 eof
     1,
     2,
     3,
   ]
 
   let mapping = [
+//               ^ 4 eof
     "a": 1,
     "b": 2,
   ]

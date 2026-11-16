@@ -29,12 +29,14 @@ func compute(a int, b int) int {
 	}
 	switch a {
 	case 1:
+//         ^ 8 eof
 		return b
 //              ^ 8
 	case 2:
 		return a
 //              ^ 8
 	default:
+//          ^ 8 eof
 		return 0
 //              ^ 8
 	}

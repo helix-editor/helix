@@ -10,12 +10,14 @@ public class Example {
   }
 
   public int compute(int a, int b) {
+//                                  ^ 4 eof
     int[] numbers = {
       1,
       2,
       3,
     };
     for (int i = 0; i < numbers.length; i++) {
+//                                            ^ 6 eof
       if (numbers[i] > a) {
         System.out.println(numbers[i]);
       } else {

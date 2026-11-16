@@ -1,5 +1,7 @@
 defmodule Greeter do
+#                   ^ 2 eof
   def greet(name) do
+#                   ^ 4 eof
     if name do
       IO.puts("Hello")
     else

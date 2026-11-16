@@ -1,6 +1,8 @@
 function classify(value: number): string {
   switch (value) {
+//                ^ 4 eof
     case 1:
+//         ^ 6 eof
       return "one";
     case 2:
       console.log("two");
@@ -48,6 +50,7 @@ function process<T>(items: T[]): T[] {
   };
 
   for (const item of items) {
+//                           ^ 4 eof
     if (item) {
       result.push(item);
     }

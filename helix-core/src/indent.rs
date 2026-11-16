@@ -745,6 +745,42 @@ fn extend_nodes<'a>(
     false
 }
 
+/// Returns the last child of `node` before `byte_pos`, skipping extra nodes. If the
+/// parser closed both `node` and the child before it with MISSING tokens, that
+/// child is the innermost open node and is returned instead.
+fn last_child<'a>(node: &Node<'a>, byte_pos: u32) -> Option<Node<'a>> {
+    let mut children = node
+        .children()
+        .filter(|child| child.end_byte() <= byte_pos && !is_extra(child));
+    let mut last = children.next()?;
+    let mut prev = None;
+    for child in children {
+        prev = Some(std::mem::replace(&mut last, child));
+    }
+    match prev {
+        Some(prev)
+            if last.is_missing() && prev.end_byte() == last.start_byte() && is_unclosed(&prev) =>
+        {
+            Some(prev)
+        }
+        _ => Some(last),
+    }
+}
+
+/// Whether `node` is an ERROR or its last token is MISSING.
+fn is_unclosed(node: &Node) -> bool {
+    let mut node = node.clone();
+    loop {
+        if node.is_missing() || node.kind() == "ERROR" {
+            return true;
+        }
+        match node.children().filter(|child| !is_extra(child)).last() {
+            Some(child) => node = child,
+            None => return false,
+        }
+    }
+}
+
 /// When a newline is typed after a header (`while (c)`, `if x:`), the body it
 /// opens begins on the *next* line — a following sibling the upward indent walk
 /// never reaches, which is why brace-less bodies need either a wrapper `@indent`
@@ -832,14 +868,11 @@ fn init_indent_query<'a, 'b>(
         // The query range should intersect with all nodes directly preceding
         // the position of the indent query in case one of them is extended.
         // A trailing comment belongs to the node before it
-        let mut deepest_preceding = node
-            .children()
-            .filter(|child| child.byte_range().end <= byte_pos && !is_extra(child))
-            .last();
+        let mut deepest_preceding = last_child(&node, byte_pos);
         // Get the deepest directly preceding node
         while let Some(last) = deepest_preceding
             .as_ref()
-            .and_then(|prec| prec.children().filter(|c| !is_extra(c)).last())
+            .and_then(|prec| last_child(prec, byte_pos))
         {
             deepest_preceding = Some(last);
         }
@@ -881,6 +914,43 @@ fn init_indent_query<'a, 'b>(
         })
         .map(|body| node = body.clone())
         .is_some();
+
+    // When the parser closes an unfinished node with a zero-width MISSING token,
+    // as it does for `struct S {`, the node is still open.
+    if let Some(missing) = deepest_preceding
+        .as_ref()
+        .filter(|node| !descended && new_line_byte_pos.is_some() && node.is_missing())
+    {
+        // The token may be wrapped in a node of its own.
+        let mut open = missing.parent();
+        while let Some(parent) = open
+            .as_ref()
+            .filter(|node| node.start_byte() == missing.start_byte())
+            .and_then(|node| node.parent())
+        {
+            open = Some(parent);
+        }
+        if let Some(open) = open {
+            return Some((open, query_result.indent_captures, opaque_ranges, true));
+        }
+    }
+
+    // With auto-pairs off, a typed `{`, `(` or `[` has no closing bracket yet and
+    // ends up in an ERROR node. Indent the next line as if it were closed.
+    if let Some(open) = deepest_preceding.as_ref().filter(|node| {
+        !descended
+            && new_line_byte_pos.is_some()
+            && matches!(node.kind(), "{" | "(" | "[")
+            && text.byte_to_line(node.start_byte() as usize) == line
+            && node.parent().is_some_and(|parent| parent.kind() == "ERROR")
+    }) {
+        let mut captures = query_result.indent_captures;
+        captures.entry(open.id()).or_default().push(IndentCapture {
+            capture_type: IndentCaptureType::Indent,
+            header: false,
+        });
+        return Some((open.clone(), captures, opaque_ranges, true));
+    }
 
     // Check for extend captures, potentially changing the node that the indent calculation starts with
     let mut extended = false;

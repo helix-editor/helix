@@ -1,5 +1,7 @@
 function(process arg)
+#                    ^ 2 eof
   if(arg)
+#        ^ 4 eof
     message("yes")
   else()
     message("no")
