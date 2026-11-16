@@ -1,11 +1,3 @@
-# Ported from helix-term/tests/test/languages/yaml.rs (the auto-indent o/O/<ret>
-# tests). The corpus checks both directions — reindent (every line re-indents to
-# its own column) and typing (pressing Enter at a line's end indents the next
-# line) — which together cover the open-below (o), open-above (O) and split
-# (<ret>) cases those tests assert. Fixtures whose top-level shape differs (a
-# bare sequence vs a mapping) are separated into their own `---` documents, since
-# they cannot coexist at the root of one document.
-
 # The canonical fixture: nested mappings, a key whose value is an indented
 # sequence, scalar pairs, and a trailing keyless map entry.
 top:
@@ -13,10 +5,13 @@ top:
   bazi:
     more: yes
     why: because
+#               ^ 4
   quux:
     - 1
     - 2
+#      ^ 4
   bax: foox
+#          ^ 2
 fook:
 
 # Block scalars inside a nested mapping: literal (|) keeps newlines, folded (>)
@@ -28,6 +23,7 @@ literal:
     multi
     line
     string
+#         ^ 4
 folded:
   baz: foo
   bax: >
@@ -41,6 +37,7 @@ root:
   baz:
     - one: two
       three: four
+#                ^ 6
     - top:
         baz: foo
         bax: foox
@@ -54,9 +51,11 @@ flow-seq: [1, 2, 3]
 defaults: &defaults
   adapter: postgres
   host: localhost
+#                ^ 2
 pool: &pool
   - primary
   - replica
+#          ^ 2
 development:
   <<: *defaults
   database: dev
@@ -67,6 +66,7 @@ development:
 - top:
     baz: foo
     bax: foox
+#            ^ 4
   fook: done
 
 # Multiple documents in one stream.
@@ -74,6 +74,7 @@ development:
 doc: one
 nested:
   value: 1
+#         ^ 2
 ---
 doc: two
 list:
@@ -81,10 +82,11 @@ list:
   - y
 
 # Keyless entries and an empty block scalar. Opening a line after each indents to
-# the child / body level (the keyless-pair and block_scalar rules); the following
-# line here sits at the outer column, so the corpus records that as a reviewed
-# typing over-indent note rather than a hard assertion.
+# the child / body level (the keyless-pair and block_scalar rules), although the
+# following line here sits at the outer column.
 holder:
   keyless:
+#         ^ 4
   folded: >
+#          ^ 4
   plain: value

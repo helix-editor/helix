@@ -14,7 +14,9 @@ while running:
 case n
 of 1:
   echo "one"
+#           ^ 2
 of 2:
   echo "two"
+#           ^ 2
 else:
   echo "many"

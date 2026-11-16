@@ -9,6 +9,7 @@ function y = f(x)
   switch y
     case 1
       disp('one');
+%                 ^ 6
     otherwise
       disp('other');
   end

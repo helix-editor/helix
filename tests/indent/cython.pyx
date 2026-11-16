@@ -3,4 +3,5 @@ def process(items):
     for v in items:
         if v > 0:
             total += v
+#                     ^ 12
     return total

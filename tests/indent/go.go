@@ -30,10 +30,13 @@ func compute(a int, b int) int {
 	switch a {
 	case 1:
 		return b
+//              ^ 8
 	case 2:
 		return a
+//              ^ 8
 	default:
 		return 0
+//              ^ 8
 	}
 }
 
@@ -41,8 +44,10 @@ func pipe(ch chan int) {
 	select {
 	case msg := <-ch:
 		fmt.Println(msg)
+//                      ^ 8
 	default:
 		fmt.Println(strings.TrimSpace("none"))
+//                                            ^ 8
 	}
 Loop:
 	for {
@@ -83,8 +88,10 @@ func process(items []int) (int, error) {
 		switch x := any(v).(type) {
 		case int:
 			sum += x
+//                  ^ 12
 		default:
 			continue
+//                  ^ 12
 		}
 	}
 

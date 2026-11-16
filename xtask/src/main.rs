@@ -45,11 +45,63 @@ pub mod tasks {
         Ok(())
     }
 
+    /// An expected indent in a corpus file, written like the assertions of the
+    /// highlight tests. Enter at the caret gives a line indented `indent`
+    /// columns, and a caret at or past the end of the line above stands for
+    /// Enter at its end. With `eof`, the file ends after the line above, as
+    /// when it's typed top to bottom without auto-pairs.
+    ///
+    /// ```yaml
+    /// foo: bar
+    /// #    ^ 2
+    /// ```
+    struct Caret {
+        /// The index of the line above, counting only lines that aren't carets.
+        line: usize,
+        col: usize,
+        indent: usize,
+        eof: bool,
+        /// The caret's own line in the file, for messages.
+        file_line: usize,
+    }
+
+    /// Reads a caret line: a `^` with only a comment leader before it, then the
+    /// indent, an optional `eof` and the end of the comment. The column counts
+    /// tabs as 4 columns.
+    fn parse_caret(line: &str) -> Option<(usize, usize, bool)> {
+        let col = line.find('^')?;
+        if line[..col].bytes().any(|b| b.is_ascii_alphanumeric()) {
+            return None;
+        }
+        // Skip the end of the comment
+        let mut words = line[col + 1..]
+            .split_whitespace()
+            .filter(|word| word.bytes().any(|b| b.is_ascii_alphanumeric()));
+        let indent = words.next()?.parse().ok()?;
+        let eof = match words.next() {
+            None => false,
+            Some("eof") => true,
+            Some(_) => return None,
+        };
+        if words.next().is_some() {
+            return None;
+        }
+        Some((columns(&line[..col], 4), indent, eof))
+    }
+
+    fn columns(text: &str, tab_width: usize) -> usize {
+        text.chars()
+            .map(|c| if c == '\t' { tab_width } else { 1 })
+            .sum()
+    }
+
     pub fn indentcheck(languages: impl Iterator<Item = String>) -> Result<(), DynError> {
         use helix_core::{
             indent::{
-                is_opaque_interior, is_outdent_token_at, treesitter_indent_for_pos, IndentStyle,
+                indent_for_newline, is_opaque_interior, is_outdent_token_at,
+                treesitter_indent_for_pos, IndentStyle,
             },
+            syntax::config::IndentationHeuristic,
             Syntax,
         };
         use helix_stdx::rope::RopeSliceExt;
@@ -60,7 +112,7 @@ pub mod tasks {
         let corpus = crate::path::tests_indent();
         let tab_width = 4;
         let mut errors = 0usize;
-        let mut over_notes = 0usize;
+        let mut checked = 0usize;
 
         let mut entries: Vec<_> = std::fs::read_dir(&corpus)?
             .filter_map(Result::ok)
@@ -75,6 +127,7 @@ pub mod tasks {
                 continue;
             }
             let file = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            checked += 1;
 
             // Corpus files are named <language-id>.<ext>; resolve the language by id.
             let language = match loader
@@ -98,23 +151,110 @@ pub mod tasks {
                     .ok_or_else(|| format!("{file}: language '{stem}' has no indent config"))?
                     .unit,
             );
+            let indent_width = indent_style.indent_width(tab_width);
             // Lines that are commented out are skipped: they self-document edge
             // cases (e.g. known indent limitations) without being asserted on.
             let comment_tokens: Vec<String> = config.comment_tokens.clone().unwrap_or_default();
-
-            let doc = Rope::from_reader(&mut std::fs::File::open(&path)?)?;
-            let text = doc.slice(..);
-            let syntax = Syntax::new(text, language, &loader)
-                .map_err(|e| format!("{file}: failed to parse: {e:?}"))?;
             let indent_query = loader
                 .indent_query(language)
                 .ok_or_else(|| format!("{file}: language '{stem}' has no indent query"))?;
+
+            // Carets are taken out before parsing so they don't change the tree.
+            let mut source = String::new();
+            let mut file_lines = Vec::new();
+            let mut carets = Vec::new();
+            for (file_line, line) in std::fs::read_to_string(&path)?
+                .split_inclusive('\n')
+                .enumerate()
+            {
+                match parse_caret(line) {
+                    Some((col, indent, eof)) => {
+                        let line = file_lines.len().checked_sub(1).ok_or_else(|| {
+                            format!("{file}:{}: a caret needs a line above it", file_line + 1)
+                        })?;
+                        carets.push(Caret {
+                            line,
+                            col,
+                            indent,
+                            eof,
+                            file_line,
+                        });
+                    }
+                    None => {
+                        source.push_str(line);
+                        file_lines.push(file_line);
+                    }
+                }
+            }
+            let doc = Rope::from(source.as_str());
+            let text = doc.slice(..);
+            let syntax = Syntax::new(text, language, &loader)
+                .map_err(|e| format!("{file}: failed to parse: {e:?}"))?;
+
+            // The indent of a line typed by pressing Enter at `pos` on `line`
+            let typed = |text: ropey::RopeSlice, syntax: &Syntax, line: usize, pos: usize| {
+                let indent = indent_for_newline(
+                    &loader,
+                    Some(syntax),
+                    &IndentationHeuristic::default(),
+                    &indent_style,
+                    tab_width,
+                    text,
+                    line,
+                    pos,
+                    line,
+                );
+                columns(&indent, tab_width)
+            };
+            let line_end = |line: usize| {
+                let slice = text.line(line);
+                let len = slice.len_chars();
+                text.line_to_char(line) + len
+                    - if slice.ends_with("\r\n") {
+                        2
+                    } else {
+                        (len > 0 && slice.char(len - 1) == '\n') as usize
+                    }
+            };
+
+            // (at_end, pos)
+            let caret_pos = |caret: &Caret| {
+                let start = text.line_to_char(caret.line);
+                let mut col = 0;
+                for (i, c) in text.slice(start..line_end(caret.line)).chars().enumerate() {
+                    if col >= caret.col {
+                        return (false, start + i);
+                    }
+                    col += if c == '\t' { tab_width } else { 1 };
+                }
+                (true, line_end(caret.line))
+            };
+            for caret in &carets {
+                let (_, pos) = caret_pos(caret);
+                let computed = if caret.eof {
+                    let prefix = Rope::from(text.slice(..line_end(caret.line)));
+                    let syntax = Syntax::new(prefix.slice(..), language, &loader)
+                        .map_err(|e| format!("{file}: failed to parse: {e:?}"))?;
+                    typed(prefix.slice(..), &syntax, caret.line, pos)
+                } else {
+                    typed(text, &syntax, caret.line, pos)
+                };
+                if computed != caret.indent {
+                    errors += 1;
+                    println!(
+                        "{file}:{}: enter at the caret computed {computed} columns, expected {}",
+                        caret.file_line + 1,
+                        caret.indent,
+                    );
+                }
+            }
 
             for i in 0..doc.len_lines() {
                 let line = text.line(i);
                 let Some(pos) = line.first_non_whitespace_char() else {
                     continue;
                 };
+                let file_line = file_lines.get(i).map_or(i, |l| *l) + 1;
 
                 let trimmed = line.slice(pos..).to_string();
                 if comment_tokens
@@ -129,7 +269,7 @@ pub mod tasks {
                     &syntax,
                     &loader,
                     tab_width,
-                    indent_style.indent_width(tab_width),
+                    indent_width,
                     text,
                     i,
                     text.line_to_char(i) + pos,
@@ -146,99 +286,62 @@ pub mod tasks {
                 if actual != suggested {
                     errors += 1;
                     println!(
-                        "{file}:{}: reindent expected {} columns, computed {}",
-                        i + 1,
+                        "{file}:{file_line}: reindent expected {} columns, computed {}",
                         actual.chars().count(),
                         suggested.chars().count(),
                     );
                 }
 
-                // Typing direction: simulate pressing Enter at the end of this line and check the indent computed for the next line.
-                //   - under-indent (computed < canonical) is always a failure: nothing pulls the line further in, so the user is left
-                //     under-indented.
-                //   - over-indent (computed > canonical) is only acceptable when the next line's leading token is @outdent (a closing
-                //     bracket, case/else/except keyword, ...): entering it dedents the line. An over-indent on a plain statement (e.g.
-                //     a line after `return` that should leave the block but doesn't) has nothing to correct it and is a real failure.
-                if i + 1 < doc.len_lines() {
-                    if let Some(next_pos) = text.line(i + 1).first_non_whitespace_char() {
-                        let next = text.line(i + 1);
-                        let next_trim = next.slice(next_pos..).to_string();
-                        // Lines inside an @opaque body (string/comment) carry literal leading whitespace, not code indent — don't
-                        // assert a typing indent for them.
-                        let next_byte =
-                            text.char_to_byte(text.line_to_char(i + 1) + next_pos) as u32;
-
-                        let next_is_opaque =
-                            is_opaque_interior(indent_query, &syntax, text, next_byte);
-                        let next_is_comment = next_is_opaque
-                            || comment_tokens
-                                .iter()
-                                .any(|tok| next_trim.starts_with(tok.as_str()));
-
-                        if !next_is_comment {
-                            let typed = treesitter_indent_for_pos(
-                                indent_query,
-                                &syntax,
-                                &loader,
-                                tab_width,
-                                indent_style.indent_width(tab_width),
-                                text,
-                                i,
-                                text.line_to_char(i + 1) - 1,
-                                true,
-                            )
-                            .unwrap()
-                            .to_string(&indent_style, tab_width);
-
-                            let next_actual = next
-                                .get_slice(..next_pos)
-                                .map(|s| s.to_string())
-                                .unwrap_or_default();
-
-                            let typed_cols = typed.chars().count();
-                            let want_cols = next_actual.chars().count();
-                            let leading_outdent = || {
-                                let byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos);
-                                is_outdent_token_at(indent_query, &syntax, text, byte as u32)
-                            };
-
-                            if typed_cols < want_cols {
-                                errors += 1;
-                                println!(
-                                    "{file}:{}: typing under-indents: computed {} columns, expected {} | {}",
-                                    i + 2,
-                                    typed_cols,
-                                    want_cols,
-                                    next_trim.trim_end(),
-                                );
-                            } else if typed_cols > want_cols && !leading_outdent() {
-                                // Over-indents are reported but not failed: every over-indent sits at a legitimate dedent point, and
-                                // for indent-delimited languages (python after a block) the editor genuinely cannot know how far to
-                                // dedent. Surfaced so a regression shows up in the diff; gate on under-indents only.
-                                over_notes += 1;
-                                println!(
-                                    "{file}:{}: note: typing over-indents: computed {} columns, expected {} (no leading outdent; review) | {}",
-                                    i + 2,
-                                    typed_cols,
-                                    want_cols,
-                                    next_trim.trim_end(),
-                                );
-                            }
-                        }
-                    }
+                // Enter at the end of this line should indent the new line like the next one.
+                // That's wrong where the next line leaves a scope the new line may continue, or
+                // follows an empty one, so a caret below the line gives the indent instead. A new
+                // line before a closing token (`@outdent`, like `}` or `else`) is still inside the
+                // scope the token closes, so it may be deeper.
+                if carets.iter().any(|c| c.line == i && caret_pos(c).0) {
+                    continue;
+                }
+                let Some(next_pos) = (i + 1 < doc.len_lines())
+                    .then(|| text.line(i + 1).first_non_whitespace_char())
+                    .flatten()
+                else {
+                    continue;
+                };
+                let next = text.line(i + 1);
+                let next_trim = next.slice(next_pos..).to_string();
+                let next_byte = text.char_to_byte(text.line_to_char(i + 1) + next_pos) as u32;
+                // Lines inside an @opaque body (string/comment) carry literal leading whitespace, not
+                // code indent.
+                if is_opaque_interior(indent_query, &syntax, &loader, text, next_byte)
+                    || comment_tokens
+                        .iter()
+                        .any(|tok| next_trim.starts_with(tok.as_str()))
+                {
+                    continue;
+                }
+                let computed = typed(text, &syntax, i, line_end(i));
+                let want = columns(&next.slice(..next_pos).to_string(), tab_width);
+                if computed != want
+                    && !(computed > want
+                        && is_outdent_token_at(indent_query, &syntax, &loader, text, next_byte))
+                {
+                    errors += 1;
+                    println!(
+                        "{file}:{file_line}: enter at the end computed {computed} columns, the next line has {want} | {}",
+                        next_trim.trim_end(),
+                    );
                 }
             }
         }
 
-        if over_notes > 0 {
-            println!("Indent check: {over_notes} typing over-indent note(s) (not failures; review for regressions)");
+        if checked == 0 {
+            return Err("No corpus files for the given languages".into());
         }
         match errors {
             0 => {
                 println!("Indent check succeeded");
                 Ok(())
             }
-            n => Err(format!("Indent check failed: {n} line(s) with wrong indentation").into()),
+            n => Err(format!("Indent check failed: {n} wrong indent(s)").into()),
         }
     }
 

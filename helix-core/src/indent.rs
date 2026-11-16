@@ -924,6 +924,30 @@ fn opaque_hit(start: u32, end: u32, byte_pos: u32, text: RopeSlice) -> bool {
         && text.byte_to_line(start as usize) < text.byte_to_line(byte_pos as usize)
 }
 
+/// Returns the indent query and syntax tree for `byte_pos`, and whether they
+/// belong to an injected language. A same-language injection, like a Rust macro's
+/// token trees, uses the document's, since the root walk already indents it.
+fn layer_at<'q, 't>(
+    query: &'q IndentQuery,
+    syntax: &'t Syntax,
+    loader: &'q syntax::Loader,
+    byte_pos: u32,
+) -> (&'q IndentQuery, Node<'t>, bool) {
+    let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);
+    let injected = (layer != syntax.root_layer()
+        && syntax.layer(layer).language != syntax.root_language())
+    .then(|| loader.indent_query(syntax.layer(layer).language))
+    .flatten();
+    match injected {
+        Some(query) => (
+            query,
+            syntax.tree_for_byte_range(byte_pos, byte_pos).root_node(),
+            true,
+        ),
+        None => (query, syntax.tree().root_node(), false),
+    }
+}
+
 /// Whether `byte_pos` lies in the *interior* of a node captured `@opaque` — a
 /// string / heredoc / block-comment body that began on an earlier line. The
 /// leading whitespace of such lines is literal content, so indentation must
@@ -935,10 +959,11 @@ fn opaque_hit(start: u32, end: u32, byte_pos: u32, text: RopeSlice) -> bool {
 pub fn is_opaque_interior(
     query: &IndentQuery,
     syntax: &Syntax,
+    loader: &syntax::Loader,
     text: RopeSlice,
     byte_pos: u32,
 ) -> bool {
-    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
+    let (query, root, _) = layer_at(query, syntax, loader, byte_pos);
     query_indents(query, &root, text, byte_pos..byte_pos + 1, None)
         .opaque_ranges
         .iter()
@@ -971,21 +996,7 @@ pub fn treesitter_indent_for_pos<'a>(
     }
     // Inside an injection layer indent with that language's query and tree,
     // then shift the whole result by the injection's base indent.
-    let layer = syntax.layer_for_byte_range(byte_pos, byte_pos);
-    // Only a *different* language injection needs special handling; a
-    // same-language injection (e.g. rust macro token-trees) is already indented
-    // correctly by the root walk, and offsetting it would double-count.
-    let injected = (layer != syntax.root_layer()
-        && syntax.layer(layer).language != syntax.root_language())
-    .then(|| loader.indent_query(syntax.layer(layer).language))
-    .flatten();
-    let query = injected.unwrap_or(query);
-    let tree = if injected.is_some() {
-        syntax.tree_for_byte_range(byte_pos, byte_pos)
-    } else {
-        syntax.tree()
-    };
-    let root = tree.root_node();
+    let (query, root, injected) = layer_at(query, syntax, loader, byte_pos);
 
     // Compute the indent by *scope containment*: the level of a line is the
     // number of `@indent` scopes that contain it (see `containment_accounting`).
@@ -1014,7 +1025,7 @@ pub fn treesitter_indent_for_pos<'a>(
     // The injected walk above is relative to the injection's own tree root (the
     // embedded code starts at level 0). Shift it by the indent of the injection's
     // first content line so it sits where the host language placed the block.
-    if injected.is_some() {
+    if injected {
         result.indent += injection_base_level(syntax, text, byte_pos, tab_width, indent_width);
     }
     Some(result)
@@ -1258,18 +1269,16 @@ fn injection_base_level(
 }
 
 /// Whether the token at `byte_pos` (expected to be the first token on its line)
-/// is captured `@outdent`/`@outdent.always` by the indent query — i.e. the
-/// editor dedents that line as the token is entered (a closing bracket, a
-/// `case`/`else`/`except` keyword, …). Used to tell a *recoverable* typing
-/// over-indent (the leading token will pull the line back) from a real one (a
-/// plain statement that the new-line indent placed too deep).
+/// is captured `@outdent` or `@outdent.always` by the indent query, like a
+/// closing bracket or an `else`.
 pub fn is_outdent_token_at(
     query: &IndentQuery,
     syntax: &Syntax,
+    loader: &syntax::Loader,
     text: RopeSlice,
     byte_pos: u32,
 ) -> bool {
-    let root = syntax.tree_for_byte_range(byte_pos, byte_pos).root_node();
+    let (query, root, _) = layer_at(query, syntax, loader, byte_pos);
     let Some(mut node) = root.descendant_for_byte_range(byte_pos, byte_pos) else {
         return false;
     };

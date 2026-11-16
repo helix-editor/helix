@@ -428,6 +428,33 @@ been removed. `header` is the one scope the engine reads.)
 ## Testing
 
 `cargo xtask indent-check [language]` checks the queries against the fixtures in
-`tests/indent/<language-id>.<ext>` in both modes: re-indenting each line
-and simulating a newline typed after it, so a rule that is correct one way but
-wrong the other is caught.
+`tests/indent/<language-id>.<ext>` in both modes: re-indenting each line and
+simulating a newline typed after it.
+
+A caret below a line marks the expected indent for a new line, like the
+assertions in the highlight tests. It's needed where the next line isn't the
+right indent, for example when it leaves a block that the new line could still
+continue:
+
+```yaml
+top:
+  bazi:
+    why: because
+#               ^ 4
+  quux:
+```
+
+The caret marks where a new line is inserted (past the end of the line, it
+tests `o`). The number is the new line's indent in columns (each tab counts as
+4).
+
+With `eof`, the file is checked as if it ended after that line, for example
+when code is typed without auto-pairs and doesn't have a closing bracket:
+
+```rust
+fn f() {
+//      ^ 4 eof
+```
+
+Caret lines are removed before the file is parsed. A new line typed just before
+a `}` may be indented deeper than the `}`, since it's still inside the block.

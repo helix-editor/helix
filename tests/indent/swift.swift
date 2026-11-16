@@ -94,6 +94,7 @@ func process(_ direction: Direction, count: Int) {
     case .north:
       let label = "up"
       print(label)
+//                ^ 6
     case .south where count > 5:
       print("down")
     default:
