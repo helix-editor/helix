@@ -669,7 +669,7 @@ fn query_indents<'a>(
     result
 }
 
-fn is_trivia(node: &Node) -> bool {
+fn is_extra(node: &Node) -> bool {
     node.is_extra() && node.kind() != "ERROR"
 }
 
@@ -781,7 +781,7 @@ fn candidate_body_for_new_line<'a>(
                 if cursor.node().id() == node.id() {
                     if cursor.goto_next_sibling() {
                         // Step over a trailing comment on the header line.
-                        while is_trivia(&cursor.node())
+                        while is_extra(&cursor.node())
                             && cursor.node().end_byte() <= byte_pos
                             && cursor.goto_next_sibling()
                         {}
@@ -834,12 +834,12 @@ fn init_indent_query<'a, 'b>(
         // A trailing comment belongs to the node before it
         let mut deepest_preceding = node
             .children()
-            .filter(|child| child.byte_range().end <= byte_pos && !is_trivia(child))
+            .filter(|child| child.byte_range().end <= byte_pos && !is_extra(child))
             .last();
         // Get the deepest directly preceding node
         while let Some(last) = deepest_preceding
             .as_ref()
-            .and_then(|prec| prec.children().filter(|c| !is_trivia(c)).last())
+            .and_then(|prec| prec.children().filter(|c| !is_extra(c)).last())
         {
             deepest_preceding = Some(last);
         }
@@ -898,7 +898,7 @@ fn init_indent_query<'a, 'b>(
         }
     }
     let delimited = {
-        let mut children = node.children().filter(|child| !is_trivia(child));
+        let mut children = node.children().filter(|child| !is_extra(child));
         match (children.next(), children.last()) {
             (Some(first), Some(last)) => !first.is_named() && !last.is_named(),
             _ => false,
