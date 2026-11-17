@@ -847,9 +847,8 @@ fn code_action_kind_matches(action: &CodeAction, requested: &CodeActionKind) -> 
 fn merge_workspace_edits(edits: Vec<lsp::WorkspaceEdit>) -> lsp::WorkspaceEdit {
     let mut changes: HashMap<lsp::Url, Vec<lsp::TextEdit>> = HashMap::new();
     for edit in edits {
-        for (uri, text_edits) in edit.changes.into_iter().flatten() {
-            changes.entry(uri).or_default().extend(text_edits);
-        }
+        // `changes` and `documentChanges` are alternative encodings of the same edit, and
+        // `documentChanges` is preferred when present (as in `apply_workspace_edit`).
         let document_edits = match edit.document_changes {
             Some(lsp::DocumentChanges::Edits(edits)) => edits,
             Some(lsp::DocumentChanges::Operations(operations)) => operations
@@ -862,7 +861,12 @@ fn merge_workspace_edits(edits: Vec<lsp::WorkspaceEdit>) -> lsp::WorkspaceEdit {
                     }
                 })
                 .collect(),
-            None => Vec::new(),
+            None => {
+                for (uri, text_edits) in edit.changes.into_iter().flatten() {
+                    changes.entry(uri).or_default().extend(text_edits);
+                }
+                continue;
+            }
         };
         for document_edit in document_edits {
             changes
