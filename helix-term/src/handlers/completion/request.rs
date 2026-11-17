@@ -236,7 +236,7 @@ fn request_completions(
             doc,
             view.id,
             context,
-            -(priority as i8),
+            priority as i8,
             savepoint.clone(),
         ));
     }

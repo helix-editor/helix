@@ -107,7 +107,7 @@ impl CompletionItem {
         match self {
             CompletionItem::Lsp(item) => item.provider_priority,
             // sorting path completions after LSP for now
-            CompletionItem::Other(_) => 1,
+            CompletionItem::Other(_) => i8::MAX,
         }
     }
 
