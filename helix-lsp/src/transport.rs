@@ -142,7 +142,7 @@ impl Transport {
         let content_length = content_length.context("missing content length")?;
         content.resize(content_length, 0);
         reader.read_exact(content).await?;
-        let msg = std::str::from_utf8(content).context("invalid utf8 from server")?;
+        let msg = std::str::from_utf8(content).map_err(|err| Error::Parse(Box::new(err)))?;
 
         info!("{language_server_name} <- {msg}");
 
@@ -311,6 +311,10 @@ impl Transport {
                             break;
                         }
                     };
+                }
+                // The whole frame was consumed, so the stream is still in sync.
+                Err(Error::Parse(err)) => {
+                    error!("{} <- skipping malformed message: {err}", transport.name);
                 }
                 Err(err) => {
                     if !matches!(err, Error::StreamClosed) {
