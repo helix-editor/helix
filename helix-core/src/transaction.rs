@@ -401,7 +401,11 @@ impl ChangeSet {
                         let Some((pos, assoc)) = positions.peek_mut() else {
                             return;
                         };
-                        if **pos < old_pos {
+                        // A pure insertion also owns its left boundary. Revisit it when a later
+                        // input position moves back to that boundary.
+                        let passed_insert =
+                            **pos == old_pos && $i > 0 && matches!(self.changes[$i - 1], Insert(_));
+                        if **pos < old_pos || passed_insert {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
                             // We can unwrap here since `pos` can not be negative
@@ -1089,6 +1093,33 @@ mod test {
         };
         assert_eq!(cs.map_pos(2, Assoc::BeforeWord), 1);
         assert_eq!(cs.map_pos(4, Assoc::AfterWord), 4);
+    }
+
+    #[test]
+    fn unsorted_position_at_insert() {
+        let doc = Rope::from("0123456789");
+        let cs = ChangeSet::from_changes(&doc, [(5, 5, Some("X".into()))].into_iter());
+        let (mut outer_end, mut inner_end) = (7, 5);
+        cs.update_positions(
+            [
+                (&mut outer_end, Assoc::Before),
+                (&mut inner_end, Assoc::Before),
+            ]
+            .into_iter(),
+        );
+        assert_eq!((outer_end, inner_end), (8, 5));
+
+        // Same at an insert that ends the changeset.
+        let cs = ChangeSet::from_changes(&doc, [(10, 10, Some("X".into()))].into_iter());
+        let (mut outer_end, mut inner_end) = (10, 10);
+        cs.update_positions(
+            [
+                (&mut outer_end, Assoc::After),
+                (&mut inner_end, Assoc::Before),
+            ]
+            .into_iter(),
+        );
+        assert_eq!((outer_end, inner_end), (11, 10));
     }
 
     #[test]
