@@ -1503,8 +1503,14 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             continue;
         }
 
-        let path = path::expand(&sel);
-        let path = &rel_path.join(path);
+        // A `$` or `~` can be part of a file name (`posts.$slug.tsx`), so an existing literal path
+        // wins over its expansion.
+        let literal = rel_path.join(&sel);
+        let path = &if literal.exists() {
+            literal
+        } else {
+            rel_path.join(path::expand(&sel))
+        };
         if path.is_dir() {
             let picker = ui::file_picker(cx.editor, path.into());
             cx.push_layer(Box::new(overlaid(picker)));
