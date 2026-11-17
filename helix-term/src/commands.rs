@@ -2099,7 +2099,9 @@ fn copy_selection_on_line(cx: &mut Context, direction: Direction) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
-    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (count + 1));
+    // Each copy lands on a different line, so the line count bounds the copies.
+    let copies = count.min(text.len_lines());
+    let mut ranges = SmallVec::with_capacity(selection.ranges().len() * (copies + 1));
     ranges.extend_from_slice(selection.ranges());
     let mut primary_index = 0;
     for range in selection.iter() {
