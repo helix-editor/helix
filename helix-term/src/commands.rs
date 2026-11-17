@@ -3829,7 +3829,29 @@ fn continued_line_comment_token<'a>(
     line_num: usize,
     byte_pos: usize,
 ) -> Option<&'a str> {
+    if line_num == 0 && text.starts_with("#!") {
+        return None;
+    }
     if let Some(syntax) = doc.syntax() {
+        // A comment token outside a comment, like `#` in a string, doesn't start a comment.
+        // Languages without a `comment.around` textobject keep continuing it.
+        let pos = byte_pos as u32;
+        let in_comment = syntax
+            .layers_for_byte_range(pos, pos)
+            .filter_map(|layer| {
+                let layer = syntax.layer(layer);
+                loader.textobject_query(layer.language)?.capture_covers(
+                    "comment.around",
+                    &layer.tree()?.root_node(),
+                    text,
+                    pos,
+                )
+            })
+            .reduce(|a, b| a || b);
+        if in_comment == Some(false) {
+            return None;
+        }
+
         let mut token = None;
         for layer in syntax.layers_for_byte_range(byte_pos as u32, byte_pos as u32) {
             let config = loader.language(syntax.layer(layer).language).config();

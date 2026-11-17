@@ -1067,6 +1067,29 @@ impl TextObjectQuery {
         });
         Some(capture_node)
     }
+
+    /// Whether a node captured as `capture_name` covers `byte_pos`, or `None` if the query has
+    /// no such capture.
+    pub fn capture_covers(
+        &self,
+        capture_name: &str,
+        node: &Node,
+        slice: RopeSlice,
+        byte_pos: u32,
+    ) -> Option<bool> {
+        let capture = self.query.get_capture(capture_name)?;
+        let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
+            .execute_query(&self.query, node, RopeInput::new(slice));
+        while let Some(mat) = cursor.next_match() {
+            if mat
+                .nodes_for_capture(capture)
+                .any(|node| node.byte_range().contains(&byte_pos))
+            {
+                return Some(true);
+            }
+        }
+        Some(false)
+    }
 }
 
 #[derive(Debug)]
