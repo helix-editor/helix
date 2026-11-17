@@ -33,7 +33,7 @@ impl FileOperationFilter {
                 .and_then(|opts| opts.ignore_case)
                 .unwrap_or(false);
             let mut glob_builder = GlobBuilder::new(&filter.pattern.glob);
-            glob_builder.case_insensitive(!ignore_case);
+            glob_builder.case_insensitive(ignore_case);
             let glob = match glob_builder.build() {
                 Ok(glob) => glob,
                 Err(err) => {
