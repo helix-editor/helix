@@ -879,3 +879,17 @@ async fn search_abort_after_async_edit() -> anyhow::Result<()> {
     )
     .await
 }
+
+// After an edit, `A-i` must not restore an `A-o` history range from before the edit.
+#[tokio::test(flavor = "multi_thread")]
+async fn shrink_selection_after_edit() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            "let x = foo(#[b|]#ar);\n",
+            "<A-o>ggIzzzz<esc>%<A-i>",
+            "#[zzzzlet x = foo(bar);|]#\n",
+        ),
+    )
+    .await
+}

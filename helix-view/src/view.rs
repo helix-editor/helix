@@ -152,7 +152,8 @@ pub struct View {
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
     /// used to store previous selections of tree-sitter objects
-    pub object_selections: Vec<Selection>,
+    /// (document_id, version)
+    pub object_selections: Vec<((DocumentId, i32), Selection)>,
     /// all gutter-related configuration settings, used primarily for gutter rendering
     pub gutters: GutterConfig,
     // HACKS: there should really only be a global diagnostics handler (the
