@@ -2332,6 +2332,7 @@ fn toggle_option(
                 .map(|res| res.map(|token| token.content))
                 .collect::<Result<_, _>>()
                 .map_err(|err| anyhow!("failed to parse values: {err}"))?;
+            ensure!(!values.is_empty(), "No values given for `{key}`");
 
             Value::String(
                 values
@@ -2361,6 +2362,7 @@ fn toggle_option(
                 .into_iter()
                 .collect::<Result<_, _>>()
                 .map_err(|err| anyhow!("failed to parse value: {err}"))?;
+            ensure!(!values.is_empty(), "No values given for `{key}`");
 
             if let Some(wrongly_typed_value) = values
                 .iter()
