@@ -249,22 +249,24 @@ impl WordIndex {
         let mut inner = self.inner.write();
         // A single changed window can span the whole document, so the check is driven by a count
         // of the words processed rather than the number of windows.
-        let mut since_check = 0;
+        let mut processed = 0usize;
+        let mut canceled = || {
+            processed += 1;
+            processed.is_multiple_of(CANCEL_CHECK_INTERVAL) && cancel.is_canceled()
+        };
         for (old_window, new_window) in changed_windows(old_text.slice(..), text.slice(..), changes)
         {
             for word in words(new_window) {
-                inner.insert(word);
-                since_check += 1;
-            }
-            for word in words(old_window) {
-                inner.remove(word);
-                since_check += 1;
-            }
-            if since_check >= CANCEL_CHECK_INTERVAL {
-                if cancel.is_canceled() {
+                if canceled() {
                     return;
                 }
-                since_check = 0;
+                inner.insert(word);
+            }
+            for word in words(old_window) {
+                if canceled() {
+                    return;
+                }
+                inner.remove(word);
             }
         }
     }
@@ -970,5 +972,19 @@ mod tests {
 
             incremental.counts() == fresh.counts()
         }
+    }
+
+    #[test]
+    fn cancel_inside_large_change() {
+        let before = Rope::from_str("start");
+        let after = Rope::from_str(&(0..20_000).map(|i| format!("w{i} ")).collect::<String>());
+        let changes = compare_ropes(&before, &after).changes().clone();
+        let mut cancel = TaskController::new();
+        let handle = cancel.restart();
+        let index = WordIndex::default();
+        index.add_document(&before, &handle);
+        cancel.cancel();
+        index.update_document(&before, &after, &changes, &handle);
+        assert!(index.words().len() <= CANCEL_CHECK_INTERVAL);
     }
 }
