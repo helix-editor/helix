@@ -103,11 +103,8 @@ fn find_nth_closest_pairs_plain(
 ) -> Result<(usize, usize)> {
     let mut stack = Vec::with_capacity(2);
     let pos = range.from();
-    let mut close_pos = pos.saturating_sub(1);
 
-    for ch in text.chars_at(pos) {
-        close_pos += 1;
-
+    for (close_pos, ch) in (pos..).zip(text.chars_at(pos)) {
         if is_open_bracket(ch) {
             // Track open pairs encountered so that we can step over
             // the corresponding close pairs that will come up further
@@ -464,6 +461,15 @@ mod test {
 
         assert_eq!(
             find_nth_closest_pairs_pos(None, doc.slice(..), selection.primary(), 1),
+            Err(Error::PairNotFound)
+        )
+    }
+
+    #[test]
+    fn test_find_nth_closest_pairs_pos_stray_close_at_doc_start() {
+        let doc = Rope::from(")(\n");
+        assert_eq!(
+            find_nth_closest_pairs_pos(None, doc.slice(..), Range::new(0, 1), 1),
             Err(Error::PairNotFound)
         )
     }
