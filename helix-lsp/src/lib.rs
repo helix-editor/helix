@@ -413,9 +413,10 @@ pub mod util {
         mut edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Transaction {
-        // Sort edits by start range, since some LSPs (Omnisharp) send them
-        // in reverse order.
-        edits.sort_by_key(|edit| edit.range.start);
+        // Sort edits, since some LSPs (Omnisharp) send them in reverse order. Sorting on the end too
+        // puts an insert before a replacement starting at the same position, which would otherwise
+        // look like an overlap. The sort is stable, so inserts at one position keep their order.
+        edits.sort_by_key(|edit| (edit.range.start, edit.range.end));
 
         // Generate a diff if the edit is a full document replacement.
         #[allow(clippy::collapsible_if)]
