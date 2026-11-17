@@ -31,7 +31,7 @@ pub use select::Select;
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-use helix_view::Editor;
+use helix_view::{view::Jump, Editor};
 use tui::text::{Span, Spans};
 
 use std::path::Path;
@@ -100,8 +100,11 @@ pub fn raw_regex_prompt(
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let view_id = view.id;
-    let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = doc.view_offset(view.id);
+    // Stored as a jump so that it is mapped through edits made while the prompt is open, such
+    // as an async format. Creating a jump needs the pending changes committed.
+    doc.append_changes_to_history(view);
+    let saved_selection = Jump::new(doc, doc.selection(view.id).clone());
+    let saved_offset = doc.view_offset(view.id);
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
@@ -109,6 +112,11 @@ pub fn raw_regex_prompt(
         history_register,
         completion_fn,
         move |cx: &mut crate::compositor::Context, input: &str, event: PromptEvent| {
+            let doc = doc!(cx.editor, &doc_id);
+            let snapshot = saved_selection.selection(doc);
+            let mut offset_snapshot = saved_offset;
+            offset_snapshot.anchor = offset_snapshot.anchor.min(doc.text().len_chars());
+
             match event {
                 PromptEvent::Abort => {
                     let doc = doc_mut!(cx.editor, &doc_id);

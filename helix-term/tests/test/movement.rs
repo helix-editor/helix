@@ -842,3 +842,40 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn search_abort_after_async_edit() -> anyhow::Result<()> {
+    test_key_sequences(
+        &mut AppBuilder::new()
+            .with_input_text("one\ntwo #[x|]#\n")
+            .build()?,
+        vec![
+            (
+                Some("/"),
+                Some(&|_| {
+                    // Simulate a formatter changing the document while the search prompt is open.
+                    helix_term::job::dispatch_blocking(|editor, _| {
+                        let (view, doc) = helix_view::current!(editor);
+                        let transaction = helix_core::Transaction::change(
+                            doc.text(),
+                            std::iter::once((0, 4, None)),
+                        );
+                        doc.apply(&transaction, view.id);
+                        doc.append_changes_to_history(view);
+                    });
+                }),
+            ),
+            (None, None),
+            (
+                Some("<esc>"),
+                Some(&|app| {
+                    let (view, doc) = helix_view::current_ref!(app.editor);
+                    assert_eq!(doc.text(), "two x\n");
+                    assert_eq!(doc.selection(view.id), &Selection::single(4, 5));
+                }),
+            ),
+        ],
+        false,
+    )
+    .await
+}
