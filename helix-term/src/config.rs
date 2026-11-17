@@ -20,8 +20,30 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<theme::Config>,
+    #[serde(default, deserialize_with = "deserialize_mode_keymaps")]
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+}
+
+/// Errors on `[keys]` entries like `normal = "move_char_left"`: each mode must be a table of
+/// key bindings.
+fn deserialize_mode_keymaps<'de, D>(
+    deserializer: D,
+) -> Result<Option<HashMap<Mode, KeyTrie>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let keys = Option::<HashMap<Mode, KeyTrie>>::deserialize(deserializer)?;
+    if let Some((mode, _)) = keys
+        .iter()
+        .flatten()
+        .find(|(_, keys)| keys.node().is_none())
+    {
+        return Err(serde::de::Error::custom(format!(
+            "`keys.{mode}` must be a table of key bindings"
+        )));
+    }
+    Ok(keys)
 }
 
 impl Default for Config {
@@ -208,5 +230,14 @@ mod tests {
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
+    }
+
+    #[test]
+    fn scalar_mode_keymap_is_config_error() {
+        let toml = "[keys]\nnormal = \"no_op\"\n".to_string();
+        assert!(matches!(
+            Config::load(Ok(&toml), Err(ConfigLoadError::default())),
+            Err(ConfigLoadError::BadConfig(_))
+        ));
     }
 }
