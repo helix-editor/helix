@@ -62,6 +62,7 @@ fn find_nth_closest_pairs_ts(
     let mut closing = range.to();
 
     while skip > 0 {
+        let start = closing;
         closing = find_matching_bracket_fuzzy(syntax, text, closing).ok_or(Error::PairNotFound)?;
         opening = find_matching_bracket(syntax, text, closing).ok_or(Error::PairNotFound)?;
         // If we're already on a closing bracket "find_matching_bracket_fuzzy" will return
@@ -78,6 +79,12 @@ fn find_nth_closest_pairs_ts(
             if skip != 0 {
                 closing = next_grapheme_boundary(text, closing);
             }
+        }
+
+        // A matched pair can lie before the search position, so stop when the search doesn't
+        // move forward, or this loops forever.
+        if skip != 0 && closing <= start {
+            return Err(Error::PairNotFound);
         }
     }
 
