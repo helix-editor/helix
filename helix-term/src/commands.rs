@@ -250,14 +250,16 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                    // Set the register early so it can be seen by the typable command
+                    cx.editor.selected_register = cx.register;
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) =
-                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
-                    {
+                    let res = typed::execute_command(&mut cx, command, args, PromptEvent::Validate);
+                    cx.editor.selected_register = None;
+                    if let Err(e) = res {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {

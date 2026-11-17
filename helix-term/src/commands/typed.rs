@@ -4178,12 +4178,17 @@ pub(super) fn execute_command(
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    // Keep the register selected before `:` (as in `"a:yank-join`) for the typed command.
+    let register = cx.register;
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
         complete_command_line,
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            if let Err(err) = execute_command_line(cx, input, event) {
+            cx.editor.selected_register = register;
+            let res = execute_command_line(cx, input, event);
+            cx.editor.selected_register = None;
+            if let Err(err) = res {
                 cx.editor.set_error(err.to_string());
             }
         },

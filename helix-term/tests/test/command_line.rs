@@ -32,6 +32,33 @@ async fn prompt_reset_anchor() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn keymap_typable_uses_register() -> anyhow::Result<()> {
+    let mut config = Config::default();
+    config.keys.insert(
+        helix_view::document::Mode::Normal,
+        toml::from_str(r#"X = ":yank-join ,""#)?,
+    );
+    test_key_sequence(
+        &mut AppBuilder::new()
+            .with_config(config)
+            .with_input_text("#[one|]#\n#(two|)#\n")
+            .build()?,
+        Some("\"aX"),
+        Some(&|app| {
+            assert!(!app.editor.is_err());
+            assert_eq!(
+                Some("one,two".into()),
+                app.editor.registers.first('a', &app.editor)
+            );
+        }),
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
 async fn test_statusline(
     line: &str,
     expected_status: &str,
