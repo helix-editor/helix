@@ -3910,8 +3910,8 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             ),
         };
 
-        let indent_len = indent.len();
-        let mut text = String::with_capacity(1 + indent_len);
+        let indent_len = indent.chars().count();
+        let mut text = String::with_capacity(1 + indent.len());
 
         if open == Open::Above && next_new_line_num == 0 {
             text.push_str(&indent);
@@ -3935,7 +3935,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         // calculate new selection ranges
         let pos = offs + above_next_line_end_index + above_next_line_end_width;
         let comment_len = continue_comment_token
-            .map(|token| token.len() + 1) // `+ 1` for the extra space added
+            .map(|token| token.chars().count() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
         for i in 0..count {
             // pos                     -> beginning of reference line,
