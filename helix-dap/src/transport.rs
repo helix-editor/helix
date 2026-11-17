@@ -218,10 +218,8 @@ impl Transport {
                             request_seq
                         ),
                     }
-                    None => {
-                        warn!("Response to nonexistent request #{}", res.request_seq);
-                        client_tx.send(Payload::Response(res)).expect("Failed to send");
-                    }
+                    // The client only handles events and reverse requests.
+                    None => warn!("Response to nonexistent request #{}", res.request_seq),
                 }
 
                 Ok(())
