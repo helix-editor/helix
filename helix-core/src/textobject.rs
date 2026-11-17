@@ -265,17 +265,15 @@ pub fn textobject_treesitter(
     _count: usize,
 ) -> Range {
     let byte_pos = slice.char_to_byte(range.cursor(slice));
-    let layer = syntax.layer_for_byte_range(byte_pos as u32, byte_pos as u32);
-    let root = syntax
-        .tree_for_byte_range(byte_pos as u32, byte_pos as u32)
-        .root_node();
-    let textobject_query = loader.textobject_query(syntax.layer(layer).language);
     let get_range = move || -> Option<Range> {
         let capture_name = format!("{}.{}", object_name, textobject); // eg. function.inner
-        let node = textobject_query?
-            .capture_nodes(&capture_name, &root, slice)?
-            .filter(|node| node.byte_range().contains(&byte_pos))
-            .min_by_key(|node| node.byte_range().len())?;
+        let node =
+            textobject_layers(syntax, loader, byte_pos as u32).find_map(|(query, root)| {
+                query
+                    .capture_nodes(&capture_name, &root, slice)?
+                    .filter(|node| node.byte_range().contains(&byte_pos))
+                    .min_by_key(|node| node.byte_range().len())
+            })?;
 
         let len = slice.len_bytes();
         let start_byte = node.start_byte();
@@ -290,6 +288,26 @@ pub fn textobject_treesitter(
         Some(Range::new(start_char, end_char))
     };
     get_range().unwrap_or(range)
+}
+
+/// Returns the textobject query and tree root of each injection layer containing `byte_pos`,
+/// innermost first.
+///
+/// Callers take the first layer with a match, so an object of the host language stays
+/// reachable from inside an injection that has none, such as a comment or a macro body.
+pub(crate) fn textobject_layers<'a>(
+    syntax: &'a Syntax,
+    loader: &'a syntax::Loader,
+    byte_pos: u32,
+) -> impl Iterator<Item = (&'a syntax::TextObjectQuery, crate::tree_sitter::Node<'a>)> {
+    let layers: Vec<_> = syntax.layers_for_byte_range(byte_pos, byte_pos).collect();
+    layers.into_iter().rev().filter_map(move |layer| {
+        let layer = syntax.layer(layer);
+        Some((
+            loader.textobject_query(layer.language)?,
+            layer.tree()?.root_node(),
+        ))
+    })
 }
 
 #[cfg(test)]
@@ -589,5 +607,19 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn textobject_from_injection() {
+        let loader = crate::config::default_lang_loader();
+        let lang = loader.language_for_name("rust").unwrap();
+        // The macro body is injected as a rust layer that doesn't contain the function.
+        let source = "fn a() {\n    println!(\"{}\", x);\n}\n";
+        let doc = Rope::from(source);
+        let text = doc.slice(..);
+        let syntax = Syntax::new(text, lang, &loader).unwrap();
+        let x = Range::point(source.find("x)").unwrap());
+        let range = textobject_treesitter(text, x, Around, "function", &syntax, &loader, 1);
+        assert_eq!(range, Range::new(0, source.rfind('}').unwrap() + 1));
     }
 }
