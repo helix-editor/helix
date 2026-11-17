@@ -61,6 +61,23 @@ pub enum ApplyEditErrorKind {
     // InvalidEdit,
 }
 
+/// Whether a create/rename may replace its existing target. Without `overwrite` or
+/// `ignore_if_exists` it throws an error and aborts the edit.
+fn may_replace(
+    path: &std::path::Path,
+    overwrite: Option<bool>,
+    ignore_if_exists: Option<bool>,
+) -> Result<bool, ApplyEditErrorKind> {
+    match (overwrite, ignore_if_exists) {
+        (Some(true), _) => Ok(true),
+        (_, Some(true)) => Ok(false),
+        _ => {
+            let msg = format!("{} already exists", path.display());
+            Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, msg).into())
+        }
+    }
+}
+
 impl From<std::io::Error> for ApplyEditErrorKind {
     fn from(err: std::io::Error) -> Self {
         ApplyEditErrorKind::IoError(err)
@@ -241,10 +258,14 @@ impl Editor {
             ResourceOp::Create(op) => {
                 let uri = Uri::try_from(&op.uri)?;
                 let path = uri.as_path().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
-                    !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-                });
-                if !ignore_if_exists || !path.exists() {
+                let options = op.options.as_ref();
+                if !path.exists()
+                    || may_replace(
+                        path,
+                        options.and_then(|o| o.overwrite),
+                        options.and_then(|o| o.ignore_if_exists),
+                    )?
+                {
                     self.create_path(path, false)?;
                 }
             }
@@ -270,10 +291,16 @@ impl Editor {
                 let from = from_uri.as_path().expect("URIs are valid paths");
                 let to_uri = Uri::try_from(&op.new_uri)?;
                 let to = to_uri.as_path().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
-                    !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-                });
-                if !ignore_if_exists || !to.exists() {
+                let options = op.options.as_ref();
+                // A case-only rename on a case-insensitive filesystem
+                if !to.exists()
+                    || same_file::is_same_file(from, to).unwrap_or(false)
+                    || may_replace(
+                        to,
+                        options.and_then(|o| o.overwrite),
+                        options.and_then(|o| o.ignore_if_exists),
+                    )?
+                {
                     self.move_path(from, to)?;
                 }
             }
