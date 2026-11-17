@@ -5292,6 +5292,9 @@ fn format_selections(cx: &mut Context) {
                 let transaction =
                     helix_lsp::util::generate_transaction_from_edits(&text, res, offset_encoding);
                 job::dispatch(move |editor, _compositor| {
+                    if !editor.tree.contains(view_id) {
+                        return;
+                    }
                     let Some(doc) = editor.document_mut(doc_id) else {
                         return;
                     };
