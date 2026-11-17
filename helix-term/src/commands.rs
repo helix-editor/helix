@@ -4388,10 +4388,13 @@ pub mod insert {
             if !cursors_after_whitespace {
                 if doc.active_snippet.is_some() {
                     goto_next_tabstop(cx);
-                } else {
-                    move_parent_node_end(cx);
+                    return;
                 }
-                return;
+                // Without a syntax tree there is no parent node to move to.
+                if doc.syntax().is_some() {
+                    move_parent_node_end(cx);
+                    return;
+                }
             }
         }
 
