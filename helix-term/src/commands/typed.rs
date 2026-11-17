@@ -1079,8 +1079,10 @@ fn cquit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
 
+    // Set the code after quitting, otherwise a failed :cq can make :q! fail with the wrong exit code
+    quit_all_impl(cx, false)?;
     cx.editor.exit_code = exit_code;
-    quit_all_impl(cx, false)
+    Ok(())
 }
 
 fn force_cquit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
