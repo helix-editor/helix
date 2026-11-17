@@ -35,7 +35,7 @@ impl Snippet {
             elements: Vec::new(),
             tabstops: Vec::new(),
         };
-        res.elements = res.elaborate(elements, None).into();
+        res.elements = res.elaborate(elements, &[]).into();
         res.fixup_tabstops();
         res.ensure_last_tabstop();
         res.renumber_tabstops();
@@ -116,19 +116,31 @@ impl Snippet {
         })
     }
 
+    /// `ancestors` lists the tabstops this placeholder is nested in, outermost first.
     fn elaborate(
         &mut self,
         default: Vec<parser::SnippetElement>,
-        parent: Option<TabstopIdx>,
+        ancestors: &[TabstopIdx],
     ) -> Box<[SnippetElement]> {
+        let parent = ancestors.last().copied();
         default
             .into_iter()
+            // A tabstop nested in its own placeholder (`${1:${1:x}}`) would be its own ancestor,
+            // which makes rendering and tabstop activation loop forever.
+            .filter(|val| match val {
+                parser::SnippetElement::Tabstop { tabstop, .. }
+                | parser::SnippetElement::Placeholder { tabstop, .. }
+                | parser::SnippetElement::Choice { tabstop, .. } => {
+                    !ancestors.contains(&TabstopIdx::elaborate(*tabstop))
+                }
+                _ => true,
+            })
             .map(|val| match val {
                 parser::SnippetElement::Tabstop {
                     tabstop,
                     transform: None,
                 } => SnippetElement::Tabstop {
-                    idx: self.elaborate_placeholder(tabstop, parent, Vec::new()),
+                    idx: self.elaborate_placeholder(tabstop, ancestors, Vec::new()),
                 },
                 parser::SnippetElement::Tabstop {
                     tabstop,
@@ -137,7 +149,7 @@ impl Snippet {
                     idx: self.elaborate_transform(tabstop, parent, transform),
                 },
                 parser::SnippetElement::Placeholder { tabstop, value } => SnippetElement::Tabstop {
-                    idx: self.elaborate_placeholder(tabstop, parent, value),
+                    idx: self.elaborate_placeholder(tabstop, ancestors, value),
                 },
                 parser::SnippetElement::Choice { tabstop, choices } => SnippetElement::Tabstop {
                     idx: self.elaborate_choice(tabstop, parent, choices),
@@ -148,7 +160,7 @@ impl Snippet {
                     transform,
                 } => SnippetElement::Variable {
                     name,
-                    default: default.map(|default| self.elaborate(default, parent)),
+                    default: default.map(|default| self.elaborate(default, ancestors)),
                     // TODO: error for invalid transforms
                     transform: transform.and_then(Transform::new).map(Box::new),
                 },
@@ -177,7 +189,7 @@ impl Snippet {
     fn elaborate_placeholder(
         &mut self,
         idx: usize,
-        parent: Option<TabstopIdx>,
+        ancestors: &[TabstopIdx],
         mut default: Vec<parser::SnippetElement>,
     ) -> TabstopIdx {
         let idx = TabstopIdx::elaborate(idx);
@@ -188,10 +200,10 @@ impl Snippet {
                 The `$0` tabstop signifies the final cursor position and should not include placeholder text.");
             default.clear();
         }
-        let default = self.elaborate(default, Some(idx));
+        let default = self.elaborate(default, &[ancestors, &[idx]].concat());
         self.tabstops.push(Tabstop {
             idx,
-            parent,
+            parent: ancestors.last().copied(),
             kind: TabstopKind::Placeholder {
                 default: default.into(),
             },

@@ -352,4 +352,27 @@ mod tests {
             ],
         );
     }
+
+    #[test]
+    fn tabstop_nested_in_itself() {
+        for src in ["${1:${1:x}}$2", "${1:${2:$1}}"] {
+            let snippet = Snippet::parse(src).unwrap();
+            let mut rendered = snippet.prepare_render();
+            snippet.render_at(
+                &mut rendered,
+                "".into(),
+                false,
+                &mut SnippetRenderCtx::test_ctx(),
+                0,
+            );
+            let tabstops = &rendered.tabstops;
+            for i in 0..tabstops.len() {
+                let ancestors = std::iter::successors(tabstops[i].parent, |p| tabstops[p.0].parent);
+                assert!(
+                    ancestors.take(tabstops.len()).all(|p| p.0 != i),
+                    "{src}: {tabstops:?}"
+                );
+            }
+        }
+    }
 }
