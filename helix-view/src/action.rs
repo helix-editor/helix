@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt};
 
 use helix_lsp::{lsp, LanguageServerId};
 
-use crate::Editor;
+use crate::{DocumentId, Editor};
 
 /// A titled action against the editor, shown in the code action menu.
 ///
@@ -47,7 +47,12 @@ impl Action {
     }
 
     /// Builds an `Action` from an LSP code action or command.
-    pub fn lsp(server_id: LanguageServerId, action: lsp::CodeActionOrCommand) -> Self {
+    pub fn lsp(
+        server_id: LanguageServerId,
+        action: lsp::CodeActionOrCommand,
+        doc_id: DocumentId,
+        version: i32,
+    ) -> Self {
         let title = match &action {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.clone(),
             lsp::CodeActionOrCommand::Command(command) => command.title.clone(),
@@ -55,6 +60,10 @@ impl Action {
         let priority = lsp_code_action_priority(&action);
 
         Self::new(title, priority, move |editor| {
+            if editor.document(doc_id).map(|doc| doc.version()) != Some(version) {
+                editor.set_error("Document changed since code actions were requested");
+                return;
+            }
             let Some(language_server) = editor.language_server_by_id(server_id) else {
                 editor.set_error("Language Server disappeared");
                 return;

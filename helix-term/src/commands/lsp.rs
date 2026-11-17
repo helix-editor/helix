@@ -599,6 +599,7 @@ pub fn code_action(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let selection_range = doc.selection(view.id).primary();
+    let (doc_id, version) = (doc.id(), doc.version());
 
     let mut futures: FuturesUnordered<_> =
         code_actions_for_range(doc, selection_range, None, CodeActionTriggerKind::INVOKED)
@@ -619,7 +620,7 @@ pub fn code_action(cx: &mut Context) {
 
                 Ok(actions
                     .into_iter()
-                    .map(|lsp_item| CodeActionItem::lsp(ls_id, lsp_item))
+                    .map(|lsp_item| CodeActionItem::lsp(ls_id, lsp_item, doc_id, version))
                     .collect())
             })
             .collect();
