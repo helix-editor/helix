@@ -1,8 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{
-    self as core, chars::char_is_word, completion::CompletionProvider, movement, Transaction,
-};
+use helix_core::{self as core, completion::CompletionProvider, Transaction};
 use helix_event::TaskHandle;
 use helix_stdx::rope::RopeSliceExt as _;
 use helix_view::{
@@ -37,24 +35,30 @@ pub(super) fn completion(
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id).clone();
     let pos = selection.primary().cursor(text);
+    let word_chars = doc.word_chars();
 
-    let cursor = movement::move_prev_word_start(text, core::Range::point(pos), 1);
-    if cursor.head == pos {
+    let word_start = pos
+        - text
+            .chars_at(pos)
+            .reversed()
+            .take_while(|&ch| word_chars.is_word(ch))
+            .count();
+    if word_start == pos {
         return None;
     }
     if trigger.kind != TriggerKind::Manual
         && text
-            .slice(cursor.head..)
+            .slice(word_start..)
             .graphemes()
             .take(trigger_length)
-            .take_while(|g| g.chars().all(char_is_word))
+            .take_while(|g| g.chars().all(|ch| word_chars.is_word(ch)))
             .count()
             != trigger_length
     {
         return None;
     }
 
-    let typed_word_range = cursor.head..pos;
+    let typed_word_range = word_start..pos;
     let typed_word = text.slice(typed_word_range.clone());
     let edit_diff = if typed_word
         .char(typed_word.len_chars().saturating_sub(1))
