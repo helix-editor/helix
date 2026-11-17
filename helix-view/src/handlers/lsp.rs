@@ -104,23 +104,28 @@ impl Editor {
         let doc_id = match self.open(path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
-                let err = format!(
-                    "failed to open document: {}: {}",
-                    path.to_string_lossy(),
+                self.set_error(|| {
+                    let err = format!(
+                        "failed to open document: {}: {}",
+                        path.to_string_lossy(),
+                        err
+                    );
+                    log::error!("{}", err);
                     err
-                );
-                log::error!("{}", err);
-                self.set_error(err);
+                });
                 return Err(ApplyEditErrorKind::FileNotFound);
             }
         };
 
         let doc = doc_mut!(self, &doc_id);
         if let Some(version) = version {
-            if version != doc.version() {
-                let err = format!("outdated workspace edit for {path:?}");
-                log::error!("{err}, expected {} but got {version}", doc.version());
-                self.set_error(err);
+            let doc_version = doc.version();
+            if version != doc_version {
+                self.set_error(|| {
+                    let err = format!("outdated workspace edit for {path:?}");
+                    log::error!("{err}, expected {} but got {version}", doc_version);
+                    err
+                });
                 return Err(ApplyEditErrorKind::DocumentChanged);
             }
         }
@@ -376,7 +381,7 @@ impl Editor {
             .language_server_by_id(server_id)
             .and_then(|server| server.command(command))
         else {
-            self.set_error("Language server does not support executing commands");
+            self.set_error(|| "Language server does not support executing commands");
             return;
         };
 

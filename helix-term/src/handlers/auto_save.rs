@@ -94,8 +94,8 @@ fn request_auto_save(editor: &mut Editor) {
         code_actions: false,
     };
 
-    if let Err(e) = commands::typed::write_all_impl(context, options) {
-        context.editor.set_error(format!("{}", e));
+    if let Err(err) = commands::typed::write_all_impl(context, options) {
+        context.editor.set_error(|| format!("{}", err));
     }
 }
 
