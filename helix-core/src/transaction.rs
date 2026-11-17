@@ -476,10 +476,9 @@ impl ChangeSet {
                                 if pos == old_pos && assoc.stay_at_gaps() {
                                     new_pos
                                 } else {
-                                    let ins = assoc.insert_offset(s);
                                     // if the deleted and inserted text have the exact same size
                                     // keep the relative offset into the new text
-                                    if *len == ins && assoc.sticky() {
+                                    if *len == s.chars().count() && assoc.sticky() {
                                         new_pos + (pos - old_pos)
                                     } else {
                                         new_pos + assoc.insert_offset(s)
