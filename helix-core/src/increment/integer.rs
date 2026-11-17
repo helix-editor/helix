@@ -101,7 +101,8 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
         };
 
         let prefix_length = if radix == 10 { 0 } else { 2 };
-        if let Some(mut index) = new_text.find(SEPARATOR) {
+        // Consecutive separators give a zero spacing, which would never advance.
+        if let Some(mut index) = new_text.find(SEPARATOR).filter(|_| spacing > 0) {
             while index - prefix_length > spacing {
                 index -= spacing;
                 new_text.insert(index, SEPARATOR);
