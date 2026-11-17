@@ -449,6 +449,34 @@ pub fn symbol_picker(cx: &mut Context) {
     });
 }
 
+fn flatten_workspace_symbols(resp: lsp::WorkspaceSymbolResponse) -> Vec<lsp::SymbolInformation> {
+    match resp {
+        lsp::WorkspaceSymbolResponse::Flat(symbols) => symbols,
+        lsp::WorkspaceSymbolResponse::Nested(symbols) => symbols
+            .into_iter()
+            .map(|symbol| {
+                // A location without a range points at the start of the file, since we can't
+                // resolve it (no `resolveSupport`).
+                let location = match symbol.location {
+                    lsp::OneOf::Left(location) => location,
+                    lsp::OneOf::Right(lsp::WorkspaceLocation { uri }) => {
+                        lsp::Location::new(uri, lsp::Range::default())
+                    }
+                };
+                #[allow(deprecated)]
+                lsp::SymbolInformation {
+                    name: symbol.name,
+                    kind: symbol.kind,
+                    tags: symbol.tags,
+                    deprecated: None,
+                    location,
+                    container_name: symbol.container_name,
+                }
+            })
+            .collect(),
+    }
+}
+
 pub fn workspace_symbol_picker(cx: &mut Context) {
     use crate::ui::picker::Injector;
 
@@ -477,10 +505,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                 async move {
                     let symbols = request
                         .await?
-                        .and_then(|resp| match resp {
-                            lsp::WorkspaceSymbolResponse::Flat(symbols) => Some(symbols),
-                            lsp::WorkspaceSymbolResponse::Nested(_) => None,
-                        })
+                        .map(flatten_workspace_symbols)
                         .unwrap_or_default();
 
                     let response: Vec<_> = symbols
@@ -1533,5 +1558,22 @@ mod test {
         let transaction = generate_transaction_from_edits(&text, text_edits, OffsetEncoding::Utf8);
         assert!(transaction.apply(&mut text));
         assert_eq!(text, "alpha two gamma");
+    }
+
+    #[test]
+    fn nested_workspace_symbols_are_kept() {
+        // A single range-less location makes the whole response deserialize as `Nested`.
+        let resp: lsp::WorkspaceSymbolResponse = serde_json::from_str(
+            r#"[
+                {"name": "a", "kind": 12, "location": {"uri": "file:///a"}},
+                {"name": "b", "kind": 12, "location": {"uri": "file:///b",
+                    "range": {"start": {"line": 1, "character": 2}, "end": {"line": 1, "character": 3}}}}
+            ]"#,
+        )
+        .unwrap();
+        assert!(matches!(resp, lsp::WorkspaceSymbolResponse::Nested(_)));
+        let symbols = flatten_workspace_symbols(resp);
+        assert_eq!(symbols[0].location.range, lsp::Range::default());
+        assert_eq!(symbols[1].location.range.start, lsp::Position::new(1, 2));
     }
 }
