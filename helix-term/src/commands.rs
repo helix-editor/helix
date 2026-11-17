@@ -5325,11 +5325,15 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
     let mut changes = Vec::new();
 
+    // Joining onto the empty line after a final newline would delete that newline.
+    let last_line = slice.char_to_line(slice.len_chars().saturating_sub(1));
+
     for selection in doc.selection(view.id) {
         let (start, mut end) = selection.line_range(slice);
         if start == end {
-            end = (end + 1).min(text.len_lines() - 1);
+            end += 1;
         }
+        let end = end.min(last_line);
         let lines = start..end;
 
         changes.reserve(lines.len());
