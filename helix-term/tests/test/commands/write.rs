@@ -585,6 +585,34 @@ async fn test_write_fail_new_path() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_write_refuses_lossy_decode() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("f.txt");
+    let bytes = b"\xef\xbb\xbfcaf\xe9\n";
+    std::fs::write(&path, bytes)?;
+    let mut app = helpers::AppBuilder::new().with_file(&path, None).build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                Some("ix<esc>:w<ret>"),
+                Some(&|app| {
+                    assert!(app.editor.is_err());
+                    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+                }),
+            ),
+            (
+                Some(":w!<ret>"),
+                Some(&|_| assert_ne!(std::fs::read(&path).unwrap(), bytes)),
+            ),
+        ],
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write_utf_bom_file() -> anyhow::Result<()> {
     // "ABC" with utf8 bom
     const UTF8_FILE: [u8; 6] = [0xef, 0xbb, 0xbf, b'A', b'B', b'C'];

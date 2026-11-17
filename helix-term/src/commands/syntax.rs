@@ -468,7 +468,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
 /// Create a Rope and language config for a given existing path without creating a full Document.
 fn syntax_for_path(path: &Path, loader: &Loader) -> Option<(Rope, Syntax)> {
     let mut file = std::fs::File::open(path).ok()?;
-    let (rope, _encoding, _has_bom) = from_reader(&mut file, None).ok()?;
+    let (rope, ..) = from_reader(&mut file, None).ok()?;
     let text = rope.slice(..);
     let language = loader
         .language_for_filename(path)
