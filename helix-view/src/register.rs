@@ -82,16 +82,18 @@ impl Registers {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
             '*' | '+' => {
+                let contents = values.join(NATIVE_LINE_ENDING.as_str());
+                // store values first in case clipboard write fails
+                values.reverse();
+                self.inner.insert(name, values);
                 self.clipboard_provider.load().set_contents(
-                    &values.join(NATIVE_LINE_ENDING.as_str()),
+                    &contents,
                     match name {
                         '+' => ClipboardType::Clipboard,
                         '*' => ClipboardType::Selection,
                         _ => unreachable!(),
                     },
                 )?;
-                values.reverse();
-                self.inner.insert(name, values);
                 Ok(())
             }
             _ => {
@@ -252,7 +254,10 @@ fn read_from_clipboard<'a>(
                 }
             );
 
-            RegisterValues::new(iter::empty())
+            match saved_values {
+                Some(values) => RegisterValues::new(values.iter().map(Cow::from).rev()),
+                None => RegisterValues::new(iter::empty()),
+            }
         }
     }
 }
