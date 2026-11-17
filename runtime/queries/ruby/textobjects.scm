@@ -39,6 +39,9 @@
 (lambda_parameters 
   (_) @parameter.inside) @parameter.around
 
+(argument_list
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 ; Comments
 (comment) @comment.inside 
 (comment)+ @comment.around

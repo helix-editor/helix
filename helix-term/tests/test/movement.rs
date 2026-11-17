@@ -842,3 +842,38 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tree_sitter_motions_ruby_call_arguments() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rb", None),
+        (
+            "#[|f]#oo(bar, baz)\n",
+            "]a",
+            "foo(#[bar,|]# baz)\n",
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.rb", None),
+        (
+            "foo(#[bar,|]# baz)\n",
+            "]a",
+            "foo(bar, #[baz|]#)\n",
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.rb", None),
+        (
+            "#[|p]#uts bar, baz\n",
+            "]a",
+            "puts #[bar,|]# baz\n",
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
