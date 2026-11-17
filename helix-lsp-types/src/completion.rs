@@ -55,6 +55,12 @@ impl CompletionItemKind {
 }
 }
 
+impl CompletionItemKind {
+    pub fn all() -> Vec<Self> {
+        (Self::TEXT.0..=Self::TYPE_PARAMETER.0).map(Self).collect()
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompletionItemCapability {
