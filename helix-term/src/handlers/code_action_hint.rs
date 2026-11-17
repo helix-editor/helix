@@ -44,7 +44,7 @@ impl AsyncHook for Handler {
 }
 
 fn request_code_action_hint(editor: &mut Editor, doc_id: DocumentId, view_id: ViewId) {
-    if !editor.config().code_action_hint() {
+    if !editor.config().code_action_hint() || !editor.tree.contains(view_id) {
         return;
     }
 

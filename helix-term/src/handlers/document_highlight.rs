@@ -13,7 +13,7 @@ use helix_view::{
 use crate::job;
 
 fn request_document_highlights(editor: &mut Editor, doc_id: DocumentId, view_id: ViewId) {
-    if !editor.config().lsp.auto_document_highlight {
+    if !editor.config().lsp.auto_document_highlight || !editor.tree.contains(view_id) {
         return;
     }
 
