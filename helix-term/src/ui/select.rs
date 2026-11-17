@@ -76,8 +76,10 @@ impl<T: Item> Component for Select<T> {
             .required_size((max_width, area.height))
             .unwrap();
         // + 2 for borders and another + 2 for horizontal padding
-        let width = message_width + 4;
-        let height = message_height + 2 + menu_height;
+        let width = (message_width + 4).min(area.width);
+        // Truncate the message if it overflows the screen
+        let message_box_height = (message_height + 2).min(area.height.saturating_sub(menu_height));
+        let height = message_box_height + menu_height;
         let area = Rect {
             x: (area.width / 2) - width / 2,
             y: (area.height / 2) - height / 2,
@@ -88,7 +90,7 @@ impl<T: Item> Component for Select<T> {
         // Message
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
-        let message_box = area.with_height(message_height + 2);
+        let message_box = area.with_height(message_box_height);
         surface.clear_with(message_box, background.patch(text));
         BLOCK.render(message_box, surface);
         // Add horizontal padding so the message isn't too close to the border.
@@ -96,7 +98,7 @@ impl<T: Item> Component for Select<T> {
         self.message.render(message_area, surface, cx);
 
         // Options menu
-        let menu_area = area.clip_top(message_height + 2);
+        let menu_area = area.clip_top(message_box_height);
         self.options.render(menu_area, surface, cx);
     }
 }
