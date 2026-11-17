@@ -72,14 +72,49 @@ pub fn get_language(name: &str) -> Result<Option<Grammar>> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_language(name: &str) -> Result<Option<Grammar>> {
-    let mut rel_library_path = PathBuf::new().join("grammars").join(name);
-    rel_library_path.set_extension(DYLIB_EXTENSION);
-    let library_path = crate::runtime_file(&rel_library_path);
+    let library_path = {
+        let path = PathBuf::new()
+            .join("grammars")
+            .join(name)
+            .with_extension(DYLIB_EXTENSION);
+        crate::runtime_file(&path)
+    };
+
     if !library_path.exists() {
         return Ok(None);
     }
 
+    // SAFETY: This is never fully safe to call.
+    //
+    // `Grammar::new` requires `library_path` to point to a valid tree-sitter
+    // grammar, but even a well-formed, legitimate grammar is not guaranteed to
+    // be free of memory-safety issues during parsing (e.g. #14785), and there is
+    // no way to verify by file contents alone.
+    //
+    // SECURITY: This is a somewhat unsecured call.
+    //
+    // `Grammar::new` opens an arbitrary shared library from disk and looks up
+    // symbols in it to call through as function pointers. Nothing here verifies
+    // that the file at `library_path` is a legitimate tree-sitter grammar.
+    //
+    // We currently rely entirely on grammars only being placed here via
+    // `hx --grammar fetch/build` from a trusted `languages.toml`; no verification
+    // is performed at load time. This is mostly fine because grammars can only
+    // end up being loaded in two ways:
+    //
+    // 1. A grammar is declared as part of the default `languages.toml` and so
+    //    (presumably) verified by Helix maintainers and the PR author.
+    // 2. A grammar is manually added by the user in their own `languages.toml`
+    //    and so it's trusted by the user.
+    //
+    // The possible attack is a malicious program replacing existing grammars on
+    // the user's device, in which case the user already has a malicious program
+    // running with their permissions, which Helix cannot be expected to defeat.
+    //
+    // Some kind of checksum/signature verification could mitigate this but if
+    // a malicious program can replace a grammar file, it can replace a checksum too.
     let grammar = unsafe { Grammar::new(name, &library_path) }?;
+
     Ok(Some(grammar))
 }
 
