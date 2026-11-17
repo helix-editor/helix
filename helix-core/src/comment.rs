@@ -56,7 +56,7 @@ fn find_line_comment(
             min = std::cmp::min(min, pos);
 
             // line can be shorter than pos + token len
-            let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token.len(), len)));
+            let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token_len, len)));
 
             // as soon as one of the non-blank lines doesn't have a comment, the whole block is
             // considered uncommented.
@@ -111,7 +111,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
         } else {
             // uncomment line, account for uneven indentation
             let pos = line_start + text.line(line).first_non_whitespace_char().unwrap();
-            changes.push((pos, pos + token.len() + margin, None));
+            changes.push((pos, pos + token.chars().count() + margin, None));
         }
     }
 
@@ -250,11 +250,11 @@ pub fn create_block_comment_transaction(
                 let from = range.from();
                 changes.push((
                     from + start_pos,
-                    from + start_pos + start_token.len() + start_margin as usize,
+                    from + start_pos + start_token.chars().count() + start_margin as usize,
                     None,
                 ));
                 changes.push((
-                    from + end_pos - end_token.len() - end_margin as usize + 1,
+                    from + end_pos - end_token.chars().count() - end_margin as usize + 1,
                     from + end_pos + 1,
                     None,
                 ));
