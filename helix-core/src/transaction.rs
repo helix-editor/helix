@@ -828,8 +828,11 @@ impl Transaction {
         let transaction = Transaction::delete_by_selection(doc, selection, |start_range| {
             let ((from, to), end_range) = f(start_range);
 
-            // must account for possibly overlapping deletes
-            let change_size = if last > from { to - last } else { to - from };
+            // must account for possibly overlapping deletes.
+            // A later deletion can lie entirely inside an earlier one
+            // (`to < last`); saturating_sub avoids debug overflow / release
+            // wrap, and last must not move backwards.
+            let change_size = if last > from { to.saturating_sub(last) } else { to - from };
 
             let new_range = if let Some(end_range) = end_range {
                 end_range
@@ -854,7 +857,7 @@ impl Transaction {
 
             end_ranges.push(offset_range);
             offset += change_size;
-            last = to;
+            last = last.max(to);
 
             (from, to)
         });
@@ -1182,5 +1185,28 @@ mod test {
         use Operation::*;
         assert_eq!(changes.changes, &[Insert(TEST_CASE.into())]);
         assert_eq!(changes.len_after, TEST_CASE.chars().count());
+    }
+
+    #[test]
+    fn delete_by_and_with_selection_nested() {
+        // The second deletion lies inside the first; `to < last` used to
+        // overflow `to - last` and move `last` backwards.
+        let doc = Rope::from("0123456789abc");
+        let selection = Selection::new(crate::smallvec![Range::new(0, 1), Range::new(2, 3)], 0);
+        let transaction = Transaction::delete_by_and_with_selection(&doc, &selection, |range| {
+            if range.from() == 0 {
+                ((0, 10), None)
+            } else {
+                ((2, 5), None)
+            }
+        });
+        let mut doc2 = doc.clone();
+        assert!(transaction.apply(&mut doc2));
+        assert_eq!(doc2, "abc");
+        let selection = transaction.selection().unwrap();
+        assert!(selection
+            .ranges()
+            .iter()
+            .all(|r| r.anchor == 0 && r.head == 0));
     }
 }
