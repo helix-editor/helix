@@ -386,7 +386,11 @@ impl<'t> DocumentFormatter<'t> {
                             .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
                 }
                 Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
-                Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
+                // Splitting off the word's only grapheme would leave nothing to yield and
+                // end the iterator, so wrap the word instead.
+                Ordering::Greater
+                    if word_width > self.text_fmt.max_wrap as usize && self.word_buf.len() > 1 =>
+                {
                     self.peeked_grapheme = self.word_buf.pop();
                     return;
                 }
