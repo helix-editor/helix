@@ -721,12 +721,12 @@ impl Transaction {
         let process_change = |change_start, change_end, (idx, range): (usize, &Range)| {
             // update the primary idx
             if idx == selection.primary_index() {
-                new_primary_idx = Some(idx);
+                new_primary_idx = Some(ranges.len());
             } else if new_primary_idx.is_none() {
                 if idx > selection.primary_index() {
                     new_primary_idx = last_selection_idx;
                 } else {
-                    last_selection_idx = Some(idx);
+                    last_selection_idx = Some(ranges.len());
                 }
             }
             ranges.push(*range);
