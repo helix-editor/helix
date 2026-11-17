@@ -2856,6 +2856,15 @@ fn move_buffer_impl(
         }
     }
 
+    // A case-only rename on a case-insensitive filesystem names the same file, so compare
+    // file identity rather than paths.
+    if !options.force
+        && new_path.symlink_metadata().is_ok()
+        && !same_file::is_same_file(&old_path, &new_path).unwrap_or(false)
+    {
+        bail!("can't move file, destination exists (use :mv! to overwrite it)");
+    }
+
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
     }
