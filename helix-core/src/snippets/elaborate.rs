@@ -200,6 +200,15 @@ impl Snippet {
                 The `$0` tabstop signifies the final cursor position and should not include placeholder text.");
             default.clear();
         }
+        // When a tabstop repeats (`${1:a} ${1:b}`), only the first placeholder's text is
+        // used, so drop the default of later ones.
+        if self
+            .tabstops
+            .iter()
+            .any(|tabstop| tabstop.idx == idx && !tabstop.kind.is_empty())
+        {
+            default.clear();
+        }
         let default = self.elaborate(default, &[ancestors, &[idx]].concat());
         self.tabstops.push(Tabstop {
             idx,

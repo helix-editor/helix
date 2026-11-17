@@ -375,4 +375,22 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn tabstop_only_in_discarded_duplicate() {
+        let snippet = Snippet::parse("${1:a} ${1:${2:b}}").unwrap();
+        let mut rendered = snippet.prepare_render();
+        snippet.render_at(
+            &mut rendered,
+            "".into(),
+            false,
+            &mut SnippetRenderCtx::test_ctx(),
+            0,
+        );
+        assert!(
+            rendered.tabstops.iter().all(|t| !t.ranges.is_empty()),
+            "{:?}",
+            rendered.tabstops
+        );
+    }
 }
