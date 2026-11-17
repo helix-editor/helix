@@ -102,13 +102,15 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 
     for line in to_change {
-        let pos = text.line_to_char(line) + min;
+        let line_start = text.line_to_char(line);
 
         if !commented {
             // comment line
+            let pos = line_start + min;
             changes.push((pos, pos, Some(comment.clone())));
         } else {
-            // uncomment line
+            // uncomment line, account for uneven indentation
+            let pos = line_start + text.line(line).first_non_whitespace_char().unwrap();
             changes.push((pos, pos + token.len() + margin, None));
         }
     }
@@ -356,7 +358,6 @@ mod test {
         }
     }
 
-    // TODO: account for uncommenting with uneven comment indentation
     mod toggle_line_comment {
         use super::*;
 
