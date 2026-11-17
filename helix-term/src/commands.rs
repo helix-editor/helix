@@ -3777,17 +3777,19 @@ async fn make_format_callback(
     let format = format.await;
 
     let call: job::Callback = Callback::Editor(Box::new(move |editor| {
-        if !editor.documents.contains_key(&doc_id) || !editor.tree.contains(view_id) {
+        if !editor.documents.contains_key(&doc_id) {
             return;
         }
 
         let scrolloff = editor.config().scrolloff;
         let doc = doc_mut!(editor, &doc_id);
-        let view = view_mut!(editor, view_id);
 
         match format {
             Ok(format) => {
-                if doc.version() == doc_version {
+                if !editor.tree.contains(view_id) {
+                    log::info!("discarded formatting changes because the view closed");
+                } else if doc.version() == doc_version {
+                    let view = view_mut!(editor, view_id);
                     doc.apply(&format, view.id);
                     doc.append_changes_to_history(view);
                     doc.detect_indent_and_line_ending();
