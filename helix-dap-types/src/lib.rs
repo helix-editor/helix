@@ -380,6 +380,8 @@ pub mod requests {
         pub supports_progress_reporting: Option<bool>,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub supports_invalidated_event: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub supports_start_debugging_request: Option<bool>,
     }
 
     #[derive(Debug)]
