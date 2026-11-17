@@ -10,6 +10,12 @@ use termina::{
     Terminal as _,
 };
 
+/// An untrusted `.helix/languages.toml` can name any grammar library, so respect trust here too.
+fn workspace_trust() -> helix_loader::workspace_trust::WorkspaceTrust {
+    let config = Config::load_default().unwrap_or_default();
+    helix_loader::workspace_trust::WorkspaceTrust::new((&config.editor.workspace_trust).into())
+}
+
 #[derive(Copy, Clone)]
 pub enum TsFeature {
     Highlight,
@@ -163,7 +169,7 @@ fn languages(selection: Option<HashSet<String>>) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let trust = helix_loader::workspace_trust::WorkspaceTrust::fully_trusted();
+    let trust = workspace_trust();
     let mut syn_loader_conf = match user_lang_config(&trust) {
         Ok(conf) => conf,
         Err(err) => {
@@ -284,7 +290,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let trust = helix_loader::workspace_trust::WorkspaceTrust::fully_trusted();
+    let trust = workspace_trust();
     let syn_loader_conf = match user_lang_config(&trust) {
         Ok(conf) => conf,
         Err(err) => {
