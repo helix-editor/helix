@@ -6680,6 +6680,11 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
                             output.pop();
                         }
                     }
+                    let output = Tendril::from(
+                        LINE_ENDING_REGEX
+                            .replace_all(&output, doc.line_ending.as_str())
+                            .as_ref(),
+                    );
 
                     if !pipe {
                         shell_output = Some(output.clone());
