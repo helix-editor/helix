@@ -61,6 +61,13 @@ FLAGS:
     --vsplit                       Split all given files vertically into different windows
     --hsplit                       Split all given files horizontally into different windows
     -w, --working-dir <path>       Specify an initial working directory
+    --socket [PATH]                Bind a Unix remote socket. PATH is optional;
+                                   default is $HELIX_SOCKET_PATH, else
+                                   $XDG_RUNTIME_DIR/helix/helix.sock, else
+                                   $TMPDIR/helix-$UID/helix.sock.
+    --remote <CMD>                 Send CMD to a running Helix over the socket
+                                   and exit. CMD is a command-mode line, or JSON
+                                   if it starts with '{{'.
     +[N]                           Open the first given file at line number N, or the last line, if
                                    N is not specified.
 ",
@@ -98,6 +105,31 @@ FLAGS:
     if args.build_grammars {
         helix_loader::grammar::build_grammars(None, args.strict)?;
         return Ok(0);
+    }
+
+    #[cfg(not(unix))]
+    if args.socket {
+        anyhow::bail!("remote sockets are not supported on this platform");
+    }
+
+    if args.client_mode() {
+        #[cfg(not(unix))]
+        anyhow::bail!("remote sockets are not supported on this platform");
+
+        #[cfg(unix)]
+        {
+            let path = helix_term::remote::resolve_connect_path(args.socket_path.as_deref());
+            let cmd = args
+                .remote
+                .expect("client_mode implies --remote");
+            return match helix_term::remote::client_remote(&path, &cmd).await {
+                Ok(()) => Ok(0),
+                Err(err) => {
+                    eprintln!("{err}");
+                    Ok(1)
+                }
+            };
+        }
     }
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;

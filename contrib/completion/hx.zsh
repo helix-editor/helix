@@ -22,6 +22,8 @@ _hx() {
 		"-w[Specify initial working directory]" \
 		"--working-dir[Specify initial working directory]" \
 		"--log[Specifies a file to use for logging]" \
+		"--socket[Bind or connect to a Unix remote socket]:socket:_files" \
+		"--remote[Send a command to a running Helix]:command:" \
 		"*:file:_files"
 
 	case "$state" in
