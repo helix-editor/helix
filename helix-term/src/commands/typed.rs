@@ -2845,6 +2845,8 @@ fn move_buffer_impl(
         .map(ToOwned::to_owned)
         .context("Scratch buffer cannot be moved. Use :write instead")?;
 
+    // A bare file name has an empty parent, and `~` has to be expanded before it is checked.
+    let new_path = helix_stdx::path::canonicalize(new_path);
     // if new_path is a directory, append the original file name
     // to move the file into that directory.
     let new_path = old_path
