@@ -6,13 +6,15 @@ use std::{
     sync::Arc,
 };
 
-use helix_core::{self as core, completion::CompletionProvider, Selection, Transaction};
+use helix_core::{self as core, completion::CompletionProvider, Selection};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
 use helix_stdx::Url;
 use helix_view::{document::SavePoint, handlers::completion::ResponseContext, Document};
 
-use crate::handlers::completion::{item::CompletionResponse, CompletionItem, CompletionItems};
+use crate::handlers::completion::{
+    item::CompletionResponse, local_completion_transaction, CompletionItem, CompletionItems,
+};
 
 pub(crate) fn path_completion(
     selection: Selection,
@@ -30,9 +32,9 @@ pub(crate) fn path_completion(
     let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
     let line_until_cursor = text.slice(start..cursor);
 
-    let (dir_path, typed_file_name) =
-        get_path_suffix(line_until_cursor, false).and_then(|matched_path| {
-            let matched_path = Cow::from(matched_path);
+    let (typed_path, dir_path, typed_file_name) = get_path_suffix(line_until_cursor, false)
+        .and_then(|matched_path| {
+            let matched_path = String::from(matched_path);
             let path: Cow<_> = if matched_path.starts_with("file://") {
                 Url::from_str(&matched_path)
                     .ok()
@@ -53,14 +55,11 @@ pub(crate) fn path_completion(
             let ends_with_slash = matches!(matched_path.as_bytes().last(), Some(b'/'));
 
             if ends_with_slash {
-                Some((PathBuf::from(path.as_path()), None))
+                Some((matched_path, PathBuf::from(path.as_path()), None))
             } else {
-                path.parent().map(|parent_path| {
-                    (
-                        PathBuf::from(parent_path),
-                        path.file_name().and_then(|f| f.to_str().map(String::from)),
-                    )
-                })
+                let parent_path = PathBuf::from(path.parent()?);
+                let file_name = path.file_name().and_then(|f| f.to_str().map(String::from));
+                Some((matched_path, parent_path, file_name))
             }
         })?;
 
@@ -104,10 +103,15 @@ pub(crate) fn path_completion(
                 let kind = path_kind(&md);
                 let documentation = path_documentation(&md, &dir_path.join(&file_name), kind);
 
-                let transaction = Transaction::change_by_selection(&text, &selection, |range| {
-                    let cursor = range.cursor(text.slice(..));
-                    (cursor - edit_diff, cursor, Some((&file_name).into()))
-                });
+                // Requiring the whole typed path before other cursors means their file name is
+                // completed in the same directory.
+                let transaction = local_completion_transaction(
+                    &text,
+                    &selection,
+                    &typed_path,
+                    edit_diff,
+                    &file_name,
+                );
 
                 Some(CompletionItem::Other(core::CompletionItem {
                     kind: Cow::Borrowed(kind),
@@ -206,5 +210,51 @@ fn path_kind(md: &fs::Metadata) -> &'static str {
         "folder"
     } else {
         "file"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arc_swap::ArcSwap;
+    use helix_core::{syntax, Range, Rope};
+    use helix_event::TaskController;
+    use helix_view::{editor::GutterConfig, View};
+
+    use super::*;
+
+    #[test]
+    fn secondary_needs_same_path() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("alpha.txt"), "").unwrap();
+        let text = "./al\n./al\nx/al\nhold";
+        let mut doc = Document::from(
+            Rope::from(text),
+            None,
+            Arc::new(ArcSwap::from_pointee(helix_view::editor::Config::default())),
+            Arc::new(ArcSwap::from_pointee(syntax::Loader::default())),
+        );
+        doc.set_path(Some(&dir.path().join("doc.txt")));
+        let view = View::new(doc.id(), GutterConfig::default());
+        doc.ensure_view_init(view.id);
+
+        // Line ends and the start of the document. Only the second line has the same path.
+        let mut cursors: Vec<_> = text.match_indices('\n').map(|(i, _)| i).collect();
+        cursors.extend([0, text.len()]);
+        cursors.sort();
+        let ranges = cursors.into_iter().map(Range::point).collect();
+        let selection = Selection::new(ranges, 1);
+
+        let mut controller = TaskController::new();
+        let savepoint = doc.savepoint(&view);
+        let complete = path_completion(selection, &doc, controller.restart(), savepoint).unwrap();
+        let CompletionItems::Other(items) = complete().items else {
+            panic!("expected path completions");
+        };
+        let [CompletionItem::Other(item)] = &items[..] else {
+            panic!("expected one completion");
+        };
+        let mut rope = Rope::from(text);
+        assert!(item.transaction.apply(&mut rope));
+        assert_eq!(rope, "./alpha.txt\n./alpha.txt\nx/al\nhold");
     }
 }

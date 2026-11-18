@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use helix_core::chars::char_is_word;
 use helix_core::completion::CompletionProvider;
 use helix_core::syntax::config::LanguageServerFeature;
+use helix_core::{Rope, Selection, Transaction};
 use helix_event::{register_hook, TaskHandle};
 use helix_lsp::lsp;
 use helix_stdx::rope::RopeSliceExt;
@@ -37,12 +38,45 @@ async fn handle_response(
     is_incomplete: bool,
 ) -> Option<CompletionResponse> {
     loop {
-        let response = requests.join_next().await?.unwrap();
+        let response = match requests.join_next().await? {
+            Ok(response) => response,
+            Err(err) => {
+                log::error!("completion provider failed: {err}");
+                continue;
+            }
+        };
         if !is_incomplete && !response.context.is_incomplete && response.items.is_empty() {
             continue;
         }
         return Some(response);
     }
+}
+
+/// Builds a transaction that replaces the `replace_len` chars before each cursor with `new_text`.
+///
+/// The prefix is computed at the primary cursor, so only cursors preceded by the same `prefix`
+/// are completed. Spans that overlap an earlier one are skipped.
+fn local_completion_transaction(
+    doc: &Rope,
+    selection: &Selection,
+    prefix: &str,
+    replace_len: usize,
+    new_text: &str,
+) -> Transaction {
+    let text = doc.slice(..);
+    let prefix_len = prefix.chars().count();
+    let mut last_end = 0;
+    let changes = selection.iter().filter_map(|range| {
+        let cursor = range.cursor(text);
+        let start = cursor.checked_sub(prefix_len)?;
+        let replace_start = cursor - replace_len.min(prefix_len);
+        if text.slice(start..cursor) != prefix || replace_start < last_end {
+            return None;
+        }
+        last_end = cursor;
+        Some((replace_start, cursor, Some(new_text.into())))
+    });
+    Transaction::change(doc, changes)
 }
 
 async fn replace_completions(
