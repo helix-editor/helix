@@ -135,6 +135,6 @@ even though they aren't direct descendents of the `(element)` node.
 languages. It is only necessary when the node that increments the nesting level
 (changes rainbow color) is not the direct parent of the bracket node.
 
-[syntax highlighting queries]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#highlights
-[query syntax]: https://tree-sitter.github.io/tree-sitter/using-parsers#pattern-matching-with-queries
+[syntax highlighting queries]: https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights
+[query syntax]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
 [tsq grammar.js]: https://github.com/the-mikedavis/tree-sitter-tsq/blob/48b5e9f82ae0a4727201626f33a17f69f8e0ff86/grammar.js
