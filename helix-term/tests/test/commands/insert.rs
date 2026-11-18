@@ -708,3 +708,20 @@ async fn test_indent_with_spaces() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn append_at_line_end_after_autoindented_cursor_in_select_mode() -> anyhow::Result<()> {
+    let mut app = AppBuilder::new()
+        .with_input_text("fn f() {\n#(\n|)##[}|]#\n")
+        .build()?;
+    test_key_sequence(
+        &mut app,
+        Some(":lang rust<ret>vAZ<esc>"),
+        Some(&|app| {
+            let text = helix_view::doc!(app.editor).text().to_string();
+            assert_eq!(text, "fn f() {\n    Z\n}Z\n");
+        }),
+        false,
+    )
+    .await
+}

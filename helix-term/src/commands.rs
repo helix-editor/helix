@@ -3752,7 +3752,9 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
                 IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
             };
 
-            ranges.push(range.put_cursor(text, pos + offs, was_select_mode));
+            // `put_cursor` reads the old text, so shift by the indents inserted above only after.
+            let range = range.put_cursor(text, pos, was_select_mode);
+            ranges.push(Range::new(range.anchor + offs, range.head + offs));
 
             (cursor_line_start, cursor_line_start, None)
         }
