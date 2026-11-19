@@ -344,10 +344,7 @@ impl<T: Component> Component for Popup<T> {
 
         let max_offset = child_height.saturating_sub(inner.height) as usize;
         let half_page_size = (inner.height / 2) as usize;
-        let scroll = max_offset.min(self.scroll_half_pages * half_page_size);
-        self.scroll_half_pages = scroll
-            .checked_div(half_page_size)
-            .unwrap_or(self.scroll_half_pages);
+        let scroll = clamp_scroll(&mut self.scroll_half_pages, half_page_size, max_offset);
         cx.scroll = Some(scroll);
         self.contents.render(inner, surface, cx);
 
@@ -386,5 +383,31 @@ impl<T: Component> Component for Popup<T> {
 
     fn id(&self) -> Option<&'static str> {
         Some(self.id)
+    }
+}
+
+/// Clamps the requested scroll to `max_offset` and writes the clamped value back as half pages,
+/// rounding up so that the clamped offset is stable across renders.
+fn clamp_scroll(scroll_half_pages: &mut usize, half_page_size: usize, max_offset: usize) -> usize {
+    let scroll = max_offset.min(*scroll_half_pages * half_page_size);
+    if half_page_size != 0 {
+        *scroll_half_pages = scroll.div_ceil(half_page_size);
+    }
+    scroll
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clamp_scroll_stays_at_end() {
+        // 3 lines of overflow with a half page of 5 lines
+        let mut scroll_half_pages = 2;
+        assert_eq!(clamp_scroll(&mut scroll_half_pages, 5, 3), 3);
+        assert_eq!(clamp_scroll(&mut scroll_half_pages, 5, 3), 3);
+
+        scroll_half_pages -= 1;
+        assert_eq!(clamp_scroll(&mut scroll_half_pages, 5, 3), 0);
     }
 }
