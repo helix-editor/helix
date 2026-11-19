@@ -572,7 +572,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     })
 }
 
-#[cfg(not(any(windows, target_arch = "wasm32")))]
+#[cfg(not(any(windows, target_os = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use helix_stdx::env::{binary_exists, env_var_is_set};
 
@@ -885,6 +885,8 @@ pub enum GutterType {
     Diff,
     /// Indicator for when code actions are available
     CodeActionHint,
+    /// Highlight local changes
+    Coverage,
 }
 
 impl std::str::FromStr for GutterType {
@@ -897,8 +899,9 @@ impl std::str::FromStr for GutterType {
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
             "code-action-hint" => Ok(Self::CodeActionHint),
+            "coverage" => Ok(Self::Coverage),
             _ => anyhow::bail!(
-                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers`, `diff` or `coverage`."
             ),
         }
     }
