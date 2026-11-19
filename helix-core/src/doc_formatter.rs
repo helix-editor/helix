@@ -21,7 +21,7 @@ use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 
 use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
 
-use crate::graphemes::{Grapheme, GraphemeStr};
+use crate::graphemes::{grapheme_width, tab_width_at, Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
 use crate::{Position, RopeSlice};
@@ -476,4 +476,131 @@ impl<'t> Iterator for DocumentFormatter<'t> {
         }
         Some(grapheme)
     }
+}
+
+/// The maximum width softwrap may accumulate a word before force-splitting it.
+/// Hard wrapping raises this to the maximum so words are never split.
+const NO_SPLIT_MAX_WRAP: u16 = u16::MAX;
+
+/// Display width of `s`, expanding tabs as if `s` started at column 0.
+pub fn display_width(s: &str, tab_width: u16) -> usize {
+    let mut col = 0;
+    for grapheme in s.graphemes(true) {
+        col += if grapheme == "\t" {
+            tab_width_at(col, tab_width)
+        } else {
+            grapheme_width(grapheme)
+        };
+    }
+    col
+}
+
+/// Finds the char offset in `line` (relative to the start of `line`) at which a hard
+/// line break replicates what soft wrapping would display if `line` were soft wrapped
+/// at `text_width`.
+///
+/// - Words are never split: a word too long to fit is moved to the next line whole
+///   (or left overflowing, matching vim's `textwidth` semantics).
+/// - `prefix_width` is the display width of the continuation-line prefix (indentation,
+///   list markers, comment tokens). The softwrap traversal applies the same width to
+///   every visual row but continuation lines have less budget available, so the break
+///   is recomputed at the reduced width if the wrapped word would not fit next to the
+///   prefix.
+///
+/// Returns `None` if the line fits within `text_width` or no useful break point exists
+/// (e.g. `text_width` leaves no room next to the prefix).
+pub fn hard_wrap_point(
+    line: RopeSlice,
+    tab_width: u16,
+    text_width: usize,
+    prefix_width: usize,
+) -> Option<usize> {
+    // a prefix that leaves no room for content makes the line unbreakable
+    let min_width = prefix_width.saturating_add(1);
+    if text_width <= min_width {
+        return None;
+    }
+    let text_width = text_width.min(u16::MAX as usize - 1);
+
+    let mut text_fmt = TextFormat {
+        soft_wrap: true,
+        tab_width,
+        max_wrap: NO_SPLIT_MAX_WRAP,
+        max_indent_retain: NO_SPLIT_MAX_WRAP,
+        wrap_indicator: "".into(),
+        wrap_indicator_highlight: None,
+        // The traversal wraps when the column *reaches* the viewport width. Use one
+        // extra column so that a word ending exactly at `text_width` (followed by a
+        // space or the end of the line) is not relocated prematurely: relocation of
+        // a word whose buffered width reaches the viewport is what signals the wrap
+        // point. A word ending one column past the margin is relocated whole, which
+        // is the vim-like break we want.
+        //
+        // `soft_wrap_at_text_width` is deliberately off: its only effect is to exempt
+        // words ending exactly at the viewport width before a newline/eof from being
+        // relocated. With the extra column, that exemption would also suppress the
+        // break before a word overflowing the margin by one at the end of the line.
+        viewport_width: (text_width + 1) as u16,
+        soft_wrap_at_text_width: false,
+    };
+
+    let mut width = text_width;
+    loop {
+        let point = softwrap_wrap_point(line, &text_fmt)?;
+        // A wrap point at the start of the line means the line begins with a single
+        // word too long to fit; it can never be usefully broken.
+        if point == 0 {
+            return None;
+        }
+        let word_width = word_width_until_space(line, point, tab_width);
+        if word_width + prefix_width <= text_width {
+            return Some(point);
+        }
+        // The wrapped word would not fit next to the continuation prefix: recompute
+        // at the reduced continuation budget, breaking earlier. The budget only
+        // shrinks once, so this branch always accepts on the second iteration.
+        let reduced = (text_width - prefix_width).max(min_width);
+        if reduced >= width {
+            return Some(point);
+        }
+        width = reduced;
+        text_fmt.viewport_width = (width + 1) as u16;
+    }
+}
+
+/// The first document grapheme soft wrapping would move to a new visual line, as a
+/// char offset into `line`.
+fn softwrap_wrap_point(line: RopeSlice, text_fmt: &TextFormat) -> Option<usize> {
+    let annotations = TextAnnotations::default();
+    let mut formatter = DocumentFormatter::new_at_prev_checkpoint(line, text_fmt, &annotations, 0);
+    for grapheme in &mut formatter {
+        if grapheme.is_virtual() || grapheme.source.is_eof() {
+            continue;
+        }
+        if grapheme.visual_pos.row > 0 && grapheme.char_idx < line.len_chars() {
+            return Some(grapheme.char_idx);
+        }
+    }
+    None
+}
+
+/// The display width of the word starting at `from` (tabs expanded relative to the
+/// word start), stopping before the next ASCII space.
+fn word_width_until_space(line: RopeSlice, from: usize, tab_width: u16) -> usize {
+    let mut col = 0;
+    let mut width = 0;
+    for grapheme in line.slice(from..).graphemes() {
+        if grapheme == " " {
+            break;
+        }
+        let w = if grapheme == "\t" {
+            tab_width_at(col, tab_width)
+        } else {
+            let grapheme = Cow::from(grapheme);
+            grapheme_width(&grapheme)
+        };
+        col += w;
+        width += w;
+    }
+    width
 }

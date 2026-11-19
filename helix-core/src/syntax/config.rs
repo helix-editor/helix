@@ -52,6 +52,7 @@ pub struct LanguageConfiguration {
     pub block_comment_tokens: Option<Vec<BlockCommentToken>>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
+    pub hard_wrap: Option<HardWrap>,
 
     #[serde(default)]
     pub auto_format: bool,
@@ -603,6 +604,75 @@ pub struct SoftWrap {
     pub wrap_at_text_width: Option<bool>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct HardWrap {
+    /// Hard wrap lines at input time when they exceed `text-width`, similar to
+    /// vim's `textwidth`. Defaults to off.
+    // NOTE: Option on purpose because the struct is shared between language config and global config.
+    // By default the option is None so that the language config falls back to the global config unless explicitly set.
+    pub enable: Option<bool>,
+    /// Controls detection of list markers (e.g. `- ` in markdown lists) when
+    /// computing the continuation-line prefix while hard wrapping.
+    pub list_markers: Option<ListMarkersConfig>,
+}
+
+/// Configuration for the list-marker detection used by hard wrapping.
+///
+/// Follows the `auto-pairs` precedent: a bare bool enables the built-in marker
+/// set (or disables detection entirely) and a bare string replaces the built-in
+/// pattern with a custom regular expression.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
+pub enum ListMarkersConfig {
+    /// Enables or disables the built-in list markers. False means disabled.
+    Enable(bool),
+    /// A custom regular expression which must match the full marker prefix
+    /// (including its trailing whitespace) at the start of the line content
+    /// after indentation and comment tokens.
+    Regex(String),
+}
+
+/// Matches the built-in list-marker set against `content` — the line content
+/// after indentation and any comment token. A marker is a single `-`, `*` or
+/// `+`, or 1-3 digits followed by `.` or `)`, in either case followed by at
+/// least one space (at most 4, matching markdown's limit of 3 plus one).
+///
+/// Returns the length in bytes of the marker prefix including its trailing
+/// whitespace. The result is always ASCII so byte and char lengths coincide.
+pub fn match_builtin_list_marker(content: &str) -> Option<usize> {
+    // Bound the marker so that prose like `---` or `2026) the big release` is
+    // not mistaken for a list item.
+    const MAX_DIGITS: usize = 3;
+    const MAX_SPACES: usize = 4;
+
+    let bytes = content.as_bytes();
+    let marker_len = match bytes.first()? {
+        b'-' | b'*' | b'+' => 1,
+        b'0'..=b'9' => {
+            let digits = 1 + bytes[1..].iter().take_while(|b| b.is_ascii_digit()).count();
+            if digits > MAX_DIGITS {
+                return None;
+            }
+            match bytes.get(digits) {
+                Some(b'.') | Some(b')') => digits + 1,
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+    let spaces = bytes[marker_len..]
+        .iter()
+        .take(MAX_SPACES)
+        .take_while(|&&b| b == b' ')
+        .count();
+    if spaces == 0 {
+        return None;
+    }
+    // trailing spaces are ASCII so `marker_len + spaces` is a char boundary
+    Some(marker_len + spaces)
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct WordCompletion {
@@ -652,4 +722,33 @@ where
 
 fn default_timeout() -> u64 {
     20
+}
+
+#[cfg(test)]
+mod tests {
+    use super::match_builtin_list_marker;
+
+    #[test]
+    fn builtin_list_markers() {
+        // markers: `-` `*` `+` or up to 3 digits followed by `.`/`)`, then at least one space
+        assert_eq!(match_builtin_list_marker("- foo"), Some(2));
+        assert_eq!(match_builtin_list_marker("* foo"), Some(2));
+        assert_eq!(match_builtin_list_marker("+ foo"), Some(2));
+        assert_eq!(match_builtin_list_marker("1. foo"), Some(3));
+        assert_eq!(match_builtin_list_marker("12) foo"), Some(4));
+        assert_eq!(match_builtin_list_marker("123. foo"), Some(5));
+        assert_eq!(match_builtin_list_marker("-  foo"), Some(3));
+
+        // no marker / gated so prose does not match
+        assert_eq!(match_builtin_list_marker(""), None);
+        assert_eq!(match_builtin_list_marker("-foo"), None);
+        assert_eq!(match_builtin_list_marker("---"), None);
+        assert_eq!(match_builtin_list_marker("-\tfoo"), None);
+        assert_eq!(match_builtin_list_marker("x = -y"), None);
+        assert_eq!(match_builtin_list_marker("10.2 is a number"), None);
+        assert_eq!(match_builtin_list_marker("2026) the big release"), None);
+        assert_eq!(match_builtin_list_marker("1234. foo"), None);
+        // leading whitespace is stripped by the caller
+        assert_eq!(match_builtin_list_marker("  - foo"), None);
+    }
 }

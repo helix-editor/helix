@@ -20,6 +20,7 @@
   - [`[editor.gutters.spacer]` Section](#editorguttersspacer-section)
   - [`[editor.gutters.code-action-hint]` Section](#editorgutterscode-action-hint-section)
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
+- [`[editor.hard-wrap]` Section](#editorhard-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
@@ -462,6 +463,28 @@ enable = true
 max-wrap = 25 # increase value to reduce forced mid-word wrapping
 max-indent-retain = 0
 wrap-indicator = ""  # set wrap-indicator to "" to hide it
+```
+
+### `[editor.hard-wrap]` Section
+
+Options for hard wrapping lines while editing, similar to vim's `textwidth`. When
+enabled, entering a non-whitespace character past `text-width` breaks the line at
+its soft-wrap point and continues on the next line, re-applying the line's
+indentation, list marker (aligned under the item content) and comment token. Only
+lines being edited are affected; existing long lines are left untouched and soft
+wrapping is independent of this option. Words are never split: a word too long to
+fit simply overflows until a space is entered past it.
+
+| Key            | Description                                                                                                                                                | Default |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `enable`       | Whether to hard wrap lines on input.                                                                                                                       | `false` |
+| `list-markers` | Whether to align continuation lines of list items under their content. `true` uses the built-in markers (`-`, `*`, `+`, up to 3 digits followed by `.` or `)`); a string replaces the marker pattern with a custom regular expression. Can be overridden per language. | `true`  |
+
+Example:
+
+```toml
+[editor.hard-wrap]
+enable = true
 ```
 
 ### `[editor.smart-tab]` Section

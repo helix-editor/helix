@@ -209,4 +209,21 @@ mod tests {
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
     }
+
+    #[test]
+    fn hard_wrap_partial_table_keeps_editor_defaults() {
+        use helix_core::syntax::config::{HardWrap, ListMarkersConfig};
+
+        // A partial `[editor.hard-wrap]` table must not reset the keys it omits;
+        // `list-markers` should keep its documented `true` default.
+        assert_eq!(
+            Config::load_test("[editor.hard-wrap]\nenable = true\n")
+                .editor
+                .hard_wrap,
+            HardWrap {
+                enable: Some(true),
+                list_markers: Some(ListMarkersConfig::Enable(true)),
+            }
+        );
+    }
 }

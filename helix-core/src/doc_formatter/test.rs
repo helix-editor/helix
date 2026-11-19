@@ -211,3 +211,46 @@ fn annotation_and_overlay() {
         "fooo  bar "
     );
 }
+
+use crate::doc_formatter::hard_wrap_point;
+
+fn hard_wrap_point_at(text: &str, text_width: usize, prefix_width: usize) -> Option<usize> {
+    hard_wrap_point(text.into(), 4, text_width, prefix_width)
+}
+
+#[test]
+fn hard_wrap_basic() {
+    // a word overflowing the margin at the end of the line is broken off
+    assert_eq!(hard_wrap_point_at("aaa bbbb cc", 10, 0), Some(9));
+    assert_eq!(hard_wrap_point_at("aaa bbbb ccc", 10, 0), Some(9));
+    // lines that fit (including a trailing space) are not wrapped
+    assert_eq!(hard_wrap_point_at("aaa bbbb", 10, 0), None);
+    assert_eq!(hard_wrap_point_at("aaa bbbbbb ", 10, 0), None);
+    // overflow in the middle of the line: the first line is filled up to the
+    // margin and everything after the last in-budget space moves down
+    assert_eq!(hard_wrap_point_at("aaa bbb cc ddd eee", 10, 0), Some(11));
+}
+
+#[test]
+fn hard_wrap_no_mid_word_split() {
+    // a word longer than the width is moved whole, not split
+    assert_eq!(hard_wrap_point_at("aaaa longword", 8, 0), Some(5));
+    // a line that is a single unbreakable word is never wrapped
+    assert_eq!(hard_wrap_point_at("aaaaaaaaaaaaaaaaaa", 8, 0), None);
+}
+
+#[test]
+fn hard_wrap_prefix_budget() {
+    // the wrapped word is measured next to the continuation prefix: a word that
+    // fits on its own but not next to the prefix breaks one word earlier
+    assert_eq!(hard_wrap_point_at("aaaa bb ccccccccc", 10, 4), Some(5));
+    // a prefix that leaves no room makes the line unbreakable
+    assert_eq!(hard_wrap_point_at("aaa bbb ccc", 5, 5), None);
+}
+
+#[test]
+fn hard_wrap_tabs() {
+    // tab expands to 4 columns: "xxx1" ends exactly at the margin, only "xx2"
+    // wraps (char offset 6, visual column 9)
+    assert_eq!(hard_wrap_point_at("\txxx1 xx2", 8, 0), Some(6));
+}
