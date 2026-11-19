@@ -7,6 +7,7 @@
 //   (For examples https://github.com/helix-editor/helix/issues/2786, https://github.com/helix-editor/helix/issues/15078)
 // * some variable names have been lengthened for readability
 
+use helix_stdx::hint::cold_path;
 use serde::de::{self, DeserializeOwned, Visitor};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -203,8 +204,13 @@ impl Params {
         D: DeserializeOwned,
     {
         let value: Value = self.into();
-        serde_json::from_value(value)
-            .map_err(|err| Error::invalid_params(format!("Invalid params: {}.", err)))
+        match serde_json::from_value(value) {
+            Ok(params) => Ok(params),
+            Err(err) => {
+                cold_path();
+                Err(Error::invalid_params(format!("Invalid params: {}.", err)))
+            }
+        }
     }
 
     pub fn is_none(&self) -> bool {
