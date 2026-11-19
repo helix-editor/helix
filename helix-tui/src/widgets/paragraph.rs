@@ -205,6 +205,9 @@ impl Widget for Paragraph<'_> {
             if y >= self.scroll.0 {
                 let mut x = get_line_offset(current_line_width, text_area.width, self.alignment);
                 for StyledGrapheme { symbol, style } in current_line {
+                    if symbol.chars().any(char::is_control) {
+                        continue;
+                    }
                     buf[(text_area.left() + x, text_area.top() + y - self.scroll.0)]
                         .set_symbol(if symbol.is_empty() {
                             // If the symbol is empty, the last char which rendered last time will
@@ -222,5 +225,27 @@ impl Widget for Paragraph<'_> {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_chars_never_reach_a_cell() {
+        let text = Text::from("AAA\x1b\nBBB\x07\x0e");
+        let area = Rect::new(0, 0, 10, 2);
+        let mut buf = Buffer::empty(area);
+        Paragraph::new(&text).render(area, &mut buf);
+        for cell in &buf.content {
+            assert!(
+                !cell.symbol.chars().any(char::is_control),
+                "{:?}",
+                cell.symbol
+            );
+        }
+        assert_eq!(buf.content[0].symbol.as_str(), "A");
+        assert_eq!(buf.content[10].symbol.as_str(), "B");
     }
 }
