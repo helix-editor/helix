@@ -234,11 +234,13 @@ fn find_nth_open_pair(
     // Adjusts pos for the first iteration, and handles the case of the
     // cursor being *on* the close character which will get falsely stepped over
     // if not skipped here
-    if chars.prev()? == open {
-        return Some(pos);
-    }
+    let count = if chars.prev()? == open {
+        n.saturating_sub(1)
+    } else {
+        n
+    };
 
-    for _ in 0..n {
+    for _ in 0..count {
         let mut step_over: usize = 0;
 
         loop {
@@ -274,11 +276,13 @@ fn find_nth_close_pair(
 
     let mut chars = text.chars_at(pos);
 
-    if chars.next()? == close {
-        return Some(pos);
-    }
+    let count = if chars.next()? == close {
+        n.saturating_sub(1)
+    } else {
+        n
+    };
 
-    for _ in 0..n {
+    for _ in 0..count {
         let mut step_over: usize = 0;
 
         loop {
@@ -399,6 +403,18 @@ mod test {
             get_surround_pos(None, doc.slice(..), &selection, Some('['), 1),
             Err(Error::CursorOverlap)
         );
+    }
+
+    #[test]
+    fn test_find_nth_pairs_pos_counted_from_delimiter() {
+        let doc = Rope::from("((x))\n");
+        for pos in 1..=3 {
+            assert_eq!(
+                find_nth_pairs_pos(None, doc.slice(..), '(', Range::new(pos, pos + 1), 2),
+                Ok((0, 4)),
+                "cursor at {pos}"
+            );
+        }
     }
 
     #[test]
