@@ -3158,11 +3158,17 @@ fn append_mode(cx: &mut Context) {
         doc.apply(&transaction, view.id);
     }
 
+    // Append a cursor after each selection by extending the head one grapheme
+    // past its end. When selections are directly adjacent, clamp each anchor to
+    // the previous selection's new end so the ranges don't overlap and collapse
+    // into a single cursor.
+    let text = doc.text().slice(..);
+    let mut prev_end = 0;
     let selection = doc.selection(view.id).clone().transform(|range| {
-        Range::new(
-            range.from(),
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
-        )
+        let to = graphemes::next_grapheme_boundary(text, range.to());
+        let from = range.from().max(prev_end);
+        prev_end = to;
+        Range::new(from, to)
     });
     doc.set_selection(view.id, selection);
 }
