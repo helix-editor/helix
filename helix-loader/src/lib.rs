@@ -173,6 +173,9 @@ pub fn default_log_file() -> PathBuf {
 /// all keys in `left`'s table unioned with all keys in `right` with the values
 /// of `right` being merged recursively onto values of `left`.
 ///
+/// Non-empty arrays of tables whose items all have a string `name` field are
+/// merged by name. Other arrays are replaced by the value from `right`.
+///
 /// `crate::merge_toml_values(a, b, 3)` combines, for example:
 ///
 /// b:
@@ -205,7 +208,12 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 
     match (left, right) {
         (Value::Array(mut left_items), Value::Array(right_items)) => {
-            if merge_depth > 0 {
+            let arrays_contain_only_named_tables = !right_items.is_empty()
+                && left_items
+                    .iter()
+                    .chain(right_items.iter())
+                    .all(|value| get_name(value).is_some());
+            if merge_depth > 0 && arrays_contain_only_named_tables {
                 left_items.reserve(right_items.len());
                 for rvalue in right_items {
                     let lvalue = get_name(&rvalue)
@@ -356,5 +364,31 @@ mod merge_toml_tests {
                 .unwrap(),
             &vec![Value::String("lsp".into())]
         )
+    }
+
+    #[test]
+    fn ordinary_toml_arrays_replace() {
+        let base: Value = toml::from_str(
+            r#"
+            values = ["one", "two"]
+            empty = ["keep"]
+            "#,
+        )
+        .unwrap();
+        let user: Value = toml::from_str(
+            r#"
+            values = ["three"]
+            empty = []
+            "#,
+        )
+        .unwrap();
+
+        let merged = merge_toml_values(base, user, 3);
+
+        assert_eq!(
+            merged.get("values").unwrap().as_array().unwrap(),
+            &vec![Value::String("three".into())]
+        );
+        assert!(merged.get("empty").unwrap().as_array().unwrap().is_empty());
     }
 }
