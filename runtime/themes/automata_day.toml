@@ -1,0 +1,130 @@
+"tag" = { fg = "light-yellow" }
+"attribute" = { fg = "light-aqua" }
+"comment" = { fg = "comments" }
+"constant" = { fg = "light-purple" }
+"constant.numeric" = { fg = "red", modifiers=["bold"] }
+"constant.builtin" = { fg = "red", modifiers=["bold"] }
+"constant.character.escape" = { fg = "light-yellow" }
+"constructor" = { fg = "red" }
+"function" = { fg = "green", modifiers=["bold"] }
+"function.builtin" = { fg = "light-yellow" }
+"function.macro" = { fg = "light-yellow" }
+"keyword" = { fg = "aqua" }
+"keyword.control" = { fg = "light-black" }
+"keyword.control.import" = { fg = "light-red" }
+"keyword.directive" = { fg = "light-red" }
+"keyword.storage" = { fg = "light-red" }
+"label" = { fg = "green" }
+"namespace" = { fg = "blue" }
+"operator" = { fg = "red" }
+"keyword.operator" = { fg = "red" }
+"special" = { fg = "blue" }
+"string" = { fg = "light-yellow" }
+"string.escape" = "red"
+"string.regex" = "light-red"
+"string.special" = "light-green"
+"type" = { fg = "aqua" }
+"variable" = { fg = "purple" }
+"variable.special" = { fg = "purple"}
+"variable.builtin" = { fg = "purple" }
+"variable.parameter" = { fg = "purple" }
+"variable.other.member" = { fg = "purple" }
+
+"markup.heading" = { fg = "light-red", modifiers = ["bold"] }
+"markup.raw.inline" = { fg = "blue" }
+"markup.bold" = { fg = "black", modifiers = ["bold"] }
+"markup.italic" = { fg = "black", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.list" = { fg = "green" }
+"markup.quote" = { fg = "light-black" }
+"markup.link.url" = { fg = "yellow", modifiers = ["bold", "underlined"]}
+"markup.link.text" = { fg = "light-yellow" }
+
+"diff.plus" = "light-aqua"
+"diff.delta" = "light-purple"
+"diff.minus" = "light-red"
+
+"diagnostic.info".underline = { color = "blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "green", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"info" = { fg = "blue", modifiers = ["bold"] }
+"hint" = { fg = "green", modifiers = ["bold"] }
+"warning" = { fg = "yellow", modifiers = ["bold"] }
+"error" = { fg = "light-red", modifiers = ["bold"] }
+
+"ui.background" = {bg = "light-white"}
+
+"ui.virtual" = { fg = "light-black" }
+"ui.virtual.indent-guide" = { fg = "light-black" }
+"ui.virtual.whitespace" = { fg = "whitespace" }
+"ui.virtual.ruler" = { bg = "whitespace" }
+"ui.virtual.inlay-hint" = { fg = "whitespace" }
+"ui.virtual.jump-label" = { fg = "whitespace", modifiers = ["bold"] }
+"ui.virtual.wrap" = { fg = "whitespace" }
+
+"ui.cursor" = { fg = "light-black", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "light-black", modifiers = ["reversed"] }
+"ui.cursor.insert" = { fg = "light-black" }
+"ui.cursor.match" = { fg = "black", bg = "white"}
+
+"ui.selection" = { bg = "green" }
+"ui.selection.primary" = { bg = "selection" }
+"ui.cursorline.primary" = { bg = "cursor-line" }
+
+"ui.highlight" = { fg = "light-red", bg = "light-white" }
+"ui.highlight.frameline" = { fg = "light-red", bg = "yellow" }
+
+"ui.gutter" = { fg = "green", bg = "white"}
+"ui.gutter.selected" = {fg = "light-white", bg="yellow"}
+"ui.linenr" = { fg = "light-aqua", bg = "white" }
+"ui.linenr.selected" = { fg = "light-white", bg="yellow" }
+
+"ui.statusline" = { fg = "bright-white", bg="yellow" }
+"ui.statusline.normal" = { fg = "light-red", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "light-red", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "light-red", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "black", bg = "white" }
+"ui.bufferline.active" = { fg = "light-white", bg = "yellow" }
+"ui.bufferline.background" = { bg = "white" }
+
+"ui.text" = { fg = "black" }
+"ui.text.focus" = { bg = "cursor-line", fg = "black", modifiers = ["bold"] }
+"ui.text.info" = { fg = "light-white", modifiers = ["bold"] }
+
+"ui.help" = { bg = "yellow", fg = "light-white" }
+"ui.popup" = { bg = "yellow", fg = "light-white" }
+"ui.window" = {bg = "yellow", fg = "light-white" }
+"ui.debug" = { fg = "light-red" }
+"ui.menu" = { bg = "yellow", fg = "light-white" }
+"ui.menu.selected" = { bg = "yellow", fg = "blue" }
+"ui.menu.scroll" = { bg = "light-white", fg = "blue" }
+"ui.picker.header" = { bg = "white", fg = "black" }
+"ui.picker.header.column" = { bg = "red", fg = "light-blue" }
+"ui.picker.header.column.active" = { bg = "light-red", fg = "light-blue" }
+
+[palette]
+black="#1F1E1E"
+light-black="#33251F"
+red="#661A2A"
+light-red="#8A2229"
+green="#3E8758"
+light-green="#609A6B"
+yellow="#B67F21"
+light-yellow="#A1A120"
+blue="#4F648C"
+light-blue="#5D8AA8"
+purple="#5B437A"
+light-purple="#A35369"
+aqua="#3D6B6B"
+light-aqua="#318B8C"
+white="#DED9BF"
+light-white="#FAF4DE"
+bright-white="#FCF2C5"
+whitespace="#A8A597"
+comments="#87857A"
+cursor-line="#F0C486"
+selection="#B8DBF2"
