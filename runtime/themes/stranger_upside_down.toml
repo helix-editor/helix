@@ -1,0 +1,116 @@
+# Author : Stranger Theme <contact@strangertheme.com>
+# License: MIT
+# Stranger Theme: Upside Down for Helix
+"attribute" = "green"
+"type" = "cyan"
+"type.builtin" = "cyan"
+"constructor" = "cyan"
+"constant" = "orange"
+"constant.numeric" = "orange"
+"constant.builtin.boolean" = "purple"
+"constant.character.escape" = "pink"
+"string" = "yellow"
+"string.regexp" = "red"
+"string.special" = "pink"
+"comment" = { fg = "comment", modifiers = ["italic"] }
+"comment.unused" = "comment"
+"variable" = "fg"
+"variable.builtin" = "purple"
+"variable.parameter" = "orange"
+"variable.other.member" = "cyan"
+"label" = "purple"
+"punctuation" = "fg"
+"keyword" = "pink"
+"operator" = "pink"
+"function" = "green"
+"function.macro" = "purple"
+"tag" = "pink"
+"namespace" = "cyan"
+"special" = "purple"
+"markup.heading" = { fg = "purple", modifiers = ["bold"] }
+"markup.list" = "orange"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "cyan", underline = { style = "line" } }
+"markup.link.text" = "pink"
+"markup.quote" = { fg = "comment", modifiers = ["italic"] }
+"markup.raw" = "green"
+"diff.plus" = "green"
+"diff.minus" = "red"
+"diff.delta" = "cyan"
+"diff.delta.moved" = "purple"
+"diff.delta.conflict" = "orange"
+"ui.background" = { bg = "bg" }
+"ui.background.separator" = "selection"
+"ui.text" = "fg"
+"ui.text.focus" = { fg = "fg", bg = "bg_light" }
+"ui.text.inactive" = "comment"
+"ui.text.info" = "fg"
+"ui.text.directory" = "cyan"
+"ui.selection" = { bg = "selection" }
+"ui.cursor" = { fg = "bg", bg = "comment" }
+"ui.cursor.primary" = { fg = "bg", bg = "fg" }
+"ui.cursor.match" = { fg = "yellow", modifiers = ["bold"] }
+"ui.cursorline.primary" = { bg = "bg_light" }
+"ui.cursorline.secondary" = { bg = "bg_dark" }
+"ui.gutter" = { bg = "bg" }
+"ui.gutter.selected" = { bg = "bg_light" }
+"ui.linenr" = "comment"
+"ui.linenr.selected" = "fg"
+"ui.debug.breakpoint" = "red"
+"ui.debug.active" = "yellow"
+"ui.highlight" = { bg = "selection" }
+"ui.highlight.frameline" = { bg = "bg_lighter" }
+"ui.statusline" = { fg = "fg", bg = "bg_dark" }
+"ui.statusline.separator" = { fg = "comment", bg = "bg_dark" }
+"ui.statusline.inactive" = { fg = "comment", bg = "bg_dark" }
+"ui.statusline.normal" = { fg = "bg", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg", bg = "pink", modifiers = ["bold"] }
+"ui.bufferline" = { fg = "comment", bg = "bg_dark" }
+"ui.bufferline.active" = { fg = "fg", bg = "bg", underline = { color = "purple", style = "line" } }
+"ui.bufferline.background" = { bg = "bg_dark" }
+"ui.popup" = { fg = "fg", bg = "bg_light" }
+"ui.popup.info" = { fg = "fg", bg = "bg_light" }
+"ui.picker.header" = { fg = "fg", bg = "bg_dark", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "comment", bg = "bg_dark" }
+"ui.picker.header.column.active" = { fg = "fg", bg = "bg_dark", modifiers = ["bold"], underline = { color = "purple", style = "line" } }
+"ui.window" = "selection"
+"ui.help" = { fg = "fg", bg = "bg_light" }
+"ui.menu" = { fg = "fg", bg = "bg_light" }
+"ui.menu.selected" = { fg = "fg", bg = "selection" }
+"ui.menu.scroll" = { fg = "comment", bg = "bg_light" }
+"ui.virtual.whitespace" = "selection"
+"ui.virtual.indent-guide" = "selection"
+"ui.virtual.ruler" = { bg = "bg_light" }
+"ui.virtual.inlay-hint" = "comment"
+"ui.virtual.wrap" = "comment"
+"ui.virtual.jump-label" = { fg = "bg", bg = "pink", modifiers = ["bold"] }
+"tabstop" = { modifiers = ["italic"], underline = { color = "orange", style = "line" } }
+"error" = "red"
+"warning" = "yellow"
+"info" = "cyan"
+"hint" = "comment"
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "comment", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+bg = "#0D1117"
+bg_dark = "#03070D"
+bg_light = "#21252B"
+bg_lighter = "#35393F"
+fg = "#F8F8F2"
+selection = "#2A3C4A"
+comment = "#7A8495"
+cyan = "#56B6C2"
+green = "#98C379"
+orange = "#D19A66"
+pink = "#C678DD"
+purple = "#61AFEF"
+red = "#E06C75"
+yellow = "#E5C07B"
