@@ -3043,7 +3043,7 @@ formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "cue"
-source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "8a5f273bfa281c66354da562f2307c2d394b6c81" }
+source = { git = "https://github.com/cue-lang/tree-sitter-cue", rev = "ba4356732fcf8b203f7f98cfb6e70390d5dc1da8" }
 
 [[language]]
 name = "slang"
