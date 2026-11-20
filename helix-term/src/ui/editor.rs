@@ -14,6 +14,10 @@ use crate::{
 };
 
 use helix_core::{
+    conflict::{
+        conflict_marker_lines, conflict_pair_sections, refine_diff, ConflictRegion, SectionKind,
+        NO_HIGHLIGHT_PAIR,
+    },
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -94,6 +98,18 @@ impl EditorView {
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
+        // Parse conflicts once — all consumers reuse these results.
+        let conflicts = doc.conflicts();
+
+        // Conflict section/marker backgrounds — registered first so they have
+        // the lowest priority and are overwritten by cursorline and DAP highlights.
+        if let Some(deco) = Self::conflict_section_line_deco(doc, view, theme, conflicts) {
+            decorations.add_decoration(deco);
+        }
+        if let Some(deco) = Self::conflict_marker_line_deco(doc, view, theme, conflicts) {
+            decorations.add_decoration(deco);
+        }
+
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }
@@ -143,7 +159,11 @@ impl EditorView {
             overlays.push(overlay);
         }
 
-        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
+        Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays, conflicts);
+
+        if let Some(overlay) = Self::doc_conflict_refine_highlights(doc, view, theme, conflicts) {
+            overlays.push(overlay);
+        }
 
         if is_focused {
             if config.lsp.auto_document_highlight {
@@ -180,8 +200,6 @@ impl EditorView {
             );
         }
 
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
-
         let primary_cursor = doc
             .selection(view.id)
             .primary()
@@ -216,6 +234,9 @@ impl EditorView {
             theme,
             decorations,
         );
+        // Rulers are painted after render_document so they always appear on top
+        // of decoration backgrounds (conflict sections, cursorline, etc.).
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -351,6 +372,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
         overlay_highlights: &mut Vec<OverlayHighlights>,
+        conflicts: &[ConflictRegion],
     ) {
         // Skip redundant work if no diagnostics.
         if doc.diagnostics().is_empty() {
@@ -399,6 +421,16 @@ impl EditorView {
         };
 
         for diagnostic in doc.diagnostics() {
+            // Skip diagnostics that overlap any conflict region. The LSP sees
+            // conflict markers as broken code and produces spurious diagnostics
+            // that are distracting and meaningless to the user.
+            if conflicts
+                .iter()
+                .any(|c| diagnostic.range.start < c.end && diagnostic.range.end > c.start)
+            {
+                continue;
+            }
+
             // Separate diagnostics into different Vecs by severity.
             let vec = match diagnostic.severity {
                 Some(Severity::Info) => &mut info_vec,
@@ -659,7 +691,153 @@ impl EditorView {
         Some(OverlayHighlights::Homogeneous { highlight, ranges })
     }
 
-    /// Render bufferline at the top
+    /// Word-level diff highlights for the conflict region the cursor is in.
+    ///
+    /// Returns `None` when the cursor is not inside a conflict, when there are
+    /// no differing tokens, or when the required theme scopes are absent.
+    pub fn doc_conflict_refine_highlights(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+        conflicts: &[ConflictRegion],
+    ) -> Option<OverlayHighlights> {
+        let removed_hl = theme
+            .find_highlight("diff.conflict.removed")
+            .or_else(|| theme.find_highlight("diff.minus"))?;
+        let added_hl = theme
+            .find_highlight("diff.conflict.added")
+            .or_else(|| theme.find_highlight("diff.plus"))?;
+
+        let text = doc.text();
+        let view_offset = doc.view_offset(view.id);
+        let inner = view.inner_area(doc);
+        let first_line = text.char_to_line(view_offset.anchor.min(text.len_chars()));
+        let last_line = first_line + inner.height as usize;
+
+        let mut cache = doc.conflict_cache.borrow_mut();
+
+        // Accumulate word-diff spans for every conflict visible in the viewport.
+        let mut spans: Vec<(syntax::Highlight, ops::Range<usize>)> = Vec::new();
+        for region in conflicts {
+            let region_first_line = text.char_to_line(region.start);
+            let region_last_line = text.char_to_line(region.end);
+            if region_last_line < first_line || region_first_line > last_line {
+                continue;
+            }
+
+            let entry = cache.entry(region.start).or_default();
+            if entry.pair == NO_HIGHLIGHT_PAIR {
+                continue;
+            }
+            let pair = entry.pair.min(region.num_refine_pairs().saturating_sub(1));
+            let Some((left, right)) = conflict_pair_sections(region, pair) else {
+                continue;
+            };
+
+            // For side↔side pairs (no Base involved) both sides are
+            // "added" — neither is conceptually "removed" in a conflict.
+            let is_side_side = region.refine_pair_indices(pair).is_some_and(|(i, j)| {
+                region.sections[i].kind == SectionKind::Side
+                    && region.sections[j].kind == SectionKind::Side
+            });
+            let left_hl = if is_side_side { added_hl } else { removed_hl };
+
+            let (removed, added) = entry
+                .diffs
+                .get_or_insert_with(|| refine_diff(text, left, right));
+            spans.extend(removed.iter().map(|r| (left_hl, r.clone())));
+            spans.extend(added.iter().map(|r| (added_hl, r.clone())));
+        }
+
+        if spans.is_empty() {
+            return None;
+        }
+
+        // Sort by start position — regions are disjoint so spans from different
+        // conflicts never overlap, but we need a consistent order for rendering.
+        spans.sort_unstable_by_key(|(_, r)| r.start);
+
+        Some(OverlayHighlights::Heterogenous { highlights: spans })
+    }
+
+    /// Returns a decoration that paints per-section background colors across
+    /// every line of each conflict section:
+    ///   - `diff.conflict.current`  — section index % 3 == 0 (ours / first side)
+    ///   - `diff.conflict.base`     — section index % 3 == 1 (common base)
+    ///   - `diff.conflict.incoming` — section index % 3 == 2 (theirs / last side)
+    ///
+    /// For jj N-way conflicts the colors cycle through the three slots by section
+    /// index.  Returns `None` if none of the three scopes are defined in the theme.
+    pub fn conflict_section_line_deco<'a>(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+        conflicts: &[ConflictRegion],
+    ) -> Option<impl Decoration + 'a> {
+        let styles = [
+            theme.try_get("diff.conflict.current"),
+            theme.try_get("diff.conflict.base"),
+            theme.try_get("diff.conflict.incoming"),
+        ];
+        if styles.iter().all(|s| s.is_none()) {
+            return None;
+        }
+        let text = doc.text();
+        // Collect (line_start, line_end_excl, slot) for every section content range.
+        let ranges: Vec<(usize, usize, usize)> = conflicts
+            .iter()
+            .flat_map(|region| {
+                region.sections.iter().enumerate().map(|(i, s)| {
+                    let l0 = text.char_to_line(s.content_start);
+                    let l1 = text.char_to_line(s.content_end);
+                    let slot = match s.kind {
+                        helix_core::conflict::SectionKind::Base => 1,
+                        helix_core::conflict::SectionKind::Side => {
+                            let side_idx = region.sections[..i]
+                                .iter()
+                                .filter(|s| s.kind == helix_core::conflict::SectionKind::Side)
+                                .count();
+                            if side_idx % 2 == 0 {
+                                0
+                            } else {
+                                2
+                            }
+                        }
+                    };
+                    (l0, l1, slot)
+                })
+            })
+            .collect();
+        let inner = view.inner_area(doc);
+        Some(move |renderer: &mut TextRenderer, pos: LinePos| {
+            for &(l0, l1, slot) in &ranges {
+                if pos.doc_line >= l0 && pos.doc_line < l1 {
+                    if let Some(style) = styles[slot] {
+                        renderer
+                            .set_style(Rect::new(inner.x, pos.visual_line, inner.width, 1), style);
+                    }
+                    break;
+                }
+            }
+        })
+    }
+
+    pub fn conflict_marker_line_deco<'a>(
+        doc: &Document,
+        view: &View,
+        theme: &Theme,
+        conflicts: &[ConflictRegion],
+    ) -> Option<impl Decoration + 'a> {
+        let style = theme.try_get("diff.conflict.marker")?;
+        let lines = conflict_marker_lines(conflicts, doc.text());
+        let inner = view.inner_area(doc);
+        Some(move |renderer: &mut TextRenderer, pos: LinePos| {
+            if lines.binary_search(&pos.doc_line).is_ok() {
+                renderer.set_style(Rect::new(inner.x, pos.visual_line, inner.width, 1), style);
+            }
+        })
+    }
+
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
