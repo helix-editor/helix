@@ -1,0 +1,56 @@
+# Binary dark theme uses exactly two colors - `white` and `black`.
+# This means it will render on basically *anything*
+
+"ui.menu" = { fg = "black", bg = "white" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.linenr" = { fg = "white", bg = "black" }
+"ui.popup" = { bg = "black" }
+"ui.window" = { bg = "black" }
+"ui.linenr.selected" = { fg = "white", bg = "black", modifiers = ["bold"] }
+"ui.selection" = { fg = "gray", modifiers = ["reversed"] }
+"comment" = { fg = "white", modifiers = ["italic"] }
+"ui.statusline" = { fg = "white", bg = "black" }
+"ui.statusline.inactive" = { fg = "white", bg = "black" }
+"ui.help" = { fg = "white", bg = "black" }
+"ui.cursor" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.virtual.whitespace" = "white"
+"ui.virtual.jump-label" = { fg = "white", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
+"variable" = "white"
+"constant.numeric" = "white"
+"constant" = "white"
+"attribute" = "white"
+"type" = "white"
+"ui.cursor.match" = { fg = "white", modifiers = ["underlined"] }
+"string"  = "white"
+"variable.other.member" = "white"
+"constant.character.escape" = "white"
+"function" = "white"
+"constructor" = "white"
+"special" = "white"
+"keyword" = "white"
+"label" = "white"
+"namespace" = "white"
+
+"markup.heading" = "white"
+"markup.list" = "white"
+"markup.bold" = { fg = "white", modifiers = ["bold"] }
+"markup.italic" = { fg = "white", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "white", modifiers = ["underlined"] }
+"markup.link.text" = "white"
+"markup.quote" = "white"
+"markup.raw" = "white"
+
+"diff.plus" = "white"
+"diff.delta" = "white"
+"diff.minus" = "white"
+
+"diagnostic" = { modifiers = ["underlined"] }
+"ui.gutter" = { bg = "black" }
+"info" = "white"
+"hint" = "white"
+"debug" = "white"
+"warning" = "white"
+"error" = "white"
