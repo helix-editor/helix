@@ -354,7 +354,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             .map(ToOwned::to_owned)
             .collect();
 
-        async move {
+        let search = move || {
             let searcher = state.searcher_builder.build();
             state.walk_builder.build_parallel().run(|| {
                 let mut searcher = searcher.clone();
@@ -419,9 +419,8 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                     }
                 })
             });
-            Ok(())
-        }
-        .boxed()
+        };
+        async move { Ok(tokio::task::spawn_blocking(search).await?) }.boxed()
     };
     let picker = Picker::new(
         columns,
