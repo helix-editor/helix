@@ -171,6 +171,15 @@ impl Range {
         self.from() <= pos && pos < self.to()
     }
 
+    /// Returns equal if anchor and head are the same, and disregards old_visual_position. When
+    /// a single character is selected, the orientation (i.e. which is the head and which is the
+    /// anchor) is indistinguishable and should be disregarded.
+    pub fn visual_eq(&self, other: Range) -> bool {
+        self.anchor == other.anchor && self.head == other.head
+            // TODO: this does not work for graphemes like \r\n
+            || self.len() == 1 && self.from() == other.from() && self.to() == other.to()
+    }
+
     /// Map a range through a set of changes. Returns a new range representing
     /// the same position after the changes are applied. Note that this
     /// function runs in O(N) (N is number of changes) and can therefore
@@ -699,6 +708,14 @@ impl Selection {
     /// returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
         is_subset::<true>(self.range_bounds(), other.range_bounds())
+    }
+
+    /// Returns true if two selections are identical as perceived by the user
+    pub fn visual_eq(&self, other: Selection) -> bool {
+        self.ranges()
+            .iter()
+            .zip(other.ranges().iter())
+            .all(|(&r1, &r2)| r1.visual_eq(r2))
     }
 }
 
