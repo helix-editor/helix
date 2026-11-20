@@ -34,6 +34,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "B" => move_prev_long_word_start,
         "E" => move_next_long_word_end,
 
+        "A-w" => move_next_sub_word_start,
+        "A-b" => move_prev_sub_word_start,
+        "A-e" => move_next_sub_word_end,
+
         "v" => select_mode,
         "G" => goto_line,
         "g" => { "Goto"
@@ -91,8 +95,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-I" | "A-S-down" => select_all_children,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
-        "A-e" => move_parent_node_end,
-        "A-b" => move_parent_node_start,
+        "A-l" => move_parent_node_end,
+        "A-h" => move_parent_node_start,
         "A-a" => select_all_siblings,
 
         "%" => select_all,
@@ -352,9 +356,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "W" => extend_next_long_word_start,
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
+        "A-w" => extend_next_sub_word_start,
+        "A-b" => extend_prev_sub_word_start,
+        "A-e" => extend_next_sub_word_end,
 
-        "A-e" => extend_parent_node_end,
-        "A-b" => extend_parent_node_start,
+        "A-l" => extend_parent_node_end,
+        "A-h" => extend_parent_node_start,
 
         "n" => extend_search_next,
         "N" => extend_search_prev,
