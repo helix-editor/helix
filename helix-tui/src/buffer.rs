@@ -409,18 +409,20 @@ impl Buffer {
         }
     }
 
-    /// Print at most the first `width` characters of a string if enough space is available
+    /// Print at most `width` columns of indexed graphemes if enough space is available
     /// until the end of the line.
-    /// If `ellipsis` is true appends a `…` at the end of truncated lines.
+    /// If `truncate_end` is true appends a `…` at the end of truncated lines.
     /// If `truncate_start` is `true`, adds a `…` at the beginning of truncated lines.
+    /// Grapheme indices are source byte offsets passed to `style`; displayed graphemes
+    /// may differ from the source without changing those offsets or boundaries.
     #[allow(clippy::too_many_arguments)]
-    pub fn set_string_anchored(
+    pub fn set_graphemes_anchored<'a>(
         &mut self,
         x: u16,
         y: u16,
         truncate_start: bool,
         truncate_end: bool,
-        string: &str,
+        mut graphemes: impl Iterator<Item = (usize, &'a str)>,
         width: usize,
         style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
     ) -> (u16, u16) {
@@ -431,10 +433,11 @@ impl Buffer {
 
         let mut index = self.index_of(x, y);
         let mut rendered_width = 0;
-        let mut graphemes = string.grapheme_indices(true);
+        let width = width.min(self.area.right().saturating_sub(x) as usize);
 
         if truncate_start {
-            for _ in 0..graphemes.next().map(|(_, g)| g.width()).unwrap_or_default() {
+            let first_width = graphemes.next().map(|(_, g)| g.width()).unwrap_or_default();
+            for _ in 0..first_width.min(width) {
                 self.content[index].set_symbol("…");
                 index += 1;
                 rendered_width += 1;
@@ -448,6 +451,9 @@ impl Buffer {
             }
             if grapheme_width == 0 {
                 continue;
+            }
+            if grapheme_width > width.saturating_sub(rendered_width) {
+                break;
             }
 
             self.content[index].set_symbol(s);
@@ -797,6 +803,35 @@ mod tests {
         let mut cell = Cell::default();
         cell.set_symbol(s);
         cell
+    }
+
+    #[test]
+    fn anchored_graphemes_stay_within_width() {
+        for (text, width, truncate_start, truncate_end, expected) in [
+            ("界a", 0, true, true, "    "),
+            ("界a", 1, true, true, " …  "),
+            ("界a", 1, false, false, "    "),
+            ("ab", 1, false, false, " a  "),
+            ("abcd", 10, false, false, " abc"),
+            ("abcd", 10, false, true, " ab…"),
+        ] {
+            let mut buffer = Buffer::empty(Rect::new(5, 2, 4, 1));
+            buffer.set_graphemes_anchored(
+                6,
+                2,
+                truncate_start,
+                truncate_end,
+                text.grapheme_indices(true),
+                width,
+                |_| Style::default(),
+            );
+            let actual: String = buffer
+                .content
+                .iter()
+                .map(|cell| cell.symbol.as_str())
+                .collect();
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]
