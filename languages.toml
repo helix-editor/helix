@@ -175,6 +175,7 @@ vtsls = { command = "vtsls", args = ["--stdio"], config = { vtsls.autoUseWorkspa
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl-analyzer = { command = "wgsl-analyzer" }
 wikitext-lsp = { command = "wikitext-lsp", args = ["--stdio"]}
+xo = { command = "xo", args = ["lsp"] }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yamma-server = { command = "yamma-server" }
 yls = { command = "yls", args = ["-vv"] }
@@ -5655,3 +5656,17 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "xo"
+scope = "source.xo"
+injection-regex = "xo"
+file-types = ["xo"]
+roots = ["xo.mod"]
+comment-tokens = ["//", "///"]
+indent = { tab-width = 2, unit = "  " }
+language-servers = [ "xo" ]
+
+[[grammar]]
+name = "xo"
+source = { git = "https://github.com/xo-lang/tree-sitter-xo", rev = "99b2cfc2ebb6aa6f52751462415573e86fb41a89" }
