@@ -148,6 +148,7 @@ solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
 spade-language-server = {command = "swim", args = ["lsp"]}
+sqls = { command = "sqls" }
 starpls = {command = "starpls"}
 styx = { command = "styx", args = ["lsp"] }
 svlangserver = { command = "svlangserver", args = [], config.systemverilog.includeIndexing = ["*.{v,vh,sv,svh}", "**/*.{v,vh,sv,svh}"] }
@@ -2627,6 +2628,7 @@ comment-token = "--"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
 injection-regex = "sql"
+language-servers = [ "sqls" ]
 
 [[grammar]]
 name = "sql"
