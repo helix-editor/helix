@@ -5144,7 +5144,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "doxyfile"
-source = { git = "https://github.com/tingerrr/tree-sitter-doxyfile/", rev = "18e44c6da639632a4e42264c7193df34be915f34" }
+source = { git = "https://tangled.org/did:plc:dgmcuwoai3wasttm4joz37fy", rev = "18e44c6da639632a4e42264c7193df34be915f34" }
 
 [[language]]
 name = "cross-config"
