@@ -383,5 +383,5 @@ These scopes are used for theming the editor interface:
 | `diagnostic.deprecated`           | Diagnostics with deprecated tag (editing area)                                                 |
 | `tabstop`                         | Snippet placeholder                                                                            |
 
-[editor-section]: ./configuration.md#editor-section
+[editor-section]: ./editor.md#editor-section
 [#2380]: https://github.com/helix-editor/helix/issues/2380
