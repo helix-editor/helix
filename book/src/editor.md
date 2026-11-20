@@ -160,6 +160,7 @@ The following statusline elements can be configured:
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
 | `code-action-hint` | Indicator for when code actions are available |
+| `yanked-selections` | The number of selections yanked in the selected register (displayed only if > 1) |
 
 ### `[editor.lsp]` Section
 
