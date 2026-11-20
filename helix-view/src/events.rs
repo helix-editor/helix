@@ -41,4 +41,8 @@ events! {
         old: &'a Config,
         new: &'a Config
     }
+
+    WorkspaceDidChange<'a> {
+        editor: &'a mut Editor
+    }
 }
