@@ -1,13 +1,21 @@
 [
-  (use_items)
-  (fields)
-  (variant_items)
-  (variant_payload)
-  (flags)
-  (enum_items)
-  (union_items)
-  (args)
-  (resource_items)
+  (body)
+  (definitions)
+  (nested_package_definition) @indent
+  (param_list)
+  (result_list)
+  (tuple)
+  (list)
+  (option)
+  (map)
+  (result)
+  (future)
+  (stream)
+  (handle)
 ] @indent
 
-[ "}" ")" ] @outdent
+[
+  "}"
+  ")"
+  ">"
+] @outdent
