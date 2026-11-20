@@ -437,8 +437,9 @@ impl Application {
             );
 
             // Re-parse any open documents with the new language config.
+            let mut doc_ids = Vec::with_capacity(self.editor.documents.len());
             let lang_loader = self.editor.syn_loader.load();
-            for document in self.editor.documents.values_mut() {
+            for (doc_id, document) in self.editor.documents.iter_mut() {
                 // Re-detect .editorconfig
                 document.detect_editor_config();
                 document.detect_language(&lang_loader);
@@ -448,11 +449,22 @@ impl Application {
                     document,
                 );
                 document.replace_diagnostics(diagnostics, &[], None);
+                doc_ids.push(*doc_id);
             }
 
             self.terminal.reconfigure((&default_config.editor).into())?;
             // Store new config
             self.config.store(Arc::new(default_config));
+
+            // The re-detected language config can change the set of language servers of a
+            // document - most notably the workspace `.helix/languages.toml` only becomes visible
+            // once the workspace is trusted (see `:workspace-trust`). Refresh the servers of
+            // every open document (after storing the config, so `lsp.enable` of the freshly
+            // loaded config is honored) so the running servers match the new config instead of
+            // the one that was active when the document was opened.
+            for doc_id in doc_ids {
+                self.editor.refresh_language_servers(doc_id);
+            }
             Ok(())
         };
 

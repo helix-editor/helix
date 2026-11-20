@@ -20,4 +20,5 @@ mod test {
     mod commands;
     mod movement;
     mod splits;
+    mod workspace_trust;
 }
