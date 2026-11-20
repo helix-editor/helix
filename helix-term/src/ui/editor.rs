@@ -94,6 +94,10 @@ impl EditorView {
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
+        if !(is_focused && self.terminal_focused) {
+            surface.set_style(area, theme.get("ui.background.inactive"))
+        }
+
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }
