@@ -24,6 +24,11 @@
 ] @keyword.control.conditional
 
 [
+  (and)
+  (or)
+] @keyword.operator
+
+[
   (boolean)
 ] @constant.builtin.boolean
 
