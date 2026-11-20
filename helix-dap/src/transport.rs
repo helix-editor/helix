@@ -24,11 +24,16 @@ pub struct Request {
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct Response {
-    // seq is omitted as unused and is not sent by some implementations
+    // seq is unused in received responses and is not sent by some implementations,
+    // but other implementations could expect it in response to reverse requests
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seq: Option<u64>,
     pub request_seq: u64,
     pub success: bool,
     pub command: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<Value>,
 }
 
