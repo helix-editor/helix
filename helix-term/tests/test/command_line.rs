@@ -3,6 +3,25 @@ use super::*;
 use helix_core::diagnostic::Severity;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn goto_line_preview_is_reset_when_input_is_deleted() -> anyhow::Result<()> {
+    let mut app = AppBuilder::new()
+        .with_input_text("one\n#[t|]#wo\nthree\nfour\nfive\nsix")
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(":5<backspace>"),
+        Some(&|app| {
+            let (view, doc) = helix_view::current_ref!(app.editor);
+            let head = doc.selection(view.id).primary().head;
+            assert_eq!(doc.text().char_to_line(head), 1);
+        }),
+        false,
+    )
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn history_completion() -> anyhow::Result<()> {
     test_key_sequence(
         &mut AppBuilder::new().build()?,
