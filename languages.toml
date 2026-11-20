@@ -1651,7 +1651,7 @@ source = { git = "https://codeberg.org/kpbaks/tree-sitter-lua-format-string", re
 
 [[grammar]]
 name = "teal"
-source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "3db655924b2ff1c54fdf6371b5425ea6b5dccefe" }
+source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "ac6b42ffb23d5d52b582c02508dd3524ac0ba3df" }
 
 [[language]]
 name = "teal"
