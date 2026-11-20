@@ -42,7 +42,6 @@ pub trait Component: Any + AnyComponent {
     fn handle_event(&mut self, _event: &Event, _ctx: &mut Context) -> EventResult {
         EventResult::Ignored(None)
     }
-    // , args: ()
 
     /// Should redraw? Useful for saving redraw cycles if we know component didn't change.
     fn should_update(&self) -> bool {
@@ -66,12 +65,13 @@ pub trait Component: Any + AnyComponent {
         None
     }
 
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-
     fn id(&self) -> Option<&'static str> {
         None
+    }
+
+    #[must_use]
+    fn is_menu(&self) -> bool {
+        false
     }
 }
 
@@ -137,10 +137,10 @@ impl Compositor {
     }
 
     pub fn remove_type<T: 'static>(&mut self) {
-        let type_name = std::any::type_name::<T>();
         self.layers
-            .retain(|component| component.type_name() != type_name);
+            .retain(|component| !component.as_any().is::<T>());
     }
+
     pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event, a macro is being recorded, and a macro isn't being replayed,
         // push the key event to the recording.
@@ -196,17 +196,17 @@ impl Compositor {
         (None, CursorKind::Hidden)
     }
 
-    pub fn has_component(&self, type_name: &str) -> bool {
+    #[must_use]
+    pub fn has_component<T: 'static>(&self) -> bool {
         self.layers
             .iter()
-            .any(|component| component.type_name() == type_name)
+            .any(|component| component.as_any().is::<T>())
     }
 
     pub fn find<T: 'static>(&mut self) -> Option<&mut T> {
-        let type_name = std::any::type_name::<T>();
         self.layers
             .iter_mut()
-            .find(|component| component.type_name() == type_name)
+            .find(|component| component.as_any().is::<T>())
             .and_then(|component| component.as_any_mut().downcast_mut())
     }
 
