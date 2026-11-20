@@ -22,3 +22,7 @@ To set up Helix:
 2. Copy the `runtime` directory to a location that `hx` searches for runtime files. A typical location on Linux/macOS is `~/.config/helix/runtime`.
 
 To see the runtime directories that `hx` searches, run `hx --health`. If necessary, you can override the default runtime location by setting the `HELIX_RUNTIME` environment variable.
+
+## Desktop entry and shell completions
+
+The source tree includes an XDG desktop entry and completion scripts for Bash, Fish, Zsh, Elvish, and Nushell under [`contrib/`](https://github.com/helix-editor/helix/tree/master/contrib). See [Configure the desktop shortcut](./building-from-source.md#configure-the-desktop-shortcut) and [Shell completions](./building-from-source.md#shell-completions) for installation instructions. Packaged installs usually ship these files already.
