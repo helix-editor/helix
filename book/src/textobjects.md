@@ -16,6 +16,7 @@ function or block of code.
 | `w`                    | Word                     |
 | `W`                    | WORD                     |
 | `p`                    | Paragraph                |
+| `i`                    | Indentation level        |
 | `(`, `[`, `'`, etc.    | Specified surround pairs |
 | `m`                    | The closest surround pair    |
 | `f`                    | Function                 |
