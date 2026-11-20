@@ -33,6 +33,7 @@ impl GutterType {
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
             GutterType::CodeActionHint => code_action_hint(editor, doc, view, theme, is_focused),
+            GutterType::Fold => fold(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -43,6 +44,7 @@ impl GutterType {
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
             GutterType::CodeActionHint => 1,
+            GutterType::Fold => fold_width(view),
         }
     }
 }
@@ -85,6 +87,66 @@ pub fn diagnostic<'doc>(
                     Some(Severity::Hint) => hint,
                 }
             })
+        },
+    )
+}
+
+/// The width of the widest fold symbol (at least one column).
+fn fold_width(view: &View) -> usize {
+    use helix_core::unicode::width::UnicodeWidthStr;
+    let config = &view.gutters.fold;
+    config.foldable.width().max(config.folded.width()).max(1)
+}
+
+/// Shows a symbol (`▶` by default) for folded lines and another one (`▼` by default)
+/// for lines that start a foldable block.
+pub fn fold<'doc>(
+    _editor: &'doc Editor,
+    doc: &'doc Document,
+    view: &View,
+    theme: &Theme,
+    _is_focused: bool,
+) -> GutterFn<'doc> {
+    let folded_style = theme
+        .try_get("ui.gutter.fold.folded")
+        .unwrap_or_else(|| theme.get("ui.linenr.selected"));
+    let foldable_style = theme
+        .try_get("ui.gutter.fold")
+        .unwrap_or_else(|| theme.get("ui.linenr"));
+    let folded_symbol = view.gutters.fold.folded.clone();
+    let foldable_symbol = view.gutters.fold.foldable.clone();
+    let text = doc.text().slice(..);
+    let syntax = doc.syntax();
+    let tab_width = doc.tab_width();
+    let folds = doc.folds(view.id);
+    let width = fold_width(view);
+    // pad the narrower symbol so the whole gutter column is styled
+    let pad = move |out: &mut String, symbol: &str| {
+        use helix_core::unicode::width::UnicodeWidthStr;
+        out.push_str(symbol);
+        out.extend(std::iter::repeat_n(
+            ' ',
+            width.saturating_sub(symbol.width()),
+        ));
+    };
+
+    Box::new(
+        move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
+            if !first_visual_line {
+                return None;
+            }
+            let line_start = text.line_to_char(line);
+            let line_end = helix_core::line_ending::line_end_char_index(&text, line);
+            if folds
+                .iter()
+                .any(|fold| line_start <= fold.start && fold.start <= line_end)
+            {
+                pad(out, &folded_symbol);
+                return Some(folded_style);
+            }
+            helix_core::fold::foldable_range(text, syntax, line, tab_width)?;
+            pad(out, &foldable_symbol);
+            Some(foldable_style)
         },
     )
 }
@@ -408,6 +470,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
+            ..Default::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -431,6 +494,7 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
+            ..Default::default()
         };
 
         let mut view = View::new(DocumentId::default(), gutters);

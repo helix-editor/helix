@@ -94,6 +94,8 @@ pub struct GutterConfig {
     pub layout: Vec<GutterType>,
     /// Options specific to the "line-numbers" gutter
     pub line_numbers: GutterLineNumbersConfig,
+    /// Options specific to the "fold" gutter
+    pub fold: GutterFoldConfig,
 }
 
 impl Default for GutterConfig {
@@ -107,6 +109,7 @@ impl Default for GutterConfig {
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
+            fold: GutterFoldConfig::default(),
         }
     }
 }
@@ -162,6 +165,24 @@ where
     }
 
     deserializer.deserialize_any(GutterVisitor)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterFoldConfig {
+    /// Symbol shown next to lines that start a foldable block. Defaults to `▼`.
+    pub foldable: String,
+    /// Symbol shown next to folded blocks. Defaults to `▶`.
+    pub folded: String,
+}
+
+impl Default for GutterFoldConfig {
+    fn default() -> Self {
+        Self {
+            foldable: "▼".to_owned(),
+            folded: "▶".to_owned(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -885,6 +906,8 @@ pub enum GutterType {
     Diff,
     /// Indicator for when code actions are available
     CodeActionHint,
+    /// Code folding indicators (click to fold/unfold)
+    Fold,
 }
 
 impl std::str::FromStr for GutterType {
@@ -897,8 +920,9 @@ impl std::str::FromStr for GutterType {
             "line-numbers" => Ok(Self::LineNumbers),
             "diff" => Ok(Self::Diff),
             "code-action-hint" => Ok(Self::CodeActionHint),
+            "fold" => Ok(Self::Fold),
             _ => anyhow::bail!(
-                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers` or `diff`."
+                "Gutter type can only be `diagnostics`, `spacer`, `line-numbers`, `diff`, `code-action-hint` or `fold`."
             ),
         }
     }

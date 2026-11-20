@@ -255,6 +255,11 @@
 | `align_view_top` | Align view top | normal: `` Zt ``, `` zt ``, select: `` Zt ``, `` zt `` |
 | `align_view_center` | Align view center | normal: `` Zc ``, `` Zz ``, `` zc ``, `` zz ``, select: `` Zc ``, `` Zz ``, `` zc ``, `` zz `` |
 | `align_view_bottom` | Align view bottom | normal: `` Zb ``, `` zb ``, select: `` Zb ``, `` zb `` |
+| `toggle_fold` | Toggle fold at cursor | normal: `` Za ``, `` za ``, select: `` Za ``, `` za `` |
+| `fold` | Fold code block at cursor or selected lines | normal: `` Zf ``, `` zf ``, select: `` Zf ``, `` zf `` |
+| `unfold` | Unfold code block at cursor | normal: `` Zo ``, `` zo ``, select: `` Zo ``, `` zo `` |
+| `fold_all` | Fold all code blocks | normal: `` ZM ``, `` zM ``, select: `` ZM ``, `` zM `` |
+| `unfold_all` | Unfold all code blocks | normal: `` ZR ``, `` zR ``, select: `` ZR ``, `` zR `` |
 | `scroll_up` | Scroll view up | normal: `` Zk ``, `` zk ``, `` Z<up> ``, `` z<up> ``, select: `` Zk ``, `` zk ``, `` Z<up> ``, `` z<up> `` |
 | `scroll_down` | Scroll view down | normal: `` Zj ``, `` zj ``, `` Z<down> ``, `` z<down> ``, select: `` Zj ``, `` zj ``, `` Z<down> ``, `` z<down> `` |
 | `match_brackets` | Goto matching bracket | normal: `` mm ``, select: `` mm `` |

@@ -323,6 +323,8 @@ These scopes are used for theming the editor interface:
 | `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.gutter.fold`                  | Fold gutter indicator for foldable lines (falls back to `ui.linenr`)                           |
+| `ui.gutter.fold.folded`           | Fold gutter indicator for folded lines (falls back to `ui.linenr.selected`)                    |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
@@ -355,6 +357,7 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (language servers are not required to set a kind)         |
 | `ui.virtual.wrap`                 | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
 | `ui.virtual.jump-label`           | Style for virtual jump labels                                                                  |
+| `ui.virtual.fold`                 | Placeholder shown in place of folded text (falls back to `ui.virtual.inlay-hint`)              |
 | `ui.menu`                         | Code and command completion menus                                                              |
 | `ui.menu.selected`                | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |

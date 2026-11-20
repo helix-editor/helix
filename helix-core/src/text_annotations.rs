@@ -279,6 +279,10 @@ pub struct TextAnnotations<'a> {
     inline_annotations: Vec<Layer<'a, InlineAnnotation, Option<Highlight>>>,
     overlays: Vec<Layer<'a, Overlay, Option<Highlight>>>,
     line_annotations: Vec<(Cell<usize>, RawBox<dyn LineAnnotation + 'a>)>,
+    /// Folded (hidden) char ranges, sorted by their start. See [`TextAnnotations::add_folds`].
+    folds: &'a [Range<usize>],
+    /// Index of the next fold that has not yet been passed during traversal.
+    fold_idx: Cell<usize>,
 }
 
 impl Debug for TextAnnotations<'_> {
@@ -286,6 +290,7 @@ impl Debug for TextAnnotations<'_> {
         f.debug_struct("TextAnnotations")
             .field("inline_annotations", &self.inline_annotations)
             .field("overlays", &self.overlays)
+            .field("folds", &self.folds)
             .finish_non_exhaustive()
     }
 }
@@ -298,6 +303,69 @@ impl<'a> TextAnnotations<'a> {
         for (next_anchor, layer) in &self.line_annotations {
             next_anchor.set(unsafe { layer.get().reset_pos(char_idx) });
         }
+        self.fold_idx
+            .set(self.folds.partition_point(|fold| fold.start < char_idx));
+    }
+
+    /// Add folded char ranges. The text inside a fold is not rendered; instead the
+    /// whole range is displayed as a single placeholder grapheme.
+    ///
+    /// The folds **must be sorted** by their start. Folds may be nested (a fold that
+    /// is fully contained in another fold) but must not partially overlap.
+    pub fn add_folds(&mut self, folds: &'a [Range<usize>]) -> &mut Self {
+        self.folds = folds;
+        self.fold_idx.set(0);
+        self
+    }
+
+    /// Returns `true` if any folds were added to these annotations.
+    pub fn has_folds(&self) -> bool {
+        !self.folds.is_empty()
+    }
+
+    /// If `char_idx` is hidden by a fold (or is the first char right after a fold
+    /// that ends at a line start) returns the start of the outermost such fold.
+    pub fn fold_start_containing(&self, char_idx: usize) -> Option<usize> {
+        self.fold_containing(char_idx).map(|fold| fold.start)
+    }
+
+    /// Returns the outermost fold that hides `char_idx`, see
+    /// [`TextAnnotations::fold_start_containing`].
+    pub fn fold_containing(&self, char_idx: usize) -> Option<Range<usize>> {
+        self.folds
+            .iter()
+            .take_while(|fold| fold.start < char_idx)
+            .filter(|fold| char_idx <= fold.end)
+            .min_by_key(|fold| fold.start)
+            .cloned()
+    }
+
+    /// If a fold starts at `char_idx` returns the end of that fold (the outermost one
+    /// if multiple folds start there). Must be called with monotonically increasing
+    /// `char_idx` after [`TextAnnotations::reset_pos`].
+    pub(crate) fn fold_at(&self, char_idx: usize) -> Option<usize> {
+        let mut idx = self.fold_idx.get();
+        while self
+            .folds
+            .get(idx)
+            .is_some_and(|fold| fold.start < char_idx)
+        {
+            idx += 1;
+        }
+        let mut end = None;
+        while let Some(fold) = self.folds.get(idx).filter(|fold| fold.start == char_idx) {
+            end = end.max(Some(fold.end));
+            idx += 1;
+        }
+        self.fold_idx.set(idx);
+        end.filter(|&end| end > char_idx)
+    }
+
+    /// Skips all inline annotations and overlays before `char_idx`.
+    /// Used when the traversal jumps over a fold.
+    pub(crate) fn skip_hidden(&self, char_idx: usize) {
+        reset_pos(&self.inline_annotations, char_idx, |annot| annot.char_idx);
+        reset_pos(&self.overlays, char_idx, |annot| annot.char_idx);
     }
 
     pub fn collect_overlay_highlights(&self, char_range: Range<usize>) -> OverlayHighlights {
