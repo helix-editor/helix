@@ -1,4 +1,5 @@
 use crate::{
+    alt,
     commands::Open,
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
@@ -290,11 +291,11 @@ impl<T: Component> Component for Popup<T> {
                         let _ = self.contents.handle_event(event, cx);
                         EventResult::Consumed(Some(close_fn))
                     }
-                    key!(PageDown) | ctrl!('d') => {
+                    key!(PageDown) | ctrl!('d') | alt!('j') => {
                         self.scroll_half_page_down();
                         EventResult::Consumed(None)
                     }
-                    key!(PageUp) | ctrl!('u') => {
+                    key!(PageUp) | ctrl!('u') | alt!('k') => {
                         self.scroll_half_page_up();
                         EventResult::Consumed(None)
                     }
