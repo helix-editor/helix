@@ -1,6 +1,6 @@
 use helix_loader::grammar::{build_grammars, fetch_grammars};
 
-const STRICT: bool = true;
+const STRICT: bool = false;
 
 fn main() {
     if std::env::var("HELIX_DISABLE_AUTO_GRAMMAR_BUILD").is_err() {
