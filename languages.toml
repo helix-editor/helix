@@ -77,6 +77,7 @@ jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 just-lsp = { command = "just-lsp" }
+kdl-lsp = { command = "kdl-lsp" } # https://github.com/kdl-org/kdl-rs/tree/main/tools/kdl-lsp
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 koto-ls = { command = "koto-ls" }
 kotlin-lsp = { command = "kotlin-lsp", args = ["--stdio"] }
@@ -3254,6 +3255,7 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 injection-regex = "kdl"
 formatter = { command = "kdlfmt", args = ["format", "-"] }
+language-servers = [ "kdl-lsp" ]
 
 [[grammar]]
 name = "kdl"
