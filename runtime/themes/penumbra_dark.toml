@@ -1,0 +1,191 @@
+# Author : Neal McKee <https://github.com/nealmckee/penumbra>
+# License: MIT
+# Penumbra v2 -- Helix Editor Theme (Penumbra Dark)
+
+# Syntax (N = 8, strict upright typography)
+"attribute" = "yellow"
+"type" = "yellow"
+"type.builtin" = "yellow"
+"type.enum.variant" = "orange"
+"type.parameter" = "yellow"
+"constructor" = "yellow"
+
+"constant" = "orange"
+"constant.builtin" = "orange"
+"constant.builtin.boolean" = "orange"
+"constant.numeric" = "orange"
+"constant.character" = "orange"
+"constant.character.escape" = "magenta"
+
+"string" = "green"
+"string.regexp" = "magenta"
+"string.special" = "green"
+"string.special.path" = "green"
+"string.special.symbol" = "magenta"
+"string.special.url" = { fg = "blue", underline = { style = "line" } }
+
+"comment" = "fg_comment"
+"comment.line" = "fg_comment"
+"comment.line.documentation" = "fg_comment"
+"comment.block" = "fg_comment"
+"comment.block.documentation" = "fg_comment"
+"comment.unused" = "fg_comment"
+
+"variable" = "fg_text"
+"variable.builtin" = "magenta"
+"variable.parameter" = "fg_text"
+"variable.other.member" = "fg_text"
+
+"label" = "red"
+"special" = "magenta"
+
+"punctuation" = "fg_text"
+"punctuation.bracket" = "fg_text"
+"punctuation.delimiter" = "fg_text"
+"punctuation.special" = "cyan"
+
+"keyword" = "purple"
+"keyword.control" = "purple"
+"keyword.operator" = "cyan"
+"keyword.directive" = "red"
+"keyword.function" = "purple"
+"keyword.storage" = "purple"
+
+"operator" = "cyan"
+
+"function" = "blue"
+"function.builtin" = "blue"
+"function.method" = "blue"
+"function.macro" = "red"
+"function.special" = "red"
+
+"tag" = "blue"
+"tag.builtin" = "blue"
+"namespace" = "yellow"
+"module" = "yellow"
+
+# Diff
+"diff.plus" = "green"
+"diff.plus.gutter" = "green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "red"
+"diff.delta" = "blue"
+"diff.delta.gutter" = "blue"
+"diff.delta.moved" = "cyan"
+"diff.delta.conflict" = { fg = "orange", modifiers = ["bold"] }
+
+# Markup / Markdown (Semantic styles for doc markup only)
+"markup.heading" = { fg = "fg_heading", modifiers = ["bold"] }
+"markup.heading.marker" = "fg_comment"
+"markup.heading.1" = { fg = "fg_heading", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "cyan", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "purple", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg_text", modifiers = ["bold"] }
+"markup.list" = "cyan"
+"markup.list.checked" = "green"
+"markup.list.unchecked" = "fg_comment"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue", underline = { style = "line" } }
+"markup.link.text" = "cyan"
+"markup.link.label" = "purple"
+"markup.quote" = "fg_comment"
+"markup.raw" = "green"
+"markup.raw.inline" = "green"
+"markup.raw.block" = "green"
+"markup.normal.completion" = "fg_text"
+"markup.normal.hover" = "fg_text"
+"markup.heading.completion" = { fg = "fg_heading", modifiers = ["bold"] }
+"markup.heading.hover" = { fg = "fg_heading", modifiers = ["bold"] }
+"markup.raw.inline.completion" = "green"
+"markup.raw.inline.hover" = "green"
+
+# UI Canvas & Hierarchy
+"ui.background" = { fg = "fg_text", bg = "bg_canvas" }
+"ui.background.separator" = { fg = "fg_comment" }
+"ui.cursor" = { fg = "bg_canvas", bg = "cursor_color" }
+"ui.cursor.primary" = { fg = "bg_canvas", bg = "cursor_color" }
+"ui.cursor.match" = { fg = "fg_heading", bg = "bg_high" }
+"ui.cursorline.primary" = { bg = "cursorline_bg" }
+"ui.cursorline.secondary" = { bg = "cursorline_bg" }
+"ui.cursorcolumn.primary" = { bg = "cursorline_bg" }
+"ui.cursorcolumn.secondary" = { bg = "cursorline_bg" }
+"ui.selection" = { bg = "sel_bg" }
+"ui.selection.primary" = { bg = "sel_bg" }
+"ui.gutter" = { bg = "bg_canvas" }
+"ui.gutter.selected" = { bg = "cursorline_bg" }
+"ui.linenr" = { fg = "fg_comment" }
+"ui.linenr.selected" = { fg = "fg_heading", bg = "cursorline_bg" }
+"ui.statusline" = { fg = "fg_text", bg = "bg_low" }
+"ui.statusline.inactive" = { fg = "fg_comment", bg = "bg_low" }
+"ui.statusline.normal" = { fg = "bg_high", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg_high", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg_high", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "fg_comment", bg = "bg_low" }
+"ui.bufferline" = { fg = "fg_comment", bg = "bg_low" }
+"ui.bufferline.active" = { fg = "fg_heading", bg = "bg_canvas" }
+"ui.bufferline.background" = { bg = "bg_low" }
+"ui.popup" = { fg = "fg_text", bg = "bg_low" }
+"ui.popup.info" = { fg = "fg_text", bg = "bg_low" }
+"ui.window" = { fg = "fg_comment" }
+"ui.help" = { fg = "fg_text", bg = "bg_low" }
+"ui.menu" = { fg = "fg_text", bg = "bg_low" }
+"ui.menu.selected" = { fg = "fg_heading", bg = "bg_high", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "fg_comment", bg = "bg_low" }
+"ui.picker.header" = { fg = "fg_text", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "fg_text" }
+"ui.picker.header.column.active" = { fg = "blue", modifiers = ["bold"] }
+"ui.highlight" = { bg = "bg_high" }
+"ui.highlight.frameline" = { bg = "sel_bg" }
+"ui.debug.breakpoint" = { fg = "red" }
+"ui.debug.active" = { fg = "orange", modifiers = ["bold"] }
+"ui.text" = "fg_text"
+"ui.text.focus" = { fg = "fg_heading", bg = "bg_high", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "fg_comment" }
+"ui.text.info" = { fg = "fg_text" }
+"ui.text.directory" = { fg = "blue" }
+"ui.virtual.ruler" = { bg = "bg_low" }
+"ui.virtual.whitespace" = { fg = "fg_comment" }
+"ui.virtual.indent-guide" = { fg = "bg_low" }
+"ui.virtual.inlay-hint" = { fg = "fg_comment", bg = "bg_low" }
+"ui.virtual.inlay-hint.parameter" = { fg = "fg_comment", bg = "bg_low" }
+"ui.virtual.inlay-hint.type" = { fg = "fg_comment", bg = "bg_low" }
+"ui.virtual.wrap" = { fg = "fg_comment" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
+"tabstop" = { underline = { color = "orange", style = "dashed" } }
+rainbow = ["cyan", "purple", "yellow", "blue", "green", "orange"]
+
+# Diagnostics & Alerts
+"error" = "red"
+"warning" = "orange"
+"info" = "blue"
+"hint" = "cyan"
+"diagnostic" = { underline = { style = "line" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+bg_low = "#383A3D"
+bg_canvas = "#2C2E31"
+bg_high = "#202225"
+sel_bg = "#484A4D"
+cursorline_bg = "#323437"
+cursor_color = "#EFE8DD"
+fg_comment = "#5E6063"
+fg_text = "#8B8B8B"
+fg_heading = "#B4B1AD"
+red = "#BA616A"
+orange = "#B3763E"
+yellow = "#948A1D"
+green = "#4F9158"
+cyan = "#008986"
+blue = "#0081B4"
+purple = "#7176AE"
+magenta = "#9C67A1"
