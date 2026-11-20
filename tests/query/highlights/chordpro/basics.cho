@@ -1,0 +1,14 @@
+# A comment line
+# ^ @comment.line
+{title: Sample Song}
+# ^^^^ @keyword.directive
+#       ^^^^^^^^^^^ @string
+#                  ^ @punctuation.bracket
+[Am]Hello [G/B]world
+#^^ @constant
+#          ^^^ @constant
+{start_of_tab}
+# ^^^^^^^^^^^ @keyword.directive
+e|-0-|
+# ^ @markup.raw.block
+{end_of_tab}
