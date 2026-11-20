@@ -2,6 +2,7 @@
 # Fish completion script for Helix editor
 
 complete -c hx -s h -l help -d "Prints help information"
+complete -c hx -l strict -d "Bail on error for commands that can fail"
 complete -c hx -l tutor -d "Loads the tutorial"
 complete -c hx -l health -xa "(__hx_langs_ops)" -d "Checks for errors"
 complete -c hx -l health -xka all -d "Prints all diagnostic informations"

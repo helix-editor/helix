@@ -10,7 +10,7 @@ preferred-dark-theme = "colibri"
 git-repository-url = "https://github.com/helix-editor/helix"
 edit-url-template = "https://github.com/helix-editor/helix/edit/master/book/{path}"
 additional-css = ["custom.css"]
-additional-js = ["ts-query.js"]
+additional-js = ["ts-query.js", "version.js"]
 
 [output.html.search]
 use-boolean-and = true
