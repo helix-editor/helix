@@ -5655,3 +5655,12 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "tsv"
+file-types = ["tsv"]
+scope = "source.tsv"
+
+[[grammar]]
+name = "tsv"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-csv.git", rev = "f6bf6e35eb0b95fbadea4bb39cb9709507fcb181", subpath = "tsv" }
