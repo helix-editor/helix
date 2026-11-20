@@ -1,3 +1,5 @@
+pub(crate) mod aio;
+
 use anyhow::Result;
 use helix_core::Position;
 use helix_view::tree::Layout;
@@ -22,17 +24,22 @@ pub struct Args {
     pub working_directory: Option<PathBuf>,
 }
 
+struct AioRequest {
+    columns: Option<usize>,
+    root: Option<PathBuf>,
+}
+
 impl Args {
     #[allow(clippy::too_many_lines)]
     pub fn parse_args() -> Result<Args> {
         let mut args = Args::default();
         let mut argv = std::env::args().peekable();
         let mut line_number = 0;
+        let mut aio_request: Option<AioRequest> = None;
+        let mut explicit_panes: Option<usize> = None;
 
         let mut insert_file_with_position = |file_with_position: &str| {
             let (filename, position) = parse_file(file_with_position);
-
-            // Before setting the working directory, resolve all the paths in args.files
             let filename = helix_stdx::path::canonicalize(filename);
 
             args.files
@@ -41,15 +48,51 @@ impl Args {
                 .or_insert_with(|| vec![position]);
         };
 
-        argv.next(); // skip the program, we don't care about that
+        argv.next();
 
         while let Some(arg) = argv.next() {
             match arg.as_str() {
-                "--" => break, // stop parsing at this point treat the remaining as files
+                "--" => break,
                 "--version" => args.display_version = true,
                 "--help" => args.display_help = true,
                 "--strict" => args.strict = true,
                 "--tutor" => args.load_tutor = true,
+                "--aio" => {
+                    if aio_request.is_some() {
+                        anyhow::bail!("--aio may only be specified once");
+                    }
+
+                    let columns = argv
+                        .next_if(|next| next.parse::<usize>().is_ok())
+                        .map(|value| value.parse::<usize>().unwrap());
+
+                    if let Some(columns) = columns {
+                        if !(1..=9).contains(&columns) {
+                            anyhow::bail!("--aio pane count must be between 1 and 9");
+                        }
+                    }
+
+                    let root = argv
+                        .next_if(|next| !next.starts_with('-') && !next.starts_with('+'))
+                        .map(PathBuf::from);
+
+                    aio_request = Some(AioRequest { columns, root });
+                }
+                "--panes" => {
+                    if explicit_panes.is_some() {
+                        anyhow::bail!("--panes may only be specified once");
+                    }
+                    let value = argv
+                        .next()
+                        .ok_or_else(|| anyhow::anyhow!("--panes requires a number from 1 to 9"))?;
+                    let columns = value
+                        .parse::<usize>()
+                        .map_err(|_| anyhow::anyhow!("--panes must be a number from 1 to 9"))?;
+                    if !(1..=9).contains(&columns) {
+                        anyhow::bail!("--panes must be between 1 and 9");
+                    }
+                    explicit_panes = Some(columns);
+                }
                 "--vsplit" => match args.split {
                     Some(_) => anyhow::bail!("can only set a split once of a specific type"),
                     None => args.split = Some(Layout::Vertical),
@@ -112,13 +155,60 @@ impl Args {
                         _ => insert_file_with_position(arg),
                     };
                 }
-                arg => insert_file_with_position(arg),
+                arg => {
+                    if let Some(request) = aio_request.as_mut() {
+                        if request.root.is_some() {
+                            anyhow::bail!("--aio accepts only one folder or Git revision");
+                        }
+                        request.root = Some(PathBuf::from(arg));
+                    } else {
+                        insert_file_with_position(arg);
+                    }
+                }
             }
         }
 
-        // push the remaining args, if any to the files
         for arg in argv {
             insert_file_with_position(&arg);
+        }
+
+        if let Some(request) = aio_request {
+            if !args.files.is_empty() {
+                anyhow::bail!("--aio cannot be combined with ordinary file arguments");
+            }
+            if request.columns.is_some() && explicit_panes.is_some() {
+                anyhow::bail!("specify the pane count either after --aio or with --panes");
+            }
+
+            if !(args.display_help
+                || args.display_version
+                || args.health
+                || args.fetch_grammars
+                || args.build_grammars)
+            {
+                let columns = explicit_panes.or(request.columns).or(Some(5));
+                let current_dir = args
+                    .working_directory
+                    .clone()
+                    .unwrap_or(std::env::current_dir()?);
+
+                let prepared = match request.root {
+                    Some(target) if target.is_dir() => aio::prepare(&target, columns, false)?,
+                    Some(target) => {
+                        let revision = target
+                            .to_str()
+                            .ok_or_else(|| anyhow::anyhow!("Git revision must be valid Unicode"))?;
+                        aio::prepare_git_diff(&current_dir, revision, columns)?
+                    }
+                    None => aio::prepare(&current_dir, columns, true)?,
+                };
+
+                args.files
+                    .insert(prepared.bootstrap, vec![Position::default()]);
+                args.working_directory = Some(prepared.root);
+            }
+        } else if explicit_panes.is_some() {
+            anyhow::bail!("--panes requires --aio");
         }
 
         if line_number != 0 {
@@ -135,7 +225,6 @@ impl Args {
     }
 }
 
-/// Parse arg into [`PathBuf`] and position.
 pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
     let def = || (PathBuf::from(s), Position::default());
     if Path::new(s).exists() {
@@ -146,9 +235,6 @@ pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
         .unwrap_or_else(def)
 }
 
-/// Split file.rs:10:2 into [`PathBuf`], row and col.
-///
-/// Does not validate if file.rs is a file or directory.
 fn split_path_row_col(s: &str) -> Option<(PathBuf, Position)> {
     let mut s = s.trim_end_matches(':').rsplitn(3, ':');
     let col: usize = s.next()?.parse().ok()?;
@@ -158,9 +244,6 @@ fn split_path_row_col(s: &str) -> Option<(PathBuf, Position)> {
     Some((path, pos))
 }
 
-/// Split file.rs:10 into [`PathBuf`] and row.
-///
-/// Does not validate if file.rs is a file or directory.
 fn split_path_row(s: &str) -> Option<(PathBuf, Position)> {
     let (path, row) = s.trim_end_matches(':').rsplit_once(':')?;
     let row: usize = row.parse().ok()?;
