@@ -12,6 +12,7 @@
 | bass | ✓ |  |  |  |  | `bass` |
 | batch | ✓ | ✓ | ✓ | ✓ | ✓ |  |
 | beancount | ✓ |  |  |  |  | `beancount-language-server` |
+| bend | ✓ | ✓ | ✓ |  |  |  |
 | bibtex | ✓ |  |  |  |  | `texlab` |
 | bicep | ✓ |  |  |  |  | `bicep-langserver` |
 | bitbake | ✓ |  |  |  |  | `bitbake-language-server` |

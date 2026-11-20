@@ -5655,3 +5655,16 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "bend"
+scope = "source.bend"
+injection-regex = "bend"
+file-types = ["bend"]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+grammar = "bend2"
+
+[[grammar]]
+name = "bend2"
+source = { git = "https://github.com/nicolas-abril/tree-sitter-bend2", rev = "def3000feae44b0c51fabff9683b03870d28eece" }
