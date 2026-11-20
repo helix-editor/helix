@@ -4443,7 +4443,7 @@ formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
 
 [[grammar]]
 name = "glimmer"
-source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "88af85568bde3b91acb5d4c352ed094d0c1f9d84" }
+source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "c67a73679db2945a686ca45d3e5318d86138e72a" }
 
 [[language]]
 name = "ohm"
