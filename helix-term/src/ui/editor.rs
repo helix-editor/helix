@@ -120,13 +120,6 @@ impl EditorView {
             Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
         let mut overlays = Vec::new();
 
-        overlays.push(Self::overlay_syntax_highlights(
-            doc,
-            view_offset.anchor,
-            inner.height,
-            &text_annotations,
-        ));
-
         if doc
             .language_config()
             .and_then(|config| config.rainbow_brackets)
@@ -142,6 +135,14 @@ impl EditorView {
         if let Some(overlay) = Self::doc_document_link_highlights(doc, theme) {
             overlays.push(overlay);
         }
+
+        // Replacement text, such as jump labels, takes precedence over document colors.
+        overlays.push(Self::overlay_syntax_highlights(
+            doc,
+            view_offset.anchor,
+            inner.height,
+            &text_annotations,
+        ));
 
         Self::doc_diagnostics_highlights_into(doc, theme, &mut overlays);
 
