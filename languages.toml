@@ -2450,6 +2450,18 @@ auto-format = true
 grammar = "hcl"
 
 [[language]]
+name = "packer"
+scope = "source.packer"
+injection-regex = "packer"
+file-types = [{ glob = "*.pkr.hcl" }, { glob = "*.pkrvars.hcl" }]
+comment-token = "#"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "packer", args = ["fmt", "-"] }
+auto-format = true
+grammar = "hcl"
+
+[[language]]
 name = "org"
 scope = "source.org"
 injection-regex = "org"
