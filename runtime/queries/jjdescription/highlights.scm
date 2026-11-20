@@ -1,4 +1,4 @@
-(text) @string
+(document . (text) @markup.heading)
 (filepath) @string.special.path
 
 (change type: "A" @diff.plus)
