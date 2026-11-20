@@ -205,10 +205,18 @@ impl ActiveSnippet {
             log::warn!("number of subsnippets did not match, discarding outer snippet");
             return ActiveSnippet::new(snippet);
         }
-        let mut cnt = 0;
+        // The tabstops of `snippet` replace the current tabstop, so every tabstop after it moves.
+        // Update the parents that point to a tabstop that moved.
+        let shift = snippet.tabstops.len() - 1;
+        for tabstop in &mut self.tabstops {
+            if let Some(parent) = &mut tabstop.parent {
+                if parent.0 > self.current_tabstop.0 {
+                    parent.0 += shift;
+                }
+            }
+        }
         let parent = self[self.current_tabstop].parent;
         let tabstops = snippet.tabstops.into_iter().map(|mut tabstop| {
-            cnt += 1;
             if let Some(parent) = &mut tabstop.parent {
                 parent.0 += self.current_tabstop.0;
             } else {
@@ -227,9 +235,10 @@ impl ActiveSnippet {
 mod tests {
     use std::iter::{self};
 
+    use helix_stdx::Range;
     use ropey::Rope;
 
-    use crate::snippets::{ActiveSnippet, Snippet, SnippetRenderCtx};
+    use crate::snippets::{ActiveSnippet, Snippet, SnippetRenderCtx, TabstopIdx};
     use crate::{Selection, Transaction};
 
     #[test]
@@ -266,5 +275,45 @@ mod tests {
         assert!(transaction.apply(&mut doc));
         assert_eq!(doc, "sizeof()\n");
         assert!(ActiveSnippet::new(snippet).is_none());
+    }
+
+    #[test]
+    fn insert_subsnippet_rebases_parents_of_following_tabstops() {
+        // outer snippet: `$3` is nested inside `$2`, both come after `$1`
+        let outer = Snippet::parse("x$1 ${2:a ${3:b}}").unwrap();
+        let mut doc = Rope::from("s\n");
+        let (transaction, _, outer) = outer.render(
+            &doc,
+            &Selection::point(1),
+            |_| (1, 1),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "sx a b\n");
+        let mut active = ActiveSnippet::new(outer).unwrap();
+
+        // accept a completion snippet with one tabstop (plus `$0`) at `$1`
+        let inner = Snippet::parse("f($1)").unwrap();
+        let (transaction, _, inner) = inner.render(
+            &doc,
+            &Selection::point(2),
+            |_| (2, 2),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "sxf() a b\n");
+        // what the DocumentDidChange hook does before completion.rs calls insert_subsnippet
+        assert!(!active.map(transaction.changes()));
+        let mut active = active.insert_subsnippet(inner).unwrap();
+
+        // tabstops are now [f:$1, f:$0, $2, $3, $0]; `$3` must still point at `$2`
+        assert_eq!(active.tabstops[2].ranges[0], Range { start: 6, end: 9 });
+        assert_eq!(active.tabstops[3].parent, Some(TabstopIdx(2)));
+
+        // jumping to `$3` must activate its enclosing `$2`
+        for _ in 0..3 {
+            active.next_tabstop(&Selection::point(4));
+        }
+        assert!(active.active_tabstops.contains(&TabstopIdx(2)));
     }
 }
