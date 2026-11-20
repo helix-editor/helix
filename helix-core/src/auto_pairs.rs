@@ -218,6 +218,12 @@ fn handle_insert_whitespace(
         return None;
     }
 
+    // Brackets and quotes shouldn't insert an extra space (e.g. Markdown [ ]).
+    // Preserve existing whitespace padding for parentheses and braces.
+    if !matches!(pair.open, '(' | '{') {
+        return None;
+    }
+
     let whitespace_pair = Pair {
         open: ch,
         close: ch,
@@ -414,4 +420,39 @@ fn handle_insert_same(doc: &Rope, range: &Range, pair: &Pair) -> Option<(Change,
     log::debug!("auto pair change: {:#?}", &result);
 
     Some(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn whitespace_padding_skips_brackets_and_quotes() {
+        let pairs = AutoPairs::default();
+
+        for pair in ["[]", "''", "\"\"", "``"] {
+            let doc = Rope::from_str(pair);
+            let range = Range::point(1);
+
+            assert!(
+                hook_insert(&doc, &range, ' ', &pairs).is_none(),
+                "unexpected extra whitespace for {pair:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn whitespace_padding_is_preserved_for_parentheses_and_braces() {
+        let pairs = AutoPairs::default();
+
+        for pair in ["()", "{}"] {
+            let doc = Rope::from_str(pair);
+            let range = Range::point(1);
+
+            assert!(
+                hook_insert(&doc, &range, ' ', &pairs).is_some(),
+                "expected whitespace padding for {pair:?}"
+            );
+        }
+    }
 }
