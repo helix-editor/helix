@@ -80,10 +80,14 @@ fn find_pair(
     pos_: usize,
     traverse_parents: bool,
 ) -> Option<usize> {
+    // Look up the char under the cursor rather than an empty range at its start: an
+    // empty range also matches nodes that end right at the cursor, e.g. the
+    // zero-width token Typst emits in front of the `(` of `#rect(`.
     let pos = doc.char_to_byte(pos_) as u32;
+    let pos_end = doc.char_to_byte((pos_ + 1).min(doc.len_chars())) as u32;
 
     let root = syntax.tree_for_byte_range(pos, pos).root_node();
-    let mut node = root.descendant_for_byte_range(pos, pos)?;
+    let mut node = root.descendant_for_byte_range(pos, pos_end)?;
 
     loop {
         if node.is_named() && node.child_count() >= 2 {
@@ -145,7 +149,7 @@ fn find_pair(
         };
         node = parent;
     }
-    let node = root.named_descendant_for_byte_range(pos, pos + 1)?;
+    let node = root.named_descendant_for_byte_range(pos, pos_end)?;
     if node.child_count() != 0 {
         return None;
     }
@@ -349,5 +353,80 @@ mod tests {
         assert("(prev line\n ) (middle) ( \n next line)", 0, 12);
         assert("(prev line\n ) (middle) ( \n next line)", 14, 21);
         assert("(prev line\n ) (middle) ( \n next line)", 23, 36);
+    }
+
+    #[test]
+    fn test_find_matching_bracket_after_adjacent_node() {
+        let loader = crate::config::default_lang_loader();
+        let language = loader.language_for_name("typst").unwrap();
+        let doc = crate::Rope::from_str(
+            "#rect(width: 100%, stroke: stroke(dash: \"dotted\"), radius: 5mm)[\n  #box(\"（\")[x]\n]\n",
+        );
+        let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+        let text = doc.slice(..);
+
+        let assert = |open, close| {
+            // both directions, exact and fuzzy
+            assert_eq!(Some(close), find_matching_bracket(&syntax, text, open));
+            assert_eq!(Some(open), find_matching_bracket(&syntax, text, close));
+            assert_eq!(
+                Some(close),
+                find_matching_bracket_fuzzy(&syntax, text, open)
+            );
+            assert_eq!(
+                Some(open),
+                find_matching_bracket_fuzzy(&syntax, text, close)
+            );
+        };
+
+        let idx = |pat: &str, n: usize| -> usize {
+            let s = doc.to_string();
+            let byte = s.match_indices(pat).nth(n).unwrap().0;
+            doc.byte_to_char(byte)
+        };
+
+        // `(` right after `#rect` and `stroke`
+        assert(idx("(", 0), idx(")", 1));
+        assert(idx("(", 1), idx(")", 0));
+        // `[` right after `)`
+        assert(idx("[", 0), idx("]", 1));
+        // same thing after a multi-byte char on the line
+        assert(idx("(", 2), idx(")", 2));
+        assert(idx("[", 1), idx("]", 0));
+
+        // cursor at the very end of the document must not panic
+        assert_eq!(None, find_matching_bracket(&syntax, text, doc.len_chars()));
+        let _ = find_matching_bracket_fuzzy(&syntax, text, doc.len_chars());
+    }
+
+    #[test]
+    fn test_find_matching_bracket_at_injection_end() {
+        // a closing bracket that is the last char of an injected layer must still
+        // be matched inside that layer, not in the host document
+        let loader = crate::config::default_lang_loader();
+        let language = loader.language_for_name("typst").unwrap();
+        let doc = crate::Rope::from_str("#f[```rust foo(1)```](x)\n");
+        let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+        let text = doc.slice(..);
+
+        assert_eq!(Some(14), find_matching_bracket(&syntax, text, 16));
+        assert_eq!(Some(14), find_matching_bracket_fuzzy(&syntax, text, 16));
+        assert_eq!(Some(16), find_matching_bracket_fuzzy(&syntax, text, 14));
+        assert_eq!(Some(23), find_matching_bracket(&syntax, text, 21));
+    }
+
+    #[test]
+    fn test_find_matching_bracket_multibyte() {
+        // multi-byte brackets from `BRACKETS`, as markup text right after a call
+        let loader = crate::config::default_lang_loader();
+        let language = loader.language_for_name("typst").unwrap();
+        let doc = crate::Rope::from_str("#f[x]（a «b» c）\n");
+        let syntax = Syntax::new(doc.slice(..), language, &loader).unwrap();
+        let text = doc.slice(..);
+
+        for (open, close) in [(5, 13), (8, 10)] {
+            assert_eq!(Some(close), find_matching_bracket(&syntax, text, open));
+            assert_eq!(Some(open), find_matching_bracket(&syntax, text, close));
+        }
     }
 }

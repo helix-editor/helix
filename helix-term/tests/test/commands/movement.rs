@@ -937,6 +937,50 @@ async fn match_bracket() -> anyhow::Result<()> {
         ),
     ];
 
+    // an opening bracket directly after another node (`rect(`, `)[`)
+    let typst_tests = vec![
+        (
+            indoc! {r##"
+                #rect#[(|]#width: 100%, radius: 5mm)[
+
+                ]
+            "##},
+            "mm",
+            indoc! {r##"
+                #rect(width: 100%, radius: 5mm#[)|]#[
+
+                ]
+            "##},
+        ),
+        (
+            indoc! {r##"
+                #rect(width: 100%, radius: 5mm)#[[|]#
+
+                ]
+            "##},
+            "mm",
+            indoc! {r##"
+                #rect(width: 100%, radius: 5mm)[
+
+                #[]|]#
+            "##},
+        ),
+        // backwards from the closing brackets, with one selection on each
+        (
+            indoc! {r##"
+                #rect(width: 100%, radius: 5mm#[)|]#[
+
+                #(]|)#
+            "##},
+            "mm",
+            indoc! {r##"
+                #rect#[(|]#width: 100%, radius: 5mm)#([|)#
+
+                ]
+            "##},
+        ),
+    ];
+
     for test in rust_tests {
         println!("{test:?}");
         test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
@@ -944,6 +988,10 @@ async fn match_bracket() -> anyhow::Result<()> {
     for test in python_tests {
         println!("{test:?}");
         test_with_config(AppBuilder::new().with_file("foo.py", None), test).await?;
+    }
+    for test in typst_tests {
+        println!("{test:?}");
+        test_with_config(AppBuilder::new().with_file("foo.typ", None), test).await?;
     }
 
     Ok(())
