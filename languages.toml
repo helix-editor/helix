@@ -1296,6 +1296,7 @@ injection-regex = "(shell|bash|zsh|sh)"
 file-types = [
   "sh",
   "bash",
+  "bats",
   "ash",
   "dash",
   "ksh",
