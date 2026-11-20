@@ -127,7 +127,12 @@ impl ActiveSnippet {
     }
 
     pub fn next_tabstop(&mut self, current_selection: &Selection) -> (Selection, bool) {
-        let primary_idx = self.primary_idx(current_selection);
+        let Some(primary_idx) = self.primary_idx(current_selection) else {
+            // Deleting snippet placeholders (e.g. matched parens) can leave the
+            // selection outside mapped snippet ranges while the session is still
+            // tracked. End the snippet instead of panicking.
+            return (current_selection.clone(), true);
+        };
         while self.current_tabstop.0 + 1 < self.tabstops.len() {
             self.current_tabstop.0 += 1;
             if self.activate_tabstop() {
@@ -143,7 +148,7 @@ impl ActiveSnippet {
     }
 
     pub fn prev_tabstop(&mut self, current_selection: &Selection) -> Option<Selection> {
-        let primary_idx = self.primary_idx(current_selection);
+        let primary_idx = self.primary_idx(current_selection)?;
         while self.current_tabstop.0 != 0 {
             self.current_tabstop.0 -= 1;
             if self.activate_tabstop() {
@@ -155,18 +160,14 @@ impl ActiveSnippet {
     /// Computes the primary index adjusted for the number of cursors in the current tabstop.
     /// We allow for the selection range to 1 over the end to avoid issues with tabstops
     /// at the very end of snippets.
-    fn primary_idx(&self, current_selection: &Selection) -> usize {
+    ///
+    /// Returns `None` when the selection is no longer inside any snippet range so callers
+    /// can drop the session instead of panicking (helix-editor/helix#16271).
+    fn primary_idx(&self, current_selection: &Selection) -> Option<usize> {
         let primary: Range = current_selection.primary().into();
-        let res = self
-            .ranges
+        self.ranges
             .iter()
-            .position(|&range| range.start <= primary.start && primary.end <= range.end + 1);
-        res.unwrap_or_else(|| {
-            unreachable!(
-                "active snippet must be valid {current_selection:?} {:?}",
-                self.ranges
-            )
-        })
+            .position(|&range| range.start <= primary.start && primary.end <= range.end + 1)
     }
 
     fn activate_tabstop(&mut self) -> bool {
@@ -266,5 +267,23 @@ mod tests {
         assert!(transaction.apply(&mut doc));
         assert_eq!(doc, "sizeof()\n");
         assert!(ActiveSnippet::new(snippet).is_none());
+    }
+
+    #[test]
+    fn next_tabstop_does_not_panic_when_selection_leaves_snippet() {
+        let snippet = Snippet::parse("foo(${1:bar})$0").unwrap();
+        let mut doc = Rope::from("bar.\n");
+        let (transaction, _, snippet) = snippet.render(
+            &doc,
+            &Selection::point(4),
+            |_| (4, 4),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        let mut snippet = ActiveSnippet::new(snippet).unwrap();
+        let outside = Selection::point(0);
+        let (selection, last) = snippet.next_tabstop(&outside);
+        assert!(last);
+        assert_eq!(selection, outside);
     }
 }
