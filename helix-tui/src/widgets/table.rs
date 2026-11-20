@@ -1,7 +1,7 @@
 use crate::{
     buffer::Buffer,
-    layout::Constraint,
-    text::Text,
+    layout::{Alignment, Constraint},
+    text::{Span, Text},
     widgets::{Block, Widget},
 };
 use helix_core::unicode::width::UnicodeWidthStr;
@@ -28,10 +28,21 @@ use helix_view::graphics::{Rect, Style};
 ///
 /// You can apply a [`Style`] on the entire [`Cell`] using [`Cell::style`] or rely on the styling
 /// capabilities of [`Text`].
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cell<'a> {
     pub content: Text<'a>,
     style: Style,
+    alignment: Alignment,
+}
+
+impl Default for Cell<'_> {
+    fn default() -> Self {
+        Self {
+            content: Text::default(),
+            style: Style::default(),
+            alignment: Alignment::Left,
+        }
+    }
 }
 
 impl Cell<'_> {
@@ -46,6 +57,12 @@ impl Cell<'_> {
         self.style = style;
         self.content.patch_style(style);
     }
+
+    /// Set the horizontal alignment of this cell's content.
+    pub fn alignment(mut self, alignment: Alignment) -> Self {
+        self.alignment = alignment;
+        self
+    }
 }
 
 impl<'a, T> From<T> for Cell<'a>
@@ -56,6 +73,7 @@ where
         Cell {
             content: content.into(),
             style: Style::default(),
+            alignment: Alignment::Left,
         }
     }
 }
@@ -200,6 +218,8 @@ pub struct Table<'a> {
     widths: &'a [Constraint],
     /// Space between each column
     column_spacing: u16,
+    /// Optional content rendered between columns. When set, its width replaces `column_spacing`.
+    column_separator: Option<Span<'a>>,
     /// Style used to render the selected row
     highlight_style: Style,
     /// Symbol in front of the selected rom
@@ -220,6 +240,7 @@ impl<'a> Table<'a> {
             style: Style::default(),
             widths: &[],
             column_spacing: 1,
+            column_separator: None,
             highlight_style: Style::default(),
             highlight_symbol: None,
             header: None,
@@ -270,7 +291,25 @@ impl<'a> Table<'a> {
         self
     }
 
-    fn get_columns_widths(&self, max_width: u16, has_selection: bool) -> Vec<u16> {
+    /// Set content to render between columns.
+    ///
+    /// The separator's display width is used in place of [`Table::column_spacing`].
+    pub fn column_separator<T>(mut self, separator: T) -> Self
+    where
+        T: Into<Span<'a>>,
+    {
+        self.column_separator = Some(separator.into());
+        self
+    }
+
+    fn column_gap_width(&self) -> u16 {
+        self.column_separator
+            .as_ref()
+            .map(|separator| separator.width().min(u16::MAX as usize) as u16)
+            .unwrap_or(self.column_spacing)
+    }
+
+    fn get_columns_layout(&self, max_width: u16, has_selection: bool) -> (Vec<u16>, Vec<u16>) {
         let mut constraints = Vec::with_capacity(self.widths.len() * 2 + 1);
         if has_selection {
             let highlight_symbol_width =
@@ -279,7 +318,7 @@ impl<'a> Table<'a> {
         }
         for constraint in self.widths {
             constraints.push(*constraint);
-            constraints.push(Constraint::Length(self.column_spacing));
+            constraints.push(Constraint::Length(self.column_gap_width()));
         }
         if !self.widths.is_empty() {
             constraints.pop();
@@ -296,7 +335,14 @@ impl<'a> Table<'a> {
         if has_selection {
             chunks.remove(0);
         }
-        chunks.iter().step_by(2).map(|c| c.width).collect()
+        let column_widths = chunks.iter().step_by(2).map(|chunk| chunk.width).collect();
+        let gap_widths = chunks
+            .iter()
+            .skip(1)
+            .step_by(2)
+            .map(|chunk| chunk.width)
+            .collect();
+        (column_widths, gap_widths)
     }
 
     fn get_row_bounds(
@@ -305,6 +351,9 @@ impl<'a> Table<'a> {
         offset: usize,
         max_height: u16,
     ) -> (usize, usize) {
+        if self.rows.is_empty() {
+            return (0, 0);
+        }
         let mut start = offset;
         let mut end = offset;
         let mut height = 0;
@@ -316,7 +365,10 @@ impl<'a> Table<'a> {
             end += 1;
         }
 
-        let selected = selected.unwrap_or(0).min(self.rows.len() - 1);
+        let Some(selected) = selected else {
+            return (start, end);
+        };
+        let selected = selected.min(self.rows.len() - 1);
         while selected >= end {
             height = height.saturating_add(self.rows[end].total_height());
             end += 1;
@@ -382,7 +434,9 @@ impl Table<'_> {
         };
 
         let has_selection = state.selected.is_some();
-        let columns_widths = self.get_columns_widths(table_area.width, has_selection);
+        let (columns_widths, column_gap_widths) =
+            self.get_columns_layout(table_area.width, has_selection);
+        let column_separator = self.column_separator.clone();
         let highlight_symbol = self.highlight_symbol.unwrap_or("");
         let blank_symbol = " ".repeat(highlight_symbol.width());
         let mut current_height = 0;
@@ -404,7 +458,9 @@ impl Table<'_> {
             if has_selection {
                 col += (highlight_symbol.width() as u16).min(table_area.width);
             }
-            for (width, cell) in columns_widths.iter().zip(header.cells.iter()) {
+            let rendered_columns = columns_widths.len().min(header.cells.len());
+            for (index, (width, cell)) in columns_widths.iter().zip(header.cells.iter()).enumerate()
+            {
                 render_cell(
                     buf,
                     cell,
@@ -416,7 +472,19 @@ impl Table<'_> {
                     },
                     truncate,
                 );
-                col += *width + self.column_spacing;
+                col += *width;
+                if index + 1 < rendered_columns {
+                    let column_gap_width = column_gap_widths[index];
+                    render_column_separator(
+                        buf,
+                        column_separator.as_ref(),
+                        column_gap_width,
+                        col,
+                        table_area.top(),
+                        header.height.min(max_header_height),
+                    );
+                    col += column_gap_width;
+                }
             }
             current_height += max_header_height;
             rows_height = rows_height.saturating_sub(max_header_height);
@@ -464,7 +532,12 @@ impl Table<'_> {
                 }
             }
             let mut col = table_row_start_col;
-            for (width, cell) in columns_widths.iter().zip(table_row.cells.iter()) {
+            let rendered_columns = columns_widths.len().min(table_row.cells.len());
+            for (index, (width, cell)) in columns_widths
+                .iter()
+                .zip(table_row.cells.iter())
+                .enumerate()
+            {
                 render_cell(
                     buf,
                     cell,
@@ -476,9 +549,44 @@ impl Table<'_> {
                     },
                     truncate,
                 );
-                col += *width + self.column_spacing;
+                col += *width;
+                if index + 1 < rendered_columns {
+                    let column_gap_width = column_gap_widths[index];
+                    render_column_separator(
+                        buf,
+                        column_separator.as_ref(),
+                        column_gap_width,
+                        col,
+                        row,
+                        table_row.height,
+                    );
+                    col += column_gap_width;
+                }
             }
         }
+    }
+}
+
+fn render_column_separator(
+    buf: &mut Buffer,
+    separator: Option<&Span>,
+    width: u16,
+    x: u16,
+    y: u16,
+    height: u16,
+) {
+    let Some(separator) = separator.filter(|_| width > 0) else {
+        return;
+    };
+    let compact_separator;
+    let separator = if separator.width() > width as usize {
+        compact_separator = Span::styled(separator.content.trim(), separator.style);
+        &compact_separator
+    } else {
+        separator
+    };
+    for row in y..y.saturating_add(height).min(buf.area.bottom()) {
+        buf.set_span(x, row, separator, width);
     }
 }
 
@@ -488,10 +596,18 @@ fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect, truncate: bool) {
         if i as u16 >= area.height {
             break;
         }
+        let content_width = spans.width().min(u16::MAX as usize) as u16;
+        let offset = match cell.alignment {
+            Alignment::Left => 0,
+            Alignment::Center => area.width.saturating_sub(content_width) / 2,
+            Alignment::Right => area.width.saturating_sub(content_width),
+        };
+        let x = area.x.saturating_add(offset);
+        let width = area.width.saturating_sub(offset);
         if truncate {
-            buf.set_spans_truncated(area.x, area.y + i as u16, spans, area.width);
+            buf.set_spans_truncated(x, area.y + i as u16, spans, width);
         } else {
-            buf.set_spans(area.x, area.y + i as u16, spans, area.width);
+            buf.set_spans(x, area.y + i as u16, spans, width);
         }
     }
 }
@@ -511,5 +627,85 @@ mod tests {
     #[should_panic]
     fn table_invalid_percentages() {
         Table::new(vec![]).widths(&[Constraint::Percentage(110)]);
+    }
+
+    #[test]
+    fn table_renders_column_separator() {
+        let area = Rect::new(0, 0, 7, 2);
+        let mut buffer = Buffer::empty(area);
+        let widths = [Constraint::Length(3), Constraint::Length(3)];
+        let table = Table::new([Row::new(["abc", "def"]), Row::new(["ghi", "jkl"])])
+            .widths(&widths)
+            .column_separator("|");
+
+        table.render(area, &mut buffer);
+
+        assert_eq!(buffer, Buffer::with_lines(vec!["abc|def", "ghi|jkl"]));
+    }
+
+    #[test]
+    fn table_aligns_cell_content() {
+        let area = Rect::new(0, 0, 4, 1);
+        let mut buffer = Buffer::empty(area);
+        let widths = [Constraint::Length(4)];
+        let table =
+            Table::new([Row::new([Cell::from("x").alignment(Alignment::Right)])]).widths(&widths);
+
+        table.render(area, &mut buffer);
+
+        assert_eq!(buffer, Buffer::with_lines(vec!["   x"]));
+    }
+
+    #[test]
+    fn table_uses_compressed_column_gaps_in_narrow_areas() {
+        let area = Rect::new(0, 0, 4, 1);
+        let mut buffer = Buffer::empty(area);
+        let widths = [
+            Constraint::Length(4),
+            Constraint::Length(4),
+            Constraint::Length(4),
+        ];
+        let table = Table::new([Row::new(["aaaa", "bbbb", "cccc"])])
+            .widths(&widths)
+            .column_separator(" | ");
+        let (column_widths, gap_widths) = table.get_columns_layout(area.width, false);
+
+        assert_eq!(
+            column_widths.iter().sum::<u16>() + gap_widths.iter().sum::<u16>(),
+            area.width
+        );
+        table.render(area, &mut buffer);
+        assert_eq!(buffer.area, area);
+    }
+
+    #[test]
+    fn compressed_separator_keeps_its_non_whitespace_content() {
+        let area = Rect::new(0, 0, 1, 1);
+        let mut buffer = Buffer::empty(area);
+        let separator = Span::raw(" | ");
+
+        render_column_separator(&mut buffer, Some(&separator), 1, 0, 0, 1);
+
+        assert_eq!(buffer, Buffer::with_lines(vec!["|"]));
+    }
+
+    #[test]
+    fn table_respects_offset_without_a_selection() {
+        let area = Rect::new(0, 0, 6, 1);
+        let mut buffer = Buffer::empty(area);
+        let widths = [Constraint::Length(6)];
+        let table = Table::new([Row::new(["first"]), Row::new(["second"])]).widths(&widths);
+
+        table.render_table(
+            area,
+            &mut buffer,
+            &mut TableState {
+                offset: 1,
+                selected: None,
+            },
+            false,
+        );
+
+        assert_eq!(buffer, Buffer::with_lines(vec!["second"]));
     }
 }

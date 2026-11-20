@@ -6,7 +6,7 @@ use helix_lsp::lsp;
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
 use tui::buffer::Buffer;
-use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
+use tui::widgets::{BorderType, Paragraph, Widget};
 
 use crate::compositor::{Component, Context, EventResult};
 
@@ -95,16 +95,17 @@ impl Component for Hover {
         }
 
         // hover content
-        let contents = contents.parse(Some(&cx.editor.theme));
         let contents_area = area.clip_top(if self.has_header() {
             HEADER_HEIGHT + SEPARATOR_HEIGHT
         } else {
             0
         });
-        let contents_para = Paragraph::new(&contents)
-            .wrap(Wrap { trim: false })
-            .scroll((cx.scroll.unwrap_or_default() as u16, 0));
-        contents_para.render(contents_area, surface);
+        contents.render_content(
+            contents_area,
+            surface,
+            Some(&cx.editor.theme),
+            cx.scroll.unwrap_or_default(),
+        );
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
@@ -121,9 +122,7 @@ impl Component for Hover {
             })
             .unwrap_or_default();
 
-        let contents = contents.parse(None);
-        let (content_width, content_height) =
-            crate::ui::text::required_size(&contents, max_text_width);
+        let (content_width, content_height) = contents.required_size_for_width(max_text_width);
 
         let width = PADDING_HORIZONTAL + header_width.max(content_width);
         let height = if self.has_header() {
