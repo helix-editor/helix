@@ -177,8 +177,13 @@ impl<I, D> Clone for Injector<I, D> {
 pub struct InjectorShutdown;
 
 impl<T, D> Injector<T, D> {
+    /// Returns whether this injector still belongs to the picker's current query.
+    pub fn is_current(&self) -> bool {
+        self.version == self.picker_version.load(atomic::Ordering::Relaxed)
+    }
+
     pub fn push(&self, item: T) -> Result<(), InjectorShutdown> {
-        if self.version != self.picker_version.load(atomic::Ordering::Relaxed) {
+        if !self.is_current() {
             return Err(InjectorShutdown);
         }
 
