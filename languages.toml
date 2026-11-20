@@ -53,6 +53,7 @@ erlang-ls = { command = "erlang_ls" }
 expert = { command = "expert", args = ["--stdio"] }
 fennel-ls = { command = "fennel-ls" }
 fish-lsp = { command = "fish-lsp", args = ["start"] }
+flow-lsp = { command = "flow", args = ["lsp"] }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
@@ -533,6 +534,18 @@ formatter = { command = "fish_indent" }
 [[grammar]]
 name = "fish"
 source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "f435b0bd772578c70e5d158b85267bb886316f88" }
+
+[[language]]
+name = "flow"
+scope = "source.flow"
+file-types = ["flow"]
+comment-token = "#"
+language-servers = ["flow-lsp"]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "flow"
+source = { git = "https://github.com/flooooooooooow/tree-sitter-flow", rev = "2e0cfb80a52a72d08a00b9ac9afc5889c31fe71c" }
 
 [[language]]
 name = "flatbuffers"
