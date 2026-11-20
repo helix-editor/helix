@@ -1370,7 +1370,8 @@ impl EditorView {
 
         let gutter_coords_and_view = |editor: &Editor, row, column| {
             editor.tree.views().find_map(|(view, _focus)| {
-                view.gutter_coords_at_screen_coords(row, column)
+                let doc = &editor.documents[&view.doc];
+                view.gutter_coords_at_screen_coords(doc, row, column)
                     .map(|coords| (coords, view.id))
             })
         };
