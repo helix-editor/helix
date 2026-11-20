@@ -42,6 +42,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
+    history_draft: Option<String>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
@@ -79,6 +80,42 @@ fn is_word_sep(c: char) -> bool {
     c == std::path::MAIN_SEPARATOR || c.is_whitespace()
 }
 
+fn change_history_state(
+    line: &str,
+    history_pos: Option<usize>,
+    history_draft: Option<String>,
+    history_items: &[String],
+    direction: CompletionDirection,
+) -> (String, Option<usize>, Option<String>) {
+    if history_items.is_empty() {
+        return (line.to_owned(), history_pos, history_draft);
+    }
+
+    let end = history_items.len().saturating_sub(1);
+
+    if matches!(direction, CompletionDirection::Forward) && history_pos == Some(end) {
+        if let Some(draft) = history_draft {
+            return (draft, None, None);
+        }
+    }
+
+    let new_pos = match direction {
+        CompletionDirection::Forward => history_pos.map_or(0, |i| i + 1),
+        CompletionDirection::Backward => {
+            history_pos.unwrap_or(history_items.len()).saturating_sub(1)
+        }
+    }
+    .min(end);
+
+    let draft = if history_pos.is_none() {
+        Some(line.to_owned())
+    } else {
+        history_draft
+    };
+
+    (history_items[new_pos].clone(), Some(new_pos), draft)
+}
+
 impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
@@ -98,6 +135,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            history_draft: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -345,27 +383,23 @@ impl Prompt {
         direction: CompletionDirection,
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-        let mut values = match cx.editor.registers.read(register, cx.editor) {
-            Some(values) if values.len() > 0 => values.rev(),
+
+        let history_items: Vec<String> = match cx.editor.registers.read(register, cx.editor) {
+            Some(values) => values.rev().map(|s| s.to_string()).collect(),
             _ => return,
         };
 
-        let end = values.len().saturating_sub(1);
+        let (line, history_pos, history_draft) = change_history_state(
+            &self.line,
+            self.history_pos,
+            self.history_draft.take(),
+            &history_items,
+            direction,
+        );
 
-        let index = match direction {
-            CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
-            CompletionDirection::Backward => self
-                .history_pos
-                .unwrap_or_else(|| values.len())
-                .saturating_sub(1),
-        }
-        .min(end);
-
-        self.line = values.nth(index).unwrap().to_string();
-        // Appease the borrow checker.
-        drop(values);
-
-        self.history_pos = Some(index);
+        self.line = line;
+        self.history_pos = history_pos;
+        self.history_draft = history_draft;
 
         self.move_end();
         (self.callback_fn)(cx, &self.line, PromptEvent::Update);
@@ -796,5 +830,122 @@ impl Component for Prompt {
             Some(Position::new(area.y as usize + line, col)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn up_from_non_browsing_goes_to_newest_and_saves_draft() {
+        let (line, pos, draft) = change_history_state(
+            "partial",
+            None,
+            None,
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Backward,
+        );
+        assert_eq!(line, "newest");
+        assert_eq!(pos, Some(2));
+        assert_eq!(draft, Some("partial".into()));
+    }
+
+    #[test]
+    fn down_from_newest_restores_draft() {
+        let (line, pos, draft) = change_history_state(
+            "partial",
+            Some(2),
+            Some("partial".into()),
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Forward,
+        );
+        assert_eq!(line, "partial");
+        assert_eq!(pos, None);
+        assert!(draft.is_none());
+    }
+
+    #[test]
+    fn down_from_newest_without_draft_does_not_wrap() {
+        let (line, pos, draft) = change_history_state(
+            "partial",
+            Some(2),
+            None,
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Forward,
+        );
+        assert_eq!(line, "newest");
+        assert_eq!(pos, Some(2));
+        assert!(draft.is_none());
+    }
+
+    #[test]
+    fn up_from_middle_goes_back() {
+        let (line, pos, draft) = change_history_state(
+            "anything",
+            Some(1),
+            Some("draft".into()),
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Backward,
+        );
+        assert_eq!(line, "oldest");
+        assert_eq!(pos, Some(0));
+        assert_eq!(draft, Some("draft".into()));
+    }
+
+    #[test]
+    fn down_from_middle_goes_forward() {
+        let (line, pos, draft) = change_history_state(
+            "anything",
+            Some(0),
+            Some("draft".into()),
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Forward,
+        );
+        assert_eq!(line, "middle");
+        assert_eq!(pos, Some(1));
+        assert_eq!(draft, Some("draft".into()));
+    }
+
+    #[test]
+    fn up_at_oldest_stops() {
+        let (line, pos, draft) = change_history_state(
+            "anything",
+            Some(0),
+            Some("draft".into()),
+            &["oldest".into(), "middle".into(), "newest".into()],
+            CompletionDirection::Backward,
+        );
+        assert_eq!(line, "oldest");
+        assert_eq!(pos, Some(0));
+        assert_eq!(draft, Some("draft".into()));
+    }
+
+    #[test]
+    fn empty_history_does_nothing() {
+        let (line, pos, draft) = change_history_state(
+            "typing",
+            None,
+            None,
+            &[] as &[String],
+            CompletionDirection::Backward,
+        );
+        assert_eq!(line, "typing");
+        assert_eq!(pos, None);
+        assert!(draft.is_none());
+    }
+
+    #[test]
+    fn forward_from_non_browsing_goes_to_oldest() {
+        let (line, pos, draft) = change_history_state(
+            "typing",
+            None,
+            None,
+            &["oldest".into(), "newest".into()],
+            CompletionDirection::Forward,
+        );
+        assert_eq!(line, "oldest");
+        assert_eq!(pos, Some(0));
+        assert_eq!(draft, Some("typing".into()));
     }
 }
