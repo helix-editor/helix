@@ -227,9 +227,17 @@ impl Application {
         } else if stdin().is_terminal() || cfg!(feature = "integration") {
             editor.new_file(Action::VerticalSplit);
         } else {
-            editor
-                .new_file_from_stdin(Action::VerticalSplit)
-                .unwrap_or_else(|_| editor.new_file(Action::VerticalSplit));
+            match editor.new_file_from_stdin(Action::VerticalSplit) {
+                Ok(_) => {
+                    let (view, doc) = current!(editor);
+                    let pos = pos_at_coords(doc.text().slice(..), args.stdin_position, true);
+                    doc.set_selection(view.id, Selection::point(pos));
+                    align_view(doc, view, Align::Center);
+                }
+                Err(_) => {
+                    editor.new_file(Action::VerticalSplit);
+                }
+            }
         }
 
         #[cfg(windows)]
