@@ -201,6 +201,11 @@
 | nickel | ✓ |  | ✓ |  |  | `nls` |
 | nim | ✓ | ✓ | ✓ |  | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ | ✓ | ✓ | ✓ | `nil`, `nixd` |
+| nlpplus | ✓ |  |  |  |  | `nlpplus-language-server` |
+| nlpplus-dict | ✓ |  |  |  |  |  |
+| nlpplus-kbb | ✓ |  |  |  |  |  |
+| nlpplus-seq | ✓ |  |  |  |  |  |
+| nlpplus-tree | ✓ |  |  |  |  |  |
 | nu | ✓ | ✓ | ✓ |  |  | `nu`, `nu-lint` |
 | nunjucks | ✓ |  |  |  |  |  |
 | ocaml | ✓ | ✓ | ✓ |  | ✓ | `ocamllsp` |
