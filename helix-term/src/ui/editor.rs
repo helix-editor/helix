@@ -1177,9 +1177,10 @@ impl EditorView {
 /// change something visible at the workspace level.
 fn workspace_trust_indicator_visible(editor: &Editor) -> bool {
     let (_, doc) = helix_view::current_ref!(editor);
-    editor
-        .workspace_trust
-        .restricted_for_doc(doc.workspace_root(), doc.servers_to_load())
+    editor.workspace_trust.restricted_for_doc(
+        doc.workspace_root(),
+        doc.servers_to_load(&editor.workspace_trust),
+    )
 }
 
 impl EditorView {

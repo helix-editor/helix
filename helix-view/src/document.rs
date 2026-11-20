@@ -6,6 +6,7 @@ use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::command_line::Token;
+use helix_core::config::user_lang_config;
 use helix_core::diagnostic::DiagnosticProvider;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
@@ -13,6 +14,7 @@ use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::config::LanguageServerFeature;
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_event::TaskController;
+use helix_loader::workspace_trust::WorkspaceTrust;
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
@@ -2056,10 +2058,23 @@ impl Document {
         self.language_servers().any(|l| l.id() == id)
     }
 
-    pub fn servers_to_load(&self) -> bool {
-        self.language_config()
-            .map(|lang| !lang.language_servers.is_empty() || lang.debugger.is_some())
-            .unwrap_or(false)
+    pub fn servers_to_load(&self, trust: &WorkspaceTrust) -> bool {
+        self.language_config().is_some_and(|lang| {
+            let dap = lang
+                .debugger
+                .as_ref()
+                .is_some_and(|config| helix_stdx::env::which(config.command.as_str()).is_ok());
+
+            let lsp = user_lang_config(trust).is_ok_and(|config| {
+                lang.language_servers.iter().any(|ls| {
+                    config.language_server.get(&ls.name).is_some_and(|ls_conf| {
+                        helix_stdx::env::which(ls_conf.command.as_str()).is_ok()
+                    })
+                })
+            });
+
+            lsp || dap
+        })
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
