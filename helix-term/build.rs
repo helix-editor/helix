@@ -9,18 +9,20 @@ fn main() {
             .expect("Failed to compile tree-sitter grammars");
     }
 
-    #[cfg(windows)]
-    windows_rc::link_icon_in_windows_exe("../contrib/helix-256p.ico");
+    // NOTE: #[cfg(windows)] would reflect the host compiling this build
+    // script, not the target. Query CARGO_CFG_TARGET_OS so cross-compiling to
+    // Windows (e.g. cargo build --target x86_64-pc-windows-gnu on Linux) also
+    // embeds the icon.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        windows_rc::link_icon_in_windows_exe("../contrib/helix-256p.ico");
+    }
 }
 
-#[cfg(windows)]
 mod windows_rc {
     use std::io::prelude::Write;
     use std::{env, io, path::Path, path::PathBuf, process};
 
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
-        let rc_exe = find_rc_exe().expect("Windows SDK is to be installed along with MSVC");
-
         let output = env::var("OUT_DIR").expect("Env var OUT_DIR should have been set by compiler");
         let output_dir = PathBuf::from(output);
 
@@ -28,13 +30,105 @@ mod windows_rc {
         write_resource_file(&rc_path, icon_path).unwrap();
 
         let resource_file = PathBuf::from(&output_dir).join("resource.lib");
-        compile_with_toolkit_msvc(rc_exe, resource_file, rc_path);
 
-        println!("cargo:rustc-link-search=native={}", output_dir.display());
-        println!("cargo:rustc-link-lib=dylib=resource");
+        // CARGO_CFG_TARGET_ENV describes the target, unlike cfg!(target_env)
+        // which describes the host running this build script.
+        let compiled = match env::var("CARGO_CFG_TARGET_ENV").as_deref() {
+            Ok("msvc") => match find_rc_exe() {
+                Ok(rc_exe) => {
+                    compile_with_toolkit_msvc(rc_exe, &resource_file, &rc_path);
+                    true
+                }
+                Err(e) => {
+                    // Gracefully continue without an icon, e.g. when
+                    // cross-compiling to windows-msvc from a host with no
+                    // Windows SDK. Mirrors the previous behavior where the
+                    // resource step was skipped entirely on non-Windows hosts.
+                    println!(
+                        "cargo:warning=could not locate an rc-compatible compiler ({e}); \
+                         hx.exe will be built without an application icon. Set $RC to \
+                         one (e.g. rc.exe or llvm-rc) to embed it."
+                    );
+                    false
+                }
+            },
+            Ok("gnu") => {
+                let windres = find_windres().expect(
+                    "windres is required for windows-gnu targets;                      install binutils/mingw-w64 or set $WINDRES",
+                );
+                compile_with_windres_gnu(windres, &resource_file, &rc_path);
+                true
+            }
+            other => panic!("unsupported Windows target environment: {:?}", other),
+        };
+
+        if compiled {
+            println!("cargo:rustc-link-search=native={}", output_dir.display());
+            println!("cargo:rustc-link-lib=dylib=resource");
+        }
     }
 
-    fn compile_with_toolkit_msvc(rc_exe: PathBuf, output: PathBuf, input: PathBuf) {
+    /// Locate a windres binary, honoring `$WINDRES`, the binutils
+    /// target-prefixed name used by cross toolchains (e.g.
+    /// `x86_64-w64-mingw32-windres` for `x86_64-pc-windows-gnu`), and finally
+    /// a bare `windres` in PATH as found on MSYS2/MinGW installs.
+    fn find_windres() -> Option<PathBuf> {
+        let mut candidates: Vec<String> = env::var("WINDRES").into_iter().collect();
+        if let Some(prefix) = env::var("TARGET").ok().as_deref().and_then(gnu_tool_prefix) {
+            candidates.push(format!("{}windres", prefix));
+        }
+        candidates.push("windres".into());
+        candidates.push("windres.exe".into());
+        candidates
+            .into_iter()
+            .map(PathBuf::from)
+            .find(check_if_exe_works)
+    }
+
+    /// Map a Rust target triple to the binutils tool prefix used by mingw-w64
+    /// cross toolchains.
+    fn gnu_tool_prefix(target: &str) -> Option<&'static str> {
+        match target {
+            "x86_64-pc-windows-gnu" => Some("x86_64-w64-mingw32-"),
+            "i686-pc-windows-gnu" => Some("i686-w64-mingw32-"),
+            "aarch64-pc-windows-gnu" => Some("aarch64-w64-mingw32-"),
+            _ => None,
+        }
+    }
+
+    fn check_if_exe_works(exe: &PathBuf) -> bool {
+        process::Command::new(exe)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    fn compile_with_windres_gnu(windres: PathBuf, output: &PathBuf, input: &PathBuf) {
+        let mut command = process::Command::new(windres);
+        let command = command.arg(format!(
+            "--include-dir={}",
+            env::var("CARGO_MANIFEST_DIR")
+                .expect("CARGO_MANIFEST_DIR should have been set by Cargo")
+        ));
+
+        let status = command
+            .arg(format!("--output={}", output.display()))
+            .arg(format!("{}", input.display()))
+            .output()
+            .unwrap();
+
+        println!(
+            "Windres Output:\n{}\n------",
+            String::from_utf8_lossy(&status.stdout)
+        );
+        println!(
+            "Windres Error:\n{}\n------",
+            String::from_utf8_lossy(&status.stderr)
+        );
+    }
+
+    fn compile_with_toolkit_msvc(rc_exe: PathBuf, output: &PathBuf, input: &PathBuf) {
         let mut command = process::Command::new(rc_exe);
         let command = command.arg(format!(
             "/I{}",
@@ -59,6 +153,13 @@ mod windows_rc {
     }
 
     fn find_rc_exe() -> io::Result<PathBuf> {
+        // An explicit $RC override (e.g. llvm-rc for cross builds) wins over
+        // the Windows SDK registry lookup.
+        if let Some(rc) = env::var("RC").ok().map(PathBuf::from) {
+            if check_if_exe_works(&rc) {
+                return Ok(rc);
+            }
+        }
         let find_reg_key = process::Command::new("reg")
             .arg("query")
             .arg(r"HKLM\SOFTWARE\Microsoft\Windows Kits\Installed Roots")
