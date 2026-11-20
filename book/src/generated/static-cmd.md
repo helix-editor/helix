@@ -221,6 +221,8 @@
 | `rotate_selections_backward` | Rotate selections backward | normal: `` ( ``, select: `` ( `` |
 | `rotate_selection_contents_forward` | Rotate selection contents forward | normal: `` <A-)> ``, select: `` <A-)> `` |
 | `rotate_selection_contents_backward` | Rotate selections contents backward | normal: `` <A-(> ``, select: `` <A-(> `` |
+| `swap_selection_contents_forward` | Swap selection contents forward | normal: `` <A-l> ``, select: `` <A-l> `` |
+| `swap_selection_contents_backward` | Swap selections contents backward | normal: `` <A-h> ``, select: `` <A-h> `` |
 | `reverse_selection_contents` | Reverse selections contents |  |
 | `expand_selection` | Expand selection to parent syntax node | normal: `` <A-o> ``, `` <A-up> ``, select: `` <A-o> ``, `` <A-up> `` |
 | `shrink_selection` | Shrink selection to previously expanded syntax node | normal: `` <A-i> ``, `` <A-down> ``, select: `` <A-i> ``, `` <A-down> `` |
