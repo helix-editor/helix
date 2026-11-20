@@ -39,6 +39,8 @@ pub struct Prompt {
     truncate_end: bool,
     // ---
     completion: Vec<Completion>,
+    /// The line the completion ranges were computed against.
+    completion_line: String,
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
@@ -95,6 +97,7 @@ impl Prompt {
             truncate_start: false,
             truncate_end: false,
             completion: Vec::new(),
+            completion_line: String::new(),
             selection: None,
             history_register,
             history_pos: None,
@@ -157,6 +160,7 @@ impl Prompt {
     pub fn recalculate_completion(&mut self, editor: &Editor) {
         self.exit_selection();
         self.completion = (self.completion_fn)(editor, &self.line);
+        self.completion_line.clone_from(&self.line);
     }
 
     /// Compute the cursor position after applying movement
@@ -388,6 +392,7 @@ impl Prompt {
 
         let (range, item) = &self.completion[index];
 
+        self.line.clone_from(&self.completion_line);
         self.line.replace_range(range.clone(), &item.content);
 
         self.move_end();
