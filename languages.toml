@@ -342,6 +342,7 @@ command = "millet-ls"
 name = "rust"
 scope = "source.rust"
 injection-regex = "rs|rust"
+grammar = "rust_orchard"
 file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 shebangs = ["rust-script", "cargo"]
@@ -393,8 +394,8 @@ completion = [ { name = "lldb connect url", default = "connect://localhost:3333"
 args = { attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
 
 [[grammar]]
-name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "77a3747266f4d621d0757825e6b11edcbf991ca5" }
+name = "rust_orchard"
+source = { git = "https://github.com/grammar-orchard/tree-sitter-rust-orchard", rev = "7d8120b8fd67c88f7fe0a3d45acf70f3d8080a53" }
 
 [[language]]
 name = "sway"
@@ -5022,7 +5023,7 @@ source = { git = "https://github.com/nik-rev/tree-sitter-rust-format-args", rev 
 name = "rust-format-args-macro"
 scope = "source.rust-format-args-macro"
 file-types = []
-grammar = "rust"
+grammar = "rust_orchard"
 
 [[language]]
 name = "clarity"

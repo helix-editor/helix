@@ -1237,8 +1237,8 @@ mod test {
         "#;
         let source = Rope::from_str(
             r#"
-/// a comment on
-/// multiple lines
+// a comment on
+// multiple lines
         "#,
         );
 
@@ -1264,8 +1264,8 @@ mod test {
             )
         };
 
-        test("quantified_nodes", 1..37);
-        test("quantified_nodes_grouped", 1..37);
+        test("quantified_nodes", 1..34);
+        test("quantified_nodes_grouped", 1..34);
         // TODO: the query for this works instead as
         // ```
         // ((line_comment) @capture (line_comment) @capture)

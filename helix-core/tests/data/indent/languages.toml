@@ -3,14 +3,15 @@
 name = "rust"
 scope = "source.rust"
 injection-regex = "rust"
+grammar = "rust_orchard"
 file-types = ["rs"]
 comment-token = "//"
 roots = ["Cargo.toml", "Cargo.lock"]
 indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
-name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "0431a2c60828731f27491ee9fdefe25e250ce9c9" }
+name = "rust_orchard"
+source = { git = "https://github.com/grammar-orchard/tree-sitter-rust-orchard", rev = "7d8120b8fd67c88f7fe0a3d45acf70f3d8080a53" }
 
 [[language]]
 name = "cpp"
