@@ -1,5 +1,7 @@
 (sym_lit) @variable
 
+(kwd_lit) @string.special.symbol
+
 [
   (accumulation_verb)
   "thereis"
