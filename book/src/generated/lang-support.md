@@ -5,6 +5,7 @@
 | agda | ✓ |  |  |  |  |  |
 | alloy | ✓ |  |  |  |  |  |
 | amber | ✓ | ✓ | ✓ | ✓ | ✓ | `amber-lsp` |
+| angular | ✓ |  | ✓ |  | ✓ | `ngserver` |
 | astro | ✓ |  |  |  |  | `astro-ls` |
 | awk | ✓ | ✓ |  |  |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | ✓ | ✓ | `bash-language-server` |

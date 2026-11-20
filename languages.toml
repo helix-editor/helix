@@ -5571,6 +5571,29 @@ name = "concerto"
 source = { git = "https://github.com/accordproject/concerto-tree-sitter", rev = "920ba23ea93af56b19dfc38fcddf80b3ddc62685" }
 
 [[language]]
+name = "angular"
+scope = "source.angular"
+injection-regex = "html"
+# Leave file-types empty so Angular file association stays opt-in in user config.
+# Opt in via ~/.config/helix/languages.toml; match both old and new Angular template names.
+# [language]
+# name = "angular"
+# file-types = [{ glob = "src/**/*.component.html" }, { glob = "src/**/*.html" }]
+file-types = []
+block-comment-tokens = { start = "<!--", end = "-->" }
+language-servers = ["angular"]
+roots = ["angular.json"]
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'"' = '"'
+"'" = "'"
+
+[[grammar]]
+name = "angular"
+source = { git = "https://github.com/dlvandenberg/tree-sitter-angular", rev = "38a8014ed5452cd6b7cf1399c00177a1f5374256" }
+
+[[language]]
 name = "puppet"
 scope = "source.puppet"
 injection-regex = "puppet"
