@@ -277,7 +277,25 @@ pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<Ro
         .map(|mat| src.byte_slice(mat.range()))
 }
 
+/// Drops trailing `,;!?.` from a matched path, since they usually end the
+/// surrounding sentence or statement. A dot that is part of a `.` or `..`
+/// component stays.
+fn trim_trailing_punctuation(src: RopeSlice<'_>, mut range: Range<usize>) -> Range<usize> {
+    while range.end > range.start {
+        let last = src.byte(range.end - 1);
+        let dot_component = last == b'.'
+            && (range.end - 1 == range.start
+                || matches!(src.byte(range.end - 2), b'.' | b'/' | b'\\'));
+        if !b",;!?.".contains(&last) || dot_component {
+            break;
+        }
+        range.end -= 1;
+    }
+    range
+}
+
 /// Returns an iterator of the **byte** ranges in src that contain a path.
+/// Trailing punctuation is not part of the returned path.
 pub fn find_paths(
     src: RopeSlice<'_>,
     match_single_file: bool,
@@ -291,7 +309,10 @@ pub fn find_paths(
             LazyLock::new(|| compile_path_regex("", "", false, cfg!(windows)));
         &*REGEX
     };
-    regex.find_iter(Input::new(src)).map(|mat| mat.range())
+    regex
+        .find_iter(Input::new(src))
+        .map(move |mat| trim_trailing_punctuation(src, mat.range()))
+        .filter(|range| !range.is_empty())
 }
 
 /// Performs substitution of `~` and environment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
@@ -456,5 +477,32 @@ mod tests {
             assert_match!(regex, "$FOO");
             assert_match!(regex, "${BAR}");
         }
+    }
+
+    #[test]
+    fn find_paths_trailing_punctuation() {
+        fn find_paths(src: &str, match_single_file: bool) -> Vec<&str> {
+            path::find_paths(RopeSlice::from(src), match_single_file)
+                .map(|range| &src[range])
+                .collect()
+        }
+
+        assert_eq!(find_paths("file_name.ext;", true), ["file_name.ext"]);
+        assert_eq!(find_paths("name.ext,", true), ["name.ext"]);
+        assert_eq!(find_paths("main.rs!?", true), ["main.rs"]);
+        assert_eq!(find_paths(".", true), ["."]);
+        assert_eq!(find_paths("..", true), [".."]);
+        assert_eq!(
+            find_paths("see foo/bar.rs, then ./baz.txt. or ~/qux;", false),
+            ["foo/bar.rs", "./baz.txt", "~/qux"]
+        );
+        assert_eq!(
+            find_paths("../.. and foo/. and a/b,c.rs", false),
+            ["../..", "foo/.", "a/b,c.rs"]
+        );
+        assert_eq!(
+            find_paths("https://example.com/search?q=a,b;c!", false),
+            ["https://example.com/search?q=a,b;c"]
+        );
     }
 }
