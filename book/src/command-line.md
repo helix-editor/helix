@@ -51,9 +51,9 @@ The following variables are supported:
 | `current_working_directory` | Current working directory |
 | `workspace_directory` | Nearest ancestor directory of the current working directory that contains `.git`, `.svn`, `jj` or `.helix` |
 | `language` | A string containing the language name of the currently focused document.|
-| `selection` | A string containing the contents of the primary selection of the currently focused document. |
-| `selection_line_start` | The line number of the start of the primary selection in the currently focused document, starting at 1. |
-| `selection_line_end` | The line number of the end of the primary selection in the currently focused document, starting at 1. |
+| `selection` | A string containing the contents of the main selection of the currently focused document. |
+| `selection_line_start` | The line number of the start of the main selection in the currently focused document, starting at 1. |
+| `selection_line_end` | The line number of the end of the main selection in the currently focused document, starting at 1. |
 
 Aside from editor variables, the following expansions may be used:
 

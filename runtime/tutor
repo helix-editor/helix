@@ -935,8 +935,8 @@ lines.
  register without having to type in a search.
 
  Type * to copy the selection into register /, setting the search
- term to the selection. This copies the primary selection, which
- you will learn about in the section on cycling selections.
+ term to the selection. This copies the main selection, which
+ you will learn about in the section on rotating selections.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select "horse" with e and type *.
@@ -1018,7 +1018,7 @@ lines.
 =                        CHAPTER 9 RECAP                        =
 =================================================================
 
- * Type * to set the search register to the primary selection.
+ * Type * to set the search register to the main selection.
 
  * Type n / N in Select mode to add selections on each search
    match.
@@ -1037,38 +1037,38 @@ lines.
 
 
 =================================================================
-=             10.1 CYCLING AND REMOVING SELECTIONS              =
+=             10.1 ROTATING AND REMOVING SELECTIONS             =
 =================================================================
 
- Type ) and ( to cycle the primary selection forward and backward
+ Type ) and ( to rotate the main selection forward and backward
  through selections respectively.
 
- Press Alt-, to remove the primary selection.
+ Press Alt-, to remove the main selection.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
  3. Type s to select, type "would" and enter.
- 4. Use ( and ) to cycle the primary selection and deselect
+ 4. Use ( and ) to rotate the main selection and deselect
     the second "would" with Alt-, .
  5. Type c "wood" to change the remaining "would"s to "wood".
 
  --> How much would would a wouldchuck chuck
  --> if a wouldchuck could chuck would?
 
- Note: The primary selection can be hard to see in some themes.
+ Note: The main selection can be hard to see in some themes.
        Check the status bar (bottom right) for the active index.
 
 =================================================================
-=             10.2 CYCLING THE CONTENT OF SELECTIONS            =
+=             10.2 ROTATING THE CONTENT OF SELECTIONS           =
 =================================================================
 
- Press Alt-) and Alt-( to cycle the content of the selections
+ Press Alt-) and Alt-( to rotate the content of the selections
  forward and backward respectively.
 
  1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
  3. Type s to select, type "through|water|know" and enter.
- 4. Use Alt-( and Alt-) to cycle the content of the selections.
+ 4. Use Alt-( and Alt-) to rotate the content of the selections.
 
  --> Jumping through the water,
  --> daring to know.
@@ -1128,10 +1128,10 @@ letters! that is not good grammar. you can fix this.
 =                        CHAPTER 10 RECAP                       =
 =================================================================
 
- * Use ) and ( to cycle the primary selection back and forward
+ * Use ) and ( to rotate the main selection back and forward
    through selections respectively.
-   * Press Alt-, to remove the primary selection.
-   * Press Alt-) and Alt-( to cycle the content of the selections.
+   * Press Alt-, to remove the main selection.
+   * Press Alt-) and Alt-( to rotate the content of the selections.
 
  * Type ~ to alternate case of selected letters.
    * Use ` and Alt-` to set the case of selected letters to
