@@ -51,6 +51,9 @@
 ; Functions and callbacks
 (argument) @variable.parameter
 
+(closure_expression
+  argument: (simple_identifier) @variable.parameter)
+
 (function_call
   name: (_) @function)
 
@@ -99,6 +102,7 @@
   "=>"
   "->"
   "<=>"
+  "<<"
 ] @operator
 
 [
@@ -141,6 +145,18 @@
 (property_assignment
   property: (simple_identifier) @variable)
 
+(slot_declaration
+  name: (simple_identifier) @variable)
+
+(slot_assignment
+  name: (simple_identifier) @variable)
+
+(slot_forwarding
+  name: (simple_identifier) @variable)
+
+(implement_statement
+  target: (simple_identifier) @variable)
+
 (state_definition
   name: (simple_identifier) @variable
   "when" @keyword)
@@ -180,6 +196,14 @@
 (markdown
   "@markdown" @attribute)
 
+[
+  (shadowable)
+  (testable)
+] @attribute
+
+(property_deprecation
+  "@deprecated" @attribute)
+
 (keys
   (simple_identifier) @constant)
 
@@ -197,6 +221,12 @@
 
 (if_statement
   "if" @keyword.control.conditional)
+
+(match_element
+  "match" @keyword.control.conditional)
+
+(wildcard_match_case
+  "*" @operator)
 
 (if_expr
   [
@@ -222,16 +252,6 @@
 (component_modifier
   "inherits" @keyword.storage.type)
 
-(uses_clause
-  "uses" @keyword.storage.type)
-
-(implements_clause
-  "implements" @keyword.storage.type)
-
-(used_interface
-  "from" @keyword.control.import
-  source: (_) @variable)
-
 (changed_event
   "changed" @keyword)
 
@@ -255,6 +275,12 @@
 
 (function_declaration
   "function" @keyword.function)
+
+(implement_statement
+  "implement" @keyword.storage.type)
+
+(slot_declaration
+  "slot" @keyword.storage.type)
 
 (let_statement
   "let" @keyword.storage.type

@@ -5,6 +5,7 @@
   (enum_block)
   (global_block)
   (imperative_block)
+  (match_element)
   (struct_block)
 ] @indent
 
