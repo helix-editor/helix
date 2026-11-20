@@ -1103,6 +1103,7 @@ name = "scss"
 scope = "source.scss"
 injection-regex = "scss"
 file-types = ["scss"]
+comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
 auto-format = true
@@ -1117,6 +1118,7 @@ name = "less"
 scope = "source.less"
 injection-regex = "less"
 file-types = ["less"]
+comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "vscode-css-language-server" ]
 auto-format = true
