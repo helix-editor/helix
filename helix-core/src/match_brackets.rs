@@ -106,7 +106,7 @@ fn find_pair(
                 }
             }
         }
-        // this node itselt wasn't a pair but maybe its siblings are
+        // this node itself wasn't a pair but maybe its siblings are
 
         if let Some((start_char, end_char)) = as_close_pair(doc, &node) {
             if let Some(pair_start) =
