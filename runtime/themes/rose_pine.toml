@@ -145,8 +145,6 @@
 "markup.heading.4" = { fg = "gold", modifiers = ["bold"] }
 "markup.heading.5" = { fg = "pine", modifiers = ["bold"] }
 "markup.heading.6" = { fg = "foam", modifiers = ["bold"] }
-# "markup.heading.completion" = ""
-# "markup.heading.hover" = ""
 "markup.list" = "muted"
 # "markup.list.unnumbered" = ""
 # "markup.list.numbered" = ""
@@ -160,12 +158,7 @@
 "markup.quote" = "subtle"
 "markup.raw" = "subtle"
 # "markup.raw.inline" = {}
-# "markup.raw.inline.completion" = {}
-# "markup.raw.inline.hover" = {}
 # "markup.raw.block" = {}
-# "markup.normal" = ""
-# "markup.normal.completion" = ""
-# "markup.normal.hover" = ""
 
 "diff" = "overlay"
 "diff.plus" = "foam"

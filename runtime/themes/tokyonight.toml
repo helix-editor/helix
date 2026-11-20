@@ -39,16 +39,12 @@ variable = { fg = "fg" }
 
 "markup.bold" = { modifiers = ["bold"] }
 "markup.heading" = { fg = "blue", modifiers = ["bold"] }
-"markup.heading.completion" = { bg = "bg-menu", fg = "fg" }
-"markup.heading.hover" = { bg = "fg-selected" }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.link" = { fg = "blue", underline = { style = "line" } }
 "markup.link.label" = { fg = "teal" }
 "markup.link.text" = { fg = "teal" }
 "markup.link.url" = { underline = { style = "line" } }
 "markup.list" = { fg = "orange", modifiers = ["bold"] }
-"markup.normal.completion" = { fg = "comment" }
-"markup.normal.hover" = { fg = "fg-dark" }
 "markup.raw" = { fg = "teal" }
 "markup.raw.inline" = { bg = "black", fg = "blue" }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }

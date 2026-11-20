@@ -667,13 +667,13 @@ impl EditorView {
             editor
                 .theme
                 .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+                .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive")),
         );
 
         let bufferline_active = editor
             .theme
             .try_get("ui.bufferline.active")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+            .unwrap_or_else(|| editor.theme.get("ui.statusline"));
 
         let bufferline_inactive = editor
             .theme

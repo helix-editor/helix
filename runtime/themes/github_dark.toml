@@ -47,7 +47,7 @@ label = "scale.red.3"
 "ui.linenr" = { fg = "fg.subtle" }
 "ui.linenr.selected" = { fg = "fg.default" }
 "ui.statusline" = { fg = "fg.muted", bg = "scale.gray.7" }
-"ui.statusline.active" = { fg = "fg.default", bg = "canvas.default", underline = { color = "scale.coral.3", style = "line" } }
+"ui.bufferline.active" = { fg = "fg.default", bg = "canvas.default", underline = { color = "scale.coral.3", style = "line" } }
 "ui.statusline.normal" = { fg = "fg.default", bg = "accent.muted" }
 "ui.statusline.insert" = { fg = "fg.default", bg = "attention.muted" }
 "ui.statusline.select" = { fg = "fg.default", bg = "sponsors.muted" }
