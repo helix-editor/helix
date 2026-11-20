@@ -341,4 +341,4 @@
 | yaml | ✓ | ✓ | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  |  |  | `yls` |
 | yuck | ✓ |  | ✓ |  | ✓ |  |
-| zig | ✓ | ✓ | ✓ | ✓ | ✓ | `zls` |
+| zig | ✓ | ✓ | ✓ | ✓ | ✓ | `zls`, `zigscient` |
