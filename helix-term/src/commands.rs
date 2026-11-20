@@ -584,7 +584,7 @@ impl MappableCommand {
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
         dap_restart, "Restart debugging session",
-        dap_toggle_breakpoint, "Toggle breakpoint",
+        dap_toggle_breakpoints, "Toggle breakpoints",
         dap_continue, "Continue program execution",
         dap_pause, "Pause program execution",
         dap_step_in, "Step in",
