@@ -423,8 +423,8 @@ with modal editors.
 
 | Key                                         | Description                 | Command                  |
 | -----                                       | -----------                 | -------                  |
-| `Up`                                        | Move to previous line       | `move_line_up`           |
-| `Down`                                      | Move to next line           | `move_line_down`         |
+| `Up`                                        | Move to previous visual line | `move_visual_line_up`    |
+| `Down`                                      | Move to next visual line    | `move_visual_line_down`  |
 | `Left`                                      | Backward a char             | `move_char_left`         |
 | `Right`                                     | Forward a char              | `move_char_right`        |
 | `PageUp`                                    | Move one page up            | `page_up`                |
