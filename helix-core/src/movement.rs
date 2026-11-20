@@ -121,7 +121,7 @@ pub fn move_vertically(
     let visual_pos = visual_offset_from_block(slice, line_start, pos, text_fmt, annotations).0;
     let (mut new_row, new_col) = range
         .old_visual_position
-        .map_or((visual_pos.row as u32, visual_pos.col as u32), |pos| pos);
+        .unwrap_or((visual_pos.row as u32, visual_pos.col as u32));
     new_row = new_row.max(visual_pos.row as u32);
     let line_idx = slice.char_to_line(pos);
 
