@@ -1,11 +1,16 @@
 use crate::compositor::{Component, Compositor, Context, Event, EventResult};
-use crate::{alt, ctrl, key, shift, ui};
+use crate::ui::completers::CompletionResult;
+use crate::{alt, ctrl, job, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_event::TaskController;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
 use tui::text::Span;
@@ -24,9 +29,16 @@ use helix_view::{
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
 
 pub type Completion = (RangeFrom<usize>, Span<'static>);
-type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
+type CompletionFn = Box<dyn FnMut(&Editor, &str) -> CompletionResult>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
+
+/// How long to wait for deferred completions before falling back to asynchronous delivery.
+///
+/// Deferred completions which finish within this window behave exactly like immediate ones,
+/// so the completion menu does not flicker on fast filesystems. The prompt never blocks
+/// longer than this.
+const DEFERRED_COMPLETION_TIMEOUT: Duration = Duration::from_millis(50);
 
 pub struct Prompt {
     prompt: Cow<'static, str>,
@@ -43,6 +55,24 @@ pub struct Prompt {
     history_register: Option<char>,
     history_pos: Option<usize>,
     completion_fn: CompletionFn,
+    /// Cancels background work computing deferred completions when they are no longer needed.
+    task_controller: TaskController,
+    /// The receiving end for completions currently being computed on a background thread.
+    ///
+    /// Swapping this out in [Self::recalculate_completion] is what guarantees that stale
+    /// results are never delivered: a pending background task can only fill the receiver
+    /// that was created alongside it.
+    deferred_completion: Option<Receiver<Vec<Completion>>>,
+    /// The id of the deferred completion task currently in flight, if any.
+    ///
+    /// At most one background task runs per prompt: cancellation cannot interrupt a task
+    /// stuck in a blocking syscall, so instead of stacking up a new thread per keystroke,
+    /// recalculations that arrive while a task is in flight only set
+    /// [Self::pending_recalculation] and run once the task finishes.
+    deferred_task: Option<usize>,
+    /// Whether the line changed while a deferred completion task was in flight, requiring
+    /// a new recalculation once it finishes.
+    pending_recalculation: bool,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
     next_char_handler: Option<PromptCharHandler>,
@@ -83,7 +113,7 @@ impl Prompt {
     pub fn new(
         prompt: Cow<'static, str>,
         history_register: Option<char>,
-        completion_fn: impl FnMut(&Editor, &str) -> Vec<Completion> + 'static,
+        completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
         callback_fn: impl FnMut(&mut Context, &str, PromptEvent) + 'static,
     ) -> Self {
         Self {
@@ -99,6 +129,10 @@ impl Prompt {
             history_register,
             history_pos: None,
             completion_fn: Box::new(completion_fn),
+            task_controller: TaskController::new(),
+            deferred_completion: None,
+            deferred_task: None,
+            pending_recalculation: false,
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
             next_char_handler: None,
@@ -155,8 +189,78 @@ impl Prompt {
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
+        // Invalidate any in-flight deferred completion: canceling the task stops background
+        // work early, while dropping the receiver guarantees stale results are unreachable
+        // even if the task has already finished.
+        let handle = self.task_controller.restart();
+        self.deferred_completion = None;
+
         self.exit_selection();
-        self.completion = (self.completion_fn)(editor, &self.line);
+
+        // we limit ourselves to 1 deferred task at a time. In case a deferred task
+        // is still running, indicate the desire to recalculate, then return early.
+        if self.deferred_task.is_some() {
+            self.pending_recalculation = true;
+            self.completion.clear();
+            return;
+        }
+        self.pending_recalculation = false;
+
+        match (self.completion_fn)(editor, &self.line) {
+            CompletionResult::Immediate(completion) => self.completion = completion,
+            CompletionResult::Deferred(compute) => {
+                // Make deferred tasks globally unique within a prompt.
+                static NEXT_TASK_ID: AtomicUsize = AtomicUsize::new(0);
+                let task = NEXT_TASK_ID.fetch_add(1, Ordering::Relaxed);
+                self.deferred_task = Some(task);
+
+                let (tx, rx) = std::sync::mpsc::sync_channel(1);
+                tokio::task::spawn_blocking(move || {
+                    let completion = compute(&handle);
+                    if !handle.is_canceled() {
+                        let _ = tx.send(completion);
+                    }
+                    // we always notify the prompt of completion, even on cancellation,
+                    // in case we need to enque a new task. This keeps concurrency<=1.
+                    job::dispatch_blocking(move |editor, compositor| {
+                        if let Some(prompt) = compositor.find::<Prompt>() {
+                            prompt.handle_deferred_completion(task, editor);
+                        }
+                    });
+                });
+
+                // Avoid prompt flickering by eagerly waiting on fast deferred tasks.
+                match rx.recv_timeout(DEFERRED_COMPLETION_TIMEOUT) {
+                    Ok(completion) => {
+                        // ensure the callback handler returns early
+                        self.deferred_task = None;
+                        self.completion = completion;
+                    }
+                    Err(_) => {
+                        self.completion.clear();
+                        self.deferred_completion = Some(rx);
+                    }
+                }
+            }
+        }
+    }
+
+    fn handle_deferred_completion(&mut self, task: usize, editor: &Editor) {
+        // Defend against already-consumed or cancelled completions
+        if self.deferred_task != Some(task) {
+            return;
+        }
+        self.deferred_task = None;
+        if self.pending_recalculation {
+            // completion has been rendered stale in the time it took to execute.
+            self.recalculate_completion(editor);
+            helix_event::request_redraw();
+        } else if let Some(rx) = self.deferred_completion.take() {
+            if let Ok(completion) = rx.try_recv() {
+                self.completion = completion;
+                helix_event::request_redraw();
+            }
+        }
     }
 
     /// Compute the cursor position after applying movement
