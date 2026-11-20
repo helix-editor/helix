@@ -34,6 +34,9 @@ pub enum Variable {
     /// The absolute path of the currently focused document. For scratch buffers this will default
     /// to the current working directory.
     FilePathAbsolute,
+    /// The absolute parent directory of the currently focused document. For scratch buffers this
+    /// will default to the current working directory.
+    BufferDirectory,
     /// A string containing the line-ending of the currently focused document.
     LineEnding,
     /// Curreng working directory
@@ -56,6 +59,7 @@ impl Variable {
         Self::CursorColumn,
         Self::BufferName,
         Self::FilePathAbsolute,
+        Self::BufferDirectory,
         Self::LineEnding,
         Self::CurrentWorkingDirectory,
         Self::WorkspaceDirectory,
@@ -71,6 +75,7 @@ impl Variable {
             Self::CursorColumn => "cursor_column",
             Self::BufferName => "buffer_name",
             Self::FilePathAbsolute => "file_path_absolute",
+            Self::BufferDirectory => "buffer_directory",
             Self::LineEnding => "line_ending",
             Self::CurrentWorkingDirectory => "current_working_directory",
             Self::WorkspaceDirectory => "workspace_directory",
@@ -87,6 +92,7 @@ impl Variable {
             "cursor_column" => Some(Self::CursorColumn),
             "buffer_name" => Some(Self::BufferName),
             "file_path_absolute" => Some(Self::FilePathAbsolute),
+            "buffer_directory" => Some(Self::BufferDirectory),
             "line_ending" => Some(Self::LineEnding),
             "workspace_directory" => Some(Self::WorkspaceDirectory),
             "current_working_directory" => Some(Self::CurrentWorkingDirectory),
@@ -275,6 +281,14 @@ fn expand_variable(editor: &Editor, variable: Variable) -> Result<Cow<'static, s
             .to_string_lossy()
             .to_string();
             Ok(Cow::Owned(path))
+        }
+        Variable::BufferDirectory => {
+            let path = doc
+                .path()
+                .and_then(|path| path.parent())
+                .map(|path| path.to_owned())
+                .unwrap_or_else(helix_stdx::env::current_working_dir);
+            Ok(Cow::Owned(path.to_string_lossy().into_owned()))
         }
         Variable::LineEnding => Ok(Cow::Borrowed(doc.line_ending.as_str())),
         Variable::CurrentWorkingDirectory => Ok(std::borrow::Cow::Owned(
