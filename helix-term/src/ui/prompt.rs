@@ -117,10 +117,23 @@ impl Prompt {
         self
     }
 
+    /// Keep `anchor`/`cursor` inside the current line so render/cursor
+    /// never slice with a stale byte index after a deletion.
+    fn clamp_view(&mut self) {
+        let len = self.line.len();
+        if self.cursor > len {
+            self.cursor = len;
+        }
+        if self.anchor > len || self.cursor < self.anchor {
+            self.anchor = self.cursor.min(len);
+        }
+    }
+
     pub fn set_line(&mut self, line: String, editor: &Editor) {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
+        self.clamp_view();
         self.recalculate_completion(editor);
     }
 
@@ -265,12 +278,14 @@ impl Prompt {
         if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
             self.cursor = pos;
         }
+        self.clamp_view();
         self.recalculate_completion(cx.editor);
     }
 
     pub fn insert_str(&mut self, s: &str, editor: &Editor) {
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
+        self.clamp_view();
         self.recalculate_completion(editor);
     }
 
@@ -291,6 +306,7 @@ impl Prompt {
         let pos = self.eval_movement(Movement::BackwardChar(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -298,6 +314,7 @@ impl Prompt {
     pub fn delete_char_forwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::ForwardChar(1));
         self.line.replace_range(self.cursor..pos, "");
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -306,6 +323,7 @@ impl Prompt {
         let pos = self.eval_movement(Movement::BackwardWord(1));
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -313,6 +331,7 @@ impl Prompt {
     pub fn delete_word_forwards(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::ForwardWord(1));
         self.line.replace_range(self.cursor..pos, "");
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -321,6 +340,7 @@ impl Prompt {
         let pos = self.eval_movement(Movement::StartOfLine);
         self.line.replace_range(pos..self.cursor, "");
         self.cursor = pos;
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -328,6 +348,7 @@ impl Prompt {
     pub fn kill_to_end_of_line(&mut self, editor: &Editor) {
         let pos = self.eval_movement(Movement::EndOfLine);
         self.line.replace_range(self.cursor..pos, "");
+        self.clamp_view();
 
         self.recalculate_completion(editor);
     }
@@ -335,6 +356,7 @@ impl Prompt {
     pub fn clear(&mut self, editor: &Editor) {
         self.line.clear();
         self.cursor = 0;
+        self.clamp_view();
         self.recalculate_completion(editor);
     }
 
@@ -519,6 +541,8 @@ impl Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_top(line)
             .clip_right(2);
+
+        self.clamp_view();
 
         if self.line.is_empty() {
             self.anchor = 0;
@@ -774,17 +798,19 @@ impl Component for Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.is_empty() { 2 } else { 0 });
 
-        let mut col = area.left() as usize + self.line[self.anchor..self.cursor].width();
+        let len = self.line.len();
+        let cursor = self.cursor.min(len);
+        let anchor = self.anchor.min(cursor);
+
+        let mut col = area.left() as usize + self.line[anchor..cursor].width();
 
         // ensure the cursor does not go beyond elipses
-        if self.truncate_end
-            && self.line[self.anchor..self.cursor].width() >= self.line_area.width as usize
-        {
+        if self.truncate_end && self.line[anchor..cursor].width() >= self.line_area.width as usize {
             col -= 1;
         }
 
-        if self.truncate_start && self.cursor == self.anchor {
-            col += self.line[self.cursor..]
+        if self.truncate_start && cursor == anchor {
+            col += self.line[cursor..]
                 .graphemes(true)
                 .next()
                 .map_or(0, |g| g.width());
@@ -796,5 +822,27 @@ impl Component for Prompt {
             Some(Position::new(area.y as usize + line, col)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dummy_prompt() -> Prompt {
+        Prompt::new(Cow::Borrowed(":"), None, |_, _| Vec::new(), |_, _, _| {})
+    }
+
+    #[test]
+    fn clamp_view_resets_stale_anchor_after_line_cleared() {
+        let mut prompt = dummy_prompt();
+        prompt.line = "a".repeat(40);
+        prompt.cursor = 40;
+        prompt.anchor = 30;
+        prompt.line.clear();
+        prompt.cursor = 0;
+        prompt.clamp_view();
+        assert_eq!(prompt.anchor, 0);
+        assert_eq!(prompt.cursor, 0);
     }
 }
