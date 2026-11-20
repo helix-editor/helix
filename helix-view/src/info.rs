@@ -1,5 +1,5 @@
 use crate::register::Registers;
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::graphemes::str_width;
 use std::{borrow::Cow, fmt::Write};
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ impl Info {
         if body.is_empty() {
             return Self {
                 height: 1,
-                width: title.len() as u16,
+                width: str_width(title.as_ref()) as u16,
                 text: "".to_string(),
                 title,
             };
@@ -34,24 +34,22 @@ impl Info {
 
         let item_width = body
             .iter()
-            .map(|(item, _)| item.as_ref().width())
+            .map(|(item, _)| str_width(item.as_ref()))
             .max()
             .unwrap();
         let mut text = String::new();
 
         for (item, desc) in body {
-            let _ = writeln!(
-                text,
-                "{:width$}  {}",
-                item.as_ref(),
-                desc.as_ref(),
-                width = item_width
-            );
+            let item = item.as_ref();
+            let _ = text.write_str(item);
+            let padding = item_width.saturating_sub(str_width(item)) + 2;
+            let _ = text.write_str(&" ".repeat(padding));
+            let _ = writeln!(text, "{}", desc.as_ref());
         }
 
         Self {
             title,
-            width: text.lines().map(|l| l.width()).max().unwrap() as u16,
+            width: text.lines().map(str_width).max().unwrap() as u16,
             height: body.len() as u16,
             text,
         }
