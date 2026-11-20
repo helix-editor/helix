@@ -168,6 +168,8 @@
 
     ; std
     "write" "writeln" "assert" "debug_assert"
+    ; anyhow
+    "ensure"
     ; defmt
     "expect" "unwrap"
     ; ratatui
