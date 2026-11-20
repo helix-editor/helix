@@ -5274,7 +5274,7 @@ block-comment-tokens = { start = "/*", end = "*/"}
 
 [[grammar]]
 name = "kcl"
-source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "8905e0bdbf5870b50bc3f24345f1af27746f42e8"}
+source = { git = "https://github.com/KittyCAD/tree-sitter-kcl", rev = "f96734a2a1f097f382d99fcf8e83e813ddbefaa3"}
 
 [[language]]
 name = "bovex"
