@@ -28,6 +28,7 @@ tag = "red213"
 "diff.delta" = "blue173"
 
 "ui.background" = { fg = "blue196", bg = "blue34" }
+"ui.cursor" = { fg = "black", bg = "blue214" }
 "ui.gutter" = "blue56"
 "ui.gutter.selected" = { fg ="blue56", bg = "blue46" }
 "ui.linenr" = "blue89"
