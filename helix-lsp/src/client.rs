@@ -19,16 +19,11 @@ use helix_core::{
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use parking_lot::Mutex;
+use portable_atomic::{AtomicU64, Ordering};
 use serde::Deserialize;
 use serde_json::Value;
 use std::{collections::HashMap, path::PathBuf};
-use std::{
-    ffi::OsStr,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
-};
+use std::{ffi::OsStr, sync::Arc};
 use std::{future::Future, sync::OnceLock};
 use std::{path::Path, process::Stdio};
 use tokio::{
