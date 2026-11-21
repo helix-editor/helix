@@ -4,8 +4,8 @@ use helix_event::{cancelable_future, register_hook};
 use helix_lsp::lsp::DocumentSymbolResponse;
 use helix_view::{
     events::{
-        ConfigDidChange, DocumentDidChange, DocumentDidOpen, LanguageServerExited,
-        LanguageServerInitialized, SelectionDidChange,
+        ConfigDidChange, DocumentDidChange, DocumentDidOpen, DocumentSymbolsUpdated,
+        LanguageServerExited, LanguageServerInitialized, SelectionDidChange,
     },
     handlers::Handlers,
     DocumentId, Editor,
@@ -44,6 +44,12 @@ fn request_document_symbols(editor: &mut Editor, doc_id: DocumentId) {
                 match response {
                     DocumentSymbolResponse::Nested(symbols) => {
                         doc.set_document_symbols(symbols, offset_encoding);
+                        // WARN: Must call after setting new symbols, otherwise
+                        // the symbols might not match to the real cursor position.
+                        helix_event::dispatch(DocumentSymbolsUpdated {
+                            editor,
+                            doc: doc_id,
+                        });
                     }
                     // TODO: Using the `Location`, it should be possible to map cursor
                     // to a hierarchical tree?
@@ -57,12 +63,7 @@ fn request_document_symbols(editor: &mut Editor, doc_id: DocumentId) {
 
 pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidOpen<'_>| {
-        let doc_id = event.doc;
-        let view_id = event.editor.tree.focus;
-        request_document_symbols(event.editor, doc_id);
-        if let Some(doc) = event.editor.document_mut(doc_id) {
-            doc.update_breadcrumbs_for_view(view_id);
-        }
+        request_document_symbols(event.editor, event.doc);
         Ok(())
     });
 
@@ -70,13 +71,9 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
         if !event.ghost_transaction {
             // Cancel the ongoing request, if present.
             event.doc.document_symbols_controller.cancel();
-            let view_id = event.view;
             let doc_id = event.doc.id();
             job::dispatch_blocking(move |editor, _| {
                 request_document_symbols(editor, doc_id);
-                if let Some(doc) = editor.document_mut(doc_id) {
-                    doc.update_breadcrumbs_for_view(view_id);
-                }
             });
         }
         Ok(())
@@ -85,11 +82,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     register_hook!(move |event: &mut LanguageServerInitialized<'_>| {
         let view_id = event.editor.tree.focus;
         if let Some(view) = event.editor.tree.try_get(view_id) {
-            let doc_id = view.doc;
-            request_document_symbols(event.editor, doc_id);
-            if let Some(doc) = event.editor.document_mut(doc_id) {
-                doc.update_breadcrumbs_for_view(view_id);
-            }
+            request_document_symbols(event.editor, view.doc);
         }
         Ok(())
     });
@@ -109,9 +102,6 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             if let Some(view) = event.editor.tree.try_get(view_id) {
                 let doc_id = view.doc;
                 request_document_symbols(event.editor, doc_id);
-                if let Some(doc) = event.editor.document_mut(doc_id) {
-                    doc.update_breadcrumbs_for_view(view_id);
-                }
             }
             return Ok(());
         }
@@ -122,6 +112,20 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
             }
         }
 
+        Ok(())
+    });
+
+    register_hook!(move |event: &mut DocumentSymbolsUpdated<'_>| {
+        let doc_id = event.doc;
+        let Editor {
+            tree, documents, ..
+        } = &mut *event.editor;
+        if let Some(doc) = documents.get_mut(&doc_id) {
+            // Update each open view of the document and update.
+            for (view, _) in tree.views().filter(|(view, _)| view.doc == doc_id) {
+                doc.update_breadcrumbs_for_view_inlined(view.id);
+            }
+        }
         Ok(())
     });
 
