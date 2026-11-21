@@ -19,6 +19,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "p
 # setup new events on initialization, hardware-lock-elision hugely benefits this case
 # as it essentially makes the lock entirely free as long as there is no writes
 parking_lot = { workspace = true, features = ["hardware-lock-elision"] }
+portable-atomic.workspace = true
 
 anyhow = "1"
 log = "0.4"

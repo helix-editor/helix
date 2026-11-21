@@ -37,6 +37,12 @@ jobs:
       - name: Run cargo check
         run: cargo check
 
+      # helix-lsp/helix-dap also need a C cross compiler for tree-house-bindings.
+      - name: Run cargo check (32-bit target without 64-bit atomics)
+        run: |
+          rustup target add armv5te-unknown-linux-gnueabi
+          cargo check -p helix-event --target armv5te-unknown-linux-gnueabi
+
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
