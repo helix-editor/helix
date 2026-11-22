@@ -407,7 +407,7 @@ impl Tree {
                         }
                         Layout::Vertical => {
                             let len = container.children.len();
-                            let len_u16 = len as u16;
+                            let len_u16 = u16::try_from(len).unwrap_or(u16::MAX);
 
                             let inner_gap = 1u16;
                             let total_gap = inner_gap * len_u16.saturating_sub(2);
@@ -415,21 +415,22 @@ impl Tree {
                             let used_area = area.width.saturating_sub(total_gap);
                             let width = used_area / len_u16;
 
+                            let right = area.right();
                             let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let mut area = Rect::new(
                                     child_x,
                                     container.area.y,
-                                    width,
+                                    width.min(right - child_x),
                                     container.area.height,
                                 );
-                                child_x += width + inner_gap;
+                                child_x = area.right().saturating_add(inner_gap).min(right);
 
                                 // last child takes the remaining width because we can get uneven
                                 // space from rounding
                                 if i == len - 1 {
-                                    area.width = container.area.x + container.area.width - area.x;
+                                    area.width = right - area.x;
                                 }
 
                                 self.stack.push((*child, area));
