@@ -85,6 +85,7 @@
                 cargo-flamegraph
                 rust-bin.nightly.latest.rust-analyzer
                 mdbook
+                nurl # Used for updating the nix/grammar-sources.json
               ]
               ++ (lib.optional (stdenv.isx86_64 && stdenv.hostPlatform.isLinux) cargo-tarpaulin)
               ++ (lib.optional stdenv.hostPlatform.isLinux lldb);
