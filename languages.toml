@@ -113,6 +113,7 @@ pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
 pest-language-server = { command = "pest-language-server" }
 pkl-lsp = { command = "pkl-lsp" }
+plum-lsp = { command = "plum", args = ["lsp"] }
 pony-lsp = { command = "pony-lsp", args = ["--stdio"], config = {defines = [], ponypath = []}}
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"], config.prisma.enableDiagnostics = true }
 puppet-languageserver = { command = "puppet-languageserver", args = ["--stdio"] }
@@ -5655,3 +5656,18 @@ comment-tokens = ["REM", "::"]
 [[grammar]]
 name = "batch"
 source = { git = "https://github.com/wharflab/tree-sitter-batch", rev = "5fc5f54267ef9a78e7a5319b80e092194252aabf" }
+
+[[language]]
+name = "plum"
+scope = "source.plum"
+injection-regex = "plum"
+file-types = ["plum"]
+roots = ["plum.toml"]
+comment-tokens = ["#"]
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["plum-lsp"]
+auto-format = true
+
+[[grammar]]
+name = "plum"
+source = { git = "https://github.com/plumlang/tree-sitter-plum", rev = "4d17a580e14ad2a8410382e158b5bad2e2a6bb61" }
