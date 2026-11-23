@@ -24,6 +24,7 @@
 - [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 - [`[editor.word-completion]` Section](#editorword-completion-section)
 - [`[editor.workspace-trust]` Section](#editorworkspace-trust-section)
+- [`[editor.terminal]` Section](#editorterminal-section)
 
 ### `[editor]` Section
 
@@ -565,4 +566,31 @@ level = "servers"
 # Discouraged: skips .helix/ change detection and trusts anything that lands
 # under a matching path. `~` and environment variables are expanded.
 trusted = ["~/src/github.com/me/*"]
+```
+
+### `[editor.terminal]` Section
+
+The external terminal used when a debug adapter asks Helix to run the debuggee
+in a terminal (the DAP `runInTerminal` request). The arguments sent by the debug
+adapter are appended after `args`.
+
+| Key       | Description                                         | Default |
+| ---       | ---                                                 | ---     |
+| `command` | The terminal program to run                         | See below |
+| `args`    | Arguments passed to `command` before the debuggee's | `[]`    |
+
+When this section is not set, Helix picks a terminal on its own:
+
+- Windows: `wt new-tab --title DEBUG cmd /C` if Windows Terminal is installed,
+  `conhost cmd /C` otherwise.
+- Other platforms: `tmux split-window` when running inside tmux, or
+  `wezterm cli split-pane` when running inside WezTerm. If neither is detected,
+  no terminal is configured and the request fails with "No external terminal defined".
+
+Example:
+
+```toml
+[editor.terminal]
+command = "wezterm"
+args = ["cli", "split-pane"]
 ```
