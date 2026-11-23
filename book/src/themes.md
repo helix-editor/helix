@@ -310,6 +310,8 @@ These scopes are used for theming the editor interface:
 | ---                               | ---                                                                                            |
 | `ui.background`                   |                                                                                                |
 | `ui.background.separator`         | Picker separator below input line                                                              |
+| `ui.breadcrumb`                   | Breadcrumb navigation bar                                                                      |
+| `ui.breadcrumb.separator`         | Breadcrumb navigation bar separator                                                            |
 | `ui.cursor`                       |                                                                                                |
 | `ui.cursor.normal`                |                                                                                                |
 | `ui.cursor.insert`                |                                                                                                |
