@@ -102,6 +102,9 @@ fn find_nth_closest_pairs_plain(
     mut skip: usize,
 ) -> Result<(usize, usize)> {
     let mut stack = Vec::with_capacity(2);
+    // Close chars paired with the last position holding that char for which
+    // no open pair was found. A later search for the same char can stop there.
+    let mut unmatched: Vec<(char, usize)> = Vec::new();
     let pos = range.from();
 
     for (close_pos, ch) in (pos..).zip(text.chars_at(pos)) {
@@ -130,7 +133,24 @@ fn find_nth_closest_pairs_plain(
             continue;
         }
 
-        match find_nth_open_pair(text, open, close, close_pos, 1) {
+        let open_pos = match unmatched.iter_mut().find(|(c, _)| *c == close) {
+            Some((_, floor)) => {
+                let open_pos = find_open_pair_above(text, open, close, close_pos, *floor);
+                if open_pos.is_none() {
+                    *floor = close_pos;
+                }
+                open_pos
+            }
+            None => {
+                let open_pos = find_nth_open_pair(text, open, close, close_pos, 1);
+                if open_pos.is_none() {
+                    unmatched.push((close, close_pos));
+                }
+                open_pos
+            }
+        };
+
+        match open_pos {
             // Before we accept this pair, we want to ensure that the
             // pair encloses the range rather than just the cursor.
             Some(open_pos)
@@ -261,6 +281,37 @@ fn find_nth_open_pair(
     }
 
     Some(pos)
+}
+
+/// Same as `find_nth_open_pair(text, open, close, pos, 1)` where `pos` holds
+/// `close`, given that the same search from `floor` (also holding `close`,
+/// with `floor < pos`) found no open pair. Any open pair must then lie
+/// after `floor`: past it there is at least one more unmatched `close`.
+fn find_open_pair_above(
+    text: RopeSlice,
+    open: char,
+    close: char,
+    mut pos: usize,
+    floor: usize,
+) -> Option<usize> {
+    let mut chars = text.chars_at(pos);
+    let mut step_over: usize = 0;
+
+    while pos > floor + 1 {
+        let c = chars.prev()?;
+        pos -= 1;
+
+        if c == close {
+            step_over += 1;
+        } else if c == open {
+            if step_over == 0 {
+                return Some(pos);
+            }
+            step_over -= 1;
+        }
+    }
+
+    None
 }
 
 fn find_nth_close_pair(
@@ -488,6 +539,27 @@ mod test {
             find_nth_closest_pairs_pos(None, doc.slice(..), Range::new(0, 1), 1),
             Err(Error::PairNotFound)
         )
+    }
+
+    #[test]
+    fn test_find_nth_closest_pairs_pos_after_unmatched_closes() {
+        // Each `>` in `->` has no open pair, so the search for a later `>`
+        // stops at the earlier one.
+        let doc = Rope::from("a -> b -> (c <d> -> e -> f)\n");
+        for pos in [12, 20, 24] {
+            assert_eq!(
+                find_nth_closest_pairs_pos(None, doc.slice(..), Range::new(pos, pos + 1), 1),
+                Ok((10, 26)),
+                "cursor at {pos}"
+            );
+        }
+        for pos in [0, 4] {
+            assert_eq!(
+                find_nth_closest_pairs_pos(None, doc.slice(..), Range::new(pos, pos + 1), 1),
+                Err(Error::PairNotFound),
+                "cursor at {pos}"
+            );
+        }
     }
 
     // Create a Rope and a matching Selection using a specification language.
