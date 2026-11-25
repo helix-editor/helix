@@ -63,3 +63,26 @@ zeroed"
     (let ((swap (lambdas (x y)
                   (pset! buf x y))))
       (swap 0 1))))
+
+;; when, unless and do
+(define (report x)
+  (when (> x 0)
+    (println "positive")
+    x))
+
+(do ((i 0 (+ i 1))) ((= i 3))
+  (println i))
+
+;; data aligns with its first element
+(define notes '(60 63 62
+                67 72))
+
+(define v #(1 2 3
+            4 5))
+
+;; #_name is a call, and define-... is a definition
+(#_format #f "~A"
+          x)
+
+(define-transform twice
+  (lambda (e) e))

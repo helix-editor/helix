@@ -2426,7 +2426,7 @@ language-servers = ["extempore"]
 
 [[grammar]]
 name = "extempore"
-source = { git = "https://github.com/extemporelang/tree-sitter-extempore", rev = "0fb6ae51ecddd9ad366805710717c40d4205f202" }
+source = { git = "https://github.com/extemporelang/tree-sitter-extempore", rev = "a8228d3537fa78fed35a3ba5d836a878f49eb9d8" }
 
 [[language]]
 name = "kotlin"
