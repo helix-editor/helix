@@ -3850,8 +3850,7 @@ fn continued_line_comment_token<'a>(
             .layers_for_byte_range(pos, pos)
             .filter_map(|layer| {
                 let layer = syntax.layer(layer);
-                loader.textobject_query(layer.language)?.capture_covers(
-                    "comment.around",
+                loader.textobject_query(layer.language)?.comment_covers(
                     &layer.tree()?.root_node(),
                     text,
                     pos,
