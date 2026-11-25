@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  MSRV: "1.90"
+  MSRV: "1.95"
   # This key can be changed to bust the cache of tree-sitter grammars.
   GRAMMAR_CACHE_VERSION: ""
 
