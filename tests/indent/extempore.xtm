@@ -1,3 +1,4 @@
+;; fmsynth
 (bind-func dsp:DSP
   (lambda (in time chan dat)
     (cond ((< chan 2)
@@ -12,11 +13,53 @@
               dur
               (rotate cell 1))))
 
-(bind-func ring_buffer
-  "a buffer of n samples"
+;; a docstring's continuation lines keep their place
+(bind-func static ring_buffer
+  "a buffer of n samples,
+zeroed"
   (lambda (n:i64)
-    (let ((buf:float* (zalloc n))
-          (idx 0))
-      (dotimes (i n)
+    (let ((buf:float* (zalloc n)) (idx 0)
+          (spare 0))
+      (dotimes (i n) ;; zero it
         (pset! buf i 0.0))
       buf)))
+
+;; begin with a form on its line, and alone
+(define (count-down a)
+  (if (< a 1)
+      (println "done")
+      (begin (println a)
+             (count-down (- a 1)))))
+
+(define (reset!)
+  (begin
+    (set! counter 0)
+    counter))
+
+;; a lambda which starts mid-line
+(define (adder n)
+  (let ((f (lambda (x)
+             (+ x n))))
+    f))
+
+(define take-token (lambda (p)
+                     (vector-set! p 1 (- (vector-ref p 1) 1))
+                     p))
+
+;; a call whose head is alone on its line
+(cond
+ ((> x 0) 'positive)
+ (else 'other))
+
+;; named let and lambdas
+(let loop ((i 0)
+           (acc '()))
+  (if (< i 3)
+      (loop (+ i 1) (cons i acc))
+      acc))
+
+(bind-func swap_all
+  (lambda (buf:i64* n)
+    (let ((swap (lambdas (x y)
+                  (pset! buf x y))))
+      (swap 0 1))))
