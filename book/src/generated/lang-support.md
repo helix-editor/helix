@@ -76,6 +76,7 @@
 | erb | ✓ |  |  |  |  |  |
 | erlang | ✓ | ✓ | ✓ | ✓ | ✓ | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |  |  |
+| extempore | ✓ | ✓ | ✓ | ✓ | ✓ | `extempore` |
 | fennel | ✓ |  |  |  | ✓ | `fennel-ls` |
 | fga | ✓ | ✓ | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |  |  |

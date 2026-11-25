@@ -51,6 +51,7 @@ elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
 expert = { command = "expert", args = ["--stdio"] }
+extempore = { command = "extempore", args = ["lsp"] }
 fennel-ls = { command = "fennel-ls" }
 fish-lsp = { command = "fish-lsp", args = ["start"] }
 forc = { command = "forc", args = ["lsp"] }
@@ -2406,6 +2407,26 @@ language-servers = [
 [[grammar]]
 name = "erlang"
 source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "d85b18e76962d6a3ba131bc5b514d77558e82762" }
+
+[[language]]
+name = "extempore"
+scope = "source.extempore"
+injection-regex = "extempore|xtm"
+file-types = ["xtm"]
+comment-token = ";"
+block-comment-tokens = { start = "#|", end = "|#" }
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["extempore"]
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[grammar]]
+name = "extempore"
+source = { git = "https://github.com/extemporelang/tree-sitter-extempore", rev = "cca678c25a1d393dc1c9fc9d27633811d4e86fc6" }
 
 [[language]]
 name = "kotlin"

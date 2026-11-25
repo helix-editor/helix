@@ -1,0 +1,22 @@
+(bind-func dsp:DSP
+  (lambda (in time chan dat)
+    (cond ((< chan 2)
+           (fmsynth in time chan dat))
+          (else 0.0))))
+
+(define l1
+  (lambda (beat dur cell)
+    (play fmsynth (car cell) (cosr 90 10 2) (* dur .2))
+    (callback (*metro* (+ beat (* dur .5))) 'l1
+              (+ beat dur)
+              dur
+              (rotate cell 1))))
+
+(bind-func ring_buffer
+  "a buffer of n samples"
+  (lambda (n:i64)
+    (let ((buf:float* (zalloc n))
+          (idx 0))
+      (dotimes (i n)
+        (pset! buf i 0.0))
+      buf)))

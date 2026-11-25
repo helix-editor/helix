@@ -1,0 +1,91 @@
+(bind-func square:[i64,i64]* (lambda (x) (* x x)))
+;^ @keyword
+;          ^ @function
+;                 ^ @type
+;                             ^ @keyword
+;                                     ^ @variable.parameter
+;                                         ^ @operator
+;                                           ^ @variable.parameter
+
+(bind-func add_one "add one to x" (lambda (x:i64) (+ x 1)))
+;          ^ @function
+;                  ^ @comment.block.documentation
+;                                          ^ @variable.parameter
+;                                            ^ @type
+
+(bind-type Point <double,double>)
+;^ @keyword
+;          ^ @type
+;                 ^ @type
+
+(bind-alias VoiceFn [void,Voice*,SAMPLE*]*)
+;           ^ @type
+
+(bind-val PI double 3.14159)
+;^ @keyword
+;         ^ @variable
+;            ^ @type.builtin
+;                   ^ @constant.numeric
+
+(bind-lib libc puts [i32,i8*]*)
+;         ^ @namespace
+;              ^ @function
+
+(bind-poly note_gate note_gate_get)
+;          ^ @function
+;                    ^ @function
+
+(bind-macro "make a vector" (Vec . args) `(list ,@args))
+;           ^ @comment.block.documentation
+;                            ^ @function.macro
+;                                ^ @punctuation.delimiter
+;                                        ^ @punctuation.special
+
+(define (add a b) "sum" (+ a b))
+;^ @keyword
+;        ^ @function
+;            ^ @variable.parameter
+;                 ^ @comment.block.documentation
+
+(define-macro (twice e) `(begin ,e ,e))
+;              ^ @function.macro
+
+(define l1 (lambda (beat dur) (play fmsynth beat dur)))
+;       ^ @variable
+;                   ^ @variable.parameter
+;                              ^ @function
+
+(let ((nk:NOTE_KERNEL null) (n 3)) nk)
+;      ^ @variable
+;         ^ @type
+;                     ^ @constant.builtin
+;                            ^ @variable
+
+(dotimes (i 10) (println i))
+;^ @keyword.control.repeat
+;         ^ @variable
+;                ^ @function.builtin
+
+(if (> a b) 'up '(a b))
+;^ @keyword.control.conditional
+;    ^ @operator
+;           ^ @punctuation.special
+;            ^ @string.special.symbol
+;                 ^ @string.special.symbol
+
+(sys:load "libs/core/instruments.xtm")
+;^ @keyword.control.import
+
+(car (list 1 2 3))
+;^ @function.builtin
+
+"a string\n"
+;        ^ @constant.character.escape
+
+#t
+
+#\a
+
+;; a comment
+
+#| a block comment |#
