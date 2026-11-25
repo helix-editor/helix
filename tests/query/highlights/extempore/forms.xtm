@@ -23,7 +23,7 @@
 
 (bind-val PI double 3.14159)
 ;^ @keyword
-;         ^ @variable
+;         ^ @constant
 ;            ^ @type.builtin
 ;                   ^ @constant.numeric
 
@@ -89,3 +89,64 @@
 ;; a comment
 
 #| a block comment |#
+
+(bind-func static resonator_stiffness:[float,float]* (lambda (fx) fx))
+;          ^ @keyword.storage.modifier
+;                 ^ @function
+;                                                             ^ @variable.parameter
+
+(bind-func car-i64 (lambdaz (a:i64list*) (tref a 0)))
+;                   ^ @keyword
+;                            ^ @variable.parameter
+;                                         ^ @function.builtin
+
+(bind-val sampler_registry i64 0 "the registry")
+;         ^ @variable
+;                          ^ @type.builtin
+;                                ^ @comment.block.documentation
+
+(let loop ((i 0) (acc 1)) (if (<> i 10) (loop (+ i 1) (bor acc i)) acc))
+;    ^ @function
+;           ^ @variable
+;                 ^ @variable
+;                              ^ @operator
+;                                                      ^ @operator
+
+(do ((k 0 (+ k 1))) ((= k 3)) (println k))
+;^ @keyword.control.repeat
+;     ^ @variable
+
+(letrec ((d 1) (f 2)) (+ d f))
+;         ^ @variable
+;               ^ @variable
+;                        ^ @variable
+
+(case w ((ionian dorian) 1) (else 2))
+;         ^ @string.special.symbol
+;                            ^ @keyword
+
+(Rat (convert x i64) (dtoi64 (sin TWOPI)))
+;^ @constructor
+;     ^ @keyword
+;               ^ @type.builtin
+;                     ^ @function.builtin
+;                             ^ @function.builtin
+;                                 ^ @constant
+
+(convert y SAMPLE)
+;          ^ @type
+
+(and (string=? a b) (null? c))
+;^ @keyword.operator
+;     ^ @function.builtin
+
+(xtmtest-result (sys:load-preload-check 'instruments) 1)
+;^ @function.macro
+;                ^ @keyword.control.import
+;                                        ^ @string.special.symbol
+
+(define (throw . args) args)
+;                      ^ @variable.parameter
+;        ^ @function
+;              ^ @punctuation.delimiter
+;                ^ @variable.parameter

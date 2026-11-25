@@ -8,7 +8,9 @@
 (list
   .
   (symbol) @_k
-  (#any-of? @_k "lambda" "let" "let*" "letrec" "letz" "dotimes" "doloop" "memzone")) @local.scope
+  (#any-of? @_k
+    "lambda" "lambdaz" "lambdas" "lambdah" "let" "let*" "letrec" "letz" "do" "dotimes" "doloop"
+    "memzone")) @local.scope
 
 ; (define (name param ...) body) scopes its parameters
 (list
@@ -29,7 +31,7 @@
       (typed_identifier
         (symbol) @local.definition.variable.parameter)
     ])
-  (#eq? @_k "lambda"))
+  (#any-of? @_k "lambda" "lambdaz" "lambdas" "lambdah"))
 
 (list
   .
@@ -67,6 +69,34 @@
         (symbol) @local.definition.variable)
     ])
   (#any-of? @_k "dotimes" "doloop"))
+
+; (let loop ((name value) ...) body)
+(list
+  .
+  (symbol) @_k
+  .
+  (symbol)
+  .
+  (list
+    (list
+      .
+      [
+        (symbol) @local.definition.variable
+        (typed_identifier
+          (symbol) @local.definition.variable)
+      ]))
+  (#eq? @_k "let"))
+
+; (do ((i 0 (+ i 1))) ...)
+(list
+  .
+  (symbol) @_k
+  .
+  (list
+    (list
+      .
+      (symbol) @local.definition.variable))
+  (#eq? @_k "do"))
 
 ; --- references ---
 (symbol) @local.reference
