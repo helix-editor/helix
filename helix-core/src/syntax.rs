@@ -146,7 +146,15 @@ impl LanguageData {
         }
         let query = Query::new(grammar, &text, |_, _| Ok(()))
             .with_context(|| format!("Failed to compile textobjects.scm queries for '{name}'"))?;
-        Ok(Some(TextObjectQuery::new(query)))
+        let comment_around = match comment_around_query(grammar, &text, &query) {
+            Ok(filtered) => filtered,
+            Err(err) => {
+                // Keep the full query. Comment continuation falls back to it.
+                log::error!("comment.around textobject query for '{name}': {err:#}");
+                None
+            }
+        };
+        Ok(Some(TextObjectQuery::with_comment_around(query, comment_around)))
     }
 
     fn textobject_query(&self, loader: &Loader) -> Option<&TextObjectQuery> {
@@ -1008,11 +1016,76 @@ impl CapturedNode<'_> {
 #[derive(Debug)]
 pub struct TextObjectQuery {
     query: Query,
+    /// Patterns that capture `comment.around`, compiled alone.
+    ///
+    /// Comment continuation only needs to know whether the cursor is inside a
+    /// comment. The full textobjects query also contains patterns that walk
+    /// every sibling (Rust `@test.around` does this for stacked attributes),
+    /// and those still run when the capture we asked for is not in them.
+    comment_around: Option<Query>,
+}
+
+/// Compile just the patterns that capture `comment.around`.
+fn comment_around_query(grammar: Grammar, source: &str, query: &Query) -> Result<Option<Query>> {
+    if query.get_capture("comment.around").is_none() {
+        return Ok(None);
+    }
+    let patterns: Vec<Pattern> = query.patterns().collect();
+    let mut filtered = String::new();
+    for (i, pattern) in patterns.iter().enumerate() {
+        let start = query.start_byte_for_pattern(*pattern);
+        let end = patterns
+            .get(i + 1)
+            .map(|next| query.start_byte_for_pattern(*next))
+            .unwrap_or(source.len());
+        let slice = source.get(start..end).with_context(|| {
+            format!("textobject pattern {i} byte range {start}..{end} is not valid UTF-8")
+        })?;
+        if !pattern_captures(slice, "comment.around") {
+            continue;
+        }
+        filtered.push_str(slice);
+        if !slice.ends_with('\n') {
+            filtered.push('\n');
+        }
+    }
+    if filtered.is_empty() {
+        return Ok(None);
+    }
+    Query::new(grammar, &filtered, |_, _| Ok(()))
+        .context("failed to compile comment.around textobject patterns")
+        .map(Some)
+}
+
+/// Whether `pattern` has a `@name` capture, not a longer name that only starts with it.
+fn pattern_captures(pattern: &str, name: &str) -> bool {
+    let needle = format!("@{name}");
+    let mut rest = pattern;
+    while let Some(idx) = rest.find(&needle) {
+        let after = idx + needle.len();
+        match rest.as_bytes().get(after).copied() {
+            Some(b) if b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.' => {
+                rest = &rest[after..];
+            }
+            _ => return true,
+        }
+    }
+    false
 }
 
 impl TextObjectQuery {
     pub fn new(query: Query) -> Self {
-        Self { query }
+        Self {
+            query,
+            comment_around: None,
+        }
+    }
+
+    fn with_comment_around(query: Query, comment_around: Option<Query>) -> Self {
+        Self {
+            query,
+            comment_around,
+        }
     }
 
     /// Run the query on the given node and return sub nodes which match given
@@ -1077,9 +1150,14 @@ impl TextObjectQuery {
         slice: RopeSlice,
         byte_pos: u32,
     ) -> Option<bool> {
-        let capture = self.query.get_capture(capture_name)?;
+        let query = if capture_name == "comment.around" {
+            self.comment_around.as_ref().unwrap_or(&self.query)
+        } else {
+            &self.query
+        };
+        let capture = query.get_capture(capture_name)?;
         let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
-            .execute_query(&self.query, node, RopeInput::new(slice));
+            .execute_query(query, node, RopeInput::new(slice));
         while let Some(mat) = cursor.next_match() {
             if mat
                 .nodes_for_capture(capture)
@@ -1273,6 +1351,41 @@ mod test {
         // The query used in this test case only captures the first line_comment node.
         // Determine if this behavior is intentional in tree-sitter.
         // test("multiple_nodes_grouped", 1..37);
+    }
+
+    #[test]
+    fn comment_around_cover_ignores_unrelated_patterns() {
+        // Enter/o/O asks whether the cursor is in a comment. That check must
+        // not run unrelated patterns: Rust `@test.around` walks every sibling
+        // attribute, which freezes the editor on a few hundred `#[test_case]`.
+        let mut stacked = String::from("use test_case::test_case;\n");
+        for i in 0..400 {
+            let n = i + 1;
+            stacked.push_str(&format!("#[test_case(\"{i} + 1\", {n}; \"case {i}\")]\n"));
+        }
+        stacked.push_str("fn many_cases(src: &str, expected: i64) {}\n// keep\n");
+        let comment_at = stacked.rfind("// keep").unwrap() as u32 + 3;
+        let attr_at = stacked.find("#[test_case").unwrap() as u32 + 2;
+        let rope = Rope::from_str(&stacked);
+        let rust = LOADER.language_for_name("rust").unwrap();
+        let textobject = LOADER.textobject_query(rust).unwrap();
+        let syntax = Syntax::new(rope.slice(..), rust, &LOADER).unwrap();
+        let root = syntax.tree().root_node();
+        let slice = rope.slice(..);
+        let started = std::time::Instant::now();
+        let in_comment = textobject
+            .capture_covers("comment.around", &root, slice, comment_at)
+            .unwrap();
+        let in_attr = textobject
+            .capture_covers("comment.around", &root, slice, attr_at)
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(in_comment, "a line comment should be comment.around");
+        assert!(!in_attr, "an attribute is not a comment");
+        assert!(
+            elapsed < std::time::Duration::from_millis(500),
+            "comment.around cover check took {elapsed:?}"
+        );
     }
 
     #[test]
