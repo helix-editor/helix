@@ -146,7 +146,11 @@ impl LanguageData {
         }
         let query = Query::new(grammar, &text, |_, _| Ok(()))
             .with_context(|| format!("Failed to compile textobjects.scm queries for '{name}'"))?;
-        Ok(Some(TextObjectQuery::new(query)))
+        let comment_query = TextObjectQuery::compile_comment_query(grammar, &query, &text);
+        Ok(Some(TextObjectQuery {
+            query,
+            comment_query,
+        }))
     }
 
     fn textobject_query(&self, loader: &Loader) -> Option<&TextObjectQuery> {
@@ -1005,14 +1009,44 @@ impl CapturedNode<'_> {
     }
 }
 
+const COMMENT_AROUND: &str = "comment.around";
+
 #[derive(Debug)]
 pub struct TextObjectQuery {
     query: Query,
+    /// The patterns of `query` that capture `comment.around`, for [`Self::comment_covers`].
+    comment_query: Option<Query>,
 }
 
 impl TextObjectQuery {
     pub fn new(query: Query) -> Self {
-        Self { query }
+        Self {
+            query,
+            comment_query: None,
+        }
+    }
+
+    /// Compiles the patterns of `query` that capture `comment.around` into a separate query.
+    /// `source` is the text `query` was compiled from.
+    fn compile_comment_query(grammar: Grammar, query: &Query, source: &str) -> Option<Query> {
+        query.get_capture(COMMENT_AROUND)?;
+        let capture = format!("@{COMMENT_AROUND}");
+        let patterns: Vec<_> = query.patterns().collect();
+        let mut comment_source = String::new();
+        for (i, &pattern) in patterns.iter().enumerate() {
+            let start = query.start_byte_for_pattern(pattern);
+            let end = patterns
+                .get(i + 1)
+                .map_or(source.len(), |&next| query.start_byte_for_pattern(next));
+            let pattern_source = &source[start..end];
+            if pattern_source.contains(&capture) {
+                comment_source.push_str(pattern_source);
+                comment_source.push('\n');
+            }
+        }
+        Query::new(grammar, &comment_source, |_, _| Ok(()))
+            .map_err(|err| log::error!("Failed to compile the comment textobject query: {err}"))
+            .ok()
     }
 
     /// Run the query on the given node and return sub nodes which match given
@@ -1077,9 +1111,30 @@ impl TextObjectQuery {
         slice: RopeSlice,
         byte_pos: u32,
     ) -> Option<bool> {
-        let capture = self.query.get_capture(capture_name)?;
+        Self::query_covers(&self.query, capture_name, node, slice, byte_pos)
+    }
+
+    /// Whether a `comment.around` capture covers `byte_pos`, or `None` if the query has no
+    /// such capture.
+    ///
+    /// Unlike [`Self::capture_covers`], this only runs the patterns that capture
+    /// `comment.around`. Other patterns can be slow to match: in Rust, the `test.around`
+    /// pattern takes seconds on a function with hundreds of attributes.
+    pub fn comment_covers(&self, node: &Node, slice: RopeSlice, byte_pos: u32) -> Option<bool> {
+        let query = self.comment_query.as_ref().unwrap_or(&self.query);
+        Self::query_covers(query, COMMENT_AROUND, node, slice, byte_pos)
+    }
+
+    fn query_covers(
+        query: &Query,
+        capture_name: &str,
+        node: &Node,
+        slice: RopeSlice,
+        byte_pos: u32,
+    ) -> Option<bool> {
+        let capture = query.get_capture(capture_name)?;
         let mut cursor = InactiveQueryCursor::new(byte_pos..byte_pos + 1, TREE_SITTER_MATCH_LIMIT)
-            .execute_query(&self.query, node, RopeInput::new(slice));
+            .execute_query(query, node, RopeInput::new(slice));
         while let Some(mat) = cursor.next_match() {
             if mat
                 .nodes_for_capture(capture)
@@ -1273,6 +1328,36 @@ mod test {
         // The query used in this test case only captures the first line_comment node.
         // Determine if this behavior is intentional in tree-sitter.
         // test("multiple_nodes_grouped", 1..37);
+    }
+
+    #[test]
+    fn test_comment_covers() {
+        let language = LOADER.language_for_name("rust").unwrap();
+        let textobject = LOADER.textobject_query(language).unwrap();
+
+        // Only the `comment.around` patterns are kept for the comment check.
+        let comment_query = textobject.comment_query.as_ref().unwrap();
+        assert!(comment_query.get_capture("comment.around").is_some());
+        assert!(comment_query.get_capture("test.around").is_none());
+        assert!(comment_query.pattern_count() < textobject.query.pattern_count());
+
+        let source = Rope::from_str(
+            "#[test]\n#[should_panic]\n// a comment\nfn f() {\n    let s = \"// not a comment\";\n}\n",
+        );
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let root = syntax.tree().root_node();
+        let text = source.to_string();
+        let covers = |needle: &str| {
+            let pos = text.find(needle).unwrap() as u32;
+            textobject
+                .comment_covers(&root, source.slice(..), pos)
+                .unwrap()
+        };
+
+        assert!(covers("a comment"));
+        assert!(!covers("not a comment"));
+        assert!(!covers("let s"));
+        assert!(!covers("should_panic"));
     }
 
     #[test]
