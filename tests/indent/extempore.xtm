@@ -46,10 +46,19 @@ zeroed"
                      (vector-set! p 1 (- (vector-ref p 1) 1))
                      p))
 
-;; a call whose head is alone on its line
+;; a call whose head is alone on its line indents one step
 (cond
- ((> x 0) 'positive)
- (else 'other))
+  ((> x 0) 'positive)
+  (else
+    'other))
+
+(xtc:aot:suppress-aot-do
+  (sys:load "libs/core/rational.xtm"))
+
+(define (template v)
+  `(AudioBuffer_cstring
+     ,(car v)
+     0.0))
 
 ;; named let and lambdas
 (let loop ((i 0)
@@ -80,9 +89,17 @@ zeroed"
 (define v #(1 2 3
             4 5))
 
-;; #_name is a call, and define-... is a definition
+;; #_name is a call; define-..., def-... and with-... are definitions
 (#_format #f "~A"
           x)
 
 (define-transform twice
   (lambda (e) e))
+
+(def-instrument beep
+  "a sine wave"
+  (params
+    (level 0.25 "output level")))
+
+(studio:with-number n
+  (println n))
