@@ -1,0 +1,105 @@
+;; fmsynth
+(bind-func dsp:DSP
+  (lambda (in time chan dat)
+    (cond ((< chan 2)
+           (fmsynth in time chan dat))
+          (else 0.0))))
+
+(define l1
+  (lambda (beat dur cell)
+    (play fmsynth (car cell) (cosr 90 10 2) (* dur .2))
+    (callback (*metro* (+ beat (* dur .5))) 'l1
+              (+ beat dur)
+              dur
+              (rotate cell 1))))
+
+;; a docstring's continuation lines keep their place
+(bind-func static ring_buffer
+  "a buffer of n samples,
+zeroed"
+  (lambda (n:i64)
+    (let ((buf:float* (zalloc n)) (idx 0)
+          (spare 0))
+      (dotimes (i n) ;; zero it
+        (pset! buf i 0.0))
+      buf)))
+
+;; begin with a form on its line, and alone
+(define (count-down a)
+  (if (< a 1)
+      (println "done")
+      (begin (println a)
+             (count-down (- a 1)))))
+
+(define (reset!)
+  (begin
+    (set! counter 0)
+    counter))
+
+;; a lambda which starts mid-line
+(define (adder n)
+  (let ((f (lambda (x)
+             (+ x n))))
+    f))
+
+(define take-token (lambda (p)
+                     (vector-set! p 1 (- (vector-ref p 1) 1))
+                     p))
+
+;; a call whose head is alone on its line aligns with the head; cond is a body form
+(cond
+  ((> x 0) 'positive)
+  (else
+   'other))
+
+(xtc:aot:suppress-aot-do
+ (sys:load "libs/core/rational.xtm"))
+
+(define (template v)
+  `(AudioBuffer_cstring
+    ,(car v)
+    0.0))
+
+;; named let and lambdas
+(let loop ((i 0)
+           (acc '()))
+  (if (< i 3)
+      (loop (+ i 1) (cons i acc))
+      acc))
+
+(bind-func swap_all
+  (lambda (buf:i64* n)
+    (let ((swap (lambdas (x y)
+                  (pset! buf x y))))
+      (swap 0 1))))
+
+;; when, unless and do
+(define (report x)
+  (when (> x 0)
+    (println "positive")
+    x))
+
+(do ((i 0 (+ i 1))) ((= i 3))
+  (println i))
+
+;; data aligns with its first element
+(define notes '(60 63 62
+                67 72))
+
+(define v #(1 2 3
+            4 5))
+
+;; #_name is a call; define-..., def-... and with-... are definitions
+(#_format #f "~A"
+          x)
+
+(define-transform twice
+  (lambda (e) e))
+
+(def-instrument beep
+  "a sine wave"
+  (params
+   (level 0.25 "output level")))
+
+(studio:with-number n
+  (println n))
