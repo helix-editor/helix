@@ -46,19 +46,19 @@ zeroed"
                      (vector-set! p 1 (- (vector-ref p 1) 1))
                      p))
 
-;; a call whose head is alone on its line indents one step
+;; a call whose head is alone on its line aligns with the head; cond is a body form
 (cond
   ((> x 0) 'positive)
   (else
-    'other))
+   'other))
 
 (xtc:aot:suppress-aot-do
-  (sys:load "libs/core/rational.xtm"))
+ (sys:load "libs/core/rational.xtm"))
 
 (define (template v)
   `(AudioBuffer_cstring
-     ,(car v)
-     0.0))
+    ,(car v)
+    0.0))
 
 ;; named let and lambdas
 (let loop ((i 0)
@@ -99,7 +99,7 @@ zeroed"
 (def-instrument beep
   "a sine wave"
   (params
-    (level 0.25 "output level")))
+   (level 0.25 "output level")))
 
 (studio:with-number n
   (println n))
