@@ -1368,7 +1368,7 @@ pub struct WorkspaceClientCapabilities {
     /// Client workspace capabilities specific to diagnostics.
     /// since 3.17.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub diagnostic: Option<DiagnosticWorkspaceClientCapabilities>,
+    pub diagnostics: Option<DiagnosticWorkspaceClientCapabilities>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
